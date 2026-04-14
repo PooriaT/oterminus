@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import subprocess
 import sys
 
 from oterminus.config import load_config
@@ -54,6 +55,12 @@ def handle_request(request: str, planner: Planner, validator: Validator, executo
 
     try:
         result = executor.run(proposal.command)
+    except subprocess.TimeoutExpired:
+        print(f"Execution timed out after {executor.timeout_seconds}s.")
+        return 124
+    except (OSError, subprocess.SubprocessError) as exc:
+        print(f"Execution failed: {exc}")
+        return 1
     except KeyboardInterrupt:
         print("Execution interrupted.")
         return 130
