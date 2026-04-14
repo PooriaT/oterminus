@@ -69,7 +69,7 @@ class Validator:
             risk = RiskLevel.DANGEROUS
 
         if self.policy.allowed_roots:
-            bad_paths = self._paths_outside_allowed_roots(args[1:])
+            bad_paths = self._paths_outside_allowed_roots(base, args[1:])
             if bad_paths:
                 reasons.append(f"Paths outside allowed roots: {', '.join(bad_paths)}")
 
@@ -85,14 +85,35 @@ class Validator:
             warnings=warnings,
         )
 
-    def _paths_outside_allowed_roots(self, arguments: list[str]) -> list[str]:
+    def _paths_outside_allowed_roots(self, base: str, arguments: list[str]) -> list[str]:
         disallowed: list[str] = []
         roots = [Path(root).resolve() for root in self.policy.allowed_roots]
+        path_operands = self._path_operands(base, arguments)
 
-        for arg in arguments:
-            if arg.startswith("-"):
-                continue
+        for arg in path_operands:
             path = Path(arg).expanduser().resolve()
             if not any(path == root or root in path.parents for root in roots):
                 disallowed.append(arg)
         return disallowed
+
+    def _path_operands(self, base: str, arguments: list[str]) -> list[str]:
+        if base == "find":
+            path_operands: list[str] = []
+            for arg in arguments:
+                if arg.startswith("-") or arg in {"(", ")", "!", ","}:
+                    break
+                path_operands.append(arg)
+            return path_operands
+
+        path_operands: list[str] = []
+        skip_next = False
+        for arg in arguments:
+            if skip_next:
+                skip_next = False
+                continue
+            if arg.startswith("-"):
+                if base == "chmod":
+                    skip_next = True
+                continue
+            path_operands.append(arg)
+        return path_operands

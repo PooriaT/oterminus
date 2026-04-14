@@ -34,3 +34,20 @@ def test_policy_blocks_dangerous() -> None:
     result = validator.validate(make_proposal("rm -rf tmp"))
     assert result.accepted is False
     assert result.risk_level == RiskLevel.DANGEROUS
+
+
+def test_allowed_roots_find_checks_only_search_roots() -> None:
+    validator = Validator(
+        PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False, allowed_roots=["/allowed"])
+    )
+    result = validator.validate(make_proposal("find /allowed -name '*.py'"))
+    assert result.accepted is True
+
+
+def test_allowed_roots_blocks_disallowed_path_operand() -> None:
+    validator = Validator(
+        PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False, allowed_roots=["/allowed"])
+    )
+    result = validator.validate(make_proposal("cat /etc/passwd"))
+    assert result.accepted is False
+    assert any("Paths outside allowed roots" in reason for reason in result.reasons)
