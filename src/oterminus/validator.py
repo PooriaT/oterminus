@@ -99,7 +99,23 @@ class Validator:
     def _path_operands(self, base: str, arguments: list[str]) -> list[str]:
         if base == "find":
             path_operands: list[str] = []
+            parsing_paths = False
+            skip_next_option_arg = False
             for arg in arguments:
+                if skip_next_option_arg:
+                    skip_next_option_arg = False
+                    continue
+
+                if not parsing_paths:
+                    if arg in {"-D", "-O"}:
+                        skip_next_option_arg = True
+                        continue
+                    if arg.startswith("-"):
+                        continue
+                    if arg in {"(", ")", "!", ","}:
+                        break
+                    parsing_paths = True
+
                 if arg.startswith("-") or arg in {"(", ")", "!", ","}:
                     break
                 path_operands.append(arg)
@@ -112,7 +128,7 @@ class Validator:
                 skip_next = False
                 continue
             if arg.startswith("-"):
-                if base == "chmod":
+                if base == "chmod" and arg in {"--reference", "--context"}:
                     skip_next = True
                 continue
             path_operands.append(arg)

@@ -44,10 +44,28 @@ def test_allowed_roots_find_checks_only_search_roots() -> None:
     assert result.accepted is True
 
 
+def test_allowed_roots_find_with_leading_option_still_checks_path_operands() -> None:
+    validator = Validator(
+        PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False, allowed_roots=["/allowed"])
+    )
+    result = validator.validate(make_proposal("find -L /etc -name '*.conf'"))
+    assert result.accepted is False
+    assert any("Paths outside allowed roots" in reason for reason in result.reasons)
+
+
 def test_allowed_roots_blocks_disallowed_path_operand() -> None:
     validator = Validator(
         PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False, allowed_roots=["/allowed"])
     )
     result = validator.validate(make_proposal("cat /etc/passwd"))
+    assert result.accepted is False
+    assert any("Paths outside allowed roots" in reason for reason in result.reasons)
+
+
+def test_allowed_roots_chmod_reference_equals_validates_target_path() -> None:
+    validator = Validator(
+        PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False, allowed_roots=["/allowed"])
+    )
+    result = validator.validate(make_proposal("chmod --reference=/allowed/ref /etc/shadow"))
     assert result.accepted is False
     assert any("Paths outside allowed roots" in reason for reason in result.reasons)
