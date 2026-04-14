@@ -1,0 +1,26 @@
+[tool.poetry]
+name = "oterminus"
+version = "0.1.0"
+description = "Local AI-powered terminal assistant with explicit confirmation and safety controls"
+authors = ["oterminus contributors"]
+readme = "README.md"
+packages = [{ include = "oterminus", from = "src" }]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+ollama = "^0.6.0"
+pydantic = "^2.9.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.0"
+
+[tool.poetry.scripts]
+oterminus = "oterminus.cli:main"
+
+[build-system]
+requires = ["poetry-core>=1.8.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+addopts = "-q"
