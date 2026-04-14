@@ -53,6 +53,14 @@ def test_allowed_roots_find_with_leading_option_still_checks_path_operands() -> 
     assert any("Paths outside allowed roots" in reason for reason in result.reasons)
 
 
+def test_allowed_roots_find_without_explicit_path_does_not_treat_predicate_arg_as_root() -> None:
+    validator = Validator(
+        PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False, allowed_roots=["/allowed"])
+    )
+    result = validator.validate(make_proposal("find -path '/etc/*'"))
+    assert result.accepted is True
+
+
 def test_allowed_roots_blocks_disallowed_path_operand() -> None:
     validator = Validator(
         PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False, allowed_roots=["/allowed"])

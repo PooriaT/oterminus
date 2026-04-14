@@ -99,23 +99,21 @@ class Validator:
     def _path_operands(self, base: str, arguments: list[str]) -> list[str]:
         if base == "find":
             path_operands: list[str] = []
-            parsing_paths = False
-            skip_next_option_arg = False
-            for arg in arguments:
-                if skip_next_option_arg:
-                    skip_next_option_arg = False
+            index = 0
+            while index < len(arguments):
+                arg = arguments[index]
+                if arg in {"-H", "-L", "-P"}:
+                    index += 1
                     continue
+                if arg in {"-D", "-O"}:
+                    index += 2
+                    continue
+                if arg.startswith("-O") and len(arg) > 2:
+                    index += 1
+                    continue
+                break
 
-                if not parsing_paths:
-                    if arg in {"-D", "-O"}:
-                        skip_next_option_arg = True
-                        continue
-                    if arg.startswith("-"):
-                        continue
-                    if arg in {"(", ")", "!", ","}:
-                        break
-                    parsing_paths = True
-
+            for arg in arguments[index:]:
                 if arg.startswith("-") or arg in {"(", ")", "!", ","}:
                     break
                 path_operands.append(arg)
