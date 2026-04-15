@@ -3,5 +3,6 @@ __pycache__/
 *.egg-info/
 .pytest_cache/
 .venv/
+.env
 poetry.lock
 .DS_Store

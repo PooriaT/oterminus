@@ -6,6 +6,7 @@ import subprocess
 import sys
 
 from oterminus.config import load_config
+from oterminus.direct_commands import detect_direct_command
 from oterminus.executor import Executor
 from oterminus.logging_utils import configure_logging
 from oterminus.ollama_client import OllamaClientError, OllamaPlannerClient
@@ -34,8 +35,10 @@ def ask_confirmation(is_dangerous: bool) -> bool:
 def handle_request(request: str, planner: Planner, validator: Validator, executor: Executor) -> int:
     LOGGER.info("request=%s", request)
 
+    proposal = detect_direct_command(request)
     try:
-        proposal = planner.plan(request)
+        if proposal is None:
+            proposal = planner.plan(request)
     except (PlannerError, OllamaClientError) as exc:
         print(f"Planning failed: {exc}")
         return 2
@@ -90,7 +93,10 @@ def repl(planner: Planner, validator: Validator, executor: Executor) -> int:
         if request.lower() in {"exit", "quit"}:
             return 0
         if request.lower() == "help":
-            print("Enter a natural language terminal request. Example: 'find all .py files'.")
+            print(
+                "Enter either a natural-language terminal request or a direct shell command.\n"
+                "Examples: 'find all .py files', 'ls -lh', 'cd src'"
+            )
             continue
 
         handle_request(request, planner, validator, executor)

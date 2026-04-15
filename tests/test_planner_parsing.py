@@ -6,7 +6,7 @@ from oterminus.planner import Planner, PlannerError
 
 def test_parse_valid_proposal() -> None:
     raw = (
-        '{"action_type":"shell_command","command":"find . -name \"*.py\"",'
+        '{"action_type":"shell_command","command":"find . -name \\"*.py\\"",'
         '"summary":"find python files","explanation":"search recursively",'
         '"risk_level":"safe","needs_confirmation":true,"notes":[]}'
     )

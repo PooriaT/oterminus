@@ -22,6 +22,13 @@ def test_accept_safe_command() -> None:
     assert result.risk_level == RiskLevel.SAFE
 
 
+def test_accept_cd_command() -> None:
+    validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))
+    result = validator.validate(make_proposal("cd src"))
+    assert result.accepted is True
+    assert result.risk_level == RiskLevel.SAFE
+
+
 def test_reject_chained_command() -> None:
     validator = Validator(PolicyConfig(mode=RiskLevel.DANGEROUS, allow_dangerous=True))
     result = validator.validate(make_proposal("ls && pwd"))

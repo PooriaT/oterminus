@@ -56,3 +56,49 @@ def test_handle_request_timeout(monkeypatch) -> None:
 
     code = handle_request("find files", planner, validator, executor)
     assert code == 124
+
+
+def test_handle_request_direct_command_skips_planner(monkeypatch) -> None:
+    from oterminus.cli import handle_request
+
+    planner = Mock()
+    validator = Mock()
+    validator.validate.return_value = ValidationResult(accepted=True, risk_level=RiskLevel.SAFE)
+    executor = Mock()
+    executor.run.return_value.returncode = 0
+    executor.run.return_value.stdout = "/tmp\n"
+    executor.run.return_value.stderr = ""
+    monkeypatch.setattr("builtins.input", lambda _: "y")
+
+    code = handle_request("cd /tmp", planner, validator, executor)
+
+    assert code == 0
+    planner.plan.assert_not_called()
+    executor.run.assert_called_once_with("cd /tmp")
+
+
+def test_handle_request_natural_language_uses_planner(monkeypatch) -> None:
+    from oterminus.cli import handle_request
+
+    planner = Mock()
+    planner.plan.return_value = Proposal(
+        action_type=ActionType.SHELL_COMMAND,
+        command="ls -lh",
+        summary="list files",
+        explanation="desc",
+        risk_level=RiskLevel.SAFE,
+        needs_confirmation=True,
+        notes=[],
+    )
+    validator = Mock()
+    validator.validate.return_value = ValidationResult(accepted=True, risk_level=RiskLevel.SAFE)
+    executor = Mock()
+    executor.run.return_value.returncode = 0
+    executor.run.return_value.stdout = ""
+    executor.run.return_value.stderr = ""
+    monkeypatch.setattr("builtins.input", lambda _: "y")
+
+    code = handle_request("show files in this directory", planner, validator, executor)
+
+    assert code == 0
+    planner.plan.assert_called_once_with("show files in this directory")
