@@ -39,7 +39,7 @@ Dangerous commands require stronger confirmation (`EXECUTE`).
 
 ## Requirements
 
-- Python 3.10+
+- Python 3.13+
 - [Poetry](https://python-poetry.org/)
 - [Ollama](https://ollama.com/)
 
