@@ -7,6 +7,7 @@ from oterminus.models import Proposal, RiskLevel, ValidationResult
 from oterminus.policies import PolicyConfig, is_risk_allowed
 
 ALLOWED_BASE_COMMANDS = {
+    "cd": RiskLevel.SAFE,
     "ls": RiskLevel.SAFE,
     "pwd": RiskLevel.SAFE,
     "cat": RiskLevel.SAFE,
@@ -97,6 +98,11 @@ class Validator:
         return disallowed
 
     def _path_operands(self, base: str, arguments: list[str]) -> list[str]:
+        if base == "cd":
+            if not arguments or arguments == ["-"]:
+                return ["~"] if not arguments else []
+            return [arguments[0]]
+
         if base == "find":
             path_operands: list[str] = []
             index = 0

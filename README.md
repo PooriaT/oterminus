@@ -1,6 +1,7 @@
 # oterminus
 
 `oterminus` is a local AI-powered terminal assistant that turns natural-language requests into **proposed** shell commands, then requires explicit user confirmation before execution.
+If the input already looks like a shell command, `oterminus` skips the LLM automatically and runs the local validation/execution path directly.
 
 It is intentionally constrained to terminal and local filesystem workflows. The model never gets execution authority.
 
@@ -13,13 +14,14 @@ It is intentionally constrained to terminal and local filesystem workflows. The 
 
 ## Architecture (v1)
 
-1. CLI receives natural-language input (one-shot or REPL).
-2. Planner sends system + user prompt to Ollama.
-3. Ollama returns JSON proposal for one shell command.
-4. Validator checks structure, allowlist, shell hazards, and policy compatibility.
-5. Renderer shows clear command preview.
-6. User explicitly confirms.
-7. Executor runs command with `subprocess` and returns output + exit code.
+1. CLI receives input (one-shot or REPL).
+2. If the input already looks like a shell command such as `ls -lh` or `cd src`, `oterminus` builds the proposal locally and skips the planner.
+3. Otherwise, the planner sends system + user prompt to Ollama.
+4. Ollama returns JSON proposal for one shell command.
+5. Validator checks structure, allowlist, shell hazards, and policy compatibility.
+6. Renderer shows clear command preview.
+7. User explicitly confirms.
+8. Executor runs the command and returns output + exit code.
 
 ## Safety model
 
@@ -142,6 +144,7 @@ Commands in REPL:
 
 - `help`: usage tip
 - `exit` / `quit`: leave REPL
+- direct shell commands like `ls -lh` or `cd src`: validated locally and executed without using Ollama
 
 ### One-shot mode
 
@@ -150,7 +153,11 @@ poetry run oterminus "show me all files in this directory with their sizes"
 poetry run oterminus "make run.sh executable"
 poetry run oterminus "create a folder called backup"
 poetry run oterminus "find all .py files under this directory"
+poetry run oterminus "ls -lh"
 ```
+
+In REPL mode, `cd` updates the `oterminus` process working directory so later natural-language requests run relative to the new location.
+In one-shot mode, `cd` only affects that single `oterminus` process and cannot change the parent shell directory.
 
 ## Environment variables
 
