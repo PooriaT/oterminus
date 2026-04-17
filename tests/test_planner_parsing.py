@@ -89,6 +89,20 @@ def test_parse_structured_proposal_without_raw_command() -> None:
     assert proposal.arguments == {"path": ".", "name": "*.py"}
 
 
+def test_parse_structured_proposal_with_legacy_raw_command_keeps_structured_authority() -> None:
+    raw = (
+        '{"action_type":"shell_command","mode":"structured","command_family":"find",'
+        '"arguments":{"path":".","name":"*.py"},"command":"find src -name \'*.py\'",'
+        '"summary":"find python files","explanation":"structured search plan","risk_level":"safe",'
+        '"needs_confirmation":true,"notes":["legacy command retained for compatibility"]}'
+    )
+    proposal = Planner.parse_proposal(raw)
+    assert proposal.mode == ProposalMode.STRUCTURED
+    assert proposal.command == "find src -name '*.py'"
+    assert proposal.command_family == "find"
+    assert proposal.arguments == {"path": ".", "name": "*.py"}
+
+
 def test_parse_raw_mode_with_supported_structured_fields_is_normalized() -> None:
     raw = (
         '{"action_type":"shell_command","mode":"raw","command_family":"cp",'
@@ -99,7 +113,7 @@ def test_parse_raw_mode_with_supported_structured_fields_is_normalized() -> None
     )
     proposal = Planner.parse_proposal(raw)
     assert proposal.mode == ProposalMode.STRUCTURED
-    assert proposal.command is None
+    assert proposal.command == "cp -p -n src.txt dest.txt"
     assert proposal.command_family == "cp"
     assert proposal.arguments == {
         "source": "src.txt",
@@ -138,6 +152,16 @@ def test_parse_rejects_arguments_without_command_family() -> None:
     raw = (
         '{"action_type":"shell_command","mode":"structured","arguments":{"path":"src"},'
         '"summary":"bad structured proposal","explanation":"missing family",'
+        '"risk_level":"safe","needs_confirmation":true,"notes":[]}'
+    )
+    with pytest.raises(PlannerError):
+        Planner.parse_proposal(raw)
+
+
+def test_parse_rejects_structured_without_arguments() -> None:
+    raw = (
+        '{"action_type":"shell_command","mode":"structured","command_family":"find",'
+        '"summary":"bad structured proposal","explanation":"missing args",'
         '"risk_level":"safe","needs_confirmation":true,"notes":[]}'
     )
     with pytest.raises(PlannerError):

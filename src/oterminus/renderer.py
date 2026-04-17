@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 
-from oterminus.models import Proposal, ValidationResult
+from oterminus.models import Proposal, ProposalMode, ValidationResult
 from oterminus.policies import ConfirmationLevel, confirmation_level
 
 
@@ -25,6 +25,9 @@ def render_preview(proposal: Proposal, validation: ValidationResult) -> str:
 
     if proposal.command_family is not None:
         lines.insert(3 if proposal.command is None else 4, f"Command fam. : {proposal.command_family}")
+
+    if proposal.mode == ProposalMode.STRUCTURED and proposal.command:
+        lines.append(f"Legacy cmd   : {proposal.command} (deprecated in structured mode)")
 
     if proposal.arguments:
         formatted = json.dumps(proposal.arguments, indent=2, sort_keys=True)

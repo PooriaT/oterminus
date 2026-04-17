@@ -46,7 +46,6 @@ class Planner:
                 {
                     **proposal.model_dump(),
                     "mode": ProposalMode.STRUCTURED.value,
-                    "command": None,
                 }
             )
 

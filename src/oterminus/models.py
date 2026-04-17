@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from enum import Enum
-import shlex
 from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -60,7 +59,7 @@ class Proposal(BaseModel):
         if payload.get("mode") is None:
             has_command = payload.get("command") is not None
             has_structured_fields = payload.get("command_family") is not None or arguments is not None
-            payload["mode"] = ProposalMode.STRUCTURED if has_structured_fields and not has_command else ProposalMode.RAW
+            payload["mode"] = ProposalMode.STRUCTURED if has_structured_fields else ProposalMode.RAW
 
         return payload
 
@@ -74,6 +73,9 @@ class Proposal(BaseModel):
 
         if self.mode == ProposalMode.STRUCTURED and not self.command_family:
             raise ValueError("Structured proposals require command_family.")
+
+        if self.mode == ProposalMode.STRUCTURED and self.arguments is None:
+            raise ValueError("Structured proposals require arguments.")
 
         if self.mode == ProposalMode.EXPERIMENTAL and self.arguments is not None:
             raise ValueError("Experimental proposals cannot include structured arguments.")
@@ -90,14 +92,6 @@ class Proposal(BaseModel):
             except StructuredCommandError as exc:
                 raise ValueError(str(exc)) from exc
             self.arguments = validated.model_dump()
-
-        if self.command and self.command_family:
-            try:
-                parsed = shlex.split(self.command)
-            except ValueError:
-                parsed = []
-            if parsed and parsed[0] != self.command_family:
-                raise ValueError("command_family must match the raw command base when both are present.")
 
         return self
 

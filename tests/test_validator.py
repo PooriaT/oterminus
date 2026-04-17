@@ -256,6 +256,35 @@ def test_accept_experimental_raw_command_with_warning() -> None:
     )
 
 
+def test_structured_command_ignores_legacy_raw_command() -> None:
+    validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))
+    proposal = Proposal(
+        action_type=ActionType.SHELL_COMMAND,
+        mode=ProposalMode.STRUCTURED,
+        command_family="find",
+        arguments={"path": ".", "name": "*.py"},
+        command="find src -name '*.py'",
+        summary="find python files",
+        explanation="structured find stays authoritative",
+        risk_level=RiskLevel.SAFE,
+        needs_confirmation=True,
+        notes=[],
+    )
+
+    result = validator.validate(proposal)
+
+    assert result.accepted is True
+    assert result.rendered_command == "find . -name '*.py'"
+    assert any(
+        "Structured mode ignores the deprecated raw command field" in warning
+        for warning in result.warnings
+    )
+    assert any(
+        "Legacy raw command differs from deterministic structured rendering and was ignored." in warning
+        for warning in result.warnings
+    )
+
+
 def test_reject_experimental_when_structured_rendering_is_available() -> None:
     validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))
     result = validator.validate(

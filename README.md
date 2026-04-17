@@ -12,7 +12,7 @@ It is intentionally constrained to terminal and local filesystem workflows. The 
 - **Preview-before-run**: users see summary, exact command, risk level, and warnings first.
 - **Extensible architecture**: planner, validator, renderer, policies, and executor are separate modules.
 - **Registry-driven command support**: a shared command registry defines the curated v1 command set, risk levels, and direct-command eligibility.
-- **Structured-first planning for a curated subset**: the planner should prefer structured proposals for stable command families such as `ls`, `pwd`, `mkdir`, `chmod`, `find`, `cp`, `mv`, `du`, `stat`, `head`, `tail`, `grep`, `cat`, `open`, and `file`, with Python rendering the exact argv/command strings deterministically.
+- **Structured-first planning for a curated subset**: the planner should prefer structured proposals for stable command families such as `ls`, `pwd`, `mkdir`, `chmod`, `find`, `cp`, `mv`, `du`, `stat`, `head`, `tail`, `grep`, `cat`, `open`, and `file`, with Python rendering the exact argv/command strings deterministically from `command_family + arguments`.
 - **Experimental lane is explicit, not implicit**: proposals that fall outside the deterministic subset can be surfaced as experimental, with stricter validation and stronger confirmation instead of quietly broadening shell access.
 
 ## Architecture (v1)
@@ -29,9 +29,11 @@ It is intentionally constrained to terminal and local filesystem workflows. The 
 
 There are now three proposal modes:
 
-- `structured`: preferred path; deterministic rendering from validated `command_family` + `arguments`
+- `structured`: preferred and authoritative path; deterministic rendering from validated `command_family` + `arguments`
 - `raw`: compatibility path for locally detected direct shell commands that already look like curated single-command invocations
 - `experimental`: explicit raw-shell fallback for planner proposals that do not fit the structured subset but still stay inside the curated allowlist and validator
+
+For structured proposals, the raw `command` field is deprecated compatibility metadata and is not used as the execution source of truth.
 
 ## Safety model
 
@@ -188,7 +190,7 @@ Planner behavior is intentionally structured-first:
 - raw mode remains available for compatibility behavior, especially the direct-command path
 - parser normalization also upgrades simple raw proposals for the structured subset into deterministic structured rendering when possible
 
-When a structured proposal uses one of the supported families, Python validates the argument shape and renders the exact command locally.
+When a structured proposal uses one of the supported families, Python validates the argument shape and renders the exact command locally. If a legacy raw `command` string is also present, it is ignored for execution and may be surfaced as a warning when it differs from deterministic rendering.
 
 Supported structured families and argument shapes:
 
