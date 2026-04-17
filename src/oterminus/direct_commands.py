@@ -4,7 +4,7 @@ import shlex
 
 from oterminus.command_registry import get_command_spec, looks_like_direct_invocation
 from oterminus.models import ActionType, Proposal, ProposalMode
-from oterminus.structured_commands import parse_raw_command_as_structured
+from oterminus.structured_commands import StructuredCommandError, parse_raw_command_as_structured
 
 
 def detect_direct_command(request: str) -> Proposal | None:
@@ -29,7 +29,11 @@ def detect_direct_command(request: str) -> Proposal | None:
         return None
 
     notes = ["Detected as a direct shell command; skipped the LLM planner.", *spec.notes]
-    parsed = parse_raw_command_as_structured(command)
+    try:
+        parsed = parse_raw_command_as_structured(command)
+    except StructuredCommandError as exc:
+        notes.append(f"Structured parsing skipped: {exc}")
+        parsed = None
     if parsed is not None:
         command_family, arguments = parsed
         return Proposal(

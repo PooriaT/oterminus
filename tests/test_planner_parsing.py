@@ -1,6 +1,6 @@
 import pytest
 
-from oterminus.models import ActionType, ProposalMode
+from oterminus.models import ActionType, Proposal, ProposalMode
 from oterminus.planner import Planner, PlannerError
 
 
@@ -85,6 +85,43 @@ def test_parse_legacy_raw_mode_is_normalized_to_experimental_with_note() -> None
     assert proposal.mode == ProposalMode.EXPERIMENTAL
     assert proposal.command == "stat -f %z README.md"
     assert any("Legacy raw mode was normalized to experimental mode." in note for note in proposal.notes)
+
+
+def test_validate_legacy_raw_mode_with_command_family_and_command_stays_experimental() -> None:
+    proposal = Proposal.model_validate(
+        {
+            "action_type": "shell_command",
+            "mode": "raw",
+            "command_family": "ls",
+            "command": "ls -lh",
+            "summary": "list files",
+            "explanation": "legacy payload with family metadata only",
+            "risk_level": "safe",
+            "needs_confirmation": True,
+            "notes": [],
+        }
+    )
+    assert proposal.mode == ProposalMode.EXPERIMENTAL
+    assert proposal.command == "ls -lh"
+    assert proposal.command_family == "ls"
+
+
+def test_validate_missing_mode_with_command_family_and_command_stays_experimental() -> None:
+    proposal = Proposal.model_validate(
+        {
+            "action_type": "shell_command",
+            "command_family": "ls",
+            "command": "ls -lh",
+            "summary": "list files",
+            "explanation": "mode omitted legacy payload",
+            "risk_level": "safe",
+            "needs_confirmation": True,
+            "notes": [],
+        }
+    )
+    assert proposal.mode == ProposalMode.EXPERIMENTAL
+    assert proposal.command == "ls -lh"
+    assert proposal.command_family == "ls"
 
 
 def test_parse_structured_proposal_without_raw_command() -> None:
