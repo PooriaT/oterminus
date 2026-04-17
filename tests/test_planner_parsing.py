@@ -32,7 +32,7 @@ def test_parse_valid_raw_fallback_for_unsupported_structured_family() -> None:
     )
     proposal = Planner.parse_proposal(raw)
     assert proposal.action_type == ActionType.SHELL_COMMAND
-    assert proposal.mode == ProposalMode.RAW
+    assert proposal.mode == ProposalMode.EXPERIMENTAL
     assert proposal.command == "cat README.md"
     assert proposal.command_family is None
 
@@ -72,8 +72,21 @@ def test_parse_symbolic_chmod_stays_raw_when_structured_not_feasible() -> None:
         '"risk_level":"write","needs_confirmation":true,"notes":[]}'
     )
     proposal = Planner.parse_proposal(raw)
-    assert proposal.mode == ProposalMode.RAW
+    assert proposal.mode == ProposalMode.EXPERIMENTAL
     assert proposal.command == "chmod u+x run.sh"
+
+
+def test_parse_explicit_experimental_proposal_is_preserved() -> None:
+    raw = (
+        '{"action_type":"shell_command","mode":"experimental","command_family":"cat",'
+        '"command":"cat README.md","summary":"show readme",'
+        '"explanation":"experimental raw fallback","risk_level":"safe",'
+        '"needs_confirmation":true,"notes":["experimental"]}'
+    )
+    proposal = Planner.parse_proposal(raw)
+    assert proposal.mode == ProposalMode.EXPERIMENTAL
+    assert proposal.command == "cat README.md"
+    assert proposal.command_family == "cat"
 
 
 def test_parse_rejects_arguments_without_command_family() -> None:
@@ -114,6 +127,17 @@ def test_parse_rejects_invalid_structured_arguments_even_in_raw_mode() -> None:
         '"arguments":{"path":"run.sh","mode":"u+x"},"command":"chmod u+x run.sh",'
         '"summary":"chmod","explanation":"bad structured payload",'
         '"risk_level":"write","needs_confirmation":true,"notes":[]}'
+    )
+    with pytest.raises(PlannerError):
+        Planner.parse_proposal(raw)
+
+
+def test_parse_rejects_structured_arguments_in_experimental_mode() -> None:
+    raw = (
+        '{"action_type":"shell_command","mode":"experimental","command_family":"cat",'
+        '"arguments":{"path":"README.md"},"command":"cat README.md",'
+        '"summary":"readme","explanation":"bad experimental payload",'
+        '"risk_level":"safe","needs_confirmation":true,"notes":[]}'
     )
     with pytest.raises(PlannerError):
         Planner.parse_proposal(raw)

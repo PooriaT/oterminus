@@ -4,11 +4,31 @@ import shlex
 from pathlib import Path
 
 from oterminus.command_registry import CommandSpec, PathOperandMode, get_command_spec
-from oterminus.models import Proposal, RiskLevel, ValidationResult
+from oterminus.models import Proposal, ProposalMode, RiskLevel, ValidationResult
 from oterminus.policies import PolicyConfig, is_risk_allowed
-from oterminus.structured_commands import StructuredCommandError, render_structured_command
+from oterminus.structured_commands import (
+    StructuredCommandError,
+    parse_raw_command_as_structured,
+    render_structured_command,
+)
 
-BLOCKED_TOKENS = {"&&", "||", ";", "|", "`", "$(", ">", ">>", "<"}
+BLOCKED_OPERATOR_TOKENS = {
+    "&&": "command chaining",
+    "||": "command chaining",
+    ";": "command chaining",
+    "|": "pipelines",
+    "<": "redirection",
+    ">": "redirection",
+    ">>": "redirection",
+    "&": "background execution",
+}
+BLOCKED_FRAGMENT_REASONS = {
+    "$(": "command substitution",
+    "`": "command substitution",
+    "\n": "multiline command text",
+    "\r": "multiline command text",
+    "\x00": "null bytes",
+}
 
 
 class Validator:
@@ -43,14 +63,17 @@ class Validator:
         else:
             command = (proposal.command or "").strip()
             if command:
-                if any(token in command for token in BLOCKED_TOKENS):
-                    reasons.append("Command contains blocked shell operators or redirection.")
+                args, shell_issues = self._parse_shell_command(command)
+                reasons.extend(shell_issues)
 
-                try:
-                    args = shlex.split(command)
-                except ValueError:
-                    reasons.append("Command could not be parsed safely.")
-                    args = []
+                if proposal.mode == ProposalMode.EXPERIMENTAL:
+                    warnings.append(
+                        "Experimental mode stays outside deterministic structured rendering and uses stricter confirmation."
+                    )
+                    if parse_raw_command_as_structured(command) is not None:
+                        reasons.append(
+                            "Experimental mode is not allowed when deterministic structured rendering is available."
+                        )
 
         if not command:
             reasons.append("Proposal has no executable command.")
@@ -192,3 +215,33 @@ class Validator:
     def _is_non_path_flag_value(self, spec: CommandSpec, flag: str, value: str) -> bool:
         # GNU grep uses "-" with -f/--file to mean "read patterns from stdin".
         return spec.name == "grep" and flag == "-f" and value == "-"
+
+    def _parse_shell_command(self, command: str) -> tuple[list[str], list[str]]:
+        issues: list[str] = []
+        try:
+            lexer = shlex.shlex(command, posix=True, punctuation_chars="|&;<>")
+            lexer.whitespace_split = True
+            tokens = list(lexer)
+        except ValueError:
+            return [], ["Command could not be parsed safely."]
+
+        for token, reason in BLOCKED_OPERATOR_TOKENS.items():
+            if token in tokens:
+                issues.append(f"Command contains blocked {reason}.")
+
+        for fragment, reason in BLOCKED_FRAGMENT_REASONS.items():
+            if fragment in command:
+                issues.append(f"Command contains blocked {reason}.")
+
+        return tokens, _dedupe_preserve_order(issues)
+
+
+def _dedupe_preserve_order(values: list[str]) -> list[str]:
+    seen: set[str] = set()
+    deduped: list[str] = []
+    for value in values:
+        if value in seen:
+            continue
+        seen.add(value)
+        deduped.append(value)
+    return deduped

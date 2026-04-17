@@ -32,7 +32,7 @@ Output contract:
 - Use this schema:
   {{
     "action_type": "shell_command",
-    "mode": "raw|structured",
+    "mode": "structured|raw|experimental",
     "command_family": "... optional command family ...",
     "arguments": {{ "...": "..." }},
     "command": "... optional raw command string ...",
@@ -52,10 +52,12 @@ Planning rules:
 
 Structured-first policy:
 - Prefer `"mode": "structured"` whenever the request cleanly fits one of the supported structured families: {structured_families}.
-- Use `"mode": "raw"` only when structured output is not feasible for the requested single action.
+- Use `"mode": "experimental"` for single-command shell proposals that stay within the curated allowlist but do not fit the supported structured subset.
+- Reserve `"mode": "raw"` for compatibility cases where the input is already essentially a direct command and no stronger experimental label is needed.
 - If you return `"mode": "structured"`, always include `"command_family"` and `"arguments"`.
+- If you return `"mode": "experimental"`, always include `"command"` and set `notes` to mention that the proposal is experimental.
 - For structured proposals, omit `"command"` unless it is strictly necessary. Python will render the final command deterministically.
-- If structured support is unavailable for the intended action but the action still fits a single allowed shell command, use `"mode": "raw"` and provide `"command"`.
+- If structured support is unavailable for the intended action but the action still fits a single allowed shell command, prefer `"mode": "experimental"` and provide `"command"`.
 
 Supported structured families and argument shapes:
 {_format_structured_shapes()}
