@@ -22,3 +22,12 @@ def test_executor_cd_changes_working_directory(tmp_path) -> None:
         assert result.stdout.strip() == str(tmp_path)
     finally:
         os.chdir(original_cwd)
+
+
+def test_executor_runs_argv_command() -> None:
+    executor = Executor(timeout_seconds=2)
+    result = executor.run(["pwd"], display_command="pwd")
+
+    assert result.returncode == 0
+    assert result.command == "pwd"
+    assert result.stdout.strip()

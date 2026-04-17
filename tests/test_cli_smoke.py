@@ -27,7 +27,12 @@ def test_handle_request_cancel(monkeypatch) -> None:
         notes=[],
     )
     validator = Mock()
-    validator.validate.return_value = ValidationResult(accepted=True, risk_level=RiskLevel.SAFE)
+    validator.validate.return_value = ValidationResult(
+        accepted=True,
+        risk_level=RiskLevel.SAFE,
+        rendered_command="ls -lh",
+        argv=["ls", "-lh"],
+    )
     executor = Mock()
     monkeypatch.setattr("builtins.input", lambda _: "n")
 
@@ -52,7 +57,12 @@ def test_handle_request_timeout(monkeypatch) -> None:
         notes=[],
     )
     validator = Mock()
-    validator.validate.return_value = ValidationResult(accepted=True, risk_level=RiskLevel.SAFE)
+    validator.validate.return_value = ValidationResult(
+        accepted=True,
+        risk_level=RiskLevel.SAFE,
+        rendered_command="find . -name '*.py'",
+        argv=["find", ".", "-name", "*.py"],
+    )
     executor = Mock()
     executor.timeout_seconds = 1
     executor.run.side_effect = subprocess.TimeoutExpired(cmd=["find"], timeout=1)
@@ -67,7 +77,12 @@ def test_handle_request_direct_command_skips_planner(monkeypatch) -> None:
 
     planner = Mock()
     validator = Mock()
-    validator.validate.return_value = ValidationResult(accepted=True, risk_level=RiskLevel.SAFE)
+    validator.validate.return_value = ValidationResult(
+        accepted=True,
+        risk_level=RiskLevel.SAFE,
+        rendered_command="cd /tmp",
+        argv=["cd", "/tmp"],
+    )
     executor = Mock()
     executor.run.return_value.returncode = 0
     executor.run.return_value.stdout = "/tmp\n"
@@ -78,7 +93,7 @@ def test_handle_request_direct_command_skips_planner(monkeypatch) -> None:
 
     assert code == 0
     planner.plan.assert_not_called()
-    executor.run.assert_called_once_with("cd /tmp")
+    executor.run.assert_called_once_with(["cd", "/tmp"], display_command="cd /tmp")
 
 
 def test_handle_request_natural_language_uses_planner(monkeypatch) -> None:
@@ -87,9 +102,9 @@ def test_handle_request_natural_language_uses_planner(monkeypatch) -> None:
     planner = Mock()
     planner.plan.return_value = Proposal(
         action_type=ActionType.SHELL_COMMAND,
-        mode=ProposalMode.RAW,
-        command_family="ls",
-        command="ls -lh",
+        mode=ProposalMode.STRUCTURED,
+        command_family="find",
+        arguments={"path": ".", "name": "*.py"},
         summary="list files",
         explanation="desc",
         risk_level=RiskLevel.SAFE,
@@ -97,7 +112,12 @@ def test_handle_request_natural_language_uses_planner(monkeypatch) -> None:
         notes=[],
     )
     validator = Mock()
-    validator.validate.return_value = ValidationResult(accepted=True, risk_level=RiskLevel.SAFE)
+    validator.validate.return_value = ValidationResult(
+        accepted=True,
+        risk_level=RiskLevel.SAFE,
+        rendered_command="find . -name '*.py'",
+        argv=["find", ".", "-name", "*.py"],
+    )
     executor = Mock()
     executor.run.return_value.returncode = 0
     executor.run.return_value.stdout = ""
@@ -108,3 +128,7 @@ def test_handle_request_natural_language_uses_planner(monkeypatch) -> None:
 
     assert code == 0
     planner.plan.assert_called_once_with("show files in this directory")
+    executor.run.assert_called_once_with(
+        ["find", ".", "-name", "*.py"],
+        display_command="find . -name '*.py'",
+    )
