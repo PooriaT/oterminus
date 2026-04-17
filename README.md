@@ -11,6 +11,7 @@ It is intentionally constrained to terminal and local filesystem workflows. The 
 - **Safety-first**: validation and policy checks run before any command execution.
 - **Preview-before-run**: users see summary, exact command, risk level, and warnings first.
 - **Extensible architecture**: planner, validator, renderer, policies, and executor are separate modules.
+- **Registry-driven command support**: a shared command registry defines the curated v1 command set, risk levels, and direct-command eligibility.
 
 ## Architecture (v1)
 
@@ -18,7 +19,7 @@ It is intentionally constrained to terminal and local filesystem workflows. The 
 2. If the input already looks like a shell command such as `ls -lh` or `cd src`, `oterminus` builds the proposal locally and skips the planner.
 3. Otherwise, the planner sends system + user prompt to Ollama.
 4. Ollama returns JSON proposal for one shell command.
-5. Validator checks structure, allowlist, shell hazards, and policy compatibility.
+5. Validator checks structure, the registry-backed allowlist, shell hazards, and policy compatibility.
 6. Renderer shows clear command preview.
 7. User explicitly confirms.
 8. Executor runs the command and returns output + exit code.
@@ -30,6 +31,8 @@ Risk levels:
 - `safe`: read-only/inspection (`ls`, `pwd`, `find`, `grep`, `du`, etc.)
 - `write`: local modifications (`mkdir`, `mv`, `cp`, `chmod`, `touch`)
 - `dangerous`: destructive/privileged/high-risk (`rm`, `sudo`, `chown`, broad perms)
+
+Command support is registry-driven in `src/oterminus/command_registry.py`, which keeps supported command families, risk metadata, and direct-command support in one place.
 
 Policy controls:
 

@@ -3,29 +3,9 @@ from __future__ import annotations
 import shlex
 from pathlib import Path
 
+from oterminus.command_registry import CommandSpec, PathOperandMode, get_command_spec
 from oterminus.models import Proposal, RiskLevel, ValidationResult
 from oterminus.policies import PolicyConfig, is_risk_allowed
-
-ALLOWED_BASE_COMMANDS = {
-    "cd": RiskLevel.SAFE,
-    "ls": RiskLevel.SAFE,
-    "pwd": RiskLevel.SAFE,
-    "cat": RiskLevel.SAFE,
-    "head": RiskLevel.SAFE,
-    "tail": RiskLevel.SAFE,
-    "grep": RiskLevel.SAFE,
-    "find": RiskLevel.SAFE,
-    "du": RiskLevel.SAFE,
-    "stat": RiskLevel.SAFE,
-    "mkdir": RiskLevel.WRITE,
-    "cp": RiskLevel.WRITE,
-    "mv": RiskLevel.WRITE,
-    "chmod": RiskLevel.WRITE,
-    "touch": RiskLevel.WRITE,
-    "rm": RiskLevel.DANGEROUS,
-    "chown": RiskLevel.DANGEROUS,
-    "sudo": RiskLevel.DANGEROUS,
-}
 
 BLOCKED_TOKENS = {"&&", "||", ";", "|", "`", "$(", ">", ">>", "<"}
 
@@ -56,21 +36,25 @@ class Validator:
             return ValidationResult(accepted=False, risk_level=RiskLevel.DANGEROUS, reasons=reasons)
 
         base = args[0]
-        risk = ALLOWED_BASE_COMMANDS.get(base)
-        if risk is None:
+        spec = get_command_spec(base)
+        if spec is None:
             reasons.append(f"Base command '{base}' is not in the v1 allowlist.")
             risk = RiskLevel.DANGEROUS
+        else:
+            risk = spec.risk_level
 
-        if base == "rm" and any(flag in args for flag in ["-r", "-rf", "-fr"]):
+        if spec is not None and spec.dangerous_flags and any(flag in args for flag in spec.dangerous_flags):
             warnings.append("Recursive deletion detected.")
             risk = RiskLevel.DANGEROUS
 
-        if base in {"chmod", "chown"} and any(arg in {"/", "/*"} for arg in args[1:]):
+        if spec is not None and spec.dangerous_target_literals and any(
+            arg in spec.dangerous_target_literals for arg in args[1:]
+        ):
             warnings.append("Broad permission change target detected.")
             risk = RiskLevel.DANGEROUS
 
-        if self.policy.allowed_roots:
-            bad_paths = self._paths_outside_allowed_roots(base, args[1:])
+        if self.policy.allowed_roots and spec is not None:
+            bad_paths = self._paths_outside_allowed_roots(spec, args[1:])
             if bad_paths:
                 reasons.append(f"Paths outside allowed roots: {', '.join(bad_paths)}")
 
@@ -86,10 +70,10 @@ class Validator:
             warnings=warnings,
         )
 
-    def _paths_outside_allowed_roots(self, base: str, arguments: list[str]) -> list[str]:
+    def _paths_outside_allowed_roots(self, spec: CommandSpec, arguments: list[str]) -> list[str]:
         disallowed: list[str] = []
         roots = [Path(root).resolve() for root in self.policy.allowed_roots]
-        path_operands = self._path_operands(base, arguments)
+        path_operands = self._path_operands(spec, arguments)
 
         for arg in path_operands:
             path = Path(arg).expanduser().resolve()
@@ -97,24 +81,27 @@ class Validator:
                 disallowed.append(arg)
         return disallowed
 
-    def _path_operands(self, base: str, arguments: list[str]) -> list[str]:
-        if base == "cd":
+    def _path_operands(self, spec: CommandSpec, arguments: list[str]) -> list[str]:
+        if spec.path_operand_mode == PathOperandMode.CD:
             if not arguments or arguments == ["-"]:
                 return ["~"] if not arguments else []
             return [arguments[0]]
 
-        if base == "find":
+        if spec.path_operand_mode == PathOperandMode.FIND:
             path_operands: list[str] = []
             index = 0
             while index < len(arguments):
                 arg = arguments[index]
-                if arg in {"-H", "-L", "-P"}:
+                if arg in spec.leading_flags:
                     index += 1
                     continue
-                if arg in {"-D", "-O"}:
+                if arg in spec.leading_flags_with_values:
                     index += 2
                     continue
-                if arg.startswith("-O") and len(arg) > 2:
+                if any(
+                    arg.startswith(flag) and len(arg) > len(flag)
+                    for flag in spec.leading_flags_with_inline_values
+                ):
                     index += 1
                     continue
                 break
@@ -132,7 +119,7 @@ class Validator:
                 skip_next = False
                 continue
             if arg.startswith("-"):
-                if base == "chmod" and arg in {"--reference", "--context"}:
+                if arg in spec.flags_with_values:
                     skip_next = True
                 continue
             path_operands.append(arg)
