@@ -59,8 +59,14 @@ class Validator:
             else:
                 command = rendered.command
                 args = list(rendered.argv)
-                if proposal.command and proposal.command.strip() != command:
-                    warnings.append("Ignoring model-provided raw command in favor of deterministic structured rendering.")
+                if proposal.command:
+                    warnings.append(
+                        "Structured mode ignores the deprecated raw command field and uses deterministic rendering."
+                    )
+                    if proposal.command.strip() != command:
+                        warnings.append(
+                            "Legacy raw command differs from deterministic structured rendering and was ignored."
+                        )
         else:
             command = (proposal.command or "").strip()
             if command:

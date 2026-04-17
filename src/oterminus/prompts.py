@@ -65,8 +65,9 @@ Structured-first policy:
 - Use `"mode": "experimental"` for single-command shell proposals that stay within the curated allowlist but do not fit the supported structured subset.
 - Reserve `"mode": "raw"` for compatibility cases where the input is already essentially a direct command and no stronger experimental label is needed.
 - If you return `"mode": "structured"`, always include `"command_family"` and `"arguments"`.
+- If you return `"mode": "structured"`, `"command_family"` and `"arguments"` are mandatory and authoritative.
 - If you return `"mode": "experimental"`, always include `"command"` and set `notes` to mention that the proposal is experimental.
-- For structured proposals, omit `"command"` unless it is strictly necessary. Python will render the final command deterministically.
+- For structured proposals, do not include `"command"` unless absolutely required for backward compatibility. Python ignores it and renders the final command deterministically from `"command_family"` + `"arguments"`.
 - If structured support is unavailable for the intended action but the action still fits a single allowed shell command, prefer `"mode": "experimental"` and provide `"command"`.
 
 Supported structured families and argument shapes:
