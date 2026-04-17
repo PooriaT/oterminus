@@ -87,6 +87,16 @@ def test_parse_legacy_raw_mode_is_normalized_to_experimental_with_note() -> None
     assert any("Legacy raw mode was normalized to experimental mode." in note for note in proposal.notes)
 
 
+def test_parse_legacy_raw_mode_with_unparseable_structured_command_returns_planner_error() -> None:
+    raw = (
+        '{"action_type":"shell_command","mode":"raw","command_family":"ls","command":"ls -h",'
+        '"summary":"list files","explanation":"legacy payload with raw command",'
+        '"risk_level":"safe","needs_confirmation":true,"notes":[]}'
+    )
+    with pytest.raises(PlannerError):
+        Planner.parse_proposal(raw)
+
+
 def test_validate_legacy_raw_mode_with_command_family_and_command_stays_experimental() -> None:
     proposal = Proposal.model_validate(
         {

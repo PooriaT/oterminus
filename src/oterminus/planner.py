@@ -7,7 +7,11 @@ from pydantic import ValidationError
 from oterminus.models import Proposal, ProposalMode
 from oterminus.ollama_client import OllamaPlannerClient
 from oterminus.prompts import SYSTEM_PROMPT, build_user_prompt
-from oterminus.structured_commands import parse_raw_command_as_structured, supports_structured_family
+from oterminus.structured_commands import (
+    StructuredCommandError,
+    parse_raw_command_as_structured,
+    supports_structured_family,
+)
 
 
 class PlannerError(RuntimeError):
@@ -36,7 +40,7 @@ class Planner:
 
         try:
             return Planner._prefer_structured_rendering(proposal)
-        except ValidationError as exc:
+        except (StructuredCommandError, ValidationError) as exc:
             raise PlannerError(f"Model output did not match proposal schema: {exc}") from exc
 
     @staticmethod
