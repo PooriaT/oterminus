@@ -113,14 +113,26 @@ class Validator:
             return path_operands
 
         path_operands: list[str] = []
-        skip_next = False
-        for arg in arguments:
-            if skip_next:
-                skip_next = False
-                continue
+        index = 0
+        while index < len(arguments):
+            arg = arguments[index]
             if arg.startswith("-"):
+                if "=" in arg:
+                    flag, value = arg.split("=", maxsplit=1)
+                    if flag in spec.path_valued_flags and value:
+                        path_operands.append(value)
+                    index += 1
+                    continue
+                if arg in spec.path_valued_flags:
+                    if index + 1 < len(arguments):
+                        path_operands.append(arguments[index + 1])
+                    index += 2
+                    continue
                 if arg in spec.flags_with_values:
-                    skip_next = True
+                    index += 2
+                    continue
+                index += 1
                 continue
             path_operands.append(arg)
+            index += 1
         return path_operands

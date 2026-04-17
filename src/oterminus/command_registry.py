@@ -32,6 +32,7 @@ class CommandSpec:
     path_operand_mode: PathOperandMode = PathOperandMode.DEFAULT
     allowed_flags: frozenset[str] = field(default_factory=frozenset)
     flags_with_values: frozenset[str] = field(default_factory=frozenset)
+    path_valued_flags: frozenset[str] = field(default_factory=frozenset)
     leading_flags: frozenset[str] = field(default_factory=frozenset)
     leading_flags_with_values: frozenset[str] = field(default_factory=frozenset)
     leading_flags_with_inline_values: frozenset[str] = field(default_factory=frozenset)
@@ -55,6 +56,7 @@ def _command(
     path_operand_mode: PathOperandMode = PathOperandMode.DEFAULT,
     allowed_flags: Iterable[str] = (),
     flags_with_values: Iterable[str] = (),
+    path_valued_flags: Iterable[str] = (),
     leading_flags: Iterable[str] = (),
     leading_flags_with_values: Iterable[str] = (),
     leading_flags_with_inline_values: Iterable[str] = (),
@@ -72,6 +74,7 @@ def _command(
         path_operand_mode=path_operand_mode,
         allowed_flags=_frozenset(allowed_flags),
         flags_with_values=_frozenset(flags_with_values),
+        path_valued_flags=_frozenset(path_valued_flags),
         leading_flags=_frozenset(leading_flags),
         leading_flags_with_values=_frozenset(leading_flags_with_values),
         leading_flags_with_inline_values=_frozenset(leading_flags_with_inline_values),
@@ -127,6 +130,7 @@ COMMAND_REGISTRY: dict[str, CommandSpec] = {
         min_operands=1,
         direct_detection_mode=DirectDetectionMode.GREP,
         flags_with_values=("-e", "-f", "-m"),
+        path_valued_flags=("-f",),
         allowed_flags=("-E", "-F", "-H", "-h", "-i", "-l", "-n", "-r", "-R"),
     ),
     "find": _command(
@@ -157,6 +161,7 @@ COMMAND_REGISTRY: dict[str, CommandSpec] = {
         risk_level=RiskLevel.WRITE,
         min_operands=2,
         flags_with_values=("--context", "--reference"),
+        path_valued_flags=("--reference",),
         dangerous_target_literals=("/", "/*"),
     ),
     "touch": _command(name="touch", category="filesystem_write", risk_level=RiskLevel.WRITE, min_operands=1),
