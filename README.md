@@ -12,8 +12,8 @@ It is intentionally constrained to terminal and local filesystem workflows. The 
 - **Preview-before-run**: users see summary, exact command, risk level, and warnings first.
 - **Extensible architecture**: planner, validator, renderer, policies, and executor are separate modules.
 - **Registry-driven command support**: a shared command registry defines the curated v1 command set, risk levels, and direct-command eligibility.
-- **Structured-first planning for a narrow subset**: the planner should prefer structured proposals for `ls`, `pwd`, `mkdir`, `chmod`, and `find`, with Python rendering the exact argv/command strings deterministically.
-- **Experimental lane is explicit, not implicit**: proposals that fall outside deterministic structured rendering can be surfaced as experimental, with stricter validation and stronger confirmation instead of quietly broadening shell access.
+- **Structured-first planning for a curated subset**: the planner should prefer structured proposals for stable command families such as `ls`, `pwd`, `mkdir`, `chmod`, `find`, `cp`, `mv`, `du`, `stat`, `head`, `tail`, `grep`, `cat`, `open`, and `file`, with Python rendering the exact argv/command strings deterministically.
+- **Experimental lane is explicit, not implicit**: proposals that fall outside the deterministic subset can be surfaced as experimental, with stricter validation and stronger confirmation instead of quietly broadening shell access.
 
 ## Architecture (v1)
 
@@ -37,12 +37,12 @@ There are now three proposal modes:
 
 Risk levels:
 
-- `safe`: read-only/inspection (`ls`, `pwd`, `find`, `grep`, `du`, etc.)
+- `safe`: read-only/inspection (`ls`, `pwd`, `find`, `grep`, `du`, `stat`, `head`, `tail`, `cat`, `open`, `file`, etc.)
 - `write`: local modifications (`mkdir`, `mv`, `cp`, `chmod`, `touch`)
 - `dangerous`: destructive/privileged/high-risk (`rm`, `sudo`, `chown`, broad perms)
 
 Command support is registry-driven in `src/oterminus/command_registry.py`, which keeps supported command families, risk metadata, and direct-command support in one place.
-Structured rendering lives in `src/oterminus/structured_commands.py` and is intentionally limited to the curated subset listed above.
+Structured rendering lives in `src/oterminus/structured_commands.py` and is intentionally limited to curated, predictable argument shapes for the supported families. Raw/experimental mode still exists for supported variants that are not yet worth structuring.
 
 Policy controls:
 
@@ -197,6 +197,16 @@ Supported structured families and argument shapes:
 - `mkdir`: `path`, `parents`
 - `chmod`: `path`, `mode` (numeric only, such as `755`)
 - `find`: `path`, `name`
+- `cp`: `source`, `destination`, `recursive`, `preserve`, `no_clobber`
+- `mv`: `source`, `destination`, `no_clobber`
+- `du`: `path`, `human_readable`, `summarize`, `max_depth`
+- `stat`: `path`, `dereference`, `verbose`
+- `head`: `paths`, `lines`, `bytes`
+- `tail`: `paths`, `lines`, `bytes`
+- `grep`: `pattern`, `paths`, `ignore_case`, `line_number`, `fixed_strings`, `recursive`, `files_with_matches`, `max_count`
+- `cat`: `paths`
+- `open`: `path`, `reveal`
+- `file`: `paths`, `brief`
 
 Example structured proposals:
 
@@ -239,6 +249,17 @@ Example structured proposals:
 
 Structured support is intentionally narrow in this step. Pipelines, redirection, multi-command execution, and additional command families are still blocked by validation; experimental mode is a stricter fallback lane for single curated commands, not an unrestricted shell escape hatch.
 
+Examples of newly supported structured intents:
+
+```bash
+poetry run oterminus "copy notes.txt to archive/notes.txt without overwriting"
+poetry run oterminus "show disk usage summary for this folder in human-readable form"
+poetry run oterminus "show the first 20 lines of README.md"
+poetry run oterminus "search recursively for TODO in src with line numbers"
+poetry run oterminus "open the current folder in Finder"
+poetry run oterminus "identify the file type of README.md"
+```
+
 ## Experimental mode
 
 `experimental` mode exists for requests that do not fit the supported structured families but still map to a single curated command that Python can validate.
@@ -260,6 +281,8 @@ Current hard limits in experimental mode:
 - no command substitution
 - no multiline command text
 - no obviously dangerous shell metacharacter paths around those constructs
+- raw validation is still registry-driven, including supported-flag checks and operand-count checks
+- `open` is limited to local targets; URL-style operands are rejected
 
 Experimental mode is intentionally stricter, not looser. It broadens proposal coverage a bit without turning `oterminus` into a general shell agent.
 
@@ -283,7 +306,7 @@ Most tests do not require Ollama running.
 
 - Curated command allowlist for safety (not arbitrary shell).
 - Single command proposals only; no pipelines/chaining/redirection/background execution/command substitution.
-- Structured rendering is limited to `ls`, `pwd`, `mkdir`, `chmod`, and `find`.
+- Structured rendering is intentionally curated rather than exhaustive; each family only exposes a narrow, deterministic argument shape.
 - Experimental mode is still limited to the same curated base-command registry and stronger confirmation.
 - No remote/system integrations.
 - Not a general-purpose chatbot.

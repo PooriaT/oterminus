@@ -11,6 +11,16 @@ def _format_structured_shapes() -> str:
         "mkdir": '{"path": "...", "parents": true|false}',
         "chmod": '{"path": "...", "mode": "755"}',
         "find": '{"path": ".", "name": "*.py"}',
+        "cp": '{"source": "...", "destination": "...", "recursive": true|false, "preserve": true|false, "no_clobber": true|false}',
+        "mv": '{"source": "...", "destination": "...", "no_clobber": true|false}',
+        "du": '{"path": ".", "human_readable": true|false, "summarize": true|false, "max_depth": 0|null}',
+        "stat": '{"path": "...", "dereference": true|false, "verbose": true|false}',
+        "head": '{"paths": ["..."], "lines": 10|null, "bytes": null}',
+        "tail": '{"paths": ["..."], "lines": 10|null, "bytes": null}',
+        "grep": '{"pattern": "...", "paths": ["..."], "ignore_case": true|false, "line_number": true|false, "fixed_strings": true|false, "recursive": true|false, "files_with_matches": true|false, "max_count": 1|null}',
+        "cat": '{"paths": ["..."]}',
+        "open": '{"path": "...", "reveal": true|false}',
+        "file": '{"paths": ["..."], "brief": true|false}',
     }
     return "\n".join(f"- `{family}`: `{shapes[family]}`" for family in sorted(STRUCTURED_ARGUMENT_MODELS))
 

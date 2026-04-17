@@ -3,11 +3,11 @@ from oterminus.policies import PolicyConfig
 from oterminus.validator import Validator
 
 
-def make_proposal(command: str, *, mode: ProposalMode = ProposalMode.RAW) -> Proposal:
+def make_proposal(command: str, *, mode: ProposalMode = ProposalMode.RAW, command_family: str | None = None) -> Proposal:
     return Proposal(
         action_type=ActionType.SHELL_COMMAND,
         mode=mode,
-        command_family=command.split()[0],
+        command_family=command_family or command.split()[0],
         command=command,
         summary="test",
         explanation="test",
@@ -50,6 +50,46 @@ def test_policy_blocks_dangerous() -> None:
     result = validator.validate(make_proposal("rm -rf tmp"))
     assert result.accepted is False
     assert result.risk_level == RiskLevel.DANGEROUS
+
+
+def test_reject_unsupported_flag_for_curated_command() -> None:
+    validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))
+    result = validator.validate(make_proposal("cat -n README.md"))
+
+    assert result.accepted is False
+    assert any("Unsupported flag '-n' for command 'cat'." in reason for reason in result.reasons)
+
+
+def test_reject_missing_required_operands() -> None:
+    validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))
+    result = validator.validate(make_proposal("mv draft.txt"))
+
+    assert result.accepted is False
+    assert any("requires at least 2 operand" in reason for reason in result.reasons)
+
+
+def test_accept_short_flag_clusters_for_curated_safe_commands() -> None:
+    validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))
+    result = validator.validate(make_proposal("grep -Finr -m2 TODO src"))
+
+    assert result.accepted is True
+    assert result.risk_level == RiskLevel.SAFE
+
+
+def test_accept_inline_value_flag_for_curated_safe_command() -> None:
+    validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))
+    result = validator.validate(make_proposal("tail -c32 README.md"))
+
+    assert result.accepted is True
+    assert result.risk_level == RiskLevel.SAFE
+
+
+def test_reject_open_url_target() -> None:
+    validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))
+    result = validator.validate(make_proposal("open https://example.com"))
+
+    assert result.accepted is False
+    assert any("does not allow these operand targets" in reason for reason in result.reasons)
 
 
 def test_allowed_roots_find_checks_only_search_roots() -> None:
@@ -112,6 +152,16 @@ def test_allowed_roots_grep_pattern_file_stdin_sentinel_is_not_treated_as_path()
     assert result.accepted is True
 
 
+def test_allowed_roots_cp_checks_both_source_and_destination() -> None:
+    validator = Validator(
+        PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False, allowed_roots=["/allowed"])
+    )
+    result = validator.validate(make_proposal("cp /allowed/in.txt /etc/out.txt"))
+
+    assert result.accepted is False
+    assert any("Paths outside allowed roots" in reason for reason in result.reasons)
+
+
 def test_allowed_roots_chmod_reference_path_is_checked() -> None:
     validator = Validator(
         PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False, allowed_roots=["/allowed"])
@@ -126,10 +176,19 @@ def test_structured_only_proposal_is_previewable_but_not_executable() -> None:
     proposal = Proposal(
         action_type=ActionType.SHELL_COMMAND,
         mode=ProposalMode.STRUCTURED,
-        command_family="find",
-        arguments={"path": ".", "name": "*.py"},
-        summary="find files",
-        explanation="structured plan",
+        command_family="grep",
+        arguments={
+            "pattern": "TODO",
+            "paths": ["src"],
+            "ignore_case": True,
+            "line_number": True,
+            "fixed_strings": False,
+            "recursive": True,
+            "files_with_matches": False,
+            "max_count": 2,
+        },
+        summary="find todo markers",
+        explanation="structured grep plan",
         risk_level=RiskLevel.SAFE,
         needs_confirmation=True,
         notes=[],
@@ -139,8 +198,8 @@ def test_structured_only_proposal_is_previewable_but_not_executable() -> None:
 
     assert result.accepted is True
     assert result.risk_level == RiskLevel.SAFE
-    assert result.rendered_command == "find . -name '*.py'"
-    assert result.argv == ["find", ".", "-name", "*.py"]
+    assert result.rendered_command == "grep -i -n -r -m 2 TODO src"
+    assert result.argv == ["grep", "-i", "-n", "-r", "-m", "2", "TODO", "src"]
 
 
 def test_reject_unknown_command_family() -> None:
@@ -170,11 +229,11 @@ def test_structured_command_with_disallowed_root_is_rejected() -> None:
     proposal = Proposal(
         action_type=ActionType.SHELL_COMMAND,
         mode=ProposalMode.STRUCTURED,
-        command_family="mkdir",
-        arguments={"path": "/etc/backup", "parents": False},
-        summary="make backup dir",
-        explanation="structured mkdir",
-        risk_level=RiskLevel.WRITE,
+        command_family="open",
+        arguments={"path": "/etc/hosts", "reveal": False},
+        summary="open hosts file",
+        explanation="structured open",
+        risk_level=RiskLevel.SAFE,
         needs_confirmation=True,
         notes=[],
     )
@@ -187,11 +246,14 @@ def test_structured_command_with_disallowed_root_is_rejected() -> None:
 
 def test_accept_experimental_raw_command_with_warning() -> None:
     validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))
-    result = validator.validate(make_proposal("cat README.md", mode=ProposalMode.EXPERIMENTAL))
+    result = validator.validate(make_proposal("stat -f %z README.md", mode=ProposalMode.EXPERIMENTAL))
 
     assert result.accepted is True
     assert result.risk_level == RiskLevel.SAFE
-    assert any("Experimental mode stays outside deterministic structured rendering" in warning for warning in result.warnings)
+    assert any(
+        "Experimental mode stays outside deterministic structured rendering" in warning
+        for warning in result.warnings
+    )
 
 
 def test_reject_experimental_when_structured_rendering_is_available() -> None:
