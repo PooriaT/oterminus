@@ -18,8 +18,15 @@ def test_handle_request_cancel(monkeypatch) -> None:
     planner = Mock()
     planner.plan.return_value = Proposal(
         action_type=ActionType.SHELL_COMMAND,
-        mode=ProposalMode.RAW,
+        mode=ProposalMode.STRUCTURED,
         command_family="ls",
+        arguments={
+            "path": ".",
+            "long": True,
+            "human_readable": True,
+            "all": False,
+            "recursive": False,
+        },
         command="ls -lh",
         summary="list files",
         explanation="desc",
@@ -48,8 +55,9 @@ def test_handle_request_timeout(monkeypatch) -> None:
     planner = Mock()
     planner.plan.return_value = Proposal(
         action_type=ActionType.SHELL_COMMAND,
-        mode=ProposalMode.RAW,
+        mode=ProposalMode.STRUCTURED,
         command_family="find",
+        arguments={"path": ".", "name": "*.py"},
         command="find . -name '*.py'",
         summary="find files",
         explanation="desc",
@@ -88,7 +96,7 @@ def test_handle_request_direct_command_skips_planner(monkeypatch) -> None:
     executor.run.return_value.returncode = 0
     executor.run.return_value.stdout = "/tmp\n"
     executor.run.return_value.stderr = ""
-    monkeypatch.setattr("builtins.input", lambda _: "y")
+    monkeypatch.setattr("builtins.input", lambda _: "EXECUTE EXPERIMENTAL")
 
     code = handle_request("cd /tmp", planner, validator, executor)
 

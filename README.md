@@ -27,12 +27,12 @@ It is intentionally constrained to terminal and local filesystem workflows. The 
 8. User explicitly confirms.
 9. Executor runs the resolved argv and returns output + exit code.
 
-There are now three proposal modes:
+There are now two supported proposal modes:
 
 - `structured`: preferred and authoritative path; deterministic rendering from validated `command_family` + `arguments`
-- `raw`: compatibility path for locally detected direct shell commands that already look like curated single-command invocations
 - `experimental`: explicit raw-shell fallback for planner proposals that do not fit the structured subset but still stay inside the curated allowlist and validator
 
+Legacy `raw` input is accepted only for backward compatibility and is normalized to `experimental` during parsing.
 For structured proposals, the raw `command` field is deprecated compatibility metadata and is not used as the execution source of truth.
 
 ## Safety model
@@ -44,7 +44,7 @@ Risk levels:
 - `dangerous`: destructive/privileged/high-risk (`rm`, `sudo`, `chown`, broad perms)
 
 Command support is registry-driven in `src/oterminus/command_registry.py`, which keeps supported command families, risk metadata, and direct-command support in one place.
-Structured rendering lives in `src/oterminus/structured_commands.py` and is intentionally limited to curated, predictable argument shapes for the supported families. Raw/experimental mode still exists for supported variants that are not yet worth structuring.
+Structured rendering lives in `src/oterminus/structured_commands.py` and is intentionally limited to curated, predictable argument shapes for the supported families. Experimental mode still exists for supported variants that are not yet worth structuring.
 
 Policy controls:
 
@@ -181,14 +181,13 @@ The planner may return:
 
 - a structured proposal with `mode: "structured"`, `command_family`, and `arguments`
 - an experimental raw proposal with `mode: "experimental"` and a `command` string
-- a raw proposal with `mode: "raw"` only for compatibility-oriented cases
 
 Planner behavior is intentionally structured-first:
 
 - if a request cleanly maps to a supported structured family, the planner should emit `mode: "structured"`
 - if a request stays within the curated allowlist but does not fit the structured schema, the planner should emit `mode: "experimental"`
-- raw mode remains available for compatibility behavior, especially the direct-command path
-- parser normalization also upgrades simple raw proposals for the structured subset into deterministic structured rendering when possible
+- parser normalization upgrades simple command strings (including legacy `mode: "raw"` payloads) into deterministic structured rendering when possible
+- legacy `mode: "raw"` payloads that cannot be structured are normalized to `mode: "experimental"` with a deprecation note
 
 When a structured proposal uses one of the supported families, Python validates the argument shape and renders the exact command locally. If a legacy raw `command` string is also present, it is ignored for execution and may be surfaced as a warning when it differs from deterministic rendering.
 
@@ -283,7 +282,7 @@ Current hard limits in experimental mode:
 - no command substitution
 - no multiline command text
 - no obviously dangerous shell metacharacter paths around those constructs
-- raw validation is still registry-driven, including supported-flag checks and operand-count checks
+- experimental raw-command validation is still registry-driven, including supported-flag checks and operand-count checks
 - `open` is limited to local targets; URL-style operands are rejected
 
 Experimental mode is intentionally stricter, not looser. It broadens proposal coverage a bit without turning `oterminus` into a general shell agent.

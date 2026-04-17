@@ -19,7 +19,6 @@ class ActionType(str, Enum):
 
 
 class ProposalMode(str, Enum):
-    RAW = "raw"
     STRUCTURED = "structured"
     EXPERIMENTAL = "experimental"
 
@@ -33,7 +32,7 @@ class Proposal(BaseModel):
     risk_level: Optional[RiskLevel] = None
     needs_confirmation: bool = True
     notes: list[str] = Field(default_factory=list)
-    mode: ProposalMode = ProposalMode.RAW
+    mode: ProposalMode = ProposalMode.EXPERIMENTAL
     command_family: Optional[str] = Field(default=None, min_length=1)
     arguments: Optional[dict[str, Any]] = None
     command: Optional[str] = Field(default=None, min_length=1)
@@ -56,18 +55,29 @@ class Proposal(BaseModel):
         if payload.get("notes") is None:
             payload["notes"] = []
 
+        mode = payload.get("mode")
+        if mode == "raw":
+            notes = payload.get("notes")
+            if not isinstance(notes, list):
+                notes = []
+            migration_note = "Legacy raw mode was normalized to experimental mode."
+            if migration_note not in notes:
+                notes.append(migration_note)
+            payload["notes"] = notes
+            has_structured_fields = payload.get("command_family") is not None or arguments is not None
+            payload["mode"] = (
+                ProposalMode.STRUCTURED if has_structured_fields else ProposalMode.EXPERIMENTAL
+            )
+
         if payload.get("mode") is None:
             has_command = payload.get("command") is not None
             has_structured_fields = payload.get("command_family") is not None or arguments is not None
-            payload["mode"] = ProposalMode.STRUCTURED if has_structured_fields else ProposalMode.RAW
+            payload["mode"] = ProposalMode.STRUCTURED if has_structured_fields else ProposalMode.EXPERIMENTAL
 
         return payload
 
     @model_validator(mode="after")
     def validate_shape(self) -> Proposal:
-        if self.mode == ProposalMode.RAW and not self.command:
-            raise ValueError("Raw proposals require a command.")
-
         if self.mode == ProposalMode.EXPERIMENTAL and not self.command:
             raise ValueError("Experimental proposals require a command.")
 

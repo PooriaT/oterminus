@@ -4,7 +4,7 @@ from oterminus.models import ActionType, ProposalMode
 from oterminus.planner import Planner, PlannerError
 
 
-def test_parse_supported_raw_ls_proposal_is_normalized_to_structured() -> None:
+def test_parse_supported_command_ls_proposal_is_normalized_to_structured() -> None:
     raw = (
         '{"action_type":"shell_command","command":"ls -lh",'
         '"summary":"list files with sizes","explanation":"show a long listing",'
@@ -44,7 +44,7 @@ def test_parse_supported_raw_ls_proposal_is_normalized_to_structured() -> None:
         ),
     ],
 )
-def test_parse_supported_raw_proposal_is_normalized_to_structured(
+def test_parse_supported_command_proposal_is_normalized_to_structured(
     command: str, expected_family: str, expected_arguments: dict[str, object]
 ) -> None:
     raw = (
@@ -62,7 +62,7 @@ def test_parse_supported_raw_proposal_is_normalized_to_structured(
     assert proposal.arguments == expected_arguments
 
 
-def test_parse_valid_raw_fallback_for_unstructured_variant() -> None:
+def test_parse_valid_experimental_fallback_for_unstructured_variant() -> None:
     raw = (
         '{"action_type":"shell_command","command":"stat -f %z README.md",'
         '"summary":"show file size","explanation":"custom stat format",'
@@ -73,6 +73,18 @@ def test_parse_valid_raw_fallback_for_unstructured_variant() -> None:
     assert proposal.mode == ProposalMode.EXPERIMENTAL
     assert proposal.command == "stat -f %z README.md"
     assert proposal.command_family is None
+
+
+def test_parse_legacy_raw_mode_is_normalized_to_experimental_with_note() -> None:
+    raw = (
+        '{"action_type":"shell_command","mode":"raw","command":"stat -f %z README.md",'
+        '"summary":"show file size","explanation":"legacy compatibility payload",'
+        '"risk_level":"safe","needs_confirmation":true,"notes":[]}'
+    )
+    proposal = Planner.parse_proposal(raw)
+    assert proposal.mode == ProposalMode.EXPERIMENTAL
+    assert proposal.command == "stat -f %z README.md"
+    assert any("Legacy raw mode was normalized to experimental mode." in note for note in proposal.notes)
 
 
 def test_parse_structured_proposal_without_raw_command() -> None:
@@ -103,7 +115,7 @@ def test_parse_structured_proposal_with_legacy_raw_command_keeps_structured_auth
     assert proposal.arguments == {"path": ".", "name": "*.py"}
 
 
-def test_parse_raw_mode_with_supported_structured_fields_is_normalized() -> None:
+def test_parse_legacy_raw_mode_with_supported_structured_fields_is_normalized() -> None:
     raw = (
         '{"action_type":"shell_command","mode":"raw","command_family":"cp",'
         '"arguments":{"source":"src.txt","destination":"dest.txt","recursive":false,"preserve":true,"no_clobber":true},'
@@ -124,7 +136,7 @@ def test_parse_raw_mode_with_supported_structured_fields_is_normalized() -> None
     }
 
 
-def test_parse_symbolic_chmod_stays_raw_when_structured_not_feasible() -> None:
+def test_parse_symbolic_chmod_stays_experimental_when_structured_not_feasible() -> None:
     raw = (
         '{"action_type":"shell_command","command":"chmod u+x run.sh",'
         '"summary":"make script executable","explanation":"symbolic chmod",'
@@ -190,7 +202,7 @@ def test_parse_rejects_malformed_structured_arguments() -> None:
         Planner.parse_proposal(raw)
 
 
-def test_parse_rejects_invalid_structured_arguments_even_in_raw_mode() -> None:
+def test_parse_rejects_invalid_structured_arguments_even_in_legacy_raw_mode() -> None:
     raw = (
         '{"action_type":"shell_command","mode":"raw","command_family":"du",'
         '"arguments":{"path":".","human_readable":false,"summarize":true,"max_depth":1},"command":"du -s -d 1 .",'
