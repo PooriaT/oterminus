@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import shlex
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Sequence
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
@@ -99,6 +99,39 @@ def supports_structured_family(command_family: str) -> bool:
     return command_family in STRUCTURED_ARGUMENT_MODELS
 
 
+def parse_raw_command_as_structured(command: str) -> tuple[str, dict[str, Any]] | None:
+    try:
+        argv = shlex.split(command)
+    except ValueError:
+        return None
+    return parse_argv_as_structured(argv)
+
+
+def parse_argv_as_structured(argv: Sequence[str]) -> tuple[str, dict[str, Any]] | None:
+    if not argv:
+        return None
+
+    command_family = argv[0]
+    operands = list(argv[1:])
+
+    parser = {
+        "ls": _parse_ls_argv,
+        "pwd": _parse_pwd_argv,
+        "mkdir": _parse_mkdir_argv,
+        "chmod": _parse_chmod_argv,
+        "find": _parse_find_argv,
+    }.get(command_family)
+    if parser is None:
+        return None
+
+    arguments = parser(operands)
+    if arguments is None:
+        return None
+
+    validated = validate_structured_arguments(command_family, arguments)
+    return command_family, validated.model_dump()
+
+
 def validate_structured_arguments(
     command_family: str,
     arguments: dict[str, Any] | None,
@@ -152,3 +185,86 @@ def render_structured_command(command_family: str, arguments: dict[str, Any] | N
     raise StructuredCommandError(
         f"Structured proposals are not supported for command family '{command_family}'."
     )
+
+
+def _parse_ls_argv(operands: list[str]) -> dict[str, Any] | None:
+    arguments: dict[str, Any] = {
+        "path": ".",
+        "long": False,
+        "human_readable": False,
+        "all": False,
+        "recursive": False,
+    }
+    path: str | None = None
+
+    for operand in operands:
+        if operand.startswith("-") and operand != "-":
+            if operand.startswith("--"):
+                return None
+            for flag in operand[1:]:
+                if flag == "l":
+                    arguments["long"] = True
+                elif flag == "h":
+                    arguments["human_readable"] = True
+                elif flag == "a":
+                    arguments["all"] = True
+                elif flag == "R":
+                    arguments["recursive"] = True
+                else:
+                    return None
+            continue
+
+        if path is not None:
+            return None
+        path = operand
+
+    if path is not None:
+        arguments["path"] = path
+    return arguments
+
+
+def _parse_pwd_argv(operands: list[str]) -> dict[str, Any] | None:
+    return {} if not operands else None
+
+
+def _parse_mkdir_argv(operands: list[str]) -> dict[str, Any] | None:
+    parents = False
+    path: str | None = None
+
+    for operand in operands:
+        if operand == "-p":
+            parents = True
+            continue
+        if operand.startswith("-"):
+            return None
+        if path is not None:
+            return None
+        path = operand
+
+    if path is None:
+        return None
+    return {"path": path, "parents": parents}
+
+
+def _parse_chmod_argv(operands: list[str]) -> dict[str, Any] | None:
+    if len(operands) != 2:
+        return None
+    mode, path = operands
+    if not mode.isdigit():
+        return None
+    return {"path": path, "mode": mode}
+
+
+def _parse_find_argv(operands: list[str]) -> dict[str, Any] | None:
+    if not operands:
+        return None
+
+    path = "."
+    remaining = operands
+    if operands[0] != "-name":
+        path = operands[0]
+        remaining = operands[1:]
+
+    if len(remaining) != 2 or remaining[0] != "-name":
+        return None
+    return {"path": path, "name": remaining[1]}
