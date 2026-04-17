@@ -6,6 +6,8 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from oterminus.structured_commands import StructuredCommandError, validate_structured_arguments
+
 
 class RiskLevel(str, Enum):
     SAFE = "safe"
@@ -66,14 +68,21 @@ class Proposal(BaseModel):
         if self.mode == ProposalMode.RAW and not self.command:
             raise ValueError("Raw proposals require a command.")
 
-        if self.mode == ProposalMode.STRUCTURED and not (self.command_family or self.command):
-            raise ValueError("Structured proposals require command_family or command.")
+        if self.mode == ProposalMode.STRUCTURED and not self.command_family:
+            raise ValueError("Structured proposals require command_family.")
 
         if self.arguments is not None and not self.command_family:
             raise ValueError("Structured arguments require command_family.")
 
         if self.arguments is not None and any(not key.strip() for key in self.arguments):
             raise ValueError("Structured argument keys must be non-empty strings.")
+
+        if self.mode == ProposalMode.STRUCTURED:
+            try:
+                validated = validate_structured_arguments(self.command_family, self.arguments)
+            except StructuredCommandError as exc:
+                raise ValueError(str(exc)) from exc
+            self.arguments = validated.model_dump()
 
         if self.command and self.command_family:
             try:
@@ -94,6 +103,8 @@ class ValidationResult(BaseModel):
     risk_level: RiskLevel
     reasons: list[str] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
+    rendered_command: Optional[str] = None
+    argv: list[str] = Field(default_factory=list)
 
 
 class ExecutionResult(BaseModel):

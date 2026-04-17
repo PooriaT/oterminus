@@ -16,8 +16,9 @@ def render_preview(proposal: Proposal, validation: ValidationResult) -> str:
         f"Confirmation : {'strong' if requires_strong_confirmation(validation.risk_level) else 'standard'}",
     ]
 
-    if proposal.command is not None:
-        lines.insert(3, f"Command      : {proposal.command}")
+    command = validation.rendered_command or proposal.command
+    if command is not None:
+        lines.insert(3, f"Command      : {command}")
 
     if proposal.command_family is not None:
         lines.insert(3 if proposal.command is None else 4, f"Command fam. : {proposal.command_family}")

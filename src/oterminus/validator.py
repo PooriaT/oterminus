@@ -6,6 +6,7 @@ from pathlib import Path
 from oterminus.command_registry import CommandSpec, PathOperandMode, get_command_spec
 from oterminus.models import Proposal, RiskLevel, ValidationResult
 from oterminus.policies import PolicyConfig, is_risk_allowed
+from oterminus.structured_commands import StructuredCommandError, render_structured_command
 
 BLOCKED_TOKENS = {"&&", "||", ";", "|", "`", "$(", ">", ">>", "<"}
 
@@ -18,6 +19,8 @@ class Validator:
         reasons: list[str] = []
         warnings: list[str] = []
         risk = proposal.risk_level or RiskLevel.DANGEROUS
+        command: str | None = None
+        args: list[str] = []
 
         if proposal.command_family is not None:
             spec = get_command_spec(proposal.command_family)
@@ -27,9 +30,30 @@ class Validator:
             else:
                 risk = spec.risk_level
 
-        command = (proposal.command or "").strip()
+        if proposal.mode.value == "structured":
+            try:
+                rendered = render_structured_command(proposal.command_family, proposal.arguments)
+            except StructuredCommandError as exc:
+                reasons.append(str(exc))
+            else:
+                command = rendered.command
+                args = list(rendered.argv)
+                if proposal.command and proposal.command.strip() != command:
+                    warnings.append("Ignoring model-provided raw command in favor of deterministic structured rendering.")
+        else:
+            command = (proposal.command or "").strip()
+            if command:
+                if any(token in command for token in BLOCKED_TOKENS):
+                    reasons.append("Command contains blocked shell operators or redirection.")
+
+                try:
+                    args = shlex.split(command)
+                except ValueError:
+                    reasons.append("Command could not be parsed safely.")
+                    args = []
+
         if not command:
-            reasons.append("Proposal has no executable raw command yet.")
+            reasons.append("Proposal has no executable command.")
             if not is_risk_allowed(risk, self.policy):
                 reasons.append(
                     f"Risk level '{risk.value}' blocked by policy mode '{self.policy.mode.value}'"
@@ -39,20 +63,20 @@ class Validator:
                 risk_level=risk,
                 reasons=reasons,
                 warnings=warnings,
+                rendered_command=command,
+                argv=args,
             )
-
-        if any(token in command for token in BLOCKED_TOKENS):
-            reasons.append("Command contains blocked shell operators or redirection.")
-
-        try:
-            args = shlex.split(command)
-        except ValueError:
-            reasons.append("Command could not be parsed safely.")
-            args = []
 
         if not args:
             reasons.append("No executable command found.")
-            return ValidationResult(accepted=False, risk_level=RiskLevel.DANGEROUS, reasons=reasons)
+            return ValidationResult(
+                accepted=False,
+                risk_level=RiskLevel.DANGEROUS,
+                reasons=reasons,
+                warnings=warnings,
+                rendered_command=command,
+                argv=args,
+            )
 
         base = args[0]
         spec = get_command_spec(base)
@@ -92,6 +116,8 @@ class Validator:
             risk_level=risk,
             reasons=reasons,
             warnings=warnings,
+            rendered_command=command,
+            argv=args,
         )
 
     def _paths_outside_allowed_roots(self, spec: CommandSpec, arguments: list[str]) -> list[str]:

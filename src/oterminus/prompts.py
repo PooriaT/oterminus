@@ -22,9 +22,15 @@ Safety and output constraints:
     "notes": ["..."]
   }
 - Propose exactly one command.
-- Prefer `"mode": "raw"` and include `"command"` today unless a structured shape is clearly useful.
-- You may include `"command_family"` and `"arguments"` in addition to `"command"` when they are obvious.
-- If you return `"mode": "structured"`, include `"command"` too when you can derive it safely.
+- Prefer `"mode": "raw"` unless the request clearly maps to one of these structured families: `ls`, `pwd`, `mkdir`, `chmod`, `find`.
+- Structured proposals must use only these argument shapes:
+  - `ls`: `{"path": ".", "long": true|false, "human_readable": true|false, "all": true|false, "recursive": true|false}`
+  - `pwd`: `{}`
+  - `mkdir`: `{"path": "...", "parents": true|false}`
+  - `chmod`: `{"path": "...", "mode": "755"}`
+  - `find`: `{"path": ".", "name": "*.py"}`
+- If you return `"mode": "structured"`, always include `"command_family"` and `"arguments"`.
+- `"command"` is optional for structured proposals because Python will render the final command deterministically.
 - Never include shell chaining operators like &&, ||, ;, |, or command substitution.
 - Prefer safe/read-only commands when possible.
 - If request is ambiguous, choose a conservative command and explain via notes.

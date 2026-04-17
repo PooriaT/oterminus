@@ -120,7 +120,7 @@ def test_structured_only_proposal_is_previewable_but_not_executable() -> None:
         action_type=ActionType.SHELL_COMMAND,
         mode=ProposalMode.STRUCTURED,
         command_family="find",
-        arguments={"root": ".", "name": "*.py"},
+        arguments={"path": ".", "name": "*.py"},
         summary="find files",
         explanation="structured plan",
         risk_level=RiskLevel.SAFE,
@@ -130,17 +130,18 @@ def test_structured_only_proposal_is_previewable_but_not_executable() -> None:
 
     result = validator.validate(proposal)
 
-    assert result.accepted is False
+    assert result.accepted is True
     assert result.risk_level == RiskLevel.SAFE
-    assert any("no executable raw command" in reason for reason in result.reasons)
+    assert result.rendered_command == "find . -name '*.py'"
+    assert result.argv == ["find", ".", "-name", "*.py"]
 
 
 def test_reject_unknown_command_family() -> None:
-    validator = Validator(PolicyConfig(mode=RiskLevel.DANGEROUS, allow_dangerous=True))
     proposal = Proposal(
         action_type=ActionType.SHELL_COMMAND,
-        mode=ProposalMode.STRUCTURED,
+        mode=ProposalMode.RAW,
         command_family="python",
+        command="python script.py",
         summary="unknown family",
         explanation="not allowlisted",
         risk_level=RiskLevel.SAFE,
@@ -148,7 +149,30 @@ def test_reject_unknown_command_family() -> None:
         notes=[],
     )
 
+    validator = Validator(PolicyConfig(mode=RiskLevel.DANGEROUS, allow_dangerous=True))
     result = validator.validate(proposal)
 
     assert result.accepted is False
     assert any("Command family 'python' is not in the v1 allowlist." in reason for reason in result.reasons)
+
+
+def test_structured_command_with_disallowed_root_is_rejected() -> None:
+    validator = Validator(
+        PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False, allowed_roots=["/allowed"])
+    )
+    proposal = Proposal(
+        action_type=ActionType.SHELL_COMMAND,
+        mode=ProposalMode.STRUCTURED,
+        command_family="mkdir",
+        arguments={"path": "/etc/backup", "parents": False},
+        summary="make backup dir",
+        explanation="structured mkdir",
+        risk_level=RiskLevel.WRITE,
+        needs_confirmation=True,
+        notes=[],
+    )
+
+    result = validator.validate(proposal)
+
+    assert result.accepted is False
+    assert any("Paths outside allowed roots" in reason for reason in result.reasons)

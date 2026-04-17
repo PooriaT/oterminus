@@ -51,18 +51,18 @@ def handle_request(request: str, planner: Planner, validator: Validator, executo
         return 3
 
     confirmed = ask_confirmation(is_dangerous=validation.risk_level.value == "dangerous")
-    command = proposal.executable_command()
+    command = validation.rendered_command
     LOGGER.info("confirmed=%s command=%s", confirmed, command)
     if not confirmed:
         print("Cancelled.")
         return 0
 
-    if command is None:
-        print("Proposal cannot be executed yet because it does not include a raw command.")
+    if command is None or not validation.argv:
+        print("Proposal cannot be executed because it could not be rendered into a safe command.")
         return 3
 
     try:
-        result = executor.run(command)
+        result = executor.run(validation.argv, display_command=command)
     except subprocess.TimeoutExpired:
         print(f"Execution timed out after {executor.timeout_seconds}s.")
         return 124

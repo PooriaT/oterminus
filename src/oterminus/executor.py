@@ -12,10 +12,16 @@ class Executor:
         self.timeout_seconds = timeout_seconds
         self.previous_cwd: str | None = None
 
-    def run(self, command: str) -> ExecutionResult:
-        args = shlex.split(command)
+    def run(self, command: str | list[str], *, display_command: str | None = None) -> ExecutionResult:
+        if isinstance(command, str):
+            args = shlex.split(command)
+            rendered_command = command
+        else:
+            args = list(command)
+            rendered_command = display_command or shlex.join(args)
+
         if args and args[0] == "cd":
-            return self._run_cd(args)
+            return self._run_cd(args, rendered_command)
 
         proc = subprocess.run(
             args,
@@ -25,13 +31,13 @@ class Executor:
             check=False,
         )
         return ExecutionResult(
-            command=command,
+            command=rendered_command,
             returncode=proc.returncode,
             stdout=proc.stdout,
             stderr=proc.stderr,
         )
 
-    def _run_cd(self, args: list[str]) -> ExecutionResult:
+    def _run_cd(self, args: list[str], rendered_command: str) -> ExecutionResult:
         old_cwd = os.getcwd()
         destination = args[1] if len(args) > 1 else "~"
         if destination == "-":
@@ -48,7 +54,7 @@ class Executor:
         os.environ["PWD"] = new_cwd
 
         return ExecutionResult(
-            command=" ".join(args),
+            command=rendered_command,
             returncode=0,
             stdout=f"{new_cwd}\n",
             stderr="",

@@ -31,18 +31,24 @@ def test_render_structured_preview_without_raw_command() -> None:
         action_type=ActionType.SHELL_COMMAND,
         mode=ProposalMode.STRUCTURED,
         command_family="find",
-        arguments={"root": ".", "name": "*.py"},
+        arguments={"path": ".", "name": "*.py"},
         summary="Find Python files",
         explanation="Structured command proposal",
         risk_level=RiskLevel.SAFE,
         needs_confirmation=True,
         notes=[],
     )
-    validation = ValidationResult(accepted=False, risk_level=RiskLevel.SAFE)
+    validation = ValidationResult(
+        accepted=True,
+        risk_level=RiskLevel.SAFE,
+        rendered_command="find . -name '*.py'",
+        argv=["find", ".", "-name", "*.py"],
+    )
 
     text = render_preview(proposal, validation)
 
     assert "Mode         : structured" in text
+    assert "Command      : find . -name '*.py'" in text
     assert "Command fam. : find" in text
     assert "Arguments" in text
     assert '"name": "*.py"' in text

@@ -12,7 +12,7 @@ It is intentionally constrained to terminal and local filesystem workflows. The 
 - **Preview-before-run**: users see summary, exact command, risk level, and warnings first.
 - **Extensible architecture**: planner, validator, renderer, policies, and executor are separate modules.
 - **Registry-driven command support**: a shared command registry defines the curated v1 command set, risk levels, and direct-command eligibility.
-- **Structured-plan ready**: proposals can carry both today's raw command string and future structured planning fields like `mode`, `command_family`, and `arguments`.
+- **Deterministic structured rendering for a narrow subset**: `ls`, `pwd`, `mkdir`, `chmod`, and `find` can be represented as structured proposals and rendered into exact argv/command strings by Python.
 
 ## Architecture (v1)
 
@@ -21,11 +21,12 @@ It is intentionally constrained to terminal and local filesystem workflows. The 
 3. Otherwise, the planner sends system + user prompt to Ollama.
 4. Ollama returns a JSON proposal for one shell action.
 5. Validator checks structure, the registry-backed allowlist, shell hazards, and policy compatibility.
-6. Renderer shows clear command preview.
-7. User explicitly confirms.
-8. Executor runs the command and returns output + exit code.
+6. For supported structured proposals, Python deterministically renders the final command from `command_family` + `arguments`.
+7. Renderer shows clear command preview.
+8. User explicitly confirms.
+9. Executor runs the resolved argv and returns output + exit code.
 
-The current executable path still requires a raw `command` string. Structured-only proposals can already be parsed, validated, and previewed, which keeps the architecture ready for a future deterministic command renderer without breaking current behavior.
+Raw-command execution remains in place for everything outside the structured subset.
 
 ## Safety model
 
@@ -36,6 +37,7 @@ Risk levels:
 - `dangerous`: destructive/privileged/high-risk (`rm`, `sudo`, `chown`, broad perms)
 
 Command support is registry-driven in `src/oterminus/command_registry.py`, which keeps supported command families, risk metadata, and direct-command support in one place.
+Structured rendering lives in `src/oterminus/structured_commands.py` and is intentionally limited to the curated subset listed above.
 
 Policy controls:
 
@@ -165,6 +167,64 @@ poetry run oterminus "ls -lh"
 In REPL mode, `cd` updates the `oterminus` process working directory so later natural-language requests run relative to the new location.
 In one-shot mode, `cd` only affects that single `oterminus` process and cannot change the parent shell directory.
 
+## Structured planning support
+
+The planner may now return either:
+
+- a raw proposal with `mode: "raw"` and a `command` string
+- a structured proposal with `mode: "structured"`, `command_family`, and `arguments`
+
+When a structured proposal uses one of the supported families, Python validates the argument shape and renders the exact command locally.
+
+Supported structured families and argument shapes:
+
+- `ls`: `path`, `long`, `human_readable`, `all`, `recursive`
+- `pwd`: no arguments
+- `mkdir`: `path`, `parents`
+- `chmod`: `path`, `mode` (numeric only, such as `755`)
+- `find`: `path`, `name`
+
+Example structured proposals:
+
+```json
+{
+  "action_type": "shell_command",
+  "mode": "structured",
+  "command_family": "ls",
+  "arguments": {
+    "path": ".",
+    "long": true,
+    "human_readable": true,
+    "all": false,
+    "recursive": false
+  },
+  "summary": "List files with sizes",
+  "explanation": "Use a long listing in the current directory",
+  "risk_level": "safe",
+  "needs_confirmation": true,
+  "notes": []
+}
+```
+
+```json
+{
+  "action_type": "shell_command",
+  "mode": "structured",
+  "command_family": "find",
+  "arguments": {
+    "path": ".",
+    "name": "*.py"
+  },
+  "summary": "Find Python files",
+  "explanation": "Search recursively under the current directory",
+  "risk_level": "safe",
+  "needs_confirmation": true,
+  "notes": []
+}
+```
+
+Structured support is intentionally narrow in this step. Pipelines, redirection, multi-command execution, and additional command families still require the raw-command path and remain subject to the existing validator.
+
 ## Environment variables
 
 - `OTERMINUS_MODEL` (default: `gemma4`)
@@ -185,6 +245,7 @@ Most tests do not require Ollama running.
 
 - Curated command allowlist for safety (not arbitrary shell).
 - Single command proposals only; no pipelines/chaining.
+- Structured rendering is limited to `ls`, `pwd`, `mkdir`, `chmod`, and `find`.
 - No remote/system integrations.
 - Not a general-purpose chatbot.
 
