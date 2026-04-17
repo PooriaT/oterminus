@@ -15,12 +15,31 @@ class Validator:
         self.policy = policy
 
     def validate(self, proposal: Proposal) -> ValidationResult:
-        command = proposal.command.strip()
         reasons: list[str] = []
         warnings: list[str] = []
+        risk = proposal.risk_level or RiskLevel.DANGEROUS
 
+        if proposal.command_family is not None:
+            spec = get_command_spec(proposal.command_family)
+            if spec is None:
+                reasons.append(f"Command family '{proposal.command_family}' is not in the v1 allowlist.")
+                risk = RiskLevel.DANGEROUS
+            else:
+                risk = spec.risk_level
+
+        command = (proposal.command or "").strip()
         if not command:
-            return ValidationResult(accepted=False, risk_level=RiskLevel.DANGEROUS, reasons=["Empty command."])
+            reasons.append("Proposal has no executable raw command yet.")
+            if not is_risk_allowed(risk, self.policy):
+                reasons.append(
+                    f"Risk level '{risk.value}' blocked by policy mode '{self.policy.mode.value}'"
+                )
+            return ValidationResult(
+                accepted=False,
+                risk_level=risk,
+                reasons=reasons,
+                warnings=warnings,
+            )
 
         if any(token in command for token in BLOCKED_TOKENS):
             reasons.append("Command contains blocked shell operators or redirection.")
@@ -37,6 +56,11 @@ class Validator:
 
         base = args[0]
         spec = get_command_spec(base)
+        if proposal.command_family is not None and proposal.command_family != base:
+            reasons.append(
+                f"Raw command base '{base}' does not match command_family '{proposal.command_family}'."
+            )
+
         if spec is None:
             reasons.append(f"Base command '{base}' is not in the v1 allowlist.")
             risk = RiskLevel.DANGEROUS
@@ -119,13 +143,15 @@ class Validator:
             if arg.startswith("-"):
                 if "=" in arg:
                     flag, value = arg.split("=", maxsplit=1)
-                    if flag in spec.path_valued_flags and value:
+                    if flag in spec.path_valued_flags and value and not self._is_non_path_flag_value(spec, flag, value):
                         path_operands.append(value)
                     index += 1
                     continue
                 if arg in spec.path_valued_flags:
                     if index + 1 < len(arguments):
-                        path_operands.append(arguments[index + 1])
+                        value = arguments[index + 1]
+                        if not self._is_non_path_flag_value(spec, arg, value):
+                            path_operands.append(value)
                     index += 2
                     continue
                 if arg in spec.flags_with_values:
@@ -136,3 +162,7 @@ class Validator:
             path_operands.append(arg)
             index += 1
         return path_operands
+
+    def _is_non_path_flag_value(self, spec: CommandSpec, flag: str, value: str) -> bool:
+        # GNU grep uses "-" with -f/--file to mean "read patterns from stdin".
+        return spec.name == "grep" and flag == "-f" and value == "-"

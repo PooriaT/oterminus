@@ -3,7 +3,7 @@ from __future__ import annotations
 import shlex
 
 from oterminus.command_registry import get_command_spec, looks_like_direct_invocation
-from oterminus.models import ActionType, Proposal
+from oterminus.models import ActionType, Proposal, ProposalMode
 
 
 def detect_direct_command(request: str) -> Proposal | None:
@@ -31,6 +31,8 @@ def detect_direct_command(request: str) -> Proposal | None:
 
     return Proposal(
         action_type=ActionType.SHELL_COMMAND,
+        mode=ProposalMode.RAW,
+        command_family=base,
         command=command,
         summary=f"Run direct command: {spec.name}",
         explanation="Input already looks like a shell command, so it will be validated locally and executed directly.",

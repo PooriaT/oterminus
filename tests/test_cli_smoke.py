@@ -3,7 +3,7 @@ from unittest.mock import Mock
 import subprocess
 
 from oterminus.cli import parse_args
-from oterminus.models import ActionType, Proposal, RiskLevel, ValidationResult
+from oterminus.models import ActionType, Proposal, ProposalMode, RiskLevel, ValidationResult
 
 
 def test_parse_args_one_shot() -> None:
@@ -17,6 +17,8 @@ def test_handle_request_cancel(monkeypatch) -> None:
     planner = Mock()
     planner.plan.return_value = Proposal(
         action_type=ActionType.SHELL_COMMAND,
+        mode=ProposalMode.RAW,
+        command_family="ls",
         command="ls -lh",
         summary="list files",
         explanation="desc",
@@ -40,6 +42,8 @@ def test_handle_request_timeout(monkeypatch) -> None:
     planner = Mock()
     planner.plan.return_value = Proposal(
         action_type=ActionType.SHELL_COMMAND,
+        mode=ProposalMode.RAW,
+        command_family="find",
         command="find . -name '*.py'",
         summary="find files",
         explanation="desc",
@@ -83,6 +87,8 @@ def test_handle_request_natural_language_uses_planner(monkeypatch) -> None:
     planner = Mock()
     planner.plan.return_value = Proposal(
         action_type=ActionType.SHELL_COMMAND,
+        mode=ProposalMode.RAW,
+        command_family="ls",
         command="ls -lh",
         summary="list files",
         explanation="desc",
