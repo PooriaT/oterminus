@@ -77,7 +77,11 @@ class Validator:
                     warnings.append(
                         "Experimental mode stays outside deterministic structured rendering and uses stricter confirmation."
                     )
-                    if parse_raw_command_as_structured(command) is not None:
+                    try:
+                        parsed_structured = parse_raw_command_as_structured(command)
+                    except StructuredCommandError:
+                        parsed_structured = None
+                    if parsed_structured is not None:
                         reasons.append(
                             "Experimental mode is not allowed when deterministic structured rendering is available."
                         )

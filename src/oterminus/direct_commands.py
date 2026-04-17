@@ -4,6 +4,7 @@ import shlex
 
 from oterminus.command_registry import get_command_spec, looks_like_direct_invocation
 from oterminus.models import ActionType, Proposal, ProposalMode
+from oterminus.structured_commands import parse_raw_command_as_structured
 
 
 def detect_direct_command(request: str) -> Proposal | None:
@@ -28,14 +29,28 @@ def detect_direct_command(request: str) -> Proposal | None:
         return None
 
     notes = ["Detected as a direct shell command; skipped the LLM planner.", *spec.notes]
+    parsed = parse_raw_command_as_structured(command)
+    if parsed is not None:
+        command_family, arguments = parsed
+        return Proposal(
+            action_type=ActionType.SHELL_COMMAND,
+            mode=ProposalMode.STRUCTURED,
+            command_family=command_family,
+            arguments=arguments,
+            command=command,
+            summary=f"Run direct command: {spec.name}",
+            explanation="Input already looks like a shell command, so it will be validated locally and rendered deterministically when possible.",
+            needs_confirmation=True,
+            notes=notes,
+        )
 
     return Proposal(
         action_type=ActionType.SHELL_COMMAND,
-        mode=ProposalMode.RAW,
+        mode=ProposalMode.EXPERIMENTAL,
         command_family=base,
         command=command,
         summary=f"Run direct command: {spec.name}",
-        explanation="Input already looks like a shell command, so it will be validated locally and executed directly.",
+        explanation="Input already looks like a shell command, so it will be validated locally and executed as an experimental fallback.",
         needs_confirmation=True,
         notes=notes,
     )

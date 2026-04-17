@@ -5,7 +5,7 @@ from oterminus.renderer import render_preview
 def test_render_includes_sections() -> None:
     proposal = Proposal(
         action_type=ActionType.SHELL_COMMAND,
-        mode=ProposalMode.RAW,
+        mode=ProposalMode.EXPERIMENTAL,
         command_family="ls",
         command="ls -lh",
         summary="List files with sizes",

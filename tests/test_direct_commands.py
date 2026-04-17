@@ -6,7 +6,7 @@ def test_detect_direct_command_for_cd() -> None:
     proposal = detect_direct_command("cd src")
 
     assert proposal is not None
-    assert proposal.mode == ProposalMode.RAW
+    assert proposal.mode == ProposalMode.EXPERIMENTAL
     assert proposal.command_family == "cd"
     assert proposal.command == "cd src"
 
@@ -21,7 +21,7 @@ def test_detect_direct_command_for_new_curated_family() -> None:
     proposal = detect_direct_command("open .")
 
     assert proposal is not None
-    assert proposal.mode == ProposalMode.RAW
+    assert proposal.mode == ProposalMode.STRUCTURED
     assert proposal.command_family == "open"
     assert proposal.command == "open ."
 

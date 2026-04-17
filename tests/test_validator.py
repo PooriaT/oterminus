@@ -1,9 +1,35 @@
 from oterminus.models import ActionType, Proposal, ProposalMode, RiskLevel
 from oterminus.policies import PolicyConfig
+from oterminus.structured_commands import StructuredCommandError, parse_raw_command_as_structured
 from oterminus.validator import Validator
 
 
-def make_proposal(command: str, *, mode: ProposalMode = ProposalMode.RAW, command_family: str | None = None) -> Proposal:
+def make_proposal(
+    command: str, *, mode: ProposalMode | None = None, command_family: str | None = None
+) -> Proposal:
+    if mode is None:
+        try:
+            parsed = parse_raw_command_as_structured(command)
+        except StructuredCommandError:
+            parsed = None
+        if parsed is not None:
+            parsed_family, parsed_arguments = parsed
+            mode = ProposalMode.STRUCTURED
+            command_family = parsed_family
+            return Proposal(
+                action_type=ActionType.SHELL_COMMAND,
+                mode=mode,
+                command_family=command_family,
+                arguments=parsed_arguments,
+                command=command,
+                summary="test",
+                explanation="test",
+                risk_level=RiskLevel.SAFE,
+                needs_confirmation=True,
+                notes=[],
+            )
+        mode = ProposalMode.EXPERIMENTAL
+
     return Proposal(
         action_type=ActionType.SHELL_COMMAND,
         mode=mode,
@@ -205,7 +231,7 @@ def test_structured_only_proposal_is_previewable_but_not_executable() -> None:
 def test_reject_unknown_command_family() -> None:
     proposal = Proposal(
         action_type=ActionType.SHELL_COMMAND,
-        mode=ProposalMode.RAW,
+        mode=ProposalMode.EXPERIMENTAL,
         command_family="python",
         command="python script.py",
         summary="unknown family",
