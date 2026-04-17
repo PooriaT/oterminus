@@ -143,13 +143,15 @@ class Validator:
             if arg.startswith("-"):
                 if "=" in arg:
                     flag, value = arg.split("=", maxsplit=1)
-                    if flag in spec.path_valued_flags and value:
+                    if flag in spec.path_valued_flags and value and not self._is_non_path_flag_value(spec, flag, value):
                         path_operands.append(value)
                     index += 1
                     continue
                 if arg in spec.path_valued_flags:
                     if index + 1 < len(arguments):
-                        path_operands.append(arguments[index + 1])
+                        value = arguments[index + 1]
+                        if not self._is_non_path_flag_value(spec, arg, value):
+                            path_operands.append(value)
                     index += 2
                     continue
                 if arg in spec.flags_with_values:
@@ -160,3 +162,7 @@ class Validator:
             path_operands.append(arg)
             index += 1
         return path_operands
+
+    def _is_non_path_flag_value(self, spec: CommandSpec, flag: str, value: str) -> bool:
+        # GNU grep uses "-" with -f/--file to mean "read patterns from stdin".
+        return spec.name == "grep" and flag == "-f" and value == "-"

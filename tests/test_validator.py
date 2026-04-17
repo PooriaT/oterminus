@@ -97,6 +97,14 @@ def test_allowed_roots_grep_pattern_file_is_checked() -> None:
     assert any("Paths outside allowed roots" in reason for reason in result.reasons)
 
 
+def test_allowed_roots_grep_pattern_file_stdin_sentinel_is_not_treated_as_path() -> None:
+    validator = Validator(
+        PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False, allowed_roots=["/allowed"])
+    )
+    result = validator.validate(make_proposal("grep -f - /allowed/input.txt"))
+    assert result.accepted is True
+
+
 def test_allowed_roots_chmod_reference_path_is_checked() -> None:
     validator = Validator(
         PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False, allowed_roots=["/allowed"])
