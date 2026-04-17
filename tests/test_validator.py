@@ -84,3 +84,21 @@ def test_allowed_roots_chmod_reference_equals_validates_target_path() -> None:
     result = validator.validate(make_proposal("chmod --reference=/allowed/ref /etc/shadow"))
     assert result.accepted is False
     assert any("Paths outside allowed roots" in reason for reason in result.reasons)
+
+
+def test_allowed_roots_grep_pattern_file_is_checked() -> None:
+    validator = Validator(
+        PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False, allowed_roots=["/allowed"])
+    )
+    result = validator.validate(make_proposal("grep -f /etc/patterns /allowed/input.txt"))
+    assert result.accepted is False
+    assert any("Paths outside allowed roots" in reason for reason in result.reasons)
+
+
+def test_allowed_roots_chmod_reference_path_is_checked() -> None:
+    validator = Validator(
+        PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False, allowed_roots=["/allowed"])
+    )
+    result = validator.validate(make_proposal("chmod --reference=/etc/ref /allowed/target.txt"))
+    assert result.accepted is False
+    assert any("Paths outside allowed roots" in reason for reason in result.reasons)
