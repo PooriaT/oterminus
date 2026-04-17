@@ -77,7 +77,7 @@ class Proposal(BaseModel):
         if self.arguments is not None and any(not key.strip() for key in self.arguments):
             raise ValueError("Structured argument keys must be non-empty strings.")
 
-        if self.mode == ProposalMode.STRUCTURED:
+        if self.mode == ProposalMode.STRUCTURED or self.arguments is not None:
             try:
                 validated = validate_structured_arguments(self.command_family, self.arguments)
             except StructuredCommandError as exc:

@@ -12,7 +12,7 @@ It is intentionally constrained to terminal and local filesystem workflows. The 
 - **Preview-before-run**: users see summary, exact command, risk level, and warnings first.
 - **Extensible architecture**: planner, validator, renderer, policies, and executor are separate modules.
 - **Registry-driven command support**: a shared command registry defines the curated v1 command set, risk levels, and direct-command eligibility.
-- **Deterministic structured rendering for a narrow subset**: `ls`, `pwd`, `mkdir`, `chmod`, and `find` can be represented as structured proposals and rendered into exact argv/command strings by Python.
+- **Structured-first planning for a narrow subset**: the planner should prefer structured proposals for `ls`, `pwd`, `mkdir`, `chmod`, and `find`, with Python rendering the exact argv/command strings deterministically.
 
 ## Architecture (v1)
 
@@ -26,7 +26,7 @@ It is intentionally constrained to terminal and local filesystem workflows. The 
 8. User explicitly confirms.
 9. Executor runs the resolved argv and returns output + exit code.
 
-Raw-command execution remains in place for everything outside the structured subset.
+Raw-command execution remains in place only for single-command requests that cannot be expressed through the structured subset and still pass the existing validator.
 
 ## Safety model
 
@@ -169,10 +169,16 @@ In one-shot mode, `cd` only affects that single `oterminus` process and cannot c
 
 ## Structured planning support
 
-The planner may now return either:
+The planner returns either:
 
 - a raw proposal with `mode: "raw"` and a `command` string
 - a structured proposal with `mode: "structured"`, `command_family`, and `arguments`
+
+Planner behavior is intentionally structured-first:
+
+- if a request cleanly maps to a supported structured family, the planner should emit `mode: "structured"`
+- raw mode is the fallback for supported single-command tasks that do not fit the structured schema
+- parser normalization also upgrades simple raw proposals for the structured subset into deterministic structured rendering when possible
 
 When a structured proposal uses one of the supported families, Python validates the argument shape and renders the exact command locally.
 
