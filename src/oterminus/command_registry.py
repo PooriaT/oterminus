@@ -38,6 +38,7 @@ class CommandSpec:
     leading_flags_with_inline_values: frozenset[str] = field(default_factory=frozenset)
     dangerous_flags: frozenset[str] = field(default_factory=frozenset)
     dangerous_target_literals: frozenset[str] = field(default_factory=frozenset)
+    forbidden_operand_prefixes: frozenset[str] = field(default_factory=frozenset)
     notes: tuple[str, ...] = ()
 
 
@@ -62,6 +63,7 @@ def _command(
     leading_flags_with_inline_values: Iterable[str] = (),
     dangerous_flags: Iterable[str] = (),
     dangerous_target_literals: Iterable[str] = (),
+    forbidden_operand_prefixes: Iterable[str] = (),
     notes: Iterable[str] = (),
 ) -> CommandSpec:
     return CommandSpec(
@@ -80,6 +82,7 @@ def _command(
         leading_flags_with_inline_values=_frozenset(leading_flags_with_inline_values),
         dangerous_flags=_frozenset(dangerous_flags),
         dangerous_target_literals=_frozenset(dangerous_target_literals),
+        forbidden_operand_prefixes=_frozenset(forbidden_operand_prefixes),
         notes=tuple(notes),
     )
 
@@ -100,7 +103,7 @@ COMMAND_REGISTRY: dict[str, CommandSpec] = {
         name="ls",
         category="inspection",
         risk_level=RiskLevel.SAFE,
-        allowed_flags=("-a", "-h", "-l", "-lh", "-la", "-al"),
+        allowed_flags=("-a", "-h", "-l", "-R"),
     ),
     "pwd": _command(
         name="pwd",
@@ -144,8 +147,21 @@ COMMAND_REGISTRY: dict[str, CommandSpec] = {
         leading_flags_with_inline_values=("-O",),
         allowed_flags=("-name", "-path", "-type", "-maxdepth", "-mindepth", "-print"),
     ),
-    "du": _command(name="du", category="inspection", risk_level=RiskLevel.SAFE),
-    "stat": _command(name="stat", category="inspection", risk_level=RiskLevel.SAFE, min_operands=1),
+    "du": _command(
+        name="du",
+        category="inspection",
+        risk_level=RiskLevel.SAFE,
+        allowed_flags=("-a", "-c", "-h", "-k", "-s", "-x"),
+        flags_with_values=("-d",),
+    ),
+    "stat": _command(
+        name="stat",
+        category="inspection",
+        risk_level=RiskLevel.SAFE,
+        min_operands=1,
+        allowed_flags=("-L", "-x"),
+        flags_with_values=("-f",),
+    ),
     "mkdir": _command(
         name="mkdir",
         category="filesystem_write",
@@ -153,8 +169,20 @@ COMMAND_REGISTRY: dict[str, CommandSpec] = {
         min_operands=1,
         allowed_flags=("-p",),
     ),
-    "cp": _command(name="cp", category="filesystem_write", risk_level=RiskLevel.WRITE, min_operands=2),
-    "mv": _command(name="mv", category="filesystem_write", risk_level=RiskLevel.WRITE, min_operands=2),
+    "cp": _command(
+        name="cp",
+        category="filesystem_write",
+        risk_level=RiskLevel.WRITE,
+        min_operands=2,
+        allowed_flags=("-R", "-n", "-p"),
+    ),
+    "mv": _command(
+        name="mv",
+        category="filesystem_write",
+        risk_level=RiskLevel.WRITE,
+        min_operands=2,
+        allowed_flags=("-n",),
+    ),
     "chmod": _command(
         name="chmod",
         category="permissions",
@@ -179,6 +207,22 @@ COMMAND_REGISTRY: dict[str, CommandSpec] = {
         risk_level=RiskLevel.DANGEROUS,
         min_operands=2,
         dangerous_target_literals=("/", "/*"),
+    ),
+    "open": _command(
+        name="open",
+        category="macos_integration",
+        risk_level=RiskLevel.SAFE,
+        min_operands=1,
+        allowed_flags=("-R",),
+        forbidden_operand_prefixes=("http://", "https://", "ftp://", "mailto:"),
+        notes=("Opens a local file or folder via macOS LaunchServices.",),
+    ),
+    "file": _command(
+        name="file",
+        category="inspection",
+        risk_level=RiskLevel.SAFE,
+        min_operands=1,
+        allowed_flags=("-b",),
     ),
     "sudo": _command(name="sudo", category="privileged", risk_level=RiskLevel.DANGEROUS, min_operands=1),
 }

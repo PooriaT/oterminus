@@ -17,6 +17,15 @@ def test_detect_direct_command_rejects_natural_language_find() -> None:
     assert proposal is None
 
 
+def test_detect_direct_command_for_new_curated_family() -> None:
+    proposal = detect_direct_command("open .")
+
+    assert proposal is not None
+    assert proposal.mode == ProposalMode.RAW
+    assert proposal.command_family == "open"
+    assert proposal.command == "open ."
+
+
 def test_detect_direct_command_preserves_registry_notes() -> None:
     proposal = detect_direct_command("cd src")
 
