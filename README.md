@@ -367,6 +367,29 @@ poetry run oterminus "find all .py files under this directory"
 poetry run oterminus "ls -lh"
 ```
 
+## Continuous integration (CI)
+
+GitHub Actions runs CI automatically for:
+
+- every `pull_request` (opened, synchronized, reopened), and
+- every push to `main`.
+
+Current CI checks:
+
+- Python 3.13 setup
+- Poetry installation
+- dependency installation (`poetry install --with dev`)
+- test suite execution (`poetry run pytest`)
+
+The workflow is defined in `.github/workflows/ci.yml`.
+
+To run the same checks locally before opening a PR:
+
+```bash
+poetry install --with dev
+poetry run pytest
+```
+
 ## Testing
 
 Run all tests:
