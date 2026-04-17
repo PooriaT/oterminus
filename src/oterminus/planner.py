@@ -55,6 +55,13 @@ class Planner:
 
         parsed = parse_raw_command_as_structured(proposal.command)
         if parsed is None:
+            if proposal.mode == ProposalMode.RAW:
+                return Proposal.model_validate(
+                    {
+                        **proposal.model_dump(),
+                        "mode": ProposalMode.EXPERIMENTAL.value,
+                    }
+                )
             return proposal
 
         command_family, arguments = parsed

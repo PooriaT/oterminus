@@ -22,6 +22,7 @@ class ActionType(str, Enum):
 class ProposalMode(str, Enum):
     RAW = "raw"
     STRUCTURED = "structured"
+    EXPERIMENTAL = "experimental"
 
 
 class Proposal(BaseModel):
@@ -68,8 +69,14 @@ class Proposal(BaseModel):
         if self.mode == ProposalMode.RAW and not self.command:
             raise ValueError("Raw proposals require a command.")
 
+        if self.mode == ProposalMode.EXPERIMENTAL and not self.command:
+            raise ValueError("Experimental proposals require a command.")
+
         if self.mode == ProposalMode.STRUCTURED and not self.command_family:
             raise ValueError("Structured proposals require command_family.")
+
+        if self.mode == ProposalMode.EXPERIMENTAL and self.arguments is not None:
+            raise ValueError("Experimental proposals cannot include structured arguments.")
 
         if self.arguments is not None and not self.command_family:
             raise ValueError("Structured arguments require command_family.")
@@ -96,6 +103,10 @@ class Proposal(BaseModel):
 
     def executable_command(self) -> str | None:
         return self.command
+
+    @property
+    def is_experimental(self) -> bool:
+        return self.mode == ProposalMode.EXPERIMENTAL
 
 
 class ValidationResult(BaseModel):

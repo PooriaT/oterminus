@@ -3,10 +3,10 @@ from oterminus.policies import PolicyConfig
 from oterminus.validator import Validator
 
 
-def make_proposal(command: str) -> Proposal:
+def make_proposal(command: str, *, mode: ProposalMode = ProposalMode.RAW) -> Proposal:
     return Proposal(
         action_type=ActionType.SHELL_COMMAND,
-        mode=ProposalMode.RAW,
+        mode=mode,
         command_family=command.split()[0],
         command=command,
         summary="test",
@@ -35,7 +35,14 @@ def test_reject_chained_command() -> None:
     validator = Validator(PolicyConfig(mode=RiskLevel.DANGEROUS, allow_dangerous=True))
     result = validator.validate(make_proposal("ls && pwd"))
     assert result.accepted is False
-    assert any("blocked shell operators" in reason for reason in result.reasons)
+    assert any("blocked command chaining" in reason for reason in result.reasons)
+
+
+def test_reject_background_execution() -> None:
+    validator = Validator(PolicyConfig(mode=RiskLevel.DANGEROUS, allow_dangerous=True))
+    result = validator.validate(make_proposal("sleep 1 &"))
+    assert result.accepted is False
+    assert any("blocked background execution" in reason for reason in result.reasons)
 
 
 def test_policy_blocks_dangerous() -> None:
@@ -176,3 +183,26 @@ def test_structured_command_with_disallowed_root_is_rejected() -> None:
 
     assert result.accepted is False
     assert any("Paths outside allowed roots" in reason for reason in result.reasons)
+
+
+def test_accept_experimental_raw_command_with_warning() -> None:
+    validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))
+    result = validator.validate(make_proposal("cat README.md", mode=ProposalMode.EXPERIMENTAL))
+
+    assert result.accepted is True
+    assert result.risk_level == RiskLevel.SAFE
+    assert any("Experimental mode stays outside deterministic structured rendering" in warning for warning in result.warnings)
+
+
+def test_reject_experimental_when_structured_rendering_is_available() -> None:
+    validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))
+    result = validator.validate(
+        make_proposal("find . -name '*.py'", mode=ProposalMode.EXPERIMENTAL)
+    )
+
+    assert result.accepted is False
+    assert any(
+        "Experimental mode is not allowed when deterministic structured rendering is available."
+        in reason
+        for reason in result.reasons
+    )

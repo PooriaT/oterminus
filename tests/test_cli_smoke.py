@@ -2,8 +2,9 @@ from unittest.mock import Mock
 
 import subprocess
 
-from oterminus.cli import parse_args
+from oterminus.cli import ask_confirmation, parse_args
 from oterminus.models import ActionType, Proposal, ProposalMode, RiskLevel, ValidationResult
+from oterminus.policies import ConfirmationLevel
 
 
 def test_parse_args_one_shot() -> None:
@@ -132,3 +133,43 @@ def test_handle_request_natural_language_uses_planner(monkeypatch) -> None:
         ["find", ".", "-name", "*.py"],
         display_command="find . -name '*.py'",
     )
+
+
+def test_ask_confirmation_requires_experimental_phrase(monkeypatch) -> None:
+    monkeypatch.setattr("builtins.input", lambda _: "EXECUTE")
+    assert ask_confirmation(ConfirmationLevel.VERY_STRONG) is False
+
+    monkeypatch.setattr("builtins.input", lambda _: "EXECUTE EXPERIMENTAL")
+    assert ask_confirmation(ConfirmationLevel.VERY_STRONG) is True
+
+
+def test_handle_request_experimental_requires_very_strong_confirmation(monkeypatch) -> None:
+    from oterminus.cli import handle_request
+
+    planner = Mock()
+    planner.plan.return_value = Proposal(
+        action_type=ActionType.SHELL_COMMAND,
+        mode=ProposalMode.EXPERIMENTAL,
+        command_family="cat",
+        command="cat README.md",
+        summary="show readme",
+        explanation="experimental fallback",
+        risk_level=RiskLevel.SAFE,
+        needs_confirmation=True,
+        notes=["experimental"],
+    )
+    validator = Mock()
+    validator.validate.return_value = ValidationResult(
+        accepted=True,
+        risk_level=RiskLevel.SAFE,
+        warnings=["experimental warning"],
+        rendered_command="cat README.md",
+        argv=["cat", "README.md"],
+    )
+    executor = Mock()
+    monkeypatch.setattr("builtins.input", lambda _: "EXECUTE")
+
+    code = handle_request("show the readme", planner, validator, executor)
+
+    assert code == 0
+    executor.run.assert_not_called()

@@ -11,6 +11,7 @@ from oterminus.executor import Executor
 from oterminus.logging_utils import configure_logging
 from oterminus.ollama_client import OllamaClientError, OllamaPlannerClient
 from oterminus.planner import Planner, PlannerError
+from oterminus.policies import ConfirmationLevel, confirmation_level
 from oterminus.renderer import render_preview
 from oterminus.validator import Validator
 
@@ -24,10 +25,18 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def ask_confirmation(is_dangerous: bool) -> bool:
-    prompt = "Type EXECUTE to proceed: " if is_dangerous else "Run command? [y/N]: "
+def ask_confirmation(level: ConfirmationLevel) -> bool:
+    if level == ConfirmationLevel.VERY_STRONG:
+        prompt = "Type EXECUTE EXPERIMENTAL to proceed: "
+    elif level == ConfirmationLevel.STRONG:
+        prompt = "Type EXECUTE to proceed: "
+    else:
+        prompt = "Run command? [y/N]: "
+
     answer = input(prompt).strip()
-    if is_dangerous:
+    if level == ConfirmationLevel.VERY_STRONG:
+        return answer == "EXECUTE EXPERIMENTAL"
+    if level == ConfirmationLevel.STRONG:
         return answer == "EXECUTE"
     return answer.lower() in {"y", "yes"}
 
@@ -50,7 +59,7 @@ def handle_request(request: str, planner: Planner, validator: Validator, executo
         LOGGER.warning("proposal_rejected reasons=%s", validation.reasons)
         return 3
 
-    confirmed = ask_confirmation(is_dangerous=validation.risk_level.value == "dangerous")
+    confirmed = ask_confirmation(confirmation_level(proposal.mode, validation.risk_level))
     command = validation.rendered_command
     LOGGER.info("confirmed=%s command=%s", confirmed, command)
     if not confirmed:

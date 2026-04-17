@@ -52,3 +52,32 @@ def test_render_structured_preview_without_raw_command() -> None:
     assert "Command fam. : find" in text
     assert "Arguments" in text
     assert '"name": "*.py"' in text
+
+
+def test_render_experimental_preview_is_clearly_labeled() -> None:
+    proposal = Proposal(
+        action_type=ActionType.SHELL_COMMAND,
+        mode=ProposalMode.EXPERIMENTAL,
+        command_family="cat",
+        command="cat README.md",
+        summary="Show readme",
+        explanation="Experimental fallback",
+        risk_level=RiskLevel.SAFE,
+        needs_confirmation=True,
+        notes=["Outside deterministic structured rendering"],
+    )
+    validation = ValidationResult(
+        accepted=True,
+        risk_level=RiskLevel.SAFE,
+        warnings=["Experimental mode stays outside deterministic structured rendering and uses stricter confirmation."],
+        rendered_command="cat README.md",
+        argv=["cat", "README.md"],
+    )
+
+    text = render_preview(proposal, validation)
+
+    assert "--- oterminus proposal (EXPERIMENTAL) ---" in text
+    assert "Mode         : experimental" in text
+    assert "Experimental : yes" in text
+    assert "Confirmation : very strong" in text
+    assert "Warnings" in text

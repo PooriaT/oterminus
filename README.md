@@ -13,6 +13,7 @@ It is intentionally constrained to terminal and local filesystem workflows. The 
 - **Extensible architecture**: planner, validator, renderer, policies, and executor are separate modules.
 - **Registry-driven command support**: a shared command registry defines the curated v1 command set, risk levels, and direct-command eligibility.
 - **Structured-first planning for a narrow subset**: the planner should prefer structured proposals for `ls`, `pwd`, `mkdir`, `chmod`, and `find`, with Python rendering the exact argv/command strings deterministically.
+- **Experimental lane is explicit, not implicit**: proposals that fall outside deterministic structured rendering can be surfaced as experimental, with stricter validation and stronger confirmation instead of quietly broadening shell access.
 
 ## Architecture (v1)
 
@@ -26,7 +27,11 @@ It is intentionally constrained to terminal and local filesystem workflows. The 
 8. User explicitly confirms.
 9. Executor runs the resolved argv and returns output + exit code.
 
-Raw-command execution remains in place only for single-command requests that cannot be expressed through the structured subset and still pass the existing validator.
+There are now three proposal modes:
+
+- `structured`: preferred path; deterministic rendering from validated `command_family` + `arguments`
+- `raw`: compatibility path for locally detected direct shell commands that already look like curated single-command invocations
+- `experimental`: explicit raw-shell fallback for planner proposals that do not fit the structured subset but still stay inside the curated allowlist and validator
 
 ## Safety model
 
@@ -46,6 +51,7 @@ Policy controls:
 - Optional `OTERMINUS_ALLOWED_ROOTS` to scope path targets
 
 Dangerous commands require stronger confirmation (`EXECUTE`).
+Experimental proposals require a stronger, separate confirmation phrase (`EXECUTE EXPERIMENTAL`) even when their risk level is only `safe` or `write`.
 
 ## Requirements
 
@@ -169,15 +175,17 @@ In one-shot mode, `cd` only affects that single `oterminus` process and cannot c
 
 ## Structured planning support
 
-The planner returns either:
+The planner may return:
 
-- a raw proposal with `mode: "raw"` and a `command` string
 - a structured proposal with `mode: "structured"`, `command_family`, and `arguments`
+- an experimental raw proposal with `mode: "experimental"` and a `command` string
+- a raw proposal with `mode: "raw"` only for compatibility-oriented cases
 
 Planner behavior is intentionally structured-first:
 
 - if a request cleanly maps to a supported structured family, the planner should emit `mode: "structured"`
-- raw mode is the fallback for supported single-command tasks that do not fit the structured schema
+- if a request stays within the curated allowlist but does not fit the structured schema, the planner should emit `mode: "experimental"`
+- raw mode remains available for compatibility behavior, especially the direct-command path
 - parser normalization also upgrades simple raw proposals for the structured subset into deterministic structured rendering when possible
 
 When a structured proposal uses one of the supported families, Python validates the argument shape and renders the exact command locally.
@@ -229,7 +237,31 @@ Example structured proposals:
 }
 ```
 
-Structured support is intentionally narrow in this step. Pipelines, redirection, multi-command execution, and additional command families still require the raw-command path and remain subject to the existing validator.
+Structured support is intentionally narrow in this step. Pipelines, redirection, multi-command execution, and additional command families are still blocked by validation; experimental mode is a stricter fallback lane for single curated commands, not an unrestricted shell escape hatch.
+
+## Experimental mode
+
+`experimental` mode exists for requests that do not fit the supported structured families but still map to a single curated command that Python can validate.
+
+What makes it distinct:
+
+- CLI preview labels the proposal as experimental
+- preview shows mode, risk level, experimental status, warnings, and confirmation strength
+- confirmation is stronger than normal execution and requires `EXECUTE EXPERIMENTAL`
+- validator still applies the command allowlist, risk policy, and allowed-root checks
+- experimental proposals are rejected if deterministic structured rendering was actually available
+
+Current hard limits in experimental mode:
+
+- no pipelines
+- no redirection
+- no command chaining
+- no background execution
+- no command substitution
+- no multiline command text
+- no obviously dangerous shell metacharacter paths around those constructs
+
+Experimental mode is intentionally stricter, not looser. It broadens proposal coverage a bit without turning `oterminus` into a general shell agent.
 
 ## Environment variables
 
@@ -250,8 +282,9 @@ Most tests do not require Ollama running.
 ## Limitations (v1)
 
 - Curated command allowlist for safety (not arbitrary shell).
-- Single command proposals only; no pipelines/chaining.
+- Single command proposals only; no pipelines/chaining/redirection/background execution/command substitution.
 - Structured rendering is limited to `ls`, `pwd`, `mkdir`, `chmod`, and `find`.
+- Experimental mode is still limited to the same curated base-command registry and stronger confirmation.
 - No remote/system integrations.
 - Not a general-purpose chatbot.
 
