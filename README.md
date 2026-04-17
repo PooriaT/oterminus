@@ -1,59 +1,249 @@
 # oterminus
 
-`oterminus` is a local AI-powered terminal assistant that turns natural-language requests into **proposed** shell commands, then requires explicit user confirmation before execution.
-If the input already looks like a shell command, `oterminus` skips the LLM automatically and runs the local validation/execution path directly.
+`oterminus` is a local terminal assistant that translates natural-language requests into a single **proposed** shell action, previews that action, and executes it only after explicit user confirmation.
 
-It is intentionally constrained to terminal and local filesystem workflows. The model never gets execution authority.
+The current architecture is **structured-first**:
+
+- Prefer deterministic `structured` proposals (`command_family` + validated `arguments`)
+- Use `experimental` only as a constrained fallback for supported single-command cases that are not yet represented by the structured schema
+- Keep legacy raw compatibility as a transitional parsing behavior, not as the main execution model
+
+At every stage, Python owns control. The model can suggest; it cannot execute.
+
+## Overview
+
+`oterminus` is designed for local command-line and filesystem workflows. It does **not** operate as a generic autonomous agent:
+
+- It proposes one action at a time
+- It validates proposals against a curated command registry and safety checks
+- It always shows a preview before run
+- It requires user confirmation
+- It executes with local Python subprocess logic after checks pass
+
+If user input already looks like a direct shell command (for example, `ls -lh` or `cd src`), `oterminus` can skip model planning and run the same validation/preview/confirmation/execution pipeline locally.
 
 ## Design philosophy
 
-- **Control stays in Python**: Ollama only proposes actions; Python owns validation, rendering, and execution.
-- **Safety-first**: validation and policy checks run before any command execution.
-- **Preview-before-run**: users see summary, exact command, risk level, and warnings first.
-- **Extensible architecture**: planner, validator, renderer, policies, and executor are separate modules.
-- **Registry-driven command support**: a shared command registry defines the curated v1 command set, risk levels, and direct-command eligibility.
-- **Structured-first planning for a curated subset**: the planner should prefer structured proposals for stable command families such as `ls`, `pwd`, `mkdir`, `chmod`, `find`, `cp`, `mv`, `du`, `stat`, `head`, `tail`, `grep`, `cat`, `open`, and `file`, with Python rendering the exact argv/command strings deterministically from `command_family + arguments`.
-- **Experimental lane is explicit, not implicit**: proposals that fall outside the deterministic subset can be surfaced as experimental, with stricter validation and stronger confirmation instead of quietly broadening shell access.
+1. **Python is the control plane**
+   - Planning assistance comes from Ollama, but rendering, validation, policy enforcement, and execution are local Python responsibilities.
+2. **Structured proposals are primary**
+   - Deterministic rendering from typed arguments is preferred whenever possible.
+3. **Safety before execution**
+   - Command shape checks, allowlist checks, path controls, risk classification, and policy gating happen before execution.
+4. **Single source of truth for command support**
+   - `command_registry` defines what command families are supported and how they are interpreted.
+5. **Explicit fallback lane**
+   - `experimental` is intentional and constrained, with stricter confirmation requirements.
 
-## Architecture (v1)
+## Current architecture
 
-1. CLI receives input (one-shot or REPL).
-2. If the input already looks like a shell command such as `ls -lh` or `cd src`, `oterminus` builds the proposal locally and skips the planner.
-3. Otherwise, the planner sends system + user prompt to Ollama.
-4. Ollama returns a JSON proposal for one shell action.
-5. Validator checks structure, the registry-backed allowlist, shell hazards, and policy compatibility.
-6. For supported structured proposals, Python deterministically renders the final command from `command_family` + `arguments`.
-7. Renderer shows clear command preview.
-8. User explicitly confirms.
-9. Executor runs the resolved argv and returns output + exit code.
+High-level architecture:
 
-There are now two supported proposal modes:
+```text
+User input
+   |
+   v
+Direct command detection? ----- yes -----> Local Proposal (structured if parseable, else experimental)
+   | no
+   v
+Planner -> Ollama (JSON proposal)
+   |
+   v
+Proposal parsing + mode normalization/preference
+   |
+   v
+Validator (render + command shape + allowlist + safety + policy checks)
+   |
+   v
+Renderer (preview)
+   |
+   v
+User confirmation
+   |
+   v
+Executor (subprocess / built-in cd handling)
+```
 
-- `structured`: preferred and authoritative path; deterministic rendering from validated `command_family` + `arguments`
-- `experimental`: explicit raw-shell fallback for planner proposals that do not fit the structured subset but still stay inside the curated allowlist and validator
+End-to-end invariants:
 
-Legacy `raw` input is accepted only for backward compatibility and is normalized to `experimental` during parsing.
-For structured proposals, the raw `command` field is deprecated compatibility metadata and is not used as the execution source of truth.
+- The model never receives execution authority.
+- Execution is only performed from validated argv in Python.
+- Structured mode rendering is deterministic and local.
+- Unsupported or unsafe proposals are rejected before execution.
 
-## Safety model
+## Request lifecycle
 
-Risk levels:
+### 1) User input ingestion
 
-- `safe`: read-only/inspection (`ls`, `pwd`, `find`, `grep`, `du`, `stat`, `head`, `tail`, `cat`, `open`, `file`, etc.)
-- `write`: local modifications (`mkdir`, `mv`, `cp`, `chmod`, `touch`)
-- `dangerous`: destructive/privileged/high-risk (`rm`, `sudo`, `chown`, broad perms)
+The CLI accepts either:
 
-Command support is registry-driven in `src/oterminus/command_registry.py`, which keeps supported command families, risk metadata, and direct-command support in one place.
-Structured rendering lives in `src/oterminus/structured_commands.py` and is intentionally limited to curated, predictable argument shapes for the supported families. Experimental mode still exists for supported variants that are not yet worth structuring.
+- one-shot request text (`oterminus "..."`), or
+- interactive REPL input (`oterminus` then `oterminus> ...`).
 
-Policy controls:
+### 2) Direct command detection (when applicable)
 
-- `OTERMINUS_POLICY_MODE`: `safe`, `write`, or `dangerous`
-- `OTERMINUS_ALLOW_DANGEROUS`: `true/false`
-- Optional `OTERMINUS_ALLOWED_ROOTS` to scope path targets
+Before using the planner, `oterminus` tries to detect whether the request already looks like a direct invocation of a curated command family (for example `ls`, `find`, `grep`, `cd`).
 
-Dangerous commands require stronger confirmation (`EXECUTE`).
-Experimental proposals require a stronger, separate confirmation phrase (`EXECUTE EXPERIMENTAL`) even when their risk level is only `safe` or `write`.
+- If direct detection succeeds, it constructs a local `Proposal`.
+- It attempts to parse into `structured` mode first.
+- If deterministic structured parsing is unavailable, it falls back to `experimental` mode for that single command.
+
+### 3) Planner interaction with Ollama (natural language path)
+
+If direct detection does not match, `Planner.plan()` sends:
+
+- a strict system prompt (JSON-only, single action, curated command families), and
+- a user prompt containing the original request.
+
+The Ollama client asks for JSON output (`format="json"`) and returns raw JSON text.
+
+### 4) Proposal creation/parsing
+
+Planner parsing includes:
+
+- JSON decoding,
+- pydantic schema validation into `Proposal`,
+- proposal mode normalization and structured preference.
+
+Important mode behavior:
+
+- `structured` requires `command_family` + `arguments`.
+- `experimental` requires a raw `command` string.
+- legacy `mode: "raw"` payloads are normalized to modern modes (transitional compatibility).
+
+### 5) Validation
+
+`Validator.validate()` computes an execution-ready `ValidationResult`:
+
+- Determines risk from registry metadata
+- Renders structured proposals into deterministic argv/command
+- Parses experimental raw commands safely (`shlex`)
+- Rejects shell operators/fragments (pipelines, redirection, chaining, substitution, multiline, etc.)
+- Enforces command-specific shape/flag constraints from registry metadata
+- Applies forbidden operand checks and optional allowed-root path constraints
+- Applies policy-based risk gating
+
+### 6) Rendering / preview
+
+The renderer prints a proposal preview containing:
+
+- summary, explanation, mode, risk level
+- command family and arguments (when structured)
+- resolved rendered command
+- notes, warnings, and rejection reasons
+- confirmation strength required
+
+### 7) Confirmation
+
+Confirmation requirements are policy-driven by proposal mode + risk:
+
+- Standard prompt for non-dangerous structured proposals
+- Strong `EXECUTE` for dangerous
+- Very strong `EXECUTE EXPERIMENTAL` for all experimental proposals
+
+### 8) Execution
+
+Execution happens only after confirmation and only from validated argv.
+
+- Regular commands use `subprocess.run(...)` with timeout.
+- `cd` is handled in-process so REPL session state (cwd) is preserved.
+
+## Module guide
+
+- `cli`
+  - Entry point, argument parsing, REPL loop, request orchestration, confirmation prompting.
+- `planner`
+  - Calls Ollama through client, parses JSON, validates schema, prefers structured rendering when possible.
+- `prompts`
+  - Builds system/user prompts and defines structured-family argument shapes expected from planner output.
+- `ollama_client`
+  - Thin client wrapper around Ollama chat API with JSON response contract and error normalization.
+- `models`
+  - Pydantic/domain models (`Proposal`, `ValidationResult`, enums) and mode/schema constraints.
+- `command_registry`
+  - Curated command support source of truth: risk levels, allowed flags, detection modes, operand rules, path semantics.
+- `structured_commands`
+  - Typed argument schemas, structured argument validation, deterministic rendering to argv, and raw-to-structured parsing helpers.
+- `validator`
+  - Central gatekeeper: validates proposal structure, enforces registry constraints, evaluates hazards, computes acceptance/risk/warnings, and returns safe argv.
+- `policies`
+  - Runtime risk policy (`safe` / `write` / `dangerous`), dangerous-command toggle, confirmation-level calculation.
+- `renderer`
+  - Human-facing proposal preview formatting.
+- `executor`
+  - Executes validated argv (or internal `cd`) and returns structured execution result.
+
+## Safety and validation model
+
+Safety is layered, not a single check.
+
+### Core safety properties
+
+- **Curated allowlist:** base command must be present in `command_registry`.
+- **Deterministic structured rendering:** in `structured` mode, Python builds final argv.
+- **Shell hazard blocking:** rejects chaining, redirection, subshell constructs, etc.
+- **Command-shape checks:** flags/operands validated per command spec.
+- **Path controls:** optional root scoping with `OTERMINUS_ALLOWED_ROOTS`.
+- **Risk gating:** policy can block write/dangerous actions.
+- **Human confirmation:** always required, stronger for higher risk and experimental mode.
+
+### Validator vs policy (important distinction)
+
+- **Validator** answers: “Is this proposal technically and structurally acceptable in curated oterminus semantics?”
+  - Includes command shape, allowlist membership, hazard checks, path constraints, and rendered argv availability.
+
+- **Policy** answers: “Given a structurally valid proposal, is this risk level allowed right now?”
+  - Depends on runtime settings (`mode`, `allow_dangerous`, and roots).
+
+So: validator enforces *what is valid*; policy enforces *what is permitted now*.
+
+## Proposal modes
+
+### `structured` (primary)
+
+Preferred and authoritative mode.
+
+- Requires `command_family` and `arguments`
+- Arguments are validated against typed schemas
+- Final command is rendered deterministically in Python
+- Raw `command` is deprecated compatibility metadata if present and is not execution authority
+
+### `experimental` (constrained fallback)
+
+Used when a request is still a single curated command, but does not fit current structured schemas.
+
+- Requires `command`
+- Still constrained by registry/validator checks
+- Requires very strong confirmation phrase (`EXECUTE EXPERIMENTAL`)
+
+### Legacy `raw` compatibility (transitional)
+
+Legacy payloads may still appear from older planner behavior. They are normalized during parsing:
+
+- `mode: "raw"` is converted into current modes
+- If structured fields exist or raw command can be deterministically parsed, proposal becomes `structured`
+- Otherwise it is treated as `experimental`
+
+This compatibility path exists to ease transition and should not be treated as primary architecture.
+
+## Configuration
+
+Environment variables:
+
+- `OTERMINUS_MODEL` (default: `gemma4`)
+- `OTERMINUS_TIMEOUT_SECONDS` (default: `60`)
+- `OTERMINUS_POLICY_MODE` (`safe`, `write`, `dangerous`; default: `write`)
+- `OTERMINUS_ALLOW_DANGEROUS` (`true`/`false`; default: `false`)
+- `OTERMINUS_ALLOWED_ROOTS` (colon-separated absolute paths; optional)
+
+Examples:
+
+```bash
+export OTERMINUS_MODEL=gemma4
+export OTERMINUS_POLICY_MODE=write
+export OTERMINUS_ALLOW_DANGEROUS=false
+export OTERMINUS_ALLOWED_ROOTS=/workspace:/tmp/safe-area
+```
 
 ## Requirements
 
@@ -61,7 +251,9 @@ Experimental proposals require a stronger, separate confirmation phrase (`EXECUT
 - [Poetry](https://python-poetry.org/)
 - [Ollama](https://ollama.com/)
 
-## Setup (Poetry)
+## Local development
+
+### Setup (Poetry)
 
 ```bash
 poetry install
@@ -80,15 +272,15 @@ or:
 poetry run oterminus
 ```
 
-## Build and install as a global OS command
+### Build and install as a global OS command
 
-The package is already configured with a console entry point in `pyproject.toml`:
+The package is configured with a console entry point in `pyproject.toml`:
 
 - `oterminus = "oterminus.cli:main"`
 
-That means when you install the built wheel, your OS gets a globally accessible `oterminus` command on `PATH`.
+That means installing the wheel exposes `oterminus` on `PATH`.
 
-### 1) Build distributable artifacts
+#### 1) Build distributable artifacts
 
 ```bash
 poetry build
@@ -96,10 +288,10 @@ poetry build
 
 This creates:
 
-- `dist/*.whl` (wheel)
-- `dist/*.tar.gz` (source distribution)
+- `dist/*.whl`
+- `dist/*.tar.gz`
 
-### 2) Install globally
+#### 2) Install globally
 
 Recommended (isolated, cross-platform):
 
@@ -107,24 +299,24 @@ Recommended (isolated, cross-platform):
 pipx install dist/*.whl
 ```
 
-Alternative (system/user Python):
+Alternative:
 
 ```bash
 pip install --user dist/*.whl
 ```
 
-If your shell cannot find `oterminus`, ensure your user scripts/bin directory is on `PATH`:
+If your shell cannot find `oterminus`, ensure your scripts/bin directory is on `PATH`:
 
-- Linux/macOS (commonly): `~/.local/bin`
-- Windows (commonly): `%APPDATA%\Python\PythonXY\Scripts`
+- Linux/macOS: commonly `~/.local/bin`
+- Windows: commonly `%APPDATA%\Python\PythonXY\Scripts`
 
-### 3) Verify command availability
+#### 3) Verify command availability
 
 ```bash
 oterminus --help
 ```
 
-### 4) Upgrade after code changes
+#### 4) Upgrade after code changes
 
 ```bash
 poetry build
@@ -133,7 +325,7 @@ pipx install --force dist/*.whl
 
 (or reinstall with `pip install --user --upgrade dist/*.whl`)
 
-## Ollama setup
+### Ollama setup
 
 Start Ollama locally, then pull the default model:
 
@@ -142,27 +334,30 @@ ollama serve
 ollama pull gemma4
 ```
 
-Default model is `gemma4` and can be changed with:
+Use a different model with:
 
 ```bash
 export OTERMINUS_MODEL=<your_model>
 ```
 
-## Usage
+### CLI usage
 
-### Interactive REPL
+#### Interactive REPL
 
 ```bash
 poetry run oterminus
 ```
 
-Commands in REPL:
+REPL commands:
 
-- `help`: usage tip
-- `exit` / `quit`: leave REPL
-- direct shell commands like `ls -lh` or `cd src`: validated locally and executed without using Ollama
+- `help`
+- `exit` / `quit`
+- direct shell commands such as `ls -lh` or `cd src`
 
-### One-shot mode
+In REPL mode, `cd` updates the running process working directory for subsequent requests.
+In one-shot mode, `cd` only affects that `oterminus` process.
+
+#### One-shot mode
 
 ```bash
 poetry run oterminus "show me all files in this directory with their sizes"
@@ -172,149 +367,35 @@ poetry run oterminus "find all .py files under this directory"
 poetry run oterminus "ls -lh"
 ```
 
-In REPL mode, `cd` updates the `oterminus` process working directory so later natural-language requests run relative to the new location.
-In one-shot mode, `cd` only affects that single `oterminus` process and cannot change the parent shell directory.
-
-## Structured planning support
-
-The planner may return:
-
-- a structured proposal with `mode: "structured"`, `command_family`, and `arguments`
-- an experimental raw proposal with `mode: "experimental"` and a `command` string
-
-Planner behavior is intentionally structured-first:
-
-- if a request cleanly maps to a supported structured family, the planner should emit `mode: "structured"`
-- if a request stays within the curated allowlist but does not fit the structured schema, the planner should emit `mode: "experimental"`
-- parser normalization upgrades simple command strings (including legacy `mode: "raw"` payloads) into deterministic structured rendering when possible
-- legacy `mode: "raw"` payloads that cannot be structured are normalized to `mode: "experimental"` with a deprecation note
-
-When a structured proposal uses one of the supported families, Python validates the argument shape and renders the exact command locally. If a legacy raw `command` string is also present, it is ignored for execution and may be surfaced as a warning when it differs from deterministic rendering.
-
-Supported structured families and argument shapes:
-
-- `ls`: `path`, `long`, `human_readable`, `all`, `recursive`
-- `pwd`: no arguments
-- `mkdir`: `path`, `parents`
-- `chmod`: `path`, `mode` (numeric only, such as `755`)
-- `find`: `path`, `name`
-- `cp`: `source`, `destination`, `recursive`, `preserve`, `no_clobber`
-- `mv`: `source`, `destination`, `no_clobber`
-- `du`: `path`, `human_readable`, `summarize`, `max_depth`
-- `stat`: `path`, `dereference`, `verbose`
-- `head`: `paths`, `lines`, `bytes`
-- `tail`: `paths`, `lines`, `bytes`
-- `grep`: `pattern`, `paths`, `ignore_case`, `line_number`, `fixed_strings`, `recursive`, `files_with_matches`, `max_count`
-- `cat`: `paths`
-- `open`: `path`, `reveal`
-- `file`: `paths`, `brief`
-
-Example structured proposals:
-
-```json
-{
-  "action_type": "shell_command",
-  "mode": "structured",
-  "command_family": "ls",
-  "arguments": {
-    "path": ".",
-    "long": true,
-    "human_readable": true,
-    "all": false,
-    "recursive": false
-  },
-  "summary": "List files with sizes",
-  "explanation": "Use a long listing in the current directory",
-  "risk_level": "safe",
-  "needs_confirmation": true,
-  "notes": []
-}
-```
-
-```json
-{
-  "action_type": "shell_command",
-  "mode": "structured",
-  "command_family": "find",
-  "arguments": {
-    "path": ".",
-    "name": "*.py"
-  },
-  "summary": "Find Python files",
-  "explanation": "Search recursively under the current directory",
-  "risk_level": "safe",
-  "needs_confirmation": true,
-  "notes": []
-}
-```
-
-Structured support is intentionally narrow in this step. Pipelines, redirection, multi-command execution, and additional command families are still blocked by validation; experimental mode is a stricter fallback lane for single curated commands, not an unrestricted shell escape hatch.
-
-Examples of newly supported structured intents:
-
-```bash
-poetry run oterminus "copy notes.txt to archive/notes.txt without overwriting"
-poetry run oterminus "show disk usage summary for this folder in human-readable form"
-poetry run oterminus "show the first 20 lines of README.md"
-poetry run oterminus "search recursively for TODO in src with line numbers"
-poetry run oterminus "open the current folder in Finder"
-poetry run oterminus "identify the file type of README.md"
-```
-
-## Experimental mode
-
-`experimental` mode exists for requests that do not fit the supported structured families but still map to a single curated command that Python can validate.
-
-What makes it distinct:
-
-- CLI preview labels the proposal as experimental
-- preview shows mode, risk level, experimental status, warnings, and confirmation strength
-- confirmation is stronger than normal execution and requires `EXECUTE EXPERIMENTAL`
-- validator still applies the command allowlist, risk policy, and allowed-root checks
-- experimental proposals are rejected if deterministic structured rendering was actually available
-
-Current hard limits in experimental mode:
-
-- no pipelines
-- no redirection
-- no command chaining
-- no background execution
-- no command substitution
-- no multiline command text
-- no obviously dangerous shell metacharacter paths around those constructs
-- experimental raw-command validation is still registry-driven, including supported-flag checks and operand-count checks
-- `open` is limited to local targets; URL-style operands are rejected
-
-Experimental mode is intentionally stricter, not looser. It broadens proposal coverage a bit without turning `oterminus` into a general shell agent.
-
-## Environment variables
-
-- `OTERMINUS_MODEL` (default: `gemma4`)
-- `OTERMINUS_TIMEOUT_SECONDS` (default: `60`)
-- `OTERMINUS_POLICY_MODE` (default: `write`)
-- `OTERMINUS_ALLOW_DANGEROUS` (default: `false`)
-- `OTERMINUS_ALLOWED_ROOTS` (colon-delimited list of absolute paths)
-
 ## Testing
+
+Run all tests:
 
 ```bash
 poetry run pytest
 ```
 
-Most tests do not require Ollama running.
+Targeted examples:
 
-## Limitations (v1)
+```bash
+poetry run pytest tests/test_planner_parsing.py
+poetry run pytest tests/test_validator.py
+poetry run pytest tests/test_structured_commands.py
+```
 
-- Curated command allowlist for safety (not arbitrary shell).
-- Single command proposals only; no pipelines/chaining/redirection/background execution/command substitution.
-- Structured rendering is intentionally curated rather than exhaustive; each family only exposes a narrow, deterministic argument shape.
-- Experimental mode is still limited to the same curated base-command registry and stronger confirmation.
-- No remote/system integrations.
-- Not a general-purpose chatbot.
+## Limitations / future improvements
 
-## Future ideas
+Current intentional limitations:
 
-- richer policy packs by environment
-- command templating and explainability improvements
-- structured file actions beyond plain shell commands
-- shell-specific compatibility layers
+- Single-action proposals only (no multi-step workflows)
+- Structured coverage is intentionally narrow and curated
+- Experimental mode still allows only constrained single commands
+- No unrestricted shell execution, pipelines, or redirection
+- Model quality depends on local Ollama model behavior and prompt adherence
+
+Potential future improvements:
+
+- Expand structured schemas to reduce experimental fallback frequency
+- Improve cross-platform command-family handling (for non-macOS `open` equivalents)
+- Add richer per-command policy controls and audit logging
+- Provide clearer UX around policy-denied but structurally-valid proposals
