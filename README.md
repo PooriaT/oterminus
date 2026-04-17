@@ -7,22 +7,25 @@ It is intentionally constrained to terminal and local filesystem workflows. The 
 
 ## Design philosophy
 
-- **Control stays in Python**: Ollama only proposes structured actions.
+- **Control stays in Python**: Ollama only proposes actions; Python owns validation, rendering, and execution.
 - **Safety-first**: validation and policy checks run before any command execution.
 - **Preview-before-run**: users see summary, exact command, risk level, and warnings first.
 - **Extensible architecture**: planner, validator, renderer, policies, and executor are separate modules.
 - **Registry-driven command support**: a shared command registry defines the curated v1 command set, risk levels, and direct-command eligibility.
+- **Structured-plan ready**: proposals can carry both today's raw command string and future structured planning fields like `mode`, `command_family`, and `arguments`.
 
 ## Architecture (v1)
 
 1. CLI receives input (one-shot or REPL).
 2. If the input already looks like a shell command such as `ls -lh` or `cd src`, `oterminus` builds the proposal locally and skips the planner.
 3. Otherwise, the planner sends system + user prompt to Ollama.
-4. Ollama returns JSON proposal for one shell command.
+4. Ollama returns a JSON proposal for one shell action.
 5. Validator checks structure, the registry-backed allowlist, shell hazards, and policy compatibility.
 6. Renderer shows clear command preview.
 7. User explicitly confirms.
 8. Executor runs the command and returns output + exit code.
+
+The current executable path still requires a raw `command` string. Structured-only proposals can already be parsed, validated, and previewed, which keeps the architecture ready for a future deterministic command renderer without breaking current behavior.
 
 ## Safety model
 

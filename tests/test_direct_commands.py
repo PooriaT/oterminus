@@ -1,10 +1,13 @@
 from oterminus.direct_commands import detect_direct_command
+from oterminus.models import ProposalMode
 
 
 def test_detect_direct_command_for_cd() -> None:
     proposal = detect_direct_command("cd src")
 
     assert proposal is not None
+    assert proposal.mode == ProposalMode.RAW
+    assert proposal.command_family == "cd"
     assert proposal.command == "cd src"
 
 
