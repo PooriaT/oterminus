@@ -79,19 +79,34 @@ poetry build
 pipx install --force dist/*.whl
 ```
 
-## Deploy / runtime setup
+## First Run & Setup
 
-Start Ollama locally and pull the default model:
+`oterminus` depends on Ollama and a local model.
+
+On startup, `oterminus` validates prerequisites in this order:
+
+1. Ollama CLI is installed (`ollama` is on `PATH`).
+2. Ollama service is running (start with `ollama serve`).
+3. At least one local model exists (`ollama list`).
+
+If any prerequisite is missing, `oterminus` prints a clear message and exits.
+
+### First run behavior
+
+If models are available and no model is configured yet, `oterminus` shows a numbered model list and asks you to choose one. The selected model is saved and reused automatically on later runs.
+
+If the saved model is later removed from Ollama, `oterminus` warns you and asks you to select again.
+
+### Config location
+
+Persistent user config is stored at:
+
+- `~/.oterminus/config.json`
+- or `OTERMINUS_CONFIG_PATH` when set
+
+Example Ollama setup:
 
 ```bash
 ollama serve
-ollama pull gemma4
-```
-
-When `oterminus` starts, it first checks that Ollama is installed. If it is, `oterminus` runs `ollama list`, shows the locally installed models, and asks you to select one before continuing.
-
-If Ollama is not installed, or if no models are installed, `oterminus` prints a message and exits. Install Ollama and pull a model first, for example:
-
-```bash
 ollama pull gemma4
 ```
