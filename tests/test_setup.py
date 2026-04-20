@@ -70,6 +70,21 @@ def test_missing_configured_model_reprompts(monkeypatch, tmp_path) -> None:
     assert saved["model"] == "gemma3:latest"
 
 
+def test_config_save_failure_raises_setup_error(monkeypatch, tmp_path) -> None:
+    config_path = tmp_path / "config.json"
+    monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(config_path))
+
+    def failing_save(_: dict[str, object]) -> None:
+        raise PermissionError("read-only filesystem")
+
+    monkeypatch.setattr(setup, "save_config", failing_save)
+
+    with pytest.raises(setup.SetupError) as exc:
+        setup.run_first_time_setup(["gemma3:latest", "llama3.2:latest"], input_fn=lambda _: "1")
+
+    assert "Failed to save setup configuration" in str(exc.value)
+
+
 def test_get_available_models_raises_on_ollama_error(monkeypatch) -> None:
     def fake_run(*args, **kwargs):
         return DummyCompletedProcess(returncode=1, stderr="connection refused")
