@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import shutil
 import subprocess
 
 from ollama import Client, ResponseError
@@ -7,6 +8,10 @@ from ollama import Client, ResponseError
 
 class OllamaClientError(RuntimeError):
     pass
+
+
+def is_ollama_installed() -> bool:
+    return shutil.which("ollama") is not None
 
 
 class OllamaPlannerClient:

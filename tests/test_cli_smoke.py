@@ -61,6 +61,7 @@ def test_main_exits_when_no_models_are_installed(monkeypatch, capsys) -> None:
     from oterminus.cli import main
 
     monkeypatch.setattr("oterminus.cli.configure_logging", lambda verbose: None)
+    monkeypatch.setattr("oterminus.cli.is_ollama_installed", lambda: True)
     monkeypatch.setattr("oterminus.cli.load_config", Mock())
     monkeypatch.setattr("oterminus.cli.resolve_model_name", lambda: None)
 
@@ -68,6 +69,18 @@ def test_main_exits_when_no_models_are_installed(monkeypatch, capsys) -> None:
 
     assert code == 1
     assert "No Ollama models are installed on this machine." in capsys.readouterr().out
+
+
+def test_main_exits_when_ollama_is_not_installed(monkeypatch, capsys) -> None:
+    from oterminus.cli import main
+
+    monkeypatch.setattr("oterminus.cli.configure_logging", lambda verbose: None)
+    monkeypatch.setattr("oterminus.cli.is_ollama_installed", lambda: False)
+
+    code = main(["--verbose"])
+
+    assert code == 1
+    assert "Ollama is not installed on this machine." in capsys.readouterr().out
 
 
 def test_main_uses_selected_model(monkeypatch) -> None:
@@ -82,6 +95,7 @@ def test_main_uses_selected_model(monkeypatch) -> None:
     config.timeout_seconds = 45
 
     monkeypatch.setattr("oterminus.cli.configure_logging", lambda verbose: None)
+    monkeypatch.setattr("oterminus.cli.is_ollama_installed", lambda: True)
     monkeypatch.setattr("oterminus.cli.load_config", lambda: config)
     monkeypatch.setattr("oterminus.cli.resolve_model_name", lambda: "llama3.2:latest")
     monkeypatch.setattr("oterminus.cli.OllamaPlannerClient", planner_client)

@@ -9,7 +9,7 @@ from oterminus.config import load_config
 from oterminus.direct_commands import detect_direct_command
 from oterminus.executor import Executor
 from oterminus.logging_utils import configure_logging
-from oterminus.ollama_client import OllamaClientError, OllamaPlannerClient, list_installed_models
+from oterminus.ollama_client import OllamaClientError, OllamaPlannerClient, is_ollama_installed, list_installed_models
 from oterminus.planner import Planner, PlannerError
 from oterminus.policies import ConfirmationLevel, confirmation_level
 from oterminus.renderer import render_preview
@@ -140,6 +140,10 @@ def repl(planner: Planner, validator: Validator, executor: Executor) -> int:
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv or sys.argv[1:])
     configure_logging(verbose=args.verbose)
+
+    if not is_ollama_installed():
+        print("Ollama is not installed on this machine. Install Ollama first, then run oterminus again.")
+        return 1
 
     config = load_config()
     try:

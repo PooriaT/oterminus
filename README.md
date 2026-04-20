@@ -88,9 +88,9 @@ ollama serve
 ollama pull gemma4
 ```
 
-When `oterminus` starts, it runs `ollama list`, shows the locally installed models, and asks you to select one before continuing.
+When `oterminus` starts, it first checks that Ollama is installed. If it is, `oterminus` runs `ollama list`, shows the locally installed models, and asks you to select one before continuing.
 
-If no models are installed, `oterminus` prints a message and exits. Install one first, for example:
+If Ollama is not installed, or if no models are installed, `oterminus` prints a message and exits. Install Ollama and pull a model first, for example:
 
 ```bash
 ollama pull gemma4
