@@ -73,7 +73,12 @@ def run_first_time_setup(models: list[str], input_fn: Callable[[str], str] = inp
 
     selected_model = _choose_model(models, input_fn=input_fn)
     config["model"] = selected_model
-    save_config(config)
+    try:
+        save_config(config)
+    except OSError as exc:
+        raise SetupError(
+            "Failed to save setup configuration. Check write permissions for your config path and try again."
+        ) from exc
     print(f"Saved model: {selected_model}")
     return selected_model
 
