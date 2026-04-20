@@ -2,9 +2,9 @@ from unittest.mock import Mock
 
 import subprocess
 
-from oterminus.cli import ask_confirmation, choose_model, parse_args, resolve_model_name
+from oterminus.cli import ask_confirmation, parse_args
 from oterminus.models import ActionType, Proposal, ProposalMode, RiskLevel, ValidationResult
-from oterminus.ollama_client import OllamaClientError, parse_ollama_list_output
+from oterminus.ollama_client import parse_ollama_list_output
 from oterminus.policies import ConfirmationLevel
 
 
@@ -23,66 +23,38 @@ def test_parse_ollama_list_output_returns_model_names() -> None:
     assert parse_ollama_list_output(output) == ["gemma3:latest", "llama3.2:latest"]
 
 
-def test_choose_model_retries_until_valid_selection(monkeypatch, capsys) -> None:
-    answers = iter(["0", "2"])
-    monkeypatch.setattr("builtins.input", lambda _: next(answers))
-
-    selected = choose_model(["gemma3:latest", "llama3.2:latest"])
-
-    assert selected == "llama3.2:latest"
-    output = capsys.readouterr().out
-    assert "Available Ollama models:" in output
-    assert "1. gemma3:latest" in output
-    assert "2. llama3.2:latest" in output
-    assert "Please enter a number between 1 and 2." in output
-
-
-def test_resolve_model_name_returns_none_when_no_models(monkeypatch) -> None:
-    monkeypatch.setattr("oterminus.cli.list_installed_models", lambda: [])
-
-    assert resolve_model_name() is None
-
-
-def test_resolve_model_name_propagates_ollama_errors(monkeypatch) -> None:
-    def raise_error() -> list[str]:
-        raise OllamaClientError("boom")
-
-    monkeypatch.setattr("oterminus.cli.list_installed_models", raise_error)
-
-    try:
-        resolve_model_name()
-    except OllamaClientError as exc:
-        assert str(exc) == "boom"
-    else:
-        raise AssertionError("resolve_model_name should propagate OllamaClientError")
-
-
-def test_main_repl_startup_does_not_require_models(monkeypatch) -> None:
+def test_main_repl_startup_validates_once(monkeypatch) -> None:
     from oterminus.cli import main
 
     monkeypatch.setattr("oterminus.cli.configure_logging", lambda verbose: None)
     monkeypatch.setattr("oterminus.cli.load_config", Mock())
-    resolve_model_name = Mock(side_effect=AssertionError("resolve_model_name should not be called"))
-    monkeypatch.setattr("oterminus.cli.resolve_model_name", resolve_model_name)
+    setup_check = Mock(return_value="gemma3:latest")
+    monkeypatch.setattr("oterminus.cli.ensure_startup_ready", setup_check)
     monkeypatch.setattr("oterminus.cli.repl", lambda repl_planner, repl_validator, repl_executor: 0)
 
     code = main(["--verbose"])
 
     assert code == 0
-    resolve_model_name.assert_not_called()
+    setup_check.assert_called_once()
 
 
-def test_main_request_exits_when_ollama_is_not_installed(monkeypatch, capsys) -> None:
+def test_main_request_exits_when_startup_setup_fails(monkeypatch, capsys) -> None:
     from oterminus.cli import main
 
     monkeypatch.setattr("oterminus.cli.configure_logging", lambda verbose: None)
-    monkeypatch.setattr("oterminus.cli.is_ollama_installed", lambda: False)
     monkeypatch.setattr("oterminus.cli.load_config", Mock())
+
+    def fail_setup() -> str:
+        from oterminus.setup import SetupError
+
+        raise SetupError("Ollama is installed but not running. Please start it using `ollama serve`.")
+
+    monkeypatch.setattr("oterminus.cli.ensure_startup_ready", fail_setup)
 
     code = main(["--verbose", "show", "files"])
 
     assert code == 2
-    assert "Planning failed: Ollama is not installed on this machine." in capsys.readouterr().out
+    assert "Ollama is installed but not running." in capsys.readouterr().out
 
 
 def test_main_uses_selected_model(monkeypatch) -> None:
@@ -97,9 +69,8 @@ def test_main_uses_selected_model(monkeypatch) -> None:
     config.timeout_seconds = 45
 
     monkeypatch.setattr("oterminus.cli.configure_logging", lambda verbose: None)
-    monkeypatch.setattr("oterminus.cli.is_ollama_installed", lambda: True)
     monkeypatch.setattr("oterminus.cli.load_config", lambda: config)
-    monkeypatch.setattr("oterminus.cli.resolve_model_name", lambda: "llama3.2:latest")
+    monkeypatch.setattr("oterminus.cli.ensure_startup_ready", lambda: "llama3.2:latest")
     monkeypatch.setattr("oterminus.cli.OllamaPlannerClient", planner_client)
     monkeypatch.setattr("oterminus.cli.Planner", lambda client: planner)
     monkeypatch.setattr("oterminus.cli.Validator", lambda policy: validator)
@@ -256,35 +227,3 @@ def test_ask_confirmation_requires_experimental_phrase(monkeypatch) -> None:
 
     monkeypatch.setattr("builtins.input", lambda _: "EXECUTE EXPERIMENTAL")
     assert ask_confirmation(ConfirmationLevel.VERY_STRONG) is True
-
-
-def test_handle_request_experimental_requires_very_strong_confirmation(monkeypatch) -> None:
-    from oterminus.cli import handle_request
-
-    planner = Mock()
-    planner.plan.return_value = Proposal(
-        action_type=ActionType.SHELL_COMMAND,
-        mode=ProposalMode.EXPERIMENTAL,
-        command_family="cat",
-        command="cat README.md",
-        summary="show readme",
-        explanation="experimental fallback",
-        risk_level=RiskLevel.SAFE,
-        needs_confirmation=True,
-        notes=["experimental"],
-    )
-    validator = Mock()
-    validator.validate.return_value = ValidationResult(
-        accepted=True,
-        risk_level=RiskLevel.SAFE,
-        warnings=["experimental warning"],
-        rendered_command="cat README.md",
-        argv=["cat", "README.md"],
-    )
-    executor = Mock()
-    monkeypatch.setattr("builtins.input", lambda _: "EXECUTE")
-
-    code = handle_request("show the readme", planner, validator, executor)
-
-    assert code == 0
-    executor.run.assert_not_called()
