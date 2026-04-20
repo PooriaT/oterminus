@@ -1,10 +1,17 @@
 from __future__ import annotations
 
+import shutil
+import subprocess
+
 from ollama import Client, ResponseError
 
 
 class OllamaClientError(RuntimeError):
     pass
+
+
+def is_ollama_installed() -> bool:
+    return shutil.which("ollama") is not None
 
 
 class OllamaPlannerClient:
@@ -34,3 +41,40 @@ class OllamaPlannerClient:
         if not content:
             raise OllamaClientError("Ollama returned an empty planning response.")
         return content
+
+
+def list_installed_models() -> list[str]:
+    try:
+        result = subprocess.run(
+            ["ollama", "list"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except OSError as exc:
+        raise OllamaClientError(
+            "Unable to run `ollama list`. Ensure Ollama is installed and available on PATH."
+        ) from exc
+
+    if result.returncode != 0:
+        message = (result.stderr or result.stdout).strip() or "`ollama list` failed."
+        raise OllamaClientError(message)
+
+    return parse_ollama_list_output(result.stdout)
+
+
+def parse_ollama_list_output(output: str) -> list[str]:
+    lines = [line.strip() for line in output.splitlines() if line.strip()]
+    if not lines:
+        return []
+
+    if lines[0].lower().startswith("name"):
+        lines = lines[1:]
+
+    models: list[str] = []
+    for line in lines:
+        parts = line.split()
+        if parts:
+            models.append(parts[0])
+
+    return list(dict.fromkeys(models))

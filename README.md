@@ -19,7 +19,6 @@ It is built for local command-line and filesystem workflows with a safety-first 
 
 Configure behavior using environment variables:
 
-- `OTERMINUS_MODEL` (default: `gemma4`)
 - `OTERMINUS_TIMEOUT_SECONDS` (default: `60`)
 - `OTERMINUS_POLICY_MODE` (`safe`, `write`, `dangerous`; default: `write`)
 - `OTERMINUS_ALLOW_DANGEROUS` (`true`/`false`; default: `false`)
@@ -28,7 +27,6 @@ Configure behavior using environment variables:
 Example:
 
 ```bash
-export OTERMINUS_MODEL=gemma4
 export OTERMINUS_POLICY_MODE=write
 export OTERMINUS_ALLOW_DANGEROUS=false
 export OTERMINUS_ALLOWED_ROOTS=/workspace:/tmp/safe-area
@@ -90,8 +88,10 @@ ollama serve
 ollama pull gemma4
 ```
 
-If you want to use a different model:
+When `oterminus` starts, it first checks that Ollama is installed. If it is, `oterminus` runs `ollama list`, shows the locally installed models, and asks you to select one before continuing.
+
+If Ollama is not installed, or if no models are installed, `oterminus` prints a message and exits. Install Ollama and pull a model first, for example:
 
 ```bash
-export OTERMINUS_MODEL=<your_model>
+ollama pull gemma4
 ```

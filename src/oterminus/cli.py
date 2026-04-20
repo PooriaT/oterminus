@@ -9,7 +9,7 @@ from oterminus.config import load_config
 from oterminus.direct_commands import detect_direct_command
 from oterminus.executor import Executor
 from oterminus.logging_utils import configure_logging
-from oterminus.ollama_client import OllamaClientError, OllamaPlannerClient
+from oterminus.ollama_client import OllamaClientError, OllamaPlannerClient, is_ollama_installed, list_installed_models
 from oterminus.planner import Planner, PlannerError
 from oterminus.policies import ConfirmationLevel, confirmation_level
 from oterminus.renderer import render_preview
@@ -39,6 +39,27 @@ def ask_confirmation(level: ConfirmationLevel) -> bool:
     if level == ConfirmationLevel.STRONG:
         return answer == "EXECUTE"
     return answer.lower() in {"y", "yes"}
+
+
+def choose_model(models: list[str]) -> str:
+    print("Available Ollama models:")
+    for index, model in enumerate(models, start=1):
+        print(f"{index}. {model}")
+
+    while True:
+        answer = input("Select a model by number: ").strip()
+        if answer.isdigit():
+            selection = int(answer)
+            if 1 <= selection <= len(models):
+                return models[selection - 1]
+        print(f"Please enter a number between 1 and {len(models)}.")
+
+
+def resolve_model_name() -> str | None:
+    models = list_installed_models()
+    if not models:
+        return None
+    return choose_model(models)
 
 
 def handle_request(request: str, planner: Planner, validator: Validator, executor: Executor) -> int:
@@ -120,8 +141,22 @@ def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv or sys.argv[1:])
     configure_logging(verbose=args.verbose)
 
+    if not is_ollama_installed():
+        print("Ollama is not installed on this machine. Install Ollama first, then run oterminus again.")
+        return 1
+
     config = load_config()
-    client = OllamaPlannerClient(model=config.model_name)
+    try:
+        model_name = resolve_model_name()
+    except OllamaClientError as exc:
+        print(f"Unable to determine installed Ollama models: {exc}")
+        return 1
+
+    if model_name is None:
+        print("No Ollama models are installed on this machine. Pull a model with `ollama pull <model>` and try again.")
+        return 1
+
+    client = OllamaPlannerClient(model=model_name)
     planner = Planner(client)
     validator = Validator(config.policy)
     executor = Executor(timeout_seconds=config.timeout_seconds)
