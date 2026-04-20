@@ -57,30 +57,32 @@ def test_resolve_model_name_propagates_ollama_errors(monkeypatch) -> None:
         raise AssertionError("resolve_model_name should propagate OllamaClientError")
 
 
-def test_main_exits_when_no_models_are_installed(monkeypatch, capsys) -> None:
+def test_main_repl_startup_does_not_require_models(monkeypatch) -> None:
     from oterminus.cli import main
 
     monkeypatch.setattr("oterminus.cli.configure_logging", lambda verbose: None)
-    monkeypatch.setattr("oterminus.cli.is_ollama_installed", lambda: True)
     monkeypatch.setattr("oterminus.cli.load_config", Mock())
-    monkeypatch.setattr("oterminus.cli.resolve_model_name", lambda: None)
+    resolve_model_name = Mock(side_effect=AssertionError("resolve_model_name should not be called"))
+    monkeypatch.setattr("oterminus.cli.resolve_model_name", resolve_model_name)
+    monkeypatch.setattr("oterminus.cli.repl", lambda repl_planner, repl_validator, repl_executor: 0)
 
     code = main(["--verbose"])
 
-    assert code == 1
-    assert "No Ollama models are installed on this machine." in capsys.readouterr().out
+    assert code == 0
+    resolve_model_name.assert_not_called()
 
 
-def test_main_exits_when_ollama_is_not_installed(monkeypatch, capsys) -> None:
+def test_main_request_exits_when_ollama_is_not_installed(monkeypatch, capsys) -> None:
     from oterminus.cli import main
 
     monkeypatch.setattr("oterminus.cli.configure_logging", lambda verbose: None)
     monkeypatch.setattr("oterminus.cli.is_ollama_installed", lambda: False)
+    monkeypatch.setattr("oterminus.cli.load_config", Mock())
 
-    code = main(["--verbose"])
+    code = main(["--verbose", "show", "files"])
 
-    assert code == 1
-    assert "Ollama is not installed on this machine." in capsys.readouterr().out
+    assert code == 2
+    assert "Planning failed: Ollama is not installed on this machine." in capsys.readouterr().out
 
 
 def test_main_uses_selected_model(monkeypatch) -> None:
@@ -102,9 +104,15 @@ def test_main_uses_selected_model(monkeypatch) -> None:
     monkeypatch.setattr("oterminus.cli.Planner", lambda client: planner)
     monkeypatch.setattr("oterminus.cli.Validator", lambda policy: validator)
     monkeypatch.setattr("oterminus.cli.Executor", lambda timeout_seconds: executor)
-    monkeypatch.setattr("oterminus.cli.repl", lambda repl_planner, repl_validator, repl_executor: 17)
+    monkeypatch.setattr(
+        "oterminus.cli.handle_request",
+        lambda request, planner_factory, req_validator, req_executor: (
+            planner_factory().plan(request),
+            17,
+        )[1],
+    )
 
-    code = main(["--verbose"])
+    code = main(["--verbose", "show", "files"])
 
     assert code == 17
     planner_client.assert_called_once_with(model="llama3.2:latest")
