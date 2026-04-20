@@ -4,6 +4,7 @@ import argparse
 import logging
 import subprocess
 import sys
+from collections.abc import Callable
 
 from oterminus.config import load_config
 from oterminus.direct_commands import detect_direct_command
@@ -62,12 +63,15 @@ def resolve_model_name() -> str | None:
     return choose_model(models)
 
 
-def handle_request(request: str, planner: Planner, validator: Validator, executor: Executor) -> int:
+def handle_request(
+    request: str, planner_factory: Planner | Callable[[], Planner], validator: Validator, executor: Executor
+) -> int:
     LOGGER.info("request=%s", request)
 
     proposal = detect_direct_command(request)
     try:
         if proposal is None:
+            planner = planner_factory if hasattr(planner_factory, "plan") else planner_factory()
             proposal = planner.plan(request)
     except (PlannerError, OllamaClientError) as exc:
         print(f"Planning failed: {exc}")
@@ -114,7 +118,7 @@ def handle_request(request: str, planner: Planner, validator: Validator, executo
     return result.returncode
 
 
-def repl(planner: Planner, validator: Validator, executor: Executor) -> int:
+def repl(planner_factory: Planner | Callable[[], Planner], validator: Validator, executor: Executor) -> int:
     print("oterminus REPL. Type 'help' for guidance, 'exit' or 'quit' to leave.")
     while True:
         try:
@@ -134,37 +138,44 @@ def repl(planner: Planner, validator: Validator, executor: Executor) -> int:
             )
             continue
 
-        handle_request(request, planner, validator, executor)
+        handle_request(request, planner_factory, validator, executor)
 
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv or sys.argv[1:])
     configure_logging(verbose=args.verbose)
 
-    if not is_ollama_installed():
-        print("Ollama is not installed on this machine. Install Ollama first, then run oterminus again.")
-        return 1
-
     config = load_config()
-    try:
-        model_name = resolve_model_name()
-    except OllamaClientError as exc:
-        print(f"Unable to determine installed Ollama models: {exc}")
-        return 1
-
-    if model_name is None:
-        print("No Ollama models are installed on this machine. Pull a model with `ollama pull <model>` and try again.")
-        return 1
-
-    client = OllamaPlannerClient(model=model_name)
-    planner = Planner(client)
     validator = Validator(config.policy)
     executor = Executor(timeout_seconds=config.timeout_seconds)
+    planner: Planner | None = None
+
+    def get_planner() -> Planner:
+        nonlocal planner
+        if planner is not None:
+            return planner
+
+        if not is_ollama_installed():
+            raise OllamaClientError("Ollama is not installed on this machine. Install Ollama first, then run oterminus again.")
+
+        try:
+            model_name = resolve_model_name()
+        except OllamaClientError as exc:
+            raise OllamaClientError(f"Unable to determine installed Ollama models: {exc}") from exc
+
+        if model_name is None:
+            raise OllamaClientError(
+                "No Ollama models are installed on this machine. Pull a model with `ollama pull <model>` and try again."
+            )
+
+        client = OllamaPlannerClient(model=model_name)
+        planner = Planner(client)
+        return planner
 
     if args.request:
         request = " ".join(args.request)
-        return handle_request(request, planner, validator, executor)
-    return repl(planner, validator, executor)
+        return handle_request(request, get_planner, validator, executor)
+    return repl(get_planner, validator, executor)
 
 
 if __name__ == "__main__":
