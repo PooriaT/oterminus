@@ -1,0 +1,684 @@
+[
+  {
+    "id": "direct-ls-long-human",
+    "user_input": "ls -lh",
+    "expected_mode": "structured",
+    "expected_command_family": "ls",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "ls -l -h .",
+    "expected_argv": [
+      "ls",
+      "-l",
+      "-h",
+      "."
+    ]
+  },
+  {
+    "id": "direct-pwd",
+    "user_input": "pwd",
+    "expected_mode": "structured",
+    "expected_command_family": "pwd",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "pwd",
+    "expected_argv": [
+      "pwd"
+    ]
+  },
+  {
+    "id": "direct-cat-file",
+    "user_input": "cat README.md",
+    "expected_mode": "structured",
+    "expected_command_family": "cat",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "cat README.md",
+    "expected_argv": [
+      "cat",
+      "README.md"
+    ]
+  },
+  {
+    "id": "direct-find-python",
+    "user_input": "find . -name '*.py'",
+    "expected_mode": "structured",
+    "expected_command_family": "find",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "find . -name '*.py'",
+    "expected_argv": [
+      "find",
+      ".",
+      "-name",
+      "*.py"
+    ]
+  },
+  {
+    "id": "direct-grep-recursive",
+    "user_input": "grep -rin TODO src",
+    "expected_mode": "structured",
+    "expected_command_family": "grep",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "grep -i -n -r TODO src",
+    "expected_argv": [
+      "grep",
+      "-i",
+      "-n",
+      "-r",
+      "TODO",
+      "src"
+    ]
+  },
+  {
+    "id": "direct-cp-write",
+    "user_input": "cp -pn src.txt dst.txt",
+    "expected_mode": "structured",
+    "expected_command_family": "cp",
+    "expected_risk_level": "write",
+    "expected_acceptance": true,
+    "expected_rendered_command": "cp -p -n src.txt dst.txt",
+    "expected_argv": [
+      "cp",
+      "-p",
+      "-n",
+      "src.txt",
+      "dst.txt"
+    ]
+  },
+  {
+    "id": "direct-mv-write",
+    "user_input": "mv -n old.txt new.txt",
+    "expected_mode": "structured",
+    "expected_command_family": "mv",
+    "expected_risk_level": "write",
+    "expected_acceptance": true,
+    "expected_rendered_command": "mv -n old.txt new.txt",
+    "expected_argv": [
+      "mv",
+      "-n",
+      "old.txt",
+      "new.txt"
+    ]
+  },
+  {
+    "id": "direct-chmod-write",
+    "user_input": "chmod 755 run.sh",
+    "expected_mode": "structured",
+    "expected_command_family": "chmod",
+    "expected_risk_level": "write",
+    "expected_acceptance": true,
+    "expected_rendered_command": "chmod 755 run.sh",
+    "expected_argv": [
+      "chmod",
+      "755",
+      "run.sh"
+    ]
+  },
+  {
+    "id": "direct-mkdir-write",
+    "user_input": "mkdir -p tmp/build",
+    "expected_mode": "structured",
+    "expected_command_family": "mkdir",
+    "expected_risk_level": "write",
+    "expected_acceptance": true,
+    "expected_rendered_command": "mkdir -p tmp/build",
+    "expected_argv": [
+      "mkdir",
+      "-p",
+      "tmp/build"
+    ]
+  },
+  {
+    "id": "direct-open-local",
+    "user_input": "open .",
+    "expected_mode": "structured",
+    "expected_command_family": "open",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "open .",
+    "expected_argv": [
+      "open",
+      "."
+    ]
+  },
+  {
+    "id": "direct-open-url-blocked",
+    "user_input": "open https://example.com",
+    "expected_mode": "experimental",
+    "expected_command_family": "open",
+    "expected_risk_level": "safe",
+    "expected_acceptance": false,
+    "expected_rendered_command": "open https://example.com",
+    "expected_argv": [
+      "open",
+      "https://example.com"
+    ]
+  },
+  {
+    "id": "direct-chained-blocked",
+    "user_input": "ls && pwd",
+    "expected_mode": "experimental",
+    "expected_command_family": "ls",
+    "expected_risk_level": "safe",
+    "expected_acceptance": false,
+    "expected_rendered_command": "ls && pwd",
+    "expected_argv": [
+      "ls",
+      "&&",
+      "pwd"
+    ]
+  },
+  {
+    "id": "direct-background-blocked",
+    "user_input": "sleep 1 &",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "experimental",
+      "command_family": "sleep",
+      "command": "sleep 1 &",
+      "summary": "sleep",
+      "explanation": "run sleep",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "experimental",
+    "expected_command_family": "sleep",
+    "expected_risk_level": "dangerous",
+    "expected_acceptance": false,
+    "expected_rendered_command": "sleep 1 &",
+    "expected_argv": [
+      "sleep",
+      "1",
+      "&"
+    ]
+  },
+  {
+    "id": "direct-rm-dangerous-policy-block",
+    "user_input": "rm -rf tmp",
+    "expected_mode": "experimental",
+    "expected_command_family": "rm",
+    "expected_risk_level": "dangerous",
+    "expected_acceptance": false,
+    "expected_rendered_command": "rm -rf tmp",
+    "expected_argv": [
+      "rm",
+      "-rf",
+      "tmp"
+    ]
+  },
+  {
+    "id": "direct-sudo-dangerous-policy-block",
+    "user_input": "sudo ls",
+    "expected_mode": "experimental",
+    "expected_command_family": "sudo",
+    "expected_risk_level": "dangerous",
+    "expected_acceptance": false,
+    "expected_rendered_command": "sudo ls",
+    "expected_argv": [
+      "sudo",
+      "ls"
+    ]
+  },
+  {
+    "id": "direct-cd-experimental-allowed",
+    "user_input": "cd src",
+    "expected_mode": "experimental",
+    "expected_command_family": "cd",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "cd src",
+    "expected_argv": [
+      "cd",
+      "src"
+    ]
+  },
+  {
+    "id": "planner-structured-find",
+    "user_input": "find python files in this folder",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "find",
+      "arguments": {
+        "path": ".",
+        "name": "*.py"
+      },
+      "summary": "find python files",
+      "explanation": "use find",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "structured",
+    "expected_command_family": "find",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "find . -name '*.py'",
+    "expected_argv": [
+      "find",
+      ".",
+      "-name",
+      "*.py"
+    ]
+  },
+  {
+    "id": "planner-structured-grep",
+    "user_input": "search src for TODOs",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "grep",
+      "arguments": {
+        "pattern": "TODO",
+        "paths": [
+          "src"
+        ],
+        "ignore_case": false,
+        "line_number": true,
+        "fixed_strings": false,
+        "recursive": true,
+        "files_with_matches": false,
+        "max_count": 5
+      },
+      "summary": "find TODO",
+      "explanation": "use grep",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "structured",
+    "expected_command_family": "grep",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "grep -n -r -m 5 TODO src",
+    "expected_argv": [
+      "grep",
+      "-n",
+      "-r",
+      "-m",
+      "5",
+      "TODO",
+      "src"
+    ]
+  },
+  {
+    "id": "planner-raw-ls-normalized",
+    "user_input": "show files with sizes",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "command": "ls -lh",
+      "summary": "list files",
+      "explanation": "show details",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "structured",
+    "expected_command_family": "ls",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "ls -l -h .",
+    "expected_argv": [
+      "ls",
+      "-l",
+      "-h",
+      "."
+    ]
+  },
+  {
+    "id": "planner-experimental-stat-fallback",
+    "user_input": "show size as bytes exactly",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "experimental",
+      "command_family": "stat",
+      "command": "stat -f %z README.md",
+      "summary": "size",
+      "explanation": "custom stat format",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "experimental",
+    "expected_command_family": "stat",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "stat -f %z README.md",
+    "expected_argv": [
+      "stat",
+      "-f",
+      "%z",
+      "README.md"
+    ]
+  },
+  {
+    "id": "planner-experimental-when-structured-available-blocked",
+    "user_input": "please open this folder",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "experimental",
+      "command_family": "open",
+      "command": "open .",
+      "summary": "open folder",
+      "explanation": "raw mode",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "structured",
+    "expected_command_family": "open",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "open .",
+    "expected_argv": [
+      "open",
+      "."
+    ],
+    "optional_notes": "Planner normalization should coerce this to structured mode."
+  },
+  {
+    "id": "planner-unknown-family-rejected",
+    "user_input": "run a python script",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "experimental",
+      "command_family": "python",
+      "command": "python app.py",
+      "summary": "run python",
+      "explanation": "execute script",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "experimental",
+    "expected_command_family": "python",
+    "expected_risk_level": "dangerous",
+    "expected_acceptance": false,
+    "expected_rendered_command": "python app.py",
+    "expected_argv": [
+      "python",
+      "app.py"
+    ]
+  },
+  {
+    "id": "planner-structured-mkdir-write",
+    "user_input": "create build folder",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "mkdir",
+      "arguments": {
+        "path": "build",
+        "parents": true
+      },
+      "summary": "make folder",
+      "explanation": "mkdir",
+      "risk_level": "write",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "structured",
+    "expected_command_family": "mkdir",
+    "expected_risk_level": "write",
+    "expected_acceptance": true,
+    "expected_rendered_command": "mkdir -p build",
+    "expected_argv": [
+      "mkdir",
+      "-p",
+      "build"
+    ]
+  },
+  {
+    "id": "planner-structured-cp-write",
+    "user_input": "copy report",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "cp",
+      "arguments": {
+        "source": "report.txt",
+        "destination": "backup/report.txt",
+        "recursive": false,
+        "preserve": false,
+        "no_clobber": true
+      },
+      "summary": "copy report",
+      "explanation": "copy file",
+      "risk_level": "write",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "structured",
+    "expected_command_family": "cp",
+    "expected_risk_level": "write",
+    "expected_acceptance": true,
+    "expected_rendered_command": "cp -n report.txt backup/report.txt",
+    "expected_argv": [
+      "cp",
+      "-n",
+      "report.txt",
+      "backup/report.txt"
+    ]
+  },
+  {
+    "id": "planner-structured-open-url-parse-fails",
+    "user_input": "could you open the project website",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "experimental",
+      "command_family": "open",
+      "command": "open https://example.com",
+      "summary": "open url",
+      "explanation": "fallback",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_planner_error_contains": "path must refer to a local filesystem target"
+  },
+  {
+    "id": "planner-direct-command-text-not-detected",
+    "user_input": "please run ls -lh",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "experimental",
+      "command_family": "ls",
+      "command": "ls -lh",
+      "summary": "list files",
+      "explanation": "assistant suggests command",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "structured",
+    "expected_command_family": "ls",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "ls -l -h .",
+    "expected_argv": [
+      "ls",
+      "-l",
+      "-h",
+      "."
+    ]
+  },
+  {
+    "id": "planner-file-brief",
+    "user_input": "show file type without filename",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "file",
+      "arguments": {
+        "paths": [
+          "README.md"
+        ],
+        "brief": true
+      },
+      "summary": "inspect file type",
+      "explanation": "file brief",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "structured",
+    "expected_command_family": "file",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "file -b README.md",
+    "expected_argv": [
+      "file",
+      "-b",
+      "README.md"
+    ]
+  },
+  {
+    "id": "planner-head-lines",
+    "user_input": "show first 20 lines",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "head",
+      "arguments": {
+        "paths": [
+          "README.md"
+        ],
+        "lines": 20,
+        "bytes": null
+      },
+      "summary": "read file head",
+      "explanation": "head lines",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "structured",
+    "expected_command_family": "head",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "head -n 20 README.md",
+    "expected_argv": [
+      "head",
+      "-n",
+      "20",
+      "README.md"
+    ]
+  },
+  {
+    "id": "planner-tail-bytes",
+    "user_input": "show trailing bytes",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "tail",
+      "arguments": {
+        "paths": [
+          "README.md"
+        ],
+        "lines": null,
+        "bytes": 128
+      },
+      "summary": "read file tail",
+      "explanation": "tail bytes",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "structured",
+    "expected_command_family": "tail",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "tail -c 128 README.md",
+    "expected_argv": [
+      "tail",
+      "-c",
+      "128",
+      "README.md"
+    ]
+  },
+  {
+    "id": "planner-du-summary",
+    "user_input": "summarize workspace size",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "du",
+      "arguments": {
+        "path": ".",
+        "human_readable": true,
+        "summarize": true,
+        "max_depth": null
+      },
+      "summary": "disk usage summary",
+      "explanation": "use du",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "structured",
+    "expected_command_family": "du",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "du -h -s .",
+    "expected_argv": [
+      "du",
+      "-h",
+      "-s",
+      "."
+    ]
+  },
+  {
+    "id": "planner-policy-block-dangerous-chown",
+    "user_input": "change owner recursively",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "experimental",
+      "command_family": "chown",
+      "command": "chown root file.txt",
+      "summary": "chown",
+      "explanation": "owner change",
+      "risk_level": "dangerous",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "experimental",
+    "expected_command_family": "chown",
+    "expected_risk_level": "dangerous",
+    "expected_acceptance": false,
+    "expected_rendered_command": "chown root file.txt",
+    "expected_argv": [
+      "chown",
+      "root",
+      "file.txt"
+    ]
+  },
+  {
+    "id": "planner-experimental-with-pipeline-blocked",
+    "user_input": "list files then count",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "experimental",
+      "command_family": "ls",
+      "command": "ls | wc -l",
+      "summary": "count files",
+      "explanation": "uses pipeline",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "experimental",
+    "expected_command_family": "ls",
+    "expected_risk_level": "safe",
+    "expected_acceptance": false,
+    "expected_rendered_command": "ls | wc -l",
+    "expected_argv": [
+      "ls",
+      "|",
+      "wc",
+      "-l"
+    ]
+  }
+]

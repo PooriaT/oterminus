@@ -17,6 +17,7 @@ pytest = "^8.3.0"
 
 [tool.poetry.scripts]
 oterminus = "oterminus.cli:main"
+oterminus-evals = "oterminus.evals:main"
 
 [build-system]
 requires = ["poetry-core>=1.8.0"]
