@@ -44,6 +44,7 @@ Configure behavior using environment variables:
 - `OTERMINUS_POLICY_MODE` (`safe`, `write`, `dangerous`; default: `write`)
 - `OTERMINUS_ALLOW_DANGEROUS` (`true`/`false`; default: `false`)
 - `OTERMINUS_ALLOWED_ROOTS` (colon-separated absolute paths; optional)
+- `OTERMINUS_AUDIT_LOG_PATH` (path for local JSONL request audit log; default: `~/.oterminus/audit.jsonl`)
 
 Example:
 
@@ -51,7 +52,46 @@ Example:
 export OTERMINUS_POLICY_MODE=write
 export OTERMINUS_ALLOW_DANGEROUS=false
 export OTERMINUS_ALLOWED_ROOTS=/workspace:/tmp/safe-area
+export OTERMINUS_AUDIT_LOG_PATH=~/.oterminus/audit.jsonl
 ```
+
+## Local observability and debugging
+
+`oterminus` writes a local structured audit record for each handled request lifecycle. This is intentionally lightweight and local-only: there is no external telemetry, analytics backend, or cloud upload.
+
+### Audit log location
+
+- default: `~/.oterminus/audit.jsonl`
+- override with `OTERMINUS_AUDIT_LOG_PATH`
+- or set `"audit_log_path"` in `~/.oterminus/config.json` (or your `OTERMINUS_CONFIG_PATH` file)
+
+Each line is JSON with fields such as:
+
+- `timestamp`
+- `user_input`
+- `direct_command_detected`
+- `routed_category`
+- `proposal_mode`
+- `command_family`
+- `rendered_command`
+- `argv`
+- `validation_accepted`
+- `warnings`
+- `rejection_reasons`
+- `confirmation_result`
+- `execution_exit_code`
+- `duration_ms`
+
+### Debug-friendly request trace
+
+Use `--verbose` to enable a concise trace in the terminal showing:
+
+- route decision
+- proposal mode/family
+- validator summary
+- confirmation outcome
+
+This helps diagnose planner/validator disagreements without enabling noisy output during normal runs.
 
 ## Install (local development)
 
