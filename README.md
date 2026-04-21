@@ -9,6 +9,27 @@ It is built for local command-line and filesystem workflows with a safety-first 
 - preview before execution
 - explicit confirmation before execution
 
+## Planning architecture (high level)
+
+Natural-language requests now go through a lightweight deterministic capability router before detailed model planning:
+
+1. direct command detection (`ls -lh`, `cd src`, etc.)
+2. capability routing (broad family classification)
+3. planner proposal generation (structured-first, with route context)
+4. validation / policy checks
+5. user confirmation and execution
+
+Current routing buckets:
+
+- `filesystem_inspect`
+- `filesystem_mutate`
+- `text_search`
+- `metadata_inspect`
+- `process_inspect`
+- `unsupported`
+
+The router is intentionally simple and rule-based in v1. It improves family selection hints for planning, but does not replace validator safety checks.
+
 ## Requirements
 
 - Python 3.13+

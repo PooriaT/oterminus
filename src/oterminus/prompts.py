@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from oterminus.command_registry import supported_base_commands
+from oterminus.router import RouteResult
 from oterminus.structured_commands import STRUCTURED_ARGUMENT_MODELS
 
 
@@ -75,6 +76,8 @@ Supported structured families and argument shapes:
 Behavior guidance:
 - Prefer the most direct single command that satisfies the request.
 - Prefer safe read-only inspection commands when the request is ambiguous.
+- Use the provided capability route (category + suggested families) to bias family selection before detailed argument planning.
+- If route category is `unsupported`, you may still choose experimental mode when a conservative single local command exists, and you must state the limitation in `notes`.
 - If the request falls outside local terminal/filesystem work, do not chat about it; choose the closest conservative single local command and explain the limitation in `notes`.
 """.strip()
 
@@ -82,5 +85,20 @@ Behavior guidance:
 SYSTEM_PROMPT = build_system_prompt()
 
 
-def build_user_prompt(request: str) -> str:
-    return f"User request: {request}\nReturn only JSON."
+def build_user_prompt(request: str, route: RouteResult | None = None) -> str:
+    if route is None:
+        route_block = "none"
+    else:
+        suggested = ", ".join(route.suggested_families) if route.suggested_families else "none"
+        route_block = (
+            f"category={route.category}; confidence={route.confidence:.2f}; "
+            f"reason={route.reason}; suggested_families={suggested}"
+        )
+
+    return (
+        f"User request: {request}\n"
+        f"Capability route: {route_block}\n"
+        "Use the capability route as guidance only; choose the best valid proposal.\n"
+        "If route category is unsupported, keep notes explicit about limitations and why experimental mode may be needed.\n"
+        "Return only JSON."
+    )
