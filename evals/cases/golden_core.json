@@ -27,6 +27,66 @@
     ]
   },
   {
+    "id": "direct-du-summary",
+    "user_input": "du -sh .",
+    "expected_mode": "structured",
+    "expected_command_family": "du",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "du -h -s .",
+    "expected_argv": [
+      "du",
+      "-h",
+      "-s",
+      "."
+    ]
+  },
+  {
+    "id": "direct-stat-verbose",
+    "user_input": "stat -Lx README.md",
+    "expected_mode": "structured",
+    "expected_command_family": "stat",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "stat -L -x README.md",
+    "expected_argv": [
+      "stat",
+      "-L",
+      "-x",
+      "README.md"
+    ]
+  },
+  {
+    "id": "direct-head-lines",
+    "user_input": "head -n 20 README.md",
+    "expected_mode": "structured",
+    "expected_command_family": "head",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "head -n 20 README.md",
+    "expected_argv": [
+      "head",
+      "-n",
+      "20",
+      "README.md"
+    ]
+  },
+  {
+    "id": "direct-tail-bytes",
+    "user_input": "tail -c128 README.md",
+    "expected_mode": "structured",
+    "expected_command_family": "tail",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "tail -c 128 README.md",
+    "expected_argv": [
+      "tail",
+      "-c",
+      "128",
+      "README.md"
+    ]
+  },
+  {
     "id": "direct-cat-file",
     "user_input": "cat README.md",
     "expected_mode": "structured",

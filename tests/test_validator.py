@@ -1,3 +1,5 @@
+import pytest
+
 from oterminus.models import ActionType, Proposal, ProposalMode, RiskLevel
 from oterminus.policies import PolicyConfig
 from oterminus.structured_commands import StructuredCommandError, parse_raw_command_as_structured
@@ -116,6 +118,51 @@ def test_reject_open_url_target() -> None:
 
     assert result.accepted is False
     assert any("does not allow these operand targets" in reason for reason in result.reasons)
+
+
+@pytest.mark.parametrize(
+    ("command", "expected_risk"),
+    [
+        ("cp src.txt dst.txt", RiskLevel.WRITE),
+        ("mv old.txt new.txt", RiskLevel.WRITE),
+        ("du .", RiskLevel.SAFE),
+        ("stat README.md", RiskLevel.SAFE),
+        ("head -n 20 README.md", RiskLevel.SAFE),
+        ("tail -c 64 README.md", RiskLevel.SAFE),
+        ("grep -r TODO src", RiskLevel.SAFE),
+        ("cat README.md", RiskLevel.SAFE),
+        ("open .", RiskLevel.SAFE),
+        ("file README.md", RiskLevel.SAFE),
+    ],
+)
+def test_risk_classification_for_next_wave_structured_families(command: str, expected_risk: RiskLevel) -> None:
+    validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))
+    result = validator.validate(make_proposal(command))
+
+    assert result.accepted is True
+    assert result.risk_level == expected_risk
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "cp src.txt",
+        "mv draft.txt",
+        "du --bad .",
+        "stat",
+        "head -n 20",
+        "tail -c 64",
+        "grep -z TODO src",
+        "cat -n README.md",
+        "open https://example.com",
+        "file",
+    ],
+)
+def test_acceptance_rejects_invalid_next_wave_variants(command: str) -> None:
+    validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))
+    result = validator.validate(make_proposal(command))
+
+    assert result.accepted is False
 
 
 def test_allowed_roots_find_checks_only_search_roots() -> None:
