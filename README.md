@@ -110,3 +110,28 @@ Example Ollama setup:
 ollama serve
 ollama pull gemma4
 ```
+
+## Regression evals (golden fixtures)
+
+`oterminus` includes a deterministic evaluation harness for regression protection. Evals run a stable set of natural-language requests through direct-command detection, planner payload parsing, and validation, then compare results against expected outcomes.
+
+This helps catch unintended behavior changes in:
+
+- mode selection (`structured` vs `experimental`)
+- command family classification
+- risk scoring and policy blocking
+- rendered command / argv outputs
+
+### Run evals locally
+
+```bash
+poetry run oterminus-evals
+```
+
+You can also point to a custom fixture directory:
+
+```bash
+poetry run oterminus-evals --fixtures-dir evals/cases
+```
+
+Fixtures live under `evals/cases/*.json` and are designed to be extended as new command families or validator rules are added.
