@@ -15,6 +15,7 @@ class AppConfig:
     timeout_seconds: int = 60
     policy: PolicyConfig = field(default_factory=PolicyConfig)
     model: str | None = None
+    audit_log_path: Path = field(default_factory=lambda: Path.home() / ".oterminus" / "audit.jsonl")
 
 
 def get_user_config_path() -> Path:
@@ -60,9 +61,14 @@ def load_config() -> AppConfig:
     model = user_config.get("model")
     if not isinstance(model, str) or not model.strip():
         model = None
+    configured_audit_path = os.getenv("OTERMINUS_AUDIT_LOG_PATH")
+    if not configured_audit_path:
+        configured_audit_path = user_config.get("audit_log_path")
+    audit_log_path = Path(configured_audit_path).expanduser() if configured_audit_path else Path.home() / ".oterminus" / "audit.jsonl"
 
     return AppConfig(
         timeout_seconds=timeout_seconds,
         policy=PolicyConfig(mode=mode, allow_dangerous=allow_dangerous, allowed_roots=allowed_roots),
         model=model,
+        audit_log_path=audit_log_path,
     )

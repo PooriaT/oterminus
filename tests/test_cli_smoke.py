@@ -1,3 +1,5 @@
+import json
+from pathlib import Path
 from unittest.mock import Mock
 
 import subprocess
@@ -30,7 +32,10 @@ def test_main_repl_startup_validates_once(monkeypatch) -> None:
     monkeypatch.setattr("oterminus.cli.load_config", Mock())
     setup_check = Mock(return_value="gemma3:latest")
     monkeypatch.setattr("oterminus.cli.ensure_startup_ready", setup_check)
-    monkeypatch.setattr("oterminus.cli.repl", lambda repl_planner, repl_validator, repl_executor: 0)
+    monkeypatch.setattr(
+        "oterminus.cli.repl",
+        lambda repl_planner, repl_validator, repl_executor, **kwargs: 0,
+    )
 
     code = main(["--verbose"])
 
@@ -77,7 +82,7 @@ def test_main_uses_selected_model(monkeypatch) -> None:
     monkeypatch.setattr("oterminus.cli.Executor", lambda timeout_seconds: executor)
     monkeypatch.setattr(
         "oterminus.cli.handle_request",
-        lambda request, planner_factory, req_validator, req_executor: (
+        lambda request, planner_factory, req_validator, req_executor, **kwargs: (
             planner_factory().plan(request),
             17,
         )[1],
@@ -227,3 +232,59 @@ def test_ask_confirmation_requires_experimental_phrase(monkeypatch) -> None:
 
     monkeypatch.setattr("builtins.input", lambda _: "EXECUTE EXPERIMENTAL")
     assert ask_confirmation(ConfirmationLevel.VERY_STRONG) is True
+
+
+def test_handle_request_writes_structured_audit_log(monkeypatch, tmp_path: Path) -> None:
+    from oterminus.audit import AuditLogger
+    from oterminus.cli import handle_request
+
+    planner = Mock()
+    planner.plan.return_value = Proposal(
+        action_type=ActionType.SHELL_COMMAND,
+        mode=ProposalMode.STRUCTURED,
+        command_family="find",
+        arguments={"path": ".", "name": "*.py"},
+        summary="list files",
+        explanation="desc",
+        risk_level=RiskLevel.SAFE,
+        needs_confirmation=True,
+        notes=[],
+    )
+    validator = Mock()
+    validator.validate.return_value = ValidationResult(
+        accepted=True,
+        risk_level=RiskLevel.SAFE,
+        warnings=["test-warning"],
+        reasons=[],
+        rendered_command="find . -name '*.py'",
+        argv=["find", ".", "-name", "*.py"],
+    )
+    executor = Mock()
+    executor.run.return_value.returncode = 0
+    executor.run.return_value.stdout = ""
+    executor.run.return_value.stderr = ""
+
+    audit_path = tmp_path / "audit.jsonl"
+    monkeypatch.setattr("builtins.input", lambda _: "y")
+
+    code = handle_request(
+        "show files in this directory",
+        planner,
+        validator,
+        executor,
+        audit_logger=AuditLogger(audit_path),
+    )
+
+    assert code == 0
+    payload = json.loads(audit_path.read_text(encoding="utf-8").strip())
+    assert payload["user_input"] == "show files in this directory"
+    assert payload["direct_command_detected"] is False
+    assert payload["routed_category"] == "filesystem_inspect"
+    assert payload["proposal_mode"] == "structured"
+    assert payload["command_family"] == "find"
+    assert payload["validation_accepted"] is True
+    assert payload["warnings"] == ["test-warning"]
+    assert payload["confirmation_result"] == "confirmed"
+    assert payload["execution_exit_code"] == 0
+    assert payload["argv"] == ["find", ".", "-name", "*.py"]
+    assert payload["duration_ms"] >= 0
