@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import re
 
 
 ROUTE_CATEGORIES = {
@@ -80,7 +81,16 @@ def route_request(user_input: str) -> RouteResult:
 
 
 def _has_any(text: str, hints: tuple[str, ...]) -> bool:
-    return any(hint in text for hint in hints)
+    return any(_matches_hint(text, hint) for hint in hints)
+
+
+def _matches_hint(text: str, hint: str) -> bool:
+    escaped = re.escape(hint.strip())
+    if not escaped:
+        return False
+
+    pattern = rf"(?<!\w){escaped}(?!\w)"
+    return re.search(pattern, text) is not None
 
 
 _TEXT_SEARCH_HINTS = (
@@ -104,9 +114,9 @@ _MUTATION_HINTS = (
     "make",
     "mkdir",
     "copy",
-    "cp ",
+    "cp",
     "move",
-    "mv ",
+    "mv",
     "rename",
     "chmod",
     "change permissions",

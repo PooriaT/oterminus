@@ -20,3 +20,9 @@ def test_route_request_ambiguous_prefers_safe_inspection() -> None:
 def test_route_request_unsupported_cases() -> None:
     assert route_request("write me a poem about oceans").category == "unsupported"
     assert route_request("   ").category == "unsupported"
+
+
+def test_route_request_does_not_treat_embedded_ps_as_process_hint() -> None:
+    route = route_request("list apps in this directory")
+
+    assert route.category == "filesystem_inspect"
