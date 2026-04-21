@@ -172,6 +172,29 @@ ollama serve
 ollama pull gemma4
 ```
 
+
+## Structured command support (deterministic rendering)
+
+`oterminus` uses deterministic rendering for a curated set of command families when possible. In structured mode, the model provides `command_family + arguments`, then Python validates and renders the final argv/command string.
+
+Supported structured families include:
+
+- `ls`, `pwd`, `find`, `du`, `stat`, `head`, `tail`, `grep`, `cat`, `file`
+- `mkdir`, `cp`, `mv`, `chmod`, `open`
+
+Examples of requests that now land in structured mode:
+
+- “copy notes.txt to backup/notes.txt” → `cp notes.txt backup/notes.txt`
+- “move report.md into docs” → `mv report.md docs`
+- “show disk usage for this folder” → `du .`
+- “show metadata for this file” → `stat README.md`
+- “show the first 20 lines of README.md” → `head -n 20 README.md`
+- “search for TODO in all python files here” → `grep -r TODO *.py`
+- “open this folder in Finder” → `open .`
+- “tell me what kind of file this is” → `file README.md`
+
+When a request cannot be represented safely in these deterministic schemas, `oterminus` falls back to `experimental` mode and applies stricter confirmation behavior.
+
 ## Regression evals (golden fixtures)
 
 `oterminus` includes a deterministic evaluation harness for regression protection. Evals run a stable set of natural-language requests through direct-command detection, planner payload parsing, and validation, then compare results against expected outcomes.

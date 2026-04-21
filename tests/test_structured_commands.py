@@ -173,3 +173,27 @@ def test_render_structured_command_rejects_conflicting_grep_flags() -> None:
 
 def test_parse_raw_command_as_structured_returns_none_for_unsupported_stat_format_variant() -> None:
     assert parse_raw_command_as_structured("stat -f '%z' README.md") is None
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "cp src.txt",
+        "mv -z old.txt new.txt",
+        "du -d nope .",
+        "stat",
+        "head -n 3",
+        "tail -n 1",
+        "grep -n TODO",
+        "cat -n README.md",
+        "open -Z .",
+        "file",
+    ],
+)
+def test_parse_raw_command_as_structured_rejects_invalid_variants(command: str) -> None:
+    assert parse_raw_command_as_structured(command) is None
+
+
+def test_parse_raw_command_as_structured_raises_for_disallowed_open_url_target() -> None:
+    with pytest.raises(StructuredCommandError):
+        parse_raw_command_as_structured("open https://example.com")
