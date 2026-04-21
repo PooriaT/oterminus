@@ -64,7 +64,10 @@ def load_config() -> AppConfig:
     configured_audit_path = os.getenv("OTERMINUS_AUDIT_LOG_PATH")
     if not configured_audit_path:
         configured_audit_path = user_config.get("audit_log_path")
-    audit_log_path = Path(configured_audit_path).expanduser() if configured_audit_path else Path.home() / ".oterminus" / "audit.jsonl"
+    if isinstance(configured_audit_path, str) and configured_audit_path.strip():
+        audit_log_path = Path(configured_audit_path).expanduser()
+    else:
+        audit_log_path = Path.home() / ".oterminus" / "audit.jsonl"
 
     return AppConfig(
         timeout_seconds=timeout_seconds,

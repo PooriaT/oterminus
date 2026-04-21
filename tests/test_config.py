@@ -10,3 +10,14 @@ def test_load_config_audit_path_from_env(monkeypatch, tmp_path: Path) -> None:
     config = load_config()
 
     assert config.audit_log_path == tmp_path / "audit-lines.jsonl"
+
+
+def test_load_config_invalid_user_audit_path_type_falls_back_to_default(monkeypatch, tmp_path: Path) -> None:
+    config_path = tmp_path / "config.json"
+    config_path.write_text('{"audit_log_path": 123}', encoding="utf-8")
+    monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(config_path))
+    monkeypatch.delenv("OTERMINUS_AUDIT_LOG_PATH", raising=False)
+
+    config = load_config()
+
+    assert config.audit_log_path == Path.home() / ".oterminus" / "audit.jsonl"
