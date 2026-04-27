@@ -1,6 +1,6 @@
 from oterminus.models import RiskLevel
 
-from .types import CommandSpec, DirectDetectionMode, PathOperandMode, command
+from .types import CommandSpec, DirectDetectionMode, MaturityLevel, PathOperandMode, command
 
 FILESYSTEM_INSPECTION = {
     "capability_id": "filesystem_inspection",
@@ -19,6 +19,7 @@ COMMAND_PACK: tuple[CommandSpec, ...] = (
         category="navigation",
         **FILESYSTEM_INSPECTION,
         risk_level=RiskLevel.SAFE,
+        maturity_level=MaturityLevel.DIRECT_ONLY,
         direct_detection_mode=DirectDetectionMode.CD,
         path_operand_mode=PathOperandMode.CD,
         examples=("cd src",),
@@ -125,6 +126,7 @@ COMMAND_PACK: tuple[CommandSpec, ...] = (
         category="filesystem_write",
         **FILESYSTEM_MUTATION,
         risk_level=RiskLevel.WRITE,
+        maturity_level=MaturityLevel.EXPERIMENTAL_ONLY,
         min_operands=1,
         examples=("touch notes.txt",),
         natural_language_aliases=("create empty file",),
@@ -134,6 +136,7 @@ COMMAND_PACK: tuple[CommandSpec, ...] = (
         category="permissions",
         **FILESYSTEM_MUTATION,
         risk_level=RiskLevel.DANGEROUS,
+        maturity_level=MaturityLevel.EXPERIMENTAL_ONLY,
         min_operands=2,
         dangerous_target_literals=("/", "/*"),
         examples=("chown user:group file.txt",),

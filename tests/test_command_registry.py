@@ -20,7 +20,7 @@ def test_all_command_packs_are_loaded_into_registry() -> None:
     packed_names = {spec.name for pack in COMMAND_PACKS for spec in pack}
 
     assert packed_names
-    assert packed_names == supported_base_commands()
+    assert packed_names == set(supported_base_commands())
 
 
 def test_duplicate_command_names_are_rejected() -> None:
