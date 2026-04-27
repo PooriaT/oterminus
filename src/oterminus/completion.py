@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from oterminus.commands import supported_base_commands, supported_categories
+from oterminus.commands import supported_base_commands, supported_capabilities, supported_categories
 
 REPL_BUILTINS: tuple[str, ...] = ("help", "exit", "quit")
 NL_TEMPLATES: tuple[str, ...] = (
@@ -68,7 +68,12 @@ def _path_candidates(fragment: str, cwd: Path) -> list[str]:
     return results
 
 
-def build_repl_completions(text_before_cursor: str, cwd: Path | None = None) -> list[CompletionCandidate]:
+def build_repl_completions(
+    text_before_cursor: str,
+    cwd: Path | None = None,
+    *,
+    include_capability_hints: bool = False,
+) -> list[CompletionCandidate]:
     working_dir = cwd or Path.cwd()
     word_start = _word_start_index(text_before_cursor)
     fragment = text_before_cursor[word_start:]
@@ -80,6 +85,11 @@ def build_repl_completions(text_before_cursor: str, cwd: Path | None = None) -> 
         suggestions.update(REPL_BUILTINS)
         suggestions.update(supported_base_commands())
         suggestions.update(supported_categories())
+        if include_capability_hints:
+            for capability in supported_capabilities():
+                suggestions.add(capability.capability_id)
+                suggestions.add(capability.capability_label)
+                suggestions.update(capability.aliases)
         suggestions.update(NL_TEMPLATES)
     suggestions.update(_path_candidates(fragment, working_dir))
 

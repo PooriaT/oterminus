@@ -1,26 +1,37 @@
 from .registry import (
+    CapabilitySummary,
     COMMAND_PACKS,
     COMMAND_REGISTRY,
+    command_examples_for_prompt,
+    command_examples_for_readme,
+    get_commands_by_capability,
     direct_supported_base_commands,
     get_command_spec,
     looks_like_direct_invocation,
     merge_command_packs,
     supported_base_commands,
+    supported_capabilities,
     supported_categories,
 )
-from .types import CommandSpec, DirectDetectionMode, PathOperandMode, command
+from .types import CommandSpec, DirectDetectionMode, MaturityLevel, PathOperandMode, command
 
 __all__ = [
+    "CapabilitySummary",
     "COMMAND_PACKS",
     "COMMAND_REGISTRY",
     "CommandSpec",
     "DirectDetectionMode",
+    "MaturityLevel",
     "PathOperandMode",
     "command",
+    "command_examples_for_prompt",
+    "command_examples_for_readme",
+    "get_commands_by_capability",
     "direct_supported_base_commands",
     "get_command_spec",
     "looks_like_direct_invocation",
     "merge_command_packs",
     "supported_base_commands",
+    "supported_capabilities",
     "supported_categories",
 ]

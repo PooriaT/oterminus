@@ -20,6 +20,12 @@ def test_first_token_completion_includes_supported_categories() -> None:
     assert "process_inspection" in candidates
 
 
+def test_first_token_completion_can_include_capability_aliases() -> None:
+    candidates = _texts(build_repl_completions("search", include_capability_hints=True))
+
+    assert "search text" in candidates
+
+
 def test_path_completion_for_relative_file_and_dir(tmp_path: Path) -> None:
     (tmp_path / "README.md").write_text("hello")
     (tmp_path / "src").mkdir()

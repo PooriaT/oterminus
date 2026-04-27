@@ -30,7 +30,22 @@ Current routing buckets:
 
 The router is intentionally simple and rule-based in v1. It improves family selection hints for planning, but does not replace validator safety checks.
 
-Command metadata for structured command support is maintained in a central merged registry built from modular capability packs under `src/oterminus/commands/` (filesystem, text, process, system, macOS, dangerous). This keeps validator/direct-command/autocomplete behavior aligned while allowing the registry to scale without a single monolithic file.
+Command metadata for structured command support is maintained in a central merged registry built from modular capability packs under `src/oterminus/commands/` (filesystem, text, process, system, macOS, dangerous). Each command is tagged with a workflow capability (`capability_id`, label, concise description, aliases, examples, maturity), so OTerminus scales by curated user workflows rather than trying to mirror every shell man page.
+
+OTerminus is intentionally **capability-first**, not “all shell commands”:
+
+- `filesystem_inspection`
+- `filesystem_mutation`
+- `text_inspection`
+- `process_inspection`
+- `system_inspection`
+- `macos_desktop`
+- `destructive_operations`
+
+The registry is used to answer both:
+
+- “Is this command allowed?”
+- “What capability/workflow does it belong to?”
 
 ## Requirements
 

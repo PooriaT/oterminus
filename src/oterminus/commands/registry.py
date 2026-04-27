@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from collections.abc import Iterable, Sequence
 
 from .dangerous import COMMAND_PACK as DANGEROUS_COMMANDS
@@ -9,6 +10,16 @@ from .process import COMMAND_PACK as PROCESS_COMMANDS
 from .system import COMMAND_PACK as SYSTEM_COMMANDS
 from .text import COMMAND_PACK as TEXT_COMMANDS
 from .types import CommandSpec, DirectDetectionMode
+
+
+@dataclass(frozen=True, slots=True)
+class CapabilitySummary:
+    capability_id: str
+    capability_label: str
+    capability_description: str
+    maturity_levels: tuple[str, ...]
+    commands: tuple[str, ...]
+    aliases: tuple[str, ...]
 
 
 COMMAND_PACKS: tuple[tuple[CommandSpec, ...], ...] = (
@@ -28,6 +39,9 @@ def merge_command_packs(command_packs: Sequence[Iterable[CommandSpec]]) -> dict[
             if spec.name in merged:
                 msg = f"Duplicate command spec for '{spec.name}' detected while building command registry."
                 raise ValueError(msg)
+            if not spec.capability_id.strip():
+                msg = f"Command spec '{spec.name}' must define a non-empty capability_id."
+                raise ValueError(msg)
             merged[spec.name] = spec
     return merged
 
@@ -46,6 +60,66 @@ def supported_base_commands() -> frozenset[str]:
 
 def supported_categories() -> frozenset[str]:
     return frozenset(spec.category for spec in COMMAND_REGISTRY.values())
+
+
+def get_commands_by_capability(capability_id: str) -> tuple[str, ...]:
+    return tuple(sorted(spec.name for spec in COMMAND_REGISTRY.values() if spec.capability_id == capability_id))
+
+
+def supported_capabilities() -> tuple[CapabilitySummary, ...]:
+    capability_ids = sorted({spec.capability_id for spec in COMMAND_REGISTRY.values()})
+    summaries: list[CapabilitySummary] = []
+    for capability_id in capability_ids:
+        specs = [spec for spec in COMMAND_REGISTRY.values() if spec.capability_id == capability_id]
+        first = specs[0]
+        aliases = sorted({alias for spec in specs for alias in spec.natural_language_aliases})
+        maturity_levels = sorted({spec.maturity_level.value for spec in specs})
+        commands = tuple(sorted(spec.name for spec in specs))
+        summaries.append(
+            CapabilitySummary(
+                capability_id=capability_id,
+                capability_label=first.capability_label,
+                capability_description=first.capability_description,
+                maturity_levels=tuple(maturity_levels),
+                commands=commands,
+                aliases=tuple(aliases),
+            )
+        )
+    return tuple(summaries)
+
+
+def command_examples_for_prompt(max_examples: int = 8) -> str:
+    rows: list[str] = []
+    for capability in supported_capabilities():
+        if not capability.commands:
+            continue
+        examples = []
+        for command_name in capability.commands:
+            spec = COMMAND_REGISTRY[command_name]
+            if spec.examples:
+                examples.append(spec.examples[0])
+            if len(examples) >= 2:
+                break
+        if examples:
+            rows.append(f"- {capability.capability_id}: " + " | ".join(f"`{example}`" for example in examples))
+        if len(rows) >= max_examples:
+            break
+    return "\n".join(rows)
+
+
+def command_examples_for_readme() -> str:
+    lines: list[str] = []
+    for capability in supported_capabilities():
+        lines.append(f"- `{capability.capability_id}`: {capability.capability_description}")
+        lines.append(f"  - Commands: {', '.join(f'`{name}`' for name in capability.commands)}")
+        if capability.aliases:
+            lines.append(f"  - NL aliases: {', '.join(f'`{alias}`' for alias in capability.aliases[:4])}")
+        first_command = capability.commands[0] if capability.commands else None
+        if first_command:
+            example = COMMAND_REGISTRY[first_command].examples
+            if example:
+                lines.append(f"  - Example: `{example[0]}`")
+    return "\n".join(lines)
 
 
 def direct_supported_base_commands() -> frozenset[str]:
