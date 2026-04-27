@@ -54,12 +54,12 @@ def get_command_spec(name: str) -> CommandSpec | None:
     return COMMAND_REGISTRY.get(name)
 
 
-def supported_base_commands() -> frozenset[str]:
-    return frozenset(COMMAND_REGISTRY)
+def supported_base_commands() -> tuple[str, ...]:
+    return tuple(sorted(COMMAND_REGISTRY))
 
 
-def supported_categories() -> frozenset[str]:
-    return frozenset(spec.category for spec in COMMAND_REGISTRY.values())
+def supported_categories() -> tuple[str, ...]:
+    return tuple(sorted({spec.category for spec in COMMAND_REGISTRY.values()}))
 
 
 def get_commands_by_capability(capability_id: str) -> tuple[str, ...]:

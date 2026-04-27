@@ -17,7 +17,7 @@ COMMAND_PACK: tuple[CommandSpec, ...] = (
         maturity_level=MaturityLevel.EXPERIMENTAL_ONLY,
         min_operands=1,
         dangerous_flags=("-r", "-rf", "-fr"),
-        allowed_flags=("-f", "-i", "-r", "-rf", "-fr"),
+        allowed_flags=("-f", "-i"),
         examples=("rm -i old.log",),
         natural_language_aliases=("remove file", "delete file"),
     ),
