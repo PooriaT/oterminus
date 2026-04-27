@@ -47,6 +47,8 @@ The registry is used to answer both:
 - “Is this command allowed?”
 - “What capability/workflow does it belong to?”
 
+Contributor guidance for extending this registry safely is available at [`docs/adding-command-families.md`](docs/adding-command-families.md).
+
 ## Requirements
 
 - Python 3.13+
