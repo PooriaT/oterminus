@@ -43,6 +43,7 @@ COMMAND_PACK: tuple[CommandSpec, ...] = (
         **SYSTEM_INSPECTION,
         risk_level=RiskLevel.SAFE,
         min_operands=1,
+        max_operands=1,
         examples=("env PATH",),
         natural_language_aliases=("environment variable",),
         notes=(

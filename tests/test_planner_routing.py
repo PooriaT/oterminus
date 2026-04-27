@@ -52,3 +52,9 @@ def test_planner_system_prompt_includes_supported_capabilities() -> None:
     assert "filesystem_inspection" in prompt
     assert "process_inspection" in prompt
     assert "commands:" in prompt
+
+
+def test_planner_system_prompt_env_shape_requires_variable_operand() -> None:
+    prompt = build_system_prompt()
+
+    assert '- `env`: `{"variable": "PATH"}`' in prompt

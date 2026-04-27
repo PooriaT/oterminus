@@ -39,6 +39,7 @@ class CommandSpec:
     maturity_level: MaturityLevel
     direct_supported: bool = True
     min_operands: int = 0
+    max_operands: int | None = None
     direct_detection_mode: DirectDetectionMode = DirectDetectionMode.MIN_OPERANDS
     path_operand_mode: PathOperandMode = PathOperandMode.DEFAULT
     allowed_flags: frozenset[str] = field(default_factory=frozenset)
@@ -70,6 +71,7 @@ def command(
     maturity_level: MaturityLevel = MaturityLevel.STRUCTURED,
     direct_supported: bool = True,
     min_operands: int = 0,
+    max_operands: int | None = None,
     direct_detection_mode: DirectDetectionMode = DirectDetectionMode.MIN_OPERANDS,
     path_operand_mode: PathOperandMode = PathOperandMode.DEFAULT,
     allowed_flags: Iterable[str] = (),
@@ -95,6 +97,7 @@ def command(
         maturity_level=maturity_level,
         direct_supported=direct_supported,
         min_operands=min_operands,
+        max_operands=max_operands,
         direct_detection_mode=direct_detection_mode,
         path_operand_mode=path_operand_mode,
         allowed_flags=_frozenset(allowed_flags),
