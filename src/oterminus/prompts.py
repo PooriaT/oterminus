@@ -9,6 +9,7 @@ def _format_structured_shapes() -> str:
     shapes = {
         "ls": '{"path": ".", "long": true|false, "human_readable": true|false, "all": true|false, "recursive": true|false}',
         "pwd": "{}",
+        "clear": "{}",
         "whoami": "{}",
         "uname": '{"all": true|false, "kernel_name": true|false, "node_name": true|false, "kernel_release": true|false, "kernel_version": true|false, "machine": true|false}',
         "which": '{"commands": ["python3"], "all_matches": true|false}',

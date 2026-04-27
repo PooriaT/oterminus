@@ -13,6 +13,7 @@ from oterminus.structured_commands import (
     [
         "ls",
         "pwd",
+        "clear",
         "whoami",
         "uname",
         "which",
@@ -53,6 +54,7 @@ def test_supported_structured_families_are_curated(command_family: str) -> None:
             "ls -l -h .",
         ),
         ("pwd", {}, ("pwd",), "pwd"),
+        ("clear", {}, ("clear",), "clear"),
         ("whoami", {}, ("whoami",), "whoami"),
         (
             "uname",
@@ -193,6 +195,7 @@ def test_render_structured_command(
         ("cat README.md pyproject.toml", "cat", {"paths": ["README.md", "pyproject.toml"]}),
         ("open -R .", "open", {"path": ".", "reveal": True}),
         ("file -b README.md", "file", {"paths": ["README.md"], "brief": True}),
+        ("clear", "clear", {}),
         ("whoami", "whoami", {}),
         (
             "uname -sr",
@@ -259,6 +262,7 @@ def test_parse_raw_command_as_structured_returns_none_for_unsupported_stat_forma
     "command",
     [
         "cp src.txt",
+        "clear now",
         "mv -z old.txt new.txt",
         "du -d nope .",
         "stat",

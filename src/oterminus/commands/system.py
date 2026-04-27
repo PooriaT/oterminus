@@ -10,6 +10,18 @@ SYSTEM_INSPECTION = {
 
 COMMAND_PACK: tuple[CommandSpec, ...] = (
     command(
+        name="clear",
+        category="system_inspection",
+        **SYSTEM_INSPECTION,
+        risk_level=RiskLevel.SAFE,
+        min_operands=0,
+        max_operands=0,
+        direct_detection_mode=DirectDetectionMode.ZERO_OPERANDS,
+        examples=("clear",),
+        natural_language_aliases=("clear terminal", "clear screen"),
+        notes=("Clears the current terminal screen for a clean session view.",),
+    ),
+    command(
         name="whoami",
         category="system_inspection",
         **SYSTEM_INSPECTION,
