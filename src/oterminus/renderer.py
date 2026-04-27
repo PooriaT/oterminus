@@ -5,6 +5,11 @@ import json
 from oterminus.models import Proposal, ProposalMode, ValidationResult
 from oterminus.policies import ConfirmationLevel, confirmation_level
 
+_DIRECT_DEBUG_NOTE_PREFIXES = (
+    "Detected as a direct shell command;",
+    "Structured parsing skipped:",
+)
+
 
 def render_preview(
     proposal: Proposal,
@@ -51,8 +56,9 @@ def _render_detailed_preview(proposal: Proposal, validation: ValidationResult, *
             lines.append("Arguments    :")
             lines.extend(f"  {line}" for line in argument_lines)
 
-    if verbose and proposal.notes:
-        lines.append("Notes        : " + "; ".join(proposal.notes))
+    display_notes = _display_notes(proposal.notes, include_debug=verbose)
+    if display_notes:
+        lines.append("Notes        : " + "; ".join(display_notes))
 
     if validation.warnings:
         lines.append("Warnings     : " + "; ".join(validation.warnings))
@@ -71,6 +77,10 @@ def _render_direct_preview(proposal: Proposal, validation: ValidationResult) -> 
         f"Risk: {validation.risk_level.value}",
     ]
 
+    display_notes = _display_notes(proposal.notes, include_debug=False)
+    if display_notes:
+        lines.append("Notes: " + "; ".join(display_notes))
+
     if validation.warnings:
         lines.append("Warnings: " + "; ".join(validation.warnings))
 
@@ -84,3 +94,9 @@ def _format_confirmation_level(level: ConfirmationLevel) -> str:
     if level == ConfirmationLevel.VERY_STRONG:
         return "very strong"
     return level.value
+
+
+def _display_notes(notes: list[str], *, include_debug: bool) -> list[str]:
+    if include_debug:
+        return notes
+    return [note for note in notes if not note.startswith(_DIRECT_DEBUG_NOTE_PREFIXES)]

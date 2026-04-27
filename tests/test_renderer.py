@@ -143,6 +143,30 @@ def test_render_direct_command_default_is_concise() -> None:
     assert "Summary" not in text
     assert "Explanation" not in text
     assert "LLM planner" not in text
+    assert "Notes:" not in text
+
+
+def test_render_direct_command_default_keeps_user_facing_notes() -> None:
+    proposal = Proposal(
+        action_type=ActionType.SHELL_COMMAND,
+        mode=ProposalMode.EXPERIMENTAL,
+        command_family="env",
+        command="env",
+        summary="Run direct command: env",
+        explanation="Input already looks like a shell command.",
+        risk_level=RiskLevel.SAFE,
+        needs_confirmation=True,
+        notes=[
+            "Detected as a direct shell command; skipped the LLM planner.",
+            "Printing the full environment may include sensitive values; prefer querying specific variable names.",
+        ],
+    )
+    validation = ValidationResult(accepted=True, risk_level=RiskLevel.SAFE, rendered_command="env", argv=["env"])
+
+    text = render_preview(proposal, validation, direct_command=True)
+
+    assert "Notes: Printing the full environment may include sensitive values" in text
+    assert "Detected as a direct shell command" not in text
 
 
 def test_render_direct_command_verbose_shows_debug_notes() -> None:
@@ -176,7 +200,7 @@ def test_render_natural_language_default_remains_informative() -> None:
         explanation="Translated natural-language request to deterministic command.",
         risk_level=RiskLevel.SAFE,
         needs_confirmation=True,
-        notes=[],
+        notes=["`du` is unavailable in structured mode, so using `find` fallback."],
     )
     validation = ValidationResult(
         accepted=True,
@@ -190,6 +214,7 @@ def test_render_natural_language_default_remains_informative() -> None:
     assert "Summary      : Find Python files" in text
     assert "Explanation  : Translated natural-language request to deterministic command." in text
     assert "Arguments" in text
+    assert "Notes        : `du` is unavailable in structured mode, so using `find` fallback." in text
 
 
 def test_render_direct_command_non_verbose_keeps_safety_warnings() -> None:
