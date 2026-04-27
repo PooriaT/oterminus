@@ -188,6 +188,59 @@ def test_handle_request_direct_command_skips_planner(monkeypatch) -> None:
     executor.run.assert_called_once_with(["cd", "/tmp"], display_command="cd /tmp")
 
 
+def test_handle_request_direct_command_default_output_is_concise(monkeypatch, capsys) -> None:
+    from oterminus.cli import handle_request
+
+    planner = Mock()
+    validator = Mock()
+    validator.validate.return_value = ValidationResult(
+        accepted=True,
+        risk_level=RiskLevel.SAFE,
+        rendered_command="pwd",
+        argv=["pwd"],
+    )
+    executor = Mock()
+    executor.run.return_value.returncode = 0
+    executor.run.return_value.stdout = "/tmp\n"
+    executor.run.return_value.stderr = ""
+    monkeypatch.setattr("builtins.input", lambda _: "y")
+
+    code = handle_request("pwd", planner, validator, executor)
+
+    assert code == 0
+    output = capsys.readouterr().out
+    assert "--- command preview ---" in output
+    assert "Command: pwd" in output
+    assert "Risk: safe" in output
+    assert "Skipped Ollama planner." not in output
+
+
+def test_handle_request_direct_command_verbose_shows_trace(monkeypatch, capsys) -> None:
+    from oterminus.cli import handle_request
+
+    planner = Mock()
+    validator = Mock()
+    validator.validate.return_value = ValidationResult(
+        accepted=True,
+        risk_level=RiskLevel.SAFE,
+        rendered_command="pwd",
+        argv=["pwd"],
+    )
+    executor = Mock()
+    executor.run.return_value.returncode = 0
+    executor.run.return_value.stdout = "/tmp\n"
+    executor.run.return_value.stderr = ""
+    monkeypatch.setattr("builtins.input", lambda _: "y")
+
+    code = handle_request("pwd", planner, validator, executor, debug_trace=True)
+
+    assert code == 0
+    output = capsys.readouterr().out
+    assert "[trace] Detected as direct shell command." in output
+    assert "[trace] Skipped Ollama planner." in output
+    assert "[trace] Validation accepted." in output
+
+
 def test_handle_request_natural_language_uses_planner(monkeypatch) -> None:
     from oterminus.cli import handle_request
 

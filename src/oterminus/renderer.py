@@ -6,7 +6,20 @@ from oterminus.models import Proposal, ProposalMode, ValidationResult
 from oterminus.policies import ConfirmationLevel, confirmation_level
 
 
-def render_preview(proposal: Proposal, validation: ValidationResult) -> str:
+def render_preview(
+    proposal: Proposal,
+    validation: ValidationResult,
+    *,
+    verbose: bool = False,
+    direct_command: bool = False,
+) -> str:
+    if direct_command and not verbose:
+        return _render_direct_preview(proposal, validation)
+
+    return _render_detailed_preview(proposal, validation, verbose=verbose)
+
+
+def _render_detailed_preview(proposal: Proposal, validation: ValidationResult, *, verbose: bool) -> str:
     level = confirmation_level(proposal.mode, validation.risk_level)
     header = "--- oterminus proposal (EXPERIMENTAL) ---" if proposal.is_experimental else "--- oterminus proposal ---"
     lines = [
@@ -38,7 +51,7 @@ def render_preview(proposal: Proposal, validation: ValidationResult) -> str:
             lines.append("Arguments    :")
             lines.extend(f"  {line}" for line in argument_lines)
 
-    if proposal.notes:
+    if verbose and proposal.notes:
         lines.append("Notes        : " + "; ".join(proposal.notes))
 
     if validation.warnings:
@@ -46,6 +59,23 @@ def render_preview(proposal: Proposal, validation: ValidationResult) -> str:
 
     if validation.reasons:
         lines.append("Rejections   : " + "; ".join(validation.reasons))
+
+    return "\n".join(lines)
+
+
+def _render_direct_preview(proposal: Proposal, validation: ValidationResult) -> str:
+    command = validation.rendered_command or proposal.command or "(unavailable)"
+    lines = [
+        "--- command preview ---",
+        f"Command: {command}",
+        f"Risk: {validation.risk_level.value}",
+    ]
+
+    if validation.warnings:
+        lines.append("Warnings: " + "; ".join(validation.warnings))
+
+    if validation.reasons:
+        lines.append("Rejections: " + "; ".join(validation.reasons))
 
     return "\n".join(lines)
 
