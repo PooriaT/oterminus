@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from oterminus.command_registry import supported_base_commands
+from oterminus.commands import supported_base_commands
 from oterminus.router import RouteResult
 from oterminus.structured_commands import STRUCTURED_ARGUMENT_MODELS
 

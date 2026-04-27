@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from oterminus.command_registry import supported_base_commands, supported_categories
+from oterminus.commands import supported_base_commands, supported_categories
 
 REPL_BUILTINS: tuple[str, ...] = ("help", "exit", "quit")
 NL_TEMPLATES: tuple[str, ...] = (

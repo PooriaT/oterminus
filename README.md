@@ -30,6 +30,8 @@ Current routing buckets:
 
 The router is intentionally simple and rule-based in v1. It improves family selection hints for planning, but does not replace validator safety checks.
 
+Command metadata for structured command support is maintained in a central merged registry built from modular capability packs under `src/oterminus/commands/` (filesystem, text, process, system, macOS, dangerous). This keeps validator/direct-command/autocomplete behavior aligned while allowing the registry to scale without a single monolithic file.
+
 ## Requirements
 
 - Python 3.13+
