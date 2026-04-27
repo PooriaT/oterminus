@@ -11,6 +11,7 @@ packages = [{ include = "oterminus", from = "src", format = ["sdist", "wheel"] }
 python = "^3.13"
 ollama = "^0.6.0"
 pydantic = "^2.9.0"
+prompt_toolkit = "^3.0.52"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.0"
