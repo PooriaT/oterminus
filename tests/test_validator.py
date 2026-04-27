@@ -160,6 +160,7 @@ def test_risk_classification_for_next_wave_structured_families(command: str, exp
     [
         "uname --bad",
         "which",
+        "env",
         "cp src.txt",
         "mv draft.txt",
         "du --bad .",

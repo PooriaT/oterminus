@@ -230,7 +230,7 @@ Examples of requests that now land in structured mode:
 
 When a request cannot be represented safely in these deterministic schemas, `oterminus` falls back to `experimental` mode and applies stricter confirmation behavior.
 
-`env` is supported in curated mode, but avoid dumping full environment output when possible because it can include secrets; prefer single-variable lookups like `env PATH`.
+`env` is supported in curated mode only for single-variable lookups (for example `env PATH`) to reduce accidental secret exposure from full environment dumps.
 
 ## Regression evals (golden fixtures)
 
