@@ -12,7 +12,7 @@ def _format_structured_shapes() -> str:
         "whoami": "{}",
         "uname": '{"all": true|false, "kernel_name": true|false, "node_name": true|false, "kernel_release": true|false, "kernel_version": true|false, "machine": true|false}',
         "which": '{"commands": ["python3"], "all_matches": true|false}',
-        "env": '{"variable": "PATH"|null}',
+        "env": '{"variable": "PATH"}',
         "mkdir": '{"path": "...", "parents": true|false}',
         "chmod": '{"path": "...", "mode": "755"}',
         "find": '{"path": ".", "name": "*.py"}',

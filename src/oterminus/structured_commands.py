@@ -96,13 +96,11 @@ class WhichArguments(_StructuredArgumentsModel):
 
 
 class EnvArguments(_StructuredArgumentsModel):
-    variable: str | None = None
+    variable: str = Field(min_length=1)
 
     @field_validator("variable")
     @classmethod
-    def validate_variable(cls, value: str | None) -> str | None:
-        if value is None:
-            return value
+    def validate_variable(cls, value: str) -> str:
         if value.startswith("-"):
             raise ValueError("variable cannot start with '-'.")
         return value
@@ -549,10 +547,7 @@ def render_structured_command(command_family: str, arguments: dict[str, Any] | N
         return RenderedCommand(tuple(argv))
 
     if command_family == "env":
-        argv = ["env"]
-        if validated.variable is not None:
-            argv.append(validated.variable)
-        return RenderedCommand(tuple(argv))
+        return RenderedCommand(("env", validated.variable))
 
     if command_family == "mkdir":
         argv = ["mkdir"]
@@ -825,10 +820,8 @@ def _parse_which_argv(operands: list[str]) -> dict[str, Any] | None:
 
 
 def _parse_env_argv(operands: list[str]) -> dict[str, Any] | None:
-    if len(operands) > 1:
+    if len(operands) != 1:
         return None
-    if not operands:
-        return {"variable": None}
     if operands[0].startswith("-"):
         return None
     return {"variable": operands[0]}

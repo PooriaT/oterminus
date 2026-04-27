@@ -198,6 +198,10 @@ class Validator:
             reasons.append(
                 f"Command '{spec.name}' requires at least {spec.min_operands} operand(s); got {operand_count}."
             )
+        if spec.max_operands is not None and operand_count > spec.max_operands:
+            reasons.append(
+                f"Command '{spec.name}' allows at most {spec.max_operands} operand(s); got {operand_count}."
+            )
 
         return _dedupe_preserve_order(reasons)
 

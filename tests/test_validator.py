@@ -160,6 +160,8 @@ def test_risk_classification_for_next_wave_structured_families(command: str, exp
     [
         "uname --bad",
         "which",
+        "env",
+        "env PATH HOME",
         "cp src.txt",
         "mv draft.txt",
         "du --bad .",
@@ -182,6 +184,14 @@ def test_acceptance_rejects_invalid_next_wave_variants(command: str) -> None:
     result = validator.validate(make_proposal(command))
 
     assert result.accepted is False
+
+
+def test_validator_rejects_env_with_more_than_one_operand() -> None:
+    validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))
+    result = validator.validate(make_proposal("env PATH HOME"))
+
+    assert result.accepted is False
+    assert any("allows at most 1 operand" in reason for reason in result.reasons)
 
 
 def test_allowed_roots_find_checks_only_search_roots() -> None:

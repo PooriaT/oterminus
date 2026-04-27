@@ -269,6 +269,7 @@ def test_parse_raw_command_as_structured_returns_none_for_unsupported_stat_forma
         "open -Z .",
         "file",
         "which",
+        "env",
         "env PATH HOME",
         "df . /tmp",
         "ps -z",

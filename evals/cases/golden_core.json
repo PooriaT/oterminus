@@ -887,5 +887,82 @@
       "-c",
       "python"
     ]
+  },
+  {
+    "id": "direct-whoami",
+    "user_input": "whoami",
+    "expected_mode": "structured",
+    "expected_command_family": "whoami",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "whoami",
+    "expected_argv": [
+      "whoami"
+    ]
+  },
+  {
+    "id": "direct-uname-system-name",
+    "user_input": "uname -s",
+    "expected_mode": "structured",
+    "expected_command_family": "uname",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "uname -s",
+    "expected_argv": [
+      "uname",
+      "-s"
+    ]
+  },
+  {
+    "id": "direct-sort-reverse-unique",
+    "user_input": "sort -ru README.md",
+    "expected_mode": "structured",
+    "expected_command_family": "sort",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "sort -r -u README.md",
+    "expected_argv": [
+      "sort",
+      "-r",
+      "-u",
+      "README.md"
+    ]
+  },
+  {
+    "id": "direct-uniq-count",
+    "user_input": "uniq -c README.md",
+    "expected_mode": "structured",
+    "expected_command_family": "uniq",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "uniq -c README.md",
+    "expected_argv": [
+      "uniq",
+      "-c",
+      "README.md"
+    ]
+  },
+  {
+    "id": "direct-env-without-variable-rejected",
+    "user_input": "env",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "experimental",
+      "command_family": "env",
+      "command": "env",
+      "summary": "print env",
+      "explanation": "raw env",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "experimental",
+    "expected_command_family": "env",
+    "expected_risk_level": "safe",
+    "expected_acceptance": false,
+    "expected_rendered_command": "env",
+    "expected_argv": [
+      "env"
+    ]
   }
 ]
