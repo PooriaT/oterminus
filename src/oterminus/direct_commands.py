@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import shlex
 
-from oterminus.command_registry import get_command_spec, looks_like_direct_invocation
+from oterminus.commands import get_command_spec, looks_like_direct_invocation
 from oterminus.models import ActionType, Proposal, ProposalMode
 from oterminus.structured_commands import StructuredCommandError, parse_raw_command_as_structured
 

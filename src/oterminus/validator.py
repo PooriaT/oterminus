@@ -4,7 +4,7 @@ import re
 import shlex
 from pathlib import Path
 
-from oterminus.command_registry import CommandSpec, PathOperandMode, get_command_spec
+from oterminus.commands import CommandSpec, PathOperandMode, get_command_spec
 from oterminus.models import Proposal, ProposalMode, RiskLevel, ValidationResult
 from oterminus.policies import PolicyConfig, is_risk_allowed
 from oterminus.structured_commands import (
