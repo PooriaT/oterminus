@@ -44,6 +44,7 @@ def test_parse_supported_command_ls_proposal_is_normalized_to_structured() -> No
         ),
         ("whoami", "whoami", {}),
         ("df -h .", "df", {"path": ".", "human_readable": True}),
+        ("df", "df", {"path": None, "human_readable": False}),
         ("ps -Af", "ps", {"all_processes": True, "full_format": True, "user": None, "pid": None}),
     ],
 )

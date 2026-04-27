@@ -197,7 +197,7 @@ Examples of requests that now land in structured mode:
 - “show running processes” → `ps -A`
 - “find processes matching python” → `pgrep -f python`
 - “show open files for this directory” → `lsof .`
-- “show disk space” → `df -h .`
+- “show disk space” → `df -h` (or `df` for default all filesystems)
 - “show current username” → `whoami`
 - “show system name” → `uname -s`
 - “find where python is installed” → `which python`

@@ -181,12 +181,14 @@ class DuArguments(_StructuredArgumentsModel):
 
 
 class DfArguments(_StructuredArgumentsModel):
-    path: str = Field(default=".", min_length=1)
+    path: str | None = None
     human_readable: bool = False
 
     @field_validator("path")
     @classmethod
-    def validate_path(cls, value: str) -> str:
+    def validate_path(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
         return _validate_path(value)
 
 
@@ -322,6 +324,7 @@ class LsofArguments(_StructuredArgumentsModel):
     path: str | None = None
     pid: int | None = Field(default=None, ge=1)
     command_prefix: str | None = None
+    and_selectors: bool = False
     no_dns: bool = False
     no_port_names: bool = False
 
@@ -597,7 +600,8 @@ def render_structured_command(command_family: str, arguments: dict[str, Any] | N
         argv = ["df"]
         if validated.human_readable:
             argv.append("-h")
-        argv.append(validated.path)
+        if validated.path is not None:
+            argv.append(validated.path)
         return RenderedCommand(tuple(argv))
 
     if command_family == "stat":
@@ -678,6 +682,8 @@ def render_structured_command(command_family: str, arguments: dict[str, Any] | N
 
     if command_family == "lsof":
         argv = ["lsof"]
+        if validated.and_selectors:
+            argv.append("-a")
         if validated.no_dns:
             argv.append("-n")
         if validated.no_port_names:
@@ -963,7 +969,7 @@ def _parse_du_argv(operands: list[str]) -> dict[str, Any] | None:
 
 
 def _parse_df_argv(operands: list[str]) -> dict[str, Any] | None:
-    arguments: dict[str, Any] = {"path": ".", "human_readable": False}
+    arguments: dict[str, Any] = {"path": None, "human_readable": False}
     path: str | None = None
     for operand in operands:
         if operand == "-h":
@@ -974,8 +980,7 @@ def _parse_df_argv(operands: list[str]) -> dict[str, Any] | None:
         if path is not None:
             return None
         path = operand
-    if path is not None:
-        arguments["path"] = path
+    arguments["path"] = path
     return arguments
 
 
@@ -1234,6 +1239,7 @@ def _parse_lsof_argv(operands: list[str]) -> dict[str, Any] | None:
         "path": None,
         "pid": None,
         "command_prefix": None,
+        "and_selectors": False,
         "no_dns": False,
         "no_port_names": False,
     }
@@ -1256,7 +1262,9 @@ def _parse_lsof_argv(operands: list[str]) -> dict[str, Any] | None:
         flags = _expand_short_flag_cluster(operand, {"a", "n", "P"}) if operand.startswith("-") else None
         if flags is not None:
             for flag in flags:
-                if flag == "-n":
+                if flag == "-a":
+                    arguments["and_selectors"] = True
+                elif flag == "-n":
                     arguments["no_dns"] = True
                 elif flag == "-P":
                     arguments["no_port_names"] = True

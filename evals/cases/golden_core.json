@@ -858,5 +858,34 @@
       "-l",
       "README.md"
     ]
+  },
+  {
+    "id": "direct-df-default-all-filesystems",
+    "user_input": "df",
+    "expected_mode": "structured",
+    "expected_command_family": "df",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "df",
+    "expected_argv": [
+      "df"
+    ]
+  },
+  {
+    "id": "direct-lsof-preserve-and-selector",
+    "user_input": "lsof -a -p 1 -c python",
+    "expected_mode": "structured",
+    "expected_command_family": "lsof",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "lsof -a -p 1 -c python",
+    "expected_argv": [
+      "lsof",
+      "-a",
+      "-p",
+      "1",
+      "-c",
+      "python"
+    ]
   }
 ]
