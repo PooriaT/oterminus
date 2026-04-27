@@ -28,6 +28,14 @@ def test_detect_direct_command_for_new_curated_family() -> None:
     assert proposal.command == "open ."
 
 
+def test_detect_direct_command_for_process_family() -> None:
+    proposal = detect_direct_command("ps -Af")
+
+    assert proposal is not None
+    assert proposal.mode == ProposalMode.STRUCTURED
+    assert proposal.command_family == "ps"
+
+
 def test_detect_direct_command_preserves_registry_notes() -> None:
     proposal = detect_direct_command("cd src")
 

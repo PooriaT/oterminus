@@ -740,5 +740,152 @@
       "wc",
       "-l"
     ]
+  },
+  {
+    "id": "direct-ps-full",
+    "user_input": "ps -Af",
+    "expected_mode": "structured",
+    "expected_command_family": "ps",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "ps -A -f",
+    "expected_argv": [
+      "ps",
+      "-A",
+      "-f"
+    ]
+  },
+  {
+    "id": "direct-which-python",
+    "user_input": "which python3",
+    "expected_mode": "structured",
+    "expected_command_family": "which",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "which python3",
+    "expected_argv": [
+      "which",
+      "python3"
+    ]
+  },
+  {
+    "id": "planner-structured-process-list",
+    "user_input": "show running processes",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "ps",
+      "arguments": {
+        "all_processes": true,
+        "full_format": false,
+        "user": null,
+        "pid": null
+      },
+      "summary": "list running processes",
+      "explanation": "use ps for process listing",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "structured",
+    "expected_command_family": "ps",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "ps -A",
+    "expected_argv": [
+      "ps",
+      "-A"
+    ]
+  },
+  {
+    "id": "planner-structured-pgrep-python",
+    "user_input": "find processes matching python",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "pgrep",
+      "arguments": {
+        "pattern": "python",
+        "full_command": true,
+        "list_names": false,
+        "user": null
+      },
+      "summary": "find python processes",
+      "explanation": "use pgrep to match process names",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "structured",
+    "expected_command_family": "pgrep",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "pgrep -f python",
+    "expected_argv": [
+      "pgrep",
+      "-f",
+      "python"
+    ]
+  },
+  {
+    "id": "planner-structured-wc-lines",
+    "user_input": "count lines in README.md",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "wc",
+      "arguments": {
+        "paths": [
+          "README.md"
+        ],
+        "lines": true,
+        "words": false,
+        "bytes": false
+      },
+      "summary": "count lines",
+      "explanation": "use wc line count",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "structured",
+    "expected_command_family": "wc",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "wc -l README.md",
+    "expected_argv": [
+      "wc",
+      "-l",
+      "README.md"
+    ]
+  },
+  {
+    "id": "direct-df-default-all-filesystems",
+    "user_input": "df",
+    "expected_mode": "structured",
+    "expected_command_family": "df",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "df",
+    "expected_argv": [
+      "df"
+    ]
+  },
+  {
+    "id": "direct-lsof-preserve-and-selector",
+    "user_input": "lsof -a -p 1 -c python",
+    "expected_mode": "structured",
+    "expected_command_family": "lsof",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "lsof -a -p 1 -c python",
+    "expected_argv": [
+      "lsof",
+      "-a",
+      "-p",
+      "1",
+      "-c",
+      "python"
+    ]
   }
 ]
