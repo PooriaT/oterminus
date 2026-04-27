@@ -10,7 +10,34 @@ from oterminus.structured_commands import (
 
 @pytest.mark.parametrize(
     "command_family",
-    ["ls", "pwd", "mkdir", "chmod", "find", "cp", "mv", "du", "stat", "head", "tail", "grep", "cat", "open", "file"],
+    [
+        "ls",
+        "pwd",
+        "whoami",
+        "uname",
+        "which",
+        "env",
+        "mkdir",
+        "chmod",
+        "find",
+        "cp",
+        "mv",
+        "du",
+        "df",
+        "stat",
+        "head",
+        "tail",
+        "grep",
+        "cat",
+        "open",
+        "file",
+        "ps",
+        "pgrep",
+        "lsof",
+        "wc",
+        "sort",
+        "uniq",
+    ],
 )
 def test_supported_structured_families_are_curated(command_family: str) -> None:
     assert supports_structured_family(command_family) is True
@@ -26,6 +53,15 @@ def test_supported_structured_families_are_curated(command_family: str) -> None:
             "ls -l -h .",
         ),
         ("pwd", {}, ("pwd",), "pwd"),
+        ("whoami", {}, ("whoami",), "whoami"),
+        (
+            "uname",
+            {"all": False, "kernel_name": True, "node_name": False, "kernel_release": True, "kernel_version": False, "machine": False},
+            ("uname", "-s", "-r"),
+            "uname -s -r",
+        ),
+        ("which", {"commands": ["python3"], "all_matches": True}, ("which", "-a", "python3"), "which -a python3"),
+        ("env", {"variable": "PATH"}, ("env", "PATH"), "env PATH"),
         ("mkdir", {"path": "backup", "parents": True}, ("mkdir", "-p", "backup"), "mkdir -p backup"),
         ("chmod", {"path": "run.sh", "mode": "755"}, ("chmod", "755", "run.sh"), "chmod 755 run.sh"),
         ("find", {"path": ".", "name": "*.py"}, ("find", ".", "-name", "*.py"), "find . -name '*.py'"),
@@ -47,6 +83,7 @@ def test_supported_structured_families_are_curated(command_family: str) -> None:
             ("du", "-h", "-s", "."),
             "du -h -s .",
         ),
+        ("df", {"path": ".", "human_readable": True}, ("df", "-h", "."), "df -h ."),
         (
             "stat",
             {"path": "README.md", "dereference": True, "verbose": True},
@@ -83,6 +120,27 @@ def test_supported_structured_families_are_curated(command_family: str) -> None:
         ("cat", {"paths": ["README.md", "pyproject.toml"]}, ("cat", "README.md", "pyproject.toml"), "cat README.md pyproject.toml"),
         ("open", {"path": ".", "reveal": True}, ("open", "-R", "."), "open -R ."),
         ("file", {"paths": ["README.md"], "brief": True}, ("file", "-b", "README.md"), "file -b README.md"),
+        (
+            "ps",
+            {"all_processes": True, "full_format": True, "user": "root", "pid": None},
+            ("ps", "-A", "-f", "-u", "root"),
+            "ps -A -f -u root",
+        ),
+        (
+            "pgrep",
+            {"pattern": "python", "full_command": True, "list_names": True, "user": None},
+            ("pgrep", "-f", "-l", "python"),
+            "pgrep -f -l python",
+        ),
+        (
+            "lsof",
+            {"path": ".", "pid": None, "command_prefix": "python", "no_dns": True, "no_port_names": True},
+            ("lsof", "-n", "-P", "-c", "python", "."),
+            "lsof -n -P -c python .",
+        ),
+        ("wc", {"paths": ["README.md"], "lines": True, "words": False, "bytes": True}, ("wc", "-l", "-c", "README.md"), "wc -l -c README.md"),
+        ("sort", {"path": "README.md", "numeric": False, "reverse": True, "unique": True}, ("sort", "-r", "-u", "README.md"), "sort -r -u README.md"),
+        ("uniq", {"path": "README.md", "count": True, "repeated_only": False, "unique_only": False}, ("uniq", "-c", "README.md"), "uniq -c README.md"),
     ],
 )
 def test_render_structured_command(
@@ -134,6 +192,21 @@ def test_render_structured_command(
         ("cat README.md pyproject.toml", "cat", {"paths": ["README.md", "pyproject.toml"]}),
         ("open -R .", "open", {"path": ".", "reveal": True}),
         ("file -b README.md", "file", {"paths": ["README.md"], "brief": True}),
+        ("whoami", "whoami", {}),
+        (
+            "uname -sr",
+            "uname",
+            {"all": False, "kernel_name": True, "node_name": False, "kernel_release": True, "kernel_version": False, "machine": False},
+        ),
+        ("which -a python3", "which", {"commands": ["python3"], "all_matches": True}),
+        ("env PATH", "env", {"variable": "PATH"}),
+        ("df -h .", "df", {"path": ".", "human_readable": True}),
+        ("ps -Af -u root", "ps", {"all_processes": True, "full_format": True, "user": "root", "pid": None}),
+        ("pgrep -fl python", "pgrep", {"pattern": "python", "full_command": True, "list_names": True, "user": None}),
+        ("lsof -nP -c python .", "lsof", {"path": ".", "pid": None, "command_prefix": "python", "no_dns": True, "no_port_names": True}),
+        ("wc -lc README.md", "wc", {"paths": ["README.md"], "lines": True, "words": False, "bytes": True}),
+        ("sort -ru README.md", "sort", {"path": "README.md", "numeric": False, "reverse": True, "unique": True}),
+        ("uniq -c README.md", "uniq", {"path": "README.md", "count": True, "repeated_only": False, "unique_only": False}),
     ],
 )
 def test_parse_raw_command_as_structured(
@@ -171,6 +244,11 @@ def test_render_structured_command_rejects_conflicting_grep_flags() -> None:
         )
 
 
+def test_render_structured_command_rejects_conflicting_uniq_flags() -> None:
+    with pytest.raises(StructuredCommandError):
+        render_structured_command("uniq", {"path": "README.md", "count": False, "repeated_only": True, "unique_only": True})
+
+
 def test_parse_raw_command_as_structured_returns_none_for_unsupported_stat_format_variant() -> None:
     assert parse_raw_command_as_structured("stat -f '%z' README.md") is None
 
@@ -188,6 +266,14 @@ def test_parse_raw_command_as_structured_returns_none_for_unsupported_stat_forma
         "cat -n README.md",
         "open -Z .",
         "file",
+        "which",
+        "env PATH HOME",
+        "df . /tmp",
+        "ps -z",
+        "pgrep -z python",
+        "lsof -x",
+        "wc -z README.md",
+        "sort",
     ],
 )
 def test_parse_raw_command_as_structured_rejects_invalid_variants(command: str) -> None:
@@ -197,3 +283,8 @@ def test_parse_raw_command_as_structured_rejects_invalid_variants(command: str) 
 def test_parse_raw_command_as_structured_raises_for_disallowed_open_url_target() -> None:
     with pytest.raises(StructuredCommandError):
         parse_raw_command_as_structured("open https://example.com")
+
+
+def test_parse_raw_command_as_structured_raises_for_conflicting_uniq_flags() -> None:
+    with pytest.raises(StructuredCommandError):
+        parse_raw_command_as_structured("uniq -du README.md")

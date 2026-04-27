@@ -123,6 +123,11 @@ def test_reject_open_url_target() -> None:
 @pytest.mark.parametrize(
     ("command", "expected_risk"),
     [
+        ("whoami", RiskLevel.SAFE),
+        ("uname -a", RiskLevel.SAFE),
+        ("which python3", RiskLevel.SAFE),
+        ("env PATH", RiskLevel.SAFE),
+        ("df -h .", RiskLevel.SAFE),
         ("cp src.txt dst.txt", RiskLevel.WRITE),
         ("mv old.txt new.txt", RiskLevel.WRITE),
         ("du .", RiskLevel.SAFE),
@@ -133,6 +138,12 @@ def test_reject_open_url_target() -> None:
         ("cat README.md", RiskLevel.SAFE),
         ("open .", RiskLevel.SAFE),
         ("file README.md", RiskLevel.SAFE),
+        ("ps -Af", RiskLevel.SAFE),
+        ("pgrep -fl python", RiskLevel.SAFE),
+        ("lsof -nP .", RiskLevel.SAFE),
+        ("wc -l README.md", RiskLevel.SAFE),
+        ("sort -ru README.md", RiskLevel.SAFE),
+        ("uniq -c README.md", RiskLevel.SAFE),
     ],
 )
 def test_risk_classification_for_next_wave_structured_families(command: str, expected_risk: RiskLevel) -> None:
@@ -146,6 +157,8 @@ def test_risk_classification_for_next_wave_structured_families(command: str, exp
 @pytest.mark.parametrize(
     "command",
     [
+        "uname --bad",
+        "which",
         "cp src.txt",
         "mv draft.txt",
         "du --bad .",
@@ -156,6 +169,11 @@ def test_risk_classification_for_next_wave_structured_families(command: str, exp
         "cat -n README.md",
         "open https://example.com",
         "file",
+        "ps -z",
+        "pgrep -z python",
+        "lsof -x",
+        "wc -z README.md",
+        "sort",
     ],
 )
 def test_acceptance_rejects_invalid_next_wave_variants(command: str) -> None:

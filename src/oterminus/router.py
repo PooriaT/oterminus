@@ -45,7 +45,7 @@ def route_request(user_input: str) -> RouteResult:
             category="process_inspect",
             confidence=0.87,
             reason="Request references running processes or resource usage.",
-            suggested_families=(),
+            suggested_families=("ps", "pgrep", "lsof"),
         )
 
     if _has_any(text, _METADATA_HINTS):
@@ -53,7 +53,7 @@ def route_request(user_input: str) -> RouteResult:
             category="metadata_inspect",
             confidence=0.9,
             reason="Request asks for file metadata or disk usage properties.",
-            suggested_families=("stat", "du", "file"),
+            suggested_families=("stat", "du", "df", "file", "uname", "whoami", "which", "env"),
         )
 
     if _has_any(text, _MUTATION_HINTS):
@@ -69,7 +69,7 @@ def route_request(user_input: str) -> RouteResult:
             category="filesystem_inspect",
             confidence=0.84,
             reason="Request asks to view files, folders, or contents.",
-            suggested_families=("ls", "pwd", "find", "cat", "head", "tail", "open"),
+            suggested_families=("ls", "pwd", "find", "cat", "head", "tail", "wc", "sort", "uniq", "open"),
         )
 
     return RouteResult(
@@ -135,6 +135,15 @@ _METADATA_HINTS = (
     "type of file",
     "file type",
     "stat",
+    "disk space",
+    "filesystem",
+    "system name",
+    "kernel",
+    "username",
+    "current user",
+    "where is",
+    "which",
+    "environment variable",
 )
 
 _PROCESS_INSPECT_HINTS = (
@@ -146,6 +155,9 @@ _PROCESS_INSPECT_HINTS = (
     "memory",
     "top",
     "ps",
+    "pgrep",
+    "lsof",
+    "open files",
 )
 
 _INSPECTION_HINTS = (

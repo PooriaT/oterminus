@@ -9,12 +9,17 @@ def _format_structured_shapes() -> str:
     shapes = {
         "ls": '{"path": ".", "long": true|false, "human_readable": true|false, "all": true|false, "recursive": true|false}',
         "pwd": "{}",
+        "whoami": "{}",
+        "uname": '{"all": true|false, "kernel_name": true|false, "node_name": true|false, "kernel_release": true|false, "kernel_version": true|false, "machine": true|false}',
+        "which": '{"commands": ["python3"], "all_matches": true|false}',
+        "env": '{"variable": "PATH"|null}',
         "mkdir": '{"path": "...", "parents": true|false}',
         "chmod": '{"path": "...", "mode": "755"}',
         "find": '{"path": ".", "name": "*.py"}',
         "cp": '{"source": "...", "destination": "...", "recursive": true|false, "preserve": true|false, "no_clobber": true|false}',
         "mv": '{"source": "...", "destination": "...", "no_clobber": true|false}',
         "du": '{"path": ".", "human_readable": true|false, "summarize": true|false, "max_depth": 0|null}',
+        "df": '{"path": ".", "human_readable": true|false}',
         "stat": '{"path": "...", "dereference": true|false, "verbose": true|false}',
         "head": '{"paths": ["..."], "lines": 10|null, "bytes": null}',
         "tail": '{"paths": ["..."], "lines": 10|null, "bytes": null}',
@@ -22,6 +27,12 @@ def _format_structured_shapes() -> str:
         "cat": '{"paths": ["..."]}',
         "open": '{"path": "...", "reveal": true|false}',
         "file": '{"paths": ["..."], "brief": true|false}',
+        "ps": '{"all_processes": true|false, "full_format": true|false, "user": "alice"|null, "pid": 1234|null}',
+        "pgrep": '{"pattern": "python", "full_command": true|false, "list_names": true|false, "user": "alice"|null}',
+        "lsof": '{"path": "."|null, "pid": 1234|null, "command_prefix": "python"|null, "no_dns": true|false, "no_port_names": true|false}',
+        "wc": '{"paths": ["README.md"], "lines": true|false, "words": true|false, "bytes": true|false}',
+        "sort": '{"path": "README.md", "numeric": true|false, "reverse": true|false, "unique": true|false}',
+        "uniq": '{"path": "README.md", "count": true|false, "repeated_only": true|false, "unique_only": true|false}',
     }
     return "\n".join(f"- `{family}`: `{shapes[family]}`" for family in sorted(STRUCTURED_ARGUMENT_MODELS))
 

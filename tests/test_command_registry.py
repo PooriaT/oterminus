@@ -18,8 +18,11 @@ def test_registry_contains_core_command_metadata() -> None:
 
 def test_registry_exposes_supported_families_and_direct_commands() -> None:
     assert "search" in supported_categories()
+    assert "system_inspection" in supported_categories()
+    assert "process_inspection" in supported_categories()
     assert "find" in direct_supported_base_commands()
     assert "open" in direct_supported_base_commands()
+    assert "ps" in direct_supported_base_commands()
     assert "macos_integration" in supported_categories()
 
 
@@ -40,4 +43,7 @@ def test_registry_tracks_new_family_constraints() -> None:
 def test_registry_direct_detection_heuristics_match_current_behavior() -> None:
     assert looks_like_direct_invocation("pwd", []) is True
     assert looks_like_direct_invocation("pwd", ["extra"]) is False
+    assert looks_like_direct_invocation("whoami", []) is True
+    assert looks_like_direct_invocation("whoami", ["extra"]) is False
+    assert looks_like_direct_invocation("which", ["python3"]) is True
     assert looks_like_direct_invocation("find", ["all", ".py", "files"]) is False

@@ -42,6 +42,9 @@ def test_parse_supported_command_ls_proposal_is_normalized_to_structured() -> No
             "open",
             {"path": ".", "reveal": True},
         ),
+        ("whoami", "whoami", {}),
+        ("df -h .", "df", {"path": ".", "human_readable": True}),
+        ("ps -Af", "ps", {"all_processes": True, "full_format": True, "user": None, "pid": None}),
     ],
 )
 def test_parse_supported_command_proposal_is_normalized_to_structured(

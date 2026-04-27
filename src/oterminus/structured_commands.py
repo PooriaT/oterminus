@@ -56,6 +56,58 @@ class PwdArguments(_StructuredArgumentsModel):
     pass
 
 
+class WhoamiArguments(_StructuredArgumentsModel):
+    pass
+
+
+class UnameArguments(_StructuredArgumentsModel):
+    all: bool = False
+    kernel_name: bool = False
+    node_name: bool = False
+    kernel_release: bool = False
+    kernel_version: bool = False
+    machine: bool = False
+
+    @model_validator(mode="after")
+    def validate_shape(self) -> UnameArguments:
+        if self.all and any(
+            (
+                self.kernel_name,
+                self.node_name,
+                self.kernel_release,
+                self.kernel_version,
+                self.machine,
+            )
+        ):
+            raise ValueError("all=true cannot be combined with specific uname fields.")
+        return self
+
+
+class WhichArguments(_StructuredArgumentsModel):
+    commands: list[str] = Field(min_length=1)
+    all_matches: bool = False
+
+    @field_validator("commands")
+    @classmethod
+    def validate_commands(cls, value: list[str]) -> list[str]:
+        if any(command.startswith("-") for command in value):
+            raise ValueError("commands cannot start with '-'.")
+        return value
+
+
+class EnvArguments(_StructuredArgumentsModel):
+    variable: str | None = None
+
+    @field_validator("variable")
+    @classmethod
+    def validate_variable(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        if value.startswith("-"):
+            raise ValueError("variable cannot start with '-'.")
+        return value
+
+
 class MkdirArguments(_StructuredArgumentsModel):
     path: str = Field(min_length=1)
     parents: bool = False
@@ -126,6 +178,16 @@ class DuArguments(_StructuredArgumentsModel):
         if self.summarize and self.max_depth is not None:
             raise ValueError("max_depth cannot be combined with summarize=true.")
         return self
+
+
+class DfArguments(_StructuredArgumentsModel):
+    path: str = Field(default=".", min_length=1)
+    human_readable: bool = False
+
+    @field_validator("path")
+    @classmethod
+    def validate_path(cls, value: str) -> str:
+        return _validate_path(value)
 
 
 class StatArguments(_StructuredArgumentsModel):
@@ -224,15 +286,118 @@ class FileArguments(_StructuredArgumentsModel):
         return _validate_paths(value)
 
 
+class PsArguments(_StructuredArgumentsModel):
+    all_processes: bool = False
+    full_format: bool = False
+    user: str | None = None
+    pid: int | None = Field(default=None, ge=1)
+
+    @field_validator("user")
+    @classmethod
+    def validate_user(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        if value.startswith("-"):
+            raise ValueError("user cannot start with '-'.")
+        return value
+
+
+class PgrepArguments(_StructuredArgumentsModel):
+    pattern: str = Field(min_length=1)
+    full_command: bool = False
+    list_names: bool = False
+    user: str | None = None
+
+    @field_validator("user")
+    @classmethod
+    def validate_user(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        if value.startswith("-"):
+            raise ValueError("user cannot start with '-'.")
+        return value
+
+
+class LsofArguments(_StructuredArgumentsModel):
+    path: str | None = None
+    pid: int | None = Field(default=None, ge=1)
+    command_prefix: str | None = None
+    no_dns: bool = False
+    no_port_names: bool = False
+
+    @field_validator("path")
+    @classmethod
+    def validate_path(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        return _validate_path(value)
+
+    @field_validator("command_prefix")
+    @classmethod
+    def validate_command_prefix(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        if value.startswith("-"):
+            raise ValueError("command_prefix cannot start with '-'.")
+        return value
+
+
+class WcArguments(_StructuredArgumentsModel):
+    paths: list[str] = Field(min_length=1)
+    lines: bool = False
+    words: bool = False
+    bytes: bool = False
+
+    @field_validator("paths")
+    @classmethod
+    def validate_paths(cls, value: list[str]) -> list[str]:
+        return _validate_paths(value)
+
+
+class SortArguments(_StructuredArgumentsModel):
+    path: str = Field(min_length=1)
+    numeric: bool = False
+    reverse: bool = False
+    unique: bool = False
+
+    @field_validator("path")
+    @classmethod
+    def validate_path(cls, value: str) -> str:
+        return _validate_path(value)
+
+
+class UniqArguments(_StructuredArgumentsModel):
+    path: str = Field(min_length=1)
+    count: bool = False
+    repeated_only: bool = False
+    unique_only: bool = False
+
+    @field_validator("path")
+    @classmethod
+    def validate_path(cls, value: str) -> str:
+        return _validate_path(value)
+
+    @model_validator(mode="after")
+    def validate_shape(self) -> UniqArguments:
+        if self.repeated_only and self.unique_only:
+            raise ValueError("repeated_only and unique_only are mutually exclusive.")
+        return self
+
+
 STRUCTURED_ARGUMENT_MODELS: dict[str, type[_StructuredArgumentsModel]] = {
     "ls": LsArguments,
     "pwd": PwdArguments,
+    "whoami": WhoamiArguments,
+    "uname": UnameArguments,
+    "which": WhichArguments,
+    "env": EnvArguments,
     "mkdir": MkdirArguments,
     "chmod": ChmodArguments,
     "find": FindArguments,
     "cp": CpArguments,
     "mv": MvArguments,
     "du": DuArguments,
+    "df": DfArguments,
     "stat": StatArguments,
     "head": HeadArguments,
     "tail": TailArguments,
@@ -240,6 +405,12 @@ STRUCTURED_ARGUMENT_MODELS: dict[str, type[_StructuredArgumentsModel]] = {
     "cat": CatArguments,
     "open": OpenArguments,
     "file": FileArguments,
+    "ps": PsArguments,
+    "pgrep": PgrepArguments,
+    "lsof": LsofArguments,
+    "wc": WcArguments,
+    "sort": SortArguments,
+    "uniq": UniqArguments,
 }
 
 
@@ -274,12 +445,17 @@ def parse_argv_as_structured(argv: Sequence[str]) -> tuple[str, dict[str, Any]] 
     parser = {
         "ls": _parse_ls_argv,
         "pwd": _parse_pwd_argv,
+        "whoami": _parse_whoami_argv,
+        "uname": _parse_uname_argv,
+        "which": _parse_which_argv,
+        "env": _parse_env_argv,
         "mkdir": _parse_mkdir_argv,
         "chmod": _parse_chmod_argv,
         "find": _parse_find_argv,
         "cp": _parse_cp_argv,
         "mv": _parse_mv_argv,
         "du": _parse_du_argv,
+        "df": _parse_df_argv,
         "stat": _parse_stat_argv,
         "head": _parse_head_argv,
         "tail": _parse_tail_argv,
@@ -287,6 +463,12 @@ def parse_argv_as_structured(argv: Sequence[str]) -> tuple[str, dict[str, Any]] 
         "cat": _parse_cat_argv,
         "open": _parse_open_argv,
         "file": _parse_file_argv,
+        "ps": _parse_ps_argv,
+        "pgrep": _parse_pgrep_argv,
+        "lsof": _parse_lsof_argv,
+        "wc": _parse_wc_argv,
+        "sort": _parse_sort_argv,
+        "uniq": _parse_uniq_argv,
     }.get(command_family)
     if parser is None:
         return None
@@ -336,6 +518,39 @@ def render_structured_command(command_family: str, arguments: dict[str, Any] | N
     if command_family == "pwd":
         return RenderedCommand(("pwd",))
 
+    if command_family == "whoami":
+        return RenderedCommand(("whoami",))
+
+    if command_family == "uname":
+        argv = ["uname"]
+        if validated.all:
+            argv.append("-a")
+        else:
+            if validated.kernel_name:
+                argv.append("-s")
+            if validated.node_name:
+                argv.append("-n")
+            if validated.kernel_release:
+                argv.append("-r")
+            if validated.kernel_version:
+                argv.append("-v")
+            if validated.machine:
+                argv.append("-m")
+        return RenderedCommand(tuple(argv))
+
+    if command_family == "which":
+        argv = ["which"]
+        if validated.all_matches:
+            argv.append("-a")
+        argv.extend(validated.commands)
+        return RenderedCommand(tuple(argv))
+
+    if command_family == "env":
+        argv = ["env"]
+        if validated.variable is not None:
+            argv.append(validated.variable)
+        return RenderedCommand(tuple(argv))
+
     if command_family == "mkdir":
         argv = ["mkdir"]
         if validated.parents:
@@ -375,6 +590,13 @@ def render_structured_command(command_family: str, arguments: dict[str, Any] | N
             argv.append("-s")
         if validated.max_depth is not None:
             argv.extend(("-d", str(validated.max_depth)))
+        argv.append(validated.path)
+        return RenderedCommand(tuple(argv))
+
+    if command_family == "df":
+        argv = ["df"]
+        if validated.human_readable:
+            argv.append("-h")
         argv.append(validated.path)
         return RenderedCommand(tuple(argv))
 
@@ -431,6 +653,76 @@ def render_structured_command(command_family: str, arguments: dict[str, Any] | N
         argv.extend(validated.paths)
         return RenderedCommand(tuple(argv))
 
+    if command_family == "ps":
+        argv = ["ps"]
+        if validated.all_processes:
+            argv.append("-A")
+        if validated.full_format:
+            argv.append("-f")
+        if validated.user is not None:
+            argv.extend(("-u", validated.user))
+        if validated.pid is not None:
+            argv.extend(("-p", str(validated.pid)))
+        return RenderedCommand(tuple(argv))
+
+    if command_family == "pgrep":
+        argv = ["pgrep"]
+        if validated.full_command:
+            argv.append("-f")
+        if validated.list_names:
+            argv.append("-l")
+        if validated.user is not None:
+            argv.extend(("-u", validated.user))
+        argv.append(validated.pattern)
+        return RenderedCommand(tuple(argv))
+
+    if command_family == "lsof":
+        argv = ["lsof"]
+        if validated.no_dns:
+            argv.append("-n")
+        if validated.no_port_names:
+            argv.append("-P")
+        if validated.pid is not None:
+            argv.extend(("-p", str(validated.pid)))
+        if validated.command_prefix is not None:
+            argv.extend(("-c", validated.command_prefix))
+        if validated.path is not None:
+            argv.append(validated.path)
+        return RenderedCommand(tuple(argv))
+
+    if command_family == "wc":
+        argv = ["wc"]
+        if validated.lines:
+            argv.append("-l")
+        if validated.words:
+            argv.append("-w")
+        if validated.bytes:
+            argv.append("-c")
+        argv.extend(validated.paths)
+        return RenderedCommand(tuple(argv))
+
+    if command_family == "sort":
+        argv = ["sort"]
+        if validated.numeric:
+            argv.append("-n")
+        if validated.reverse:
+            argv.append("-r")
+        if validated.unique:
+            argv.append("-u")
+        argv.append(validated.path)
+        return RenderedCommand(tuple(argv))
+
+    if command_family == "uniq":
+        argv = ["uniq"]
+        if validated.count:
+            argv.append("-c")
+        if validated.repeated_only:
+            argv.append("-d")
+        if validated.unique_only:
+            argv.append("-u")
+        argv.append(validated.path)
+        return RenderedCommand(tuple(argv))
+
     raise StructuredCommandError(
         f"Structured proposals are not supported for command family '{command_family}'."
     )
@@ -473,6 +765,67 @@ def _parse_ls_argv(operands: list[str]) -> dict[str, Any] | None:
 
 def _parse_pwd_argv(operands: list[str]) -> dict[str, Any] | None:
     return {} if not operands else None
+
+
+def _parse_whoami_argv(operands: list[str]) -> dict[str, Any] | None:
+    return {} if not operands else None
+
+
+def _parse_uname_argv(operands: list[str]) -> dict[str, Any] | None:
+    arguments: dict[str, Any] = {
+        "all": False,
+        "kernel_name": False,
+        "node_name": False,
+        "kernel_release": False,
+        "kernel_version": False,
+        "machine": False,
+    }
+    for operand in operands:
+        if operand.startswith("-") and operand != "-":
+            flags = _expand_short_flag_cluster(operand, {"a", "s", "n", "r", "v", "m"})
+            if flags is None:
+                return None
+            for flag in flags:
+                if flag == "-a":
+                    arguments["all"] = True
+                elif flag == "-s":
+                    arguments["kernel_name"] = True
+                elif flag == "-n":
+                    arguments["node_name"] = True
+                elif flag == "-r":
+                    arguments["kernel_release"] = True
+                elif flag == "-v":
+                    arguments["kernel_version"] = True
+                elif flag == "-m":
+                    arguments["machine"] = True
+            continue
+        return None
+    return arguments
+
+
+def _parse_which_argv(operands: list[str]) -> dict[str, Any] | None:
+    all_matches = False
+    commands: list[str] = []
+    for operand in operands:
+        if operand == "-a":
+            all_matches = True
+            continue
+        if operand.startswith("-"):
+            return None
+        commands.append(operand)
+    if not commands:
+        return None
+    return {"commands": commands, "all_matches": all_matches}
+
+
+def _parse_env_argv(operands: list[str]) -> dict[str, Any] | None:
+    if len(operands) > 1:
+        return None
+    if not operands:
+        return {"variable": None}
+    if operands[0].startswith("-"):
+        return None
+    return {"variable": operands[0]}
 
 
 def _parse_mkdir_argv(operands: list[str]) -> dict[str, Any] | None:
@@ -604,6 +957,23 @@ def _parse_du_argv(operands: list[str]) -> dict[str, Any] | None:
         path = operand
         index += 1
 
+    if path is not None:
+        arguments["path"] = path
+    return arguments
+
+
+def _parse_df_argv(operands: list[str]) -> dict[str, Any] | None:
+    arguments: dict[str, Any] = {"path": ".", "human_readable": False}
+    path: str | None = None
+    for operand in operands:
+        if operand == "-h":
+            arguments["human_readable"] = True
+            continue
+        if operand.startswith("-"):
+            return None
+        if path is not None:
+            return None
+        path = operand
     if path is not None:
         arguments["path"] = path
     return arguments
@@ -788,6 +1158,190 @@ def _parse_file_argv(operands: list[str]) -> dict[str, Any] | None:
     if not paths:
         return None
     return {"paths": paths, "brief": brief}
+
+
+def _parse_ps_argv(operands: list[str]) -> dict[str, Any] | None:
+    arguments: dict[str, Any] = {
+        "all_processes": False,
+        "full_format": False,
+        "user": None,
+        "pid": None,
+    }
+    index = 0
+    while index < len(operands):
+        operand = operands[index]
+        if operand in {"-u", "-p"}:
+            if index + 1 >= len(operands):
+                return None
+            if operand == "-u":
+                arguments["user"] = operands[index + 1]
+            else:
+                try:
+                    arguments["pid"] = int(operands[index + 1])
+                except ValueError:
+                    return None
+            index += 2
+            continue
+        flags = _expand_short_flag_cluster(operand, {"A", "e", "f"})
+        if flags is not None:
+            for flag in flags:
+                if flag in {"-A", "-e"}:
+                    arguments["all_processes"] = True
+                elif flag == "-f":
+                    arguments["full_format"] = True
+            index += 1
+            continue
+        return None
+    return arguments
+
+
+def _parse_pgrep_argv(operands: list[str]) -> dict[str, Any] | None:
+    arguments: dict[str, Any] = {"full_command": False, "list_names": False, "user": None}
+    pattern: str | None = None
+    index = 0
+    while index < len(operands):
+        operand = operands[index]
+        if pattern is None and operand == "-u":
+            if index + 1 >= len(operands):
+                return None
+            arguments["user"] = operands[index + 1]
+            index += 2
+            continue
+        if pattern is None:
+            flags = _expand_short_flag_cluster(operand, {"f", "l"}) if operand.startswith("-") else None
+            if flags is not None:
+                for flag in flags:
+                    if flag == "-f":
+                        arguments["full_command"] = True
+                    elif flag == "-l":
+                        arguments["list_names"] = True
+                index += 1
+                continue
+        if operand.startswith("-"):
+            return None
+        if pattern is not None:
+            return None
+        pattern = operand
+        index += 1
+    if pattern is None:
+        return None
+    arguments["pattern"] = pattern
+    return arguments
+
+
+def _parse_lsof_argv(operands: list[str]) -> dict[str, Any] | None:
+    arguments: dict[str, Any] = {
+        "path": None,
+        "pid": None,
+        "command_prefix": None,
+        "no_dns": False,
+        "no_port_names": False,
+    }
+    index = 0
+    while index < len(operands):
+        operand = operands[index]
+        if operand in {"-p", "-c"}:
+            if index + 1 >= len(operands):
+                return None
+            value = operands[index + 1]
+            if operand == "-p":
+                try:
+                    arguments["pid"] = int(value)
+                except ValueError:
+                    return None
+            else:
+                arguments["command_prefix"] = value
+            index += 2
+            continue
+        flags = _expand_short_flag_cluster(operand, {"a", "n", "P"}) if operand.startswith("-") else None
+        if flags is not None:
+            for flag in flags:
+                if flag == "-n":
+                    arguments["no_dns"] = True
+                elif flag == "-P":
+                    arguments["no_port_names"] = True
+            index += 1
+            continue
+        if operand.startswith("-"):
+            return None
+        if arguments["path"] is not None:
+            return None
+        arguments["path"] = operand
+        index += 1
+    return arguments
+
+
+def _parse_wc_argv(operands: list[str]) -> dict[str, Any] | None:
+    arguments: dict[str, Any] = {"lines": False, "words": False, "bytes": False}
+    paths: list[str] = []
+    for operand in operands:
+        flags = _expand_short_flag_cluster(operand, {"l", "w", "c"}) if operand.startswith("-") else None
+        if flags is not None:
+            for flag in flags:
+                if flag == "-l":
+                    arguments["lines"] = True
+                elif flag == "-w":
+                    arguments["words"] = True
+                elif flag == "-c":
+                    arguments["bytes"] = True
+            continue
+        if operand.startswith("-"):
+            return None
+        paths.append(operand)
+    if not paths:
+        return None
+    arguments["paths"] = paths
+    return arguments
+
+
+def _parse_sort_argv(operands: list[str]) -> dict[str, Any] | None:
+    arguments: dict[str, Any] = {"numeric": False, "reverse": False, "unique": False}
+    path: str | None = None
+    for operand in operands:
+        flags = _expand_short_flag_cluster(operand, {"n", "r", "u"}) if operand.startswith("-") else None
+        if flags is not None:
+            for flag in flags:
+                if flag == "-n":
+                    arguments["numeric"] = True
+                elif flag == "-r":
+                    arguments["reverse"] = True
+                elif flag == "-u":
+                    arguments["unique"] = True
+            continue
+        if operand.startswith("-"):
+            return None
+        if path is not None:
+            return None
+        path = operand
+    if path is None:
+        return None
+    arguments["path"] = path
+    return arguments
+
+
+def _parse_uniq_argv(operands: list[str]) -> dict[str, Any] | None:
+    arguments: dict[str, Any] = {"count": False, "repeated_only": False, "unique_only": False}
+    path: str | None = None
+    for operand in operands:
+        flags = _expand_short_flag_cluster(operand, {"c", "d", "u"}) if operand.startswith("-") else None
+        if flags is not None:
+            for flag in flags:
+                if flag == "-c":
+                    arguments["count"] = True
+                elif flag == "-d":
+                    arguments["repeated_only"] = True
+                elif flag == "-u":
+                    arguments["unique_only"] = True
+            continue
+        if operand.startswith("-"):
+            return None
+        if path is not None:
+            return None
+        path = operand
+    if path is None:
+        return None
+    arguments["path"] = path
+    return arguments
 
 
 def _expand_short_flag_cluster(token: str, allowed_flags: set[str]) -> list[str] | None:

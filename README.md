@@ -179,7 +179,9 @@ ollama pull gemma4
 
 Supported structured families include:
 
-- `ls`, `pwd`, `find`, `du`, `stat`, `head`, `tail`, `grep`, `cat`, `file`
+- `ls`, `pwd`, `whoami`, `uname`, `which`, `env`
+- `find`, `du`, `df`, `stat`, `head`, `tail`, `grep`, `cat`, `file`, `wc`, `sort`, `uniq`
+- `ps`, `pgrep`, `lsof`
 - `mkdir`, `cp`, `mv`, `chmod`, `open`
 
 Examples of requests that now land in structured mode:
@@ -192,8 +194,20 @@ Examples of requests that now land in structured mode:
 - “search for TODO in all python files here” → `grep -r TODO *.py`
 - “open this folder in Finder” → `open .`
 - “tell me what kind of file this is” → `file README.md`
+- “show running processes” → `ps -A`
+- “find processes matching python” → `pgrep -f python`
+- “show open files for this directory” → `lsof .`
+- “show disk space” → `df -h .`
+- “show current username” → `whoami`
+- “show system name” → `uname -s`
+- “find where python is installed” → `which python`
+- “count lines in README.md” → `wc -l README.md`
+- “sort this file” → `sort README.md`
+- “show unique lines in this file” → `uniq README.md`
 
 When a request cannot be represented safely in these deterministic schemas, `oterminus` falls back to `experimental` mode and applies stricter confirmation behavior.
+
+`env` is supported in curated mode, but avoid dumping full environment output when possible because it can include secrets; prefer single-variable lookups like `env PATH`.
 
 ## Regression evals (golden fixtures)
 
