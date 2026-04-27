@@ -108,3 +108,139 @@ def test_render_experimental_preview_is_clearly_labeled() -> None:
     assert "Experimental : yes" in text
     assert "Confirmation : very strong" in text
     assert "Warnings" in text
+
+
+def test_render_direct_command_default_is_concise() -> None:
+    proposal = Proposal(
+        action_type=ActionType.SHELL_COMMAND,
+        mode=ProposalMode.STRUCTURED,
+        command_family="ls",
+        arguments={
+            "path": ".",
+            "long": True,
+            "human_readable": True,
+            "all": False,
+            "recursive": False,
+        },
+        summary="Run direct command: ls",
+        explanation="Input already looks like a shell command.",
+        risk_level=RiskLevel.SAFE,
+        needs_confirmation=True,
+        notes=["Detected as a direct shell command; skipped the LLM planner."],
+    )
+    validation = ValidationResult(
+        accepted=True,
+        risk_level=RiskLevel.SAFE,
+        rendered_command="ls -lh",
+        argv=["ls", "-lh"],
+    )
+
+    text = render_preview(proposal, validation, direct_command=True)
+
+    assert "--- command preview ---" in text
+    assert "Command: ls -lh" in text
+    assert "Risk: safe" in text
+    assert "Summary" not in text
+    assert "Explanation" not in text
+    assert "LLM planner" not in text
+    assert "Notes:" not in text
+
+
+def test_render_direct_command_default_keeps_user_facing_notes() -> None:
+    proposal = Proposal(
+        action_type=ActionType.SHELL_COMMAND,
+        mode=ProposalMode.EXPERIMENTAL,
+        command_family="env",
+        command="env",
+        summary="Run direct command: env",
+        explanation="Input already looks like a shell command.",
+        risk_level=RiskLevel.SAFE,
+        needs_confirmation=True,
+        notes=[
+            "Detected as a direct shell command; skipped the LLM planner.",
+            "Printing the full environment may include sensitive values; prefer querying specific variable names.",
+        ],
+    )
+    validation = ValidationResult(accepted=True, risk_level=RiskLevel.SAFE, rendered_command="env", argv=["env"])
+
+    text = render_preview(proposal, validation, direct_command=True)
+
+    assert "Notes: Printing the full environment may include sensitive values" in text
+    assert "Detected as a direct shell command" not in text
+
+
+def test_render_direct_command_verbose_shows_debug_notes() -> None:
+    proposal = Proposal(
+        action_type=ActionType.SHELL_COMMAND,
+        mode=ProposalMode.EXPERIMENTAL,
+        command_family="cd",
+        command="cd src",
+        summary="Run direct command: cd",
+        explanation="Input already looks like a shell command.",
+        risk_level=RiskLevel.SAFE,
+        needs_confirmation=True,
+        notes=["Detected as a direct shell command; skipped the LLM planner."],
+    )
+    validation = ValidationResult(accepted=True, risk_level=RiskLevel.SAFE, rendered_command="cd src", argv=["cd", "src"])
+
+    text = render_preview(proposal, validation, verbose=True, direct_command=True)
+
+    assert "Summary      : Run direct command: cd" in text
+    assert "Explanation  : Input already looks like a shell command." in text
+    assert "Notes        : Detected as a direct shell command; skipped the LLM planner." in text
+
+
+def test_render_natural_language_default_remains_informative() -> None:
+    proposal = Proposal(
+        action_type=ActionType.SHELL_COMMAND,
+        mode=ProposalMode.STRUCTURED,
+        command_family="find",
+        arguments={"path": ".", "name": "*.py"},
+        summary="Find Python files",
+        explanation="Translated natural-language request to deterministic command.",
+        risk_level=RiskLevel.SAFE,
+        needs_confirmation=True,
+        notes=["`du` is unavailable in structured mode, so using `find` fallback."],
+    )
+    validation = ValidationResult(
+        accepted=True,
+        risk_level=RiskLevel.SAFE,
+        rendered_command="find . -name '*.py'",
+        argv=["find", ".", "-name", "*.py"],
+    )
+
+    text = render_preview(proposal, validation)
+
+    assert "Summary      : Find Python files" in text
+    assert "Explanation  : Translated natural-language request to deterministic command." in text
+    assert "Arguments" in text
+    assert "Notes        : `du` is unavailable in structured mode, so using `find` fallback." in text
+
+
+def test_render_direct_command_non_verbose_keeps_safety_warnings() -> None:
+    proposal = Proposal(
+        action_type=ActionType.SHELL_COMMAND,
+        mode=ProposalMode.EXPERIMENTAL,
+        command_family="rm",
+        command="rm -rf tmp",
+        summary="Run direct command: rm",
+        explanation="Input already looks like a shell command.",
+        risk_level=RiskLevel.DANGEROUS,
+        needs_confirmation=True,
+        notes=["Detected as a direct shell command; skipped the LLM planner."],
+    )
+    validation = ValidationResult(
+        accepted=False,
+        risk_level=RiskLevel.DANGEROUS,
+        warnings=["Dangerous recursive deletion requested."],
+        reasons=["Refusing to run recursive delete outside allowed roots."],
+        rendered_command="rm -rf tmp",
+        argv=["rm", "-rf", "tmp"],
+    )
+
+    text = render_preview(proposal, validation, direct_command=True)
+
+    assert "Command: rm -rf tmp" in text
+    assert "Risk: dangerous" in text
+    assert "Dangerous recursive deletion requested." in text
+    assert "Refusing to run recursive delete outside allowed roots." in text

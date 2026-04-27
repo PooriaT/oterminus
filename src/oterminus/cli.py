@@ -61,7 +61,8 @@ def handle_request(
     LOGGER.info("request=%s", request)
 
     proposal = detect_direct_command(request)
-    event.direct_command_detected = proposal is not None
+    is_direct_command = proposal is not None
+    event.direct_command_detected = is_direct_command
     try:
         if proposal is None:
             route = route_request(request)
@@ -70,6 +71,9 @@ def handle_request(
                 print(f"[trace] route category={route.category} confidence={route.confidence:.2f}")
             planner = planner_factory if hasattr(planner_factory, "plan") else planner_factory()
             proposal = planner.plan(request)
+        elif debug_trace:
+            print("[trace] Detected as direct shell command.")
+            print("[trace] Skipped Ollama planner.")
     except (PlannerError, OllamaClientError) as exc:
         print(f"Planning failed: {exc}")
         event.confirmation_result = "planner_error"
@@ -88,8 +92,10 @@ def handle_request(
     event.rejection_reasons = list(validation.reasons)
     event.rendered_command = validation.rendered_command
     event.argv = list(validation.argv)
-    print(render_preview(proposal, validation))
+    print(render_preview(proposal, validation, verbose=debug_trace, direct_command=is_direct_command))
     if debug_trace:
+        if is_direct_command:
+            print("[trace] Validation accepted." if validation.accepted else "[trace] Validation rejected.")
         print(
             f"[trace] validation accepted={validation.accepted} "
             f"warnings={len(validation.warnings)} rejections={len(validation.reasons)}"
