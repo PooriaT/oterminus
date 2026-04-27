@@ -107,6 +107,23 @@ def command_examples_for_prompt(max_examples: int = 8) -> str:
     return "\n".join(rows)
 
 
+def capability_summary_for_prompt(
+    *,
+    max_capabilities: int = 7,
+    max_commands_per_capability: int = 4,
+    max_aliases_per_capability: int = 2,
+) -> str:
+    lines: list[str] = []
+    for capability in supported_capabilities()[:max_capabilities]:
+        command_sample = ", ".join(capability.commands[:max_commands_per_capability])
+        alias_sample = ", ".join(capability.aliases[:max_aliases_per_capability]) if capability.aliases else "none"
+        lines.append(
+            f"- {capability.capability_id}: {capability.capability_description} "
+            f"(commands: {command_sample}; aliases: {alias_sample})"
+        )
+    return "\n".join(lines)
+
+
 def command_examples_for_readme() -> str:
     lines: list[str] = []
     for capability in supported_capabilities():

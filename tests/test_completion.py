@@ -14,7 +14,7 @@ def test_first_token_completion_includes_builtins_and_registry_commands() -> Non
     assert "head" in candidates
 
 
-def test_first_token_completion_includes_supported_categories() -> None:
+def test_first_token_completion_includes_supported_capabilities() -> None:
     candidates = _texts(build_repl_completions("proc"))
 
     assert "process_inspection" in candidates

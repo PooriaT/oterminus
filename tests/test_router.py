@@ -1,4 +1,5 @@
 from oterminus.router import route_request
+from oterminus.commands import get_commands_by_capability
 
 
 def test_route_request_common_buckets() -> None:
@@ -15,8 +16,8 @@ def test_route_request_ambiguous_prefers_safe_inspection() -> None:
 
     assert route.category == "filesystem_inspect"
     assert route.confidence > 0.7
-    assert "ls" in route.suggested_families
-    assert "wc" in route.suggested_families
+    assert route.suggested_families
+    assert "find" in route.suggested_families
 
 
 def test_route_request_unsupported_cases() -> None:
@@ -35,3 +36,12 @@ def test_route_request_process_suggestions_include_new_families() -> None:
     assert route.category == "process_inspect"
     assert "pgrep" in route.suggested_families
     assert "process_inspection" in route.suggested_capabilities
+
+
+def test_route_suggestions_come_from_capability_registry() -> None:
+    route = route_request("show running python processes")
+
+    capability_families = {
+        family for capability_id in route.suggested_capabilities for family in get_commands_by_capability(capability_id)
+    }
+    assert set(route.suggested_families).issubset(capability_families)
