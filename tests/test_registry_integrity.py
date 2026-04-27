@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 from pathlib import Path
+import inspect
 
 from oterminus.commands import COMMAND_PACKS, COMMAND_REGISTRY, MaturityLevel, supported_base_commands, supported_categories
 from oterminus.completion import build_repl_completions
 from oterminus.models import RiskLevel
 from oterminus.prompts import build_system_prompt
+import oterminus.router as router_module
 from oterminus.structured_commands import STRUCTURED_ARGUMENT_MODELS, supports_structured_family
 
 
@@ -100,3 +102,10 @@ def test_planner_system_prompt_stays_compact() -> None:
 
     # Guardrail to avoid unbounded growth as metadata expands.
     assert len(prompt) < 12000
+
+
+def test_router_does_not_hardcode_command_family_tuples() -> None:
+    router_source = inspect.getsource(router_module)
+
+    assert 'suggested_families=("grep", "find")' not in router_source
+    assert 'suggested_families=("ps", "pgrep", "lsof")' not in router_source

@@ -2,6 +2,7 @@ import pytest
 
 from oterminus.commands import (
     COMMAND_PACKS,
+    capability_summary_for_prompt,
     command,
     command_examples_for_prompt,
     direct_supported_base_commands,
@@ -127,3 +128,10 @@ def test_prompt_examples_output_remains_compact() -> None:
 
     assert len(output.splitlines()) <= 4
     assert "filesystem_inspection" in output
+
+
+def test_capability_summary_for_prompt_remains_compact() -> None:
+    summary = capability_summary_for_prompt(max_capabilities=3, max_commands_per_capability=2)
+
+    assert len(summary.splitlines()) == 3
+    assert len(summary) < 600

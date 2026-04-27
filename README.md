@@ -28,7 +28,7 @@ Current routing buckets:
 - `process_inspect`
 - `unsupported`
 
-The router is intentionally simple and rule-based in v1. It improves family selection hints for planning, but does not replace validator safety checks.
+The router is intentionally simple and rule-based in v1. It uses registry capability metadata (capability IDs, aliases, and command examples) to derive suggested families, which reduces duplicated command-family hints across routing and planning. It improves family selection hints for planning, but does not replace validator safety checks.
 
 Command metadata for structured command support is maintained in a central merged registry built from modular capability packs under `src/oterminus/commands/` (filesystem, text, process, system, macOS, dangerous). Each command is tagged with a workflow capability (`capability_id`, label, concise description, aliases, examples, maturity), so OTerminus scales by curated user workflows rather than trying to mirror every shell man page.
 
@@ -46,6 +46,8 @@ The registry is used to answer both:
 
 - “Is this command allowed?”
 - “What capability/workflow does it belong to?”
+
+Planner prompts consume a compact capability summary generated from this same registry metadata, so model context stays concise and does not dump the entire command registry.
 
 Contributor guidance for extending this registry safely is available at [`docs/adding-command-families.md`](docs/adding-command-families.md).
 

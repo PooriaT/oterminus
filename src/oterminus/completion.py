@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from oterminus.commands import supported_base_commands, supported_capabilities, supported_categories
+from oterminus.commands import supported_base_commands, supported_capabilities
 
 REPL_BUILTINS: tuple[str, ...] = ("help", "exit", "quit")
 NL_TEMPLATES: tuple[str, ...] = (
@@ -84,10 +84,10 @@ def build_repl_completions(
     if is_first_token:
         suggestions.update(REPL_BUILTINS)
         suggestions.update(supported_base_commands())
-        suggestions.update(supported_categories())
+        for capability in supported_capabilities():
+            suggestions.add(capability.capability_id)
         if include_capability_hints:
             for capability in supported_capabilities():
-                suggestions.add(capability.capability_id)
                 suggestions.add(capability.capability_label)
                 suggestions.update(capability.aliases)
         suggestions.update(NL_TEMPLATES)

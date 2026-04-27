@@ -1,4 +1,5 @@
 from oterminus.planner import Planner
+from oterminus.prompts import build_system_prompt
 
 
 class _StubClient:
@@ -26,8 +27,8 @@ def test_planner_includes_router_context_in_prompt() -> None:
     prompt = client.calls[0]["user_prompt"]
     assert "Capability route:" in prompt
     assert "category=text_search" in prompt
-    assert "suggested_families=grep, find" in prompt
-    assert "suggested_capabilities=filesystem_inspection, text_inspection" in prompt
+    assert "suggested_families=find" in prompt
+    assert "suggested_capabilities=text_inspection, filesystem_inspection" in prompt
 
 
 def test_planner_includes_unsupported_router_context() -> None:
@@ -43,3 +44,11 @@ def test_planner_includes_unsupported_router_context() -> None:
     prompt = client.calls[0]["user_prompt"]
     assert "category=unsupported" in prompt
     assert "limitations" in prompt
+
+
+def test_planner_system_prompt_includes_supported_capabilities() -> None:
+    prompt = build_system_prompt()
+
+    assert "filesystem_inspection" in prompt
+    assert "process_inspection" in prompt
+    assert "commands:" in prompt
