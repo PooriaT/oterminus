@@ -22,6 +22,8 @@ class Executor:
 
         if args and args[0] == "cd":
             return self._run_cd(args, rendered_command)
+        if args and args[0] == "clear":
+            return self._run_clear(rendered_command)
 
         proc = subprocess.run(
             args,
@@ -57,5 +59,14 @@ class Executor:
             command=rendered_command,
             returncode=0,
             stdout=f"{new_cwd}\n",
+            stderr="",
+        )
+
+    def _run_clear(self, rendered_command: str) -> ExecutionResult:
+        # ANSI clear-screen + cursor-home sequence.
+        return ExecutionResult(
+            command=rendered_command,
+            returncode=0,
+            stdout="\033[2J\033[H",
             stderr="",
         )

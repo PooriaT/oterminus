@@ -124,6 +124,7 @@ def test_reject_open_url_target() -> None:
     ("command", "expected_risk"),
     [
         ("whoami", RiskLevel.SAFE),
+        ("clear", RiskLevel.SAFE),
         ("uname -a", RiskLevel.SAFE),
         ("which python3", RiskLevel.SAFE),
         ("env PATH", RiskLevel.SAFE),
@@ -159,6 +160,7 @@ def test_risk_classification_for_next_wave_structured_families(command: str, exp
     "command",
     [
         "uname --bad",
+        "clear now",
         "which",
         "env",
         "env PATH HOME",

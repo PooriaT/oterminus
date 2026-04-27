@@ -27,6 +27,18 @@
     ]
   },
   {
+    "id": "direct-clear",
+    "user_input": "clear",
+    "expected_mode": "structured",
+    "expected_command_family": "clear",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "clear",
+    "expected_argv": [
+      "clear"
+    ]
+  },
+  {
     "id": "direct-du-summary",
     "user_input": "du -sh .",
     "expected_mode": "structured",

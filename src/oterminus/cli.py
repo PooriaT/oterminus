@@ -148,6 +148,17 @@ def handle_request(
         _write_audit_event(audit_logger, event)
         return 130
 
+    if validation.argv[0] == "clear":
+        if result.stdout:
+            print(result.stdout, end="")
+        if result.stderr:
+            print(result.stderr, end="" if result.stderr.endswith("\n") else "\n")
+        LOGGER.info("exit_code=%s", result.returncode)
+        event.execution_exit_code = result.returncode
+        event.duration_ms = _duration_ms_since(started_at)
+        _write_audit_event(audit_logger, event)
+        return result.returncode
+
     print("\n--- execution output ---")
     if result.stdout:
         print(result.stdout, end="" if result.stdout.endswith("\n") else "\n")

@@ -40,6 +40,7 @@ def test_duplicate_command_names_are_rejected() -> None:
 
 def test_existing_commands_remain_available() -> None:
     assert get_command_spec("ls") is not None
+    assert get_command_spec("clear") is not None
     assert get_command_spec("find") is not None
     assert get_command_spec("open") is not None
     assert get_command_spec("ps") is not None
@@ -49,6 +50,7 @@ def test_supported_base_commands_includes_curated_entries() -> None:
     commands = supported_base_commands()
 
     assert "find" in commands
+    assert "clear" in commands
     assert "cp" in commands
     assert "open" in commands
     assert "lsof" in commands
@@ -91,6 +93,8 @@ def test_registry_tracks_new_family_constraints() -> None:
 def test_registry_direct_detection_heuristics_match_current_behavior() -> None:
     assert looks_like_direct_invocation("pwd", []) is True
     assert looks_like_direct_invocation("pwd", ["extra"]) is False
+    assert looks_like_direct_invocation("clear", []) is True
+    assert looks_like_direct_invocation("clear", ["extra"]) is False
     assert looks_like_direct_invocation("whoami", []) is True
     assert looks_like_direct_invocation("whoami", ["extra"]) is False
     assert looks_like_direct_invocation("which", ["python3"]) is True

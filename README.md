@@ -202,7 +202,7 @@ ollama pull gemma4
 
 Supported structured families include:
 
-- `ls`, `pwd`, `whoami`, `uname`, `which`, `env`
+- `ls`, `pwd`, `clear`, `whoami`, `uname`, `which`, `env`
 - `find`, `du`, `df`, `stat`, `head`, `tail`, `grep`, `cat`, `file`, `wc`, `sort`, `uniq`
 - `ps`, `pgrep`, `lsof`
 - `mkdir`, `cp`, `mv`, `chmod`, `open`
@@ -223,6 +223,7 @@ Examples of requests that now land in structured mode:
 - “show disk space” → `df -h` (or `df` for default all filesystems)
 - “show current username” → `whoami`
 - “show system name” → `uname -s`
+- “clear the terminal before a demo” → `clear`
 - “find where python is installed” → `which python`
 - “count lines in README.md” → `wc -l README.md`
 - “sort this file” → `sort README.md`

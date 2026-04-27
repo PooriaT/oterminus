@@ -44,6 +44,14 @@ def test_detect_direct_command_for_system_family() -> None:
     assert proposal.command_family == "whoami"
 
 
+def test_detect_direct_command_for_clear() -> None:
+    proposal = detect_direct_command("clear")
+
+    assert proposal is not None
+    assert proposal.mode == ProposalMode.STRUCTURED
+    assert proposal.command_family == "clear"
+
+
 def test_detect_direct_command_preserves_registry_notes() -> None:
     proposal = detect_direct_command("cd src")
 

@@ -56,6 +56,10 @@ class PwdArguments(_StructuredArgumentsModel):
     pass
 
 
+class ClearArguments(_StructuredArgumentsModel):
+    pass
+
+
 class WhoamiArguments(_StructuredArgumentsModel):
     pass
 
@@ -388,6 +392,7 @@ class UniqArguments(_StructuredArgumentsModel):
 STRUCTURED_ARGUMENT_MODELS: dict[str, type[_StructuredArgumentsModel]] = {
     "ls": LsArguments,
     "pwd": PwdArguments,
+    "clear": ClearArguments,
     "whoami": WhoamiArguments,
     "uname": UnameArguments,
     "which": WhichArguments,
@@ -446,6 +451,7 @@ def parse_argv_as_structured(argv: Sequence[str]) -> tuple[str, dict[str, Any]] 
     parser = {
         "ls": _parse_ls_argv,
         "pwd": _parse_pwd_argv,
+        "clear": _parse_clear_argv,
         "whoami": _parse_whoami_argv,
         "uname": _parse_uname_argv,
         "which": _parse_which_argv,
@@ -518,6 +524,9 @@ def render_structured_command(command_family: str, arguments: dict[str, Any] | N
 
     if command_family == "pwd":
         return RenderedCommand(("pwd",))
+
+    if command_family == "clear":
+        return RenderedCommand(("clear",))
 
     if command_family == "whoami":
         return RenderedCommand(("whoami",))
@@ -765,6 +774,10 @@ def _parse_ls_argv(operands: list[str]) -> dict[str, Any] | None:
 
 
 def _parse_pwd_argv(operands: list[str]) -> dict[str, Any] | None:
+    return {} if not operands else None
+
+
+def _parse_clear_argv(operands: list[str]) -> dict[str, Any] | None:
     return {} if not operands else None
 
 
