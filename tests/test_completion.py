@@ -38,3 +38,35 @@ def test_path_completion_for_nested_paths(tmp_path: Path) -> None:
     candidates = _texts(build_repl_completions("cat docs/gu", cwd=tmp_path))
 
     assert "docs/guide.md" in candidates
+
+
+def test_path_completion_preserves_dot_slash_prefix(tmp_path: Path) -> None:
+    (tmp_path / "src").mkdir()
+
+    candidates = _texts(build_repl_completions("cd ./s", cwd=tmp_path))
+
+    assert "./src/" in candidates
+
+
+def test_path_completion_preserves_tilde_prefix(tmp_path: Path, monkeypatch) -> None:
+    home_dir = tmp_path / "home"
+    documents_dir = home_dir / "Documents"
+    documents_dir.mkdir(parents=True)
+    monkeypatch.setenv("HOME", str(home_dir))
+
+    candidates = _texts(build_repl_completions("cd ~/Do", cwd=tmp_path))
+
+    assert "~/Documents/" in candidates
+
+
+def test_path_completion_ignores_permission_errors(tmp_path: Path, monkeypatch) -> None:
+    protected = tmp_path / "protected"
+    protected.mkdir()
+
+    def raise_permission_error(_self):
+        raise PermissionError("denied")
+
+    monkeypatch.setattr(Path, "iterdir", raise_permission_error)
+    candidates = _texts(build_repl_completions("cat protected/", cwd=tmp_path))
+
+    assert candidates == []

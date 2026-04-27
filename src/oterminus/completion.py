@@ -26,21 +26,44 @@ def _word_start_index(text: str) -> int:
     return idx
 
 
-def _path_candidates(fragment: str, cwd: Path) -> list[str]:
-    expanded_fragment = Path(fragment).expanduser()
-    base_dir = expanded_fragment.parent if fragment and "/" in fragment else Path(".")
-    prefix = expanded_fragment.name if fragment else ""
+def _split_path_fragment(fragment: str) -> tuple[str, str]:
+    if "/" not in fragment:
+        return "", fragment
+    base, _, prefix = fragment.rpartition("/")
+    return f"{base}/", prefix
 
-    scan_dir = (cwd / base_dir).resolve() if not expanded_fragment.is_absolute() else base_dir
-    if not scan_dir.exists() or not scan_dir.is_dir():
+
+def _resolve_scan_dir(base_prefix: str, cwd: Path) -> Path:
+    if not base_prefix:
+        return cwd
+
+    if base_prefix.startswith("~/"):
+        return Path(base_prefix).expanduser()
+    if base_prefix.startswith("/"):
+        return Path(base_prefix)
+    return (cwd / base_prefix).resolve()
+
+
+def _path_candidates(fragment: str, cwd: Path) -> list[str]:
+    base_prefix, name_prefix = _split_path_fragment(fragment)
+    display_base = base_prefix
+    scan_dir = _resolve_scan_dir(base_prefix, cwd)
+
+    try:
+        if not scan_dir.exists() or not scan_dir.is_dir():
+            return []
+        entries = sorted(scan_dir.iterdir(), key=lambda p: p.name)
+    except OSError:
         return []
 
-    display_base = "" if str(base_dir) == "." else f"{base_dir.as_posix().rstrip('/')}/"
     results: list[str] = []
-    for entry in sorted(scan_dir.iterdir(), key=lambda p: p.name):
-        if not entry.name.startswith(prefix):
+    for entry in entries:
+        if not entry.name.startswith(name_prefix):
             continue
-        suffix = "/" if entry.is_dir() else ""
+        try:
+            suffix = "/" if entry.is_dir() else ""
+        except OSError:
+            suffix = ""
         results.append(f"{display_base}{entry.name}{suffix}")
     return results
 
