@@ -4,6 +4,7 @@ from dataclasses import dataclass
 import re
 
 from oterminus.commands import COMMAND_REGISTRY, get_commands_by_capability
+from oterminus.models import RiskLevel
 
 
 ROUTE_CATEGORIES = {
@@ -116,7 +117,14 @@ def _families_for_category(category: str, request_text: str) -> tuple[str, ...]:
         return ()
 
     family_pool: tuple[str, ...] = tuple(
-        sorted({family for capability_id in capability_ids for family in get_commands_by_capability(capability_id)})
+        sorted(
+            {
+                family
+                for capability_id in capability_ids
+                for family in get_commands_by_capability(capability_id)
+                if _is_hint_eligible_family(family)
+            }
+        )
     )
     if not family_pool:
         return ()
@@ -131,7 +139,16 @@ def _families_for_category(category: str, request_text: str) -> tuple[str, ...]:
         scored.sort(key=lambda pair: (-pair[0], pair[1]))
         return tuple(family for _, family in scored[:6])
 
-    return family_pool[:6]
+    fallback_scored: list[tuple[int, str]] = []
+    for family in family_pool:
+        affinity = _category_affinity_score(family, category)
+        if affinity > 0:
+            fallback_scored.append((affinity, family))
+    if fallback_scored:
+        fallback_scored.sort(key=lambda pair: (-pair[0], pair[1]))
+        return tuple(family for _, family in fallback_scored[:6])
+
+    return tuple(sorted(family_pool, key=_fallback_family_priority))[:6]
 
 
 def _family_relevance_score(family: str, request_text: str) -> int:
@@ -152,6 +169,40 @@ def _family_hints(spec) -> tuple[str, ...]:
     for example in spec.examples[:2]:
         hints.add(example.split()[0].lower())
     return tuple(sorted(hint.strip() for hint in hints if hint.strip()))
+
+
+def _is_hint_eligible_family(family: str) -> bool:
+    spec = COMMAND_REGISTRY.get(family)
+    if spec is None:
+        return False
+    return spec.risk_level != RiskLevel.DANGEROUS
+
+
+def _category_affinity_score(family: str, category: str) -> int:
+    seeds = _ROUTE_SEED_HINTS.get(category, ())
+    if not seeds:
+        return 0
+
+    spec = COMMAND_REGISTRY.get(family)
+    if spec is None:
+        return 0
+
+    family_hint_text = " ".join(_family_hints(spec))
+    score = 0
+    for seed in seeds:
+        if _matches_hint(family_hint_text, seed):
+            score += max(1, len(seed.split()))
+    return score
+
+
+def _fallback_family_priority(family: str) -> tuple[int, int, str]:
+    spec = COMMAND_REGISTRY.get(family)
+    if spec is None:
+        return (2, 1, family)
+
+    risk_rank = {RiskLevel.SAFE: 0, RiskLevel.WRITE: 1, RiskLevel.DANGEROUS: 2}[spec.risk_level]
+    maturity_rank = 0 if spec.maturity_level.value == "structured" else 1
+    return (risk_rank, maturity_rank, family)
 
 
 _TEXT_SEARCH_HINTS = (
@@ -243,4 +294,12 @@ _ROUTE_CAPABILITIES: dict[str, tuple[str, ...]] = {
     "metadata_inspect": ("filesystem_inspection", "system_inspection"),
     "filesystem_mutate": ("filesystem_mutation",),
     "filesystem_inspect": ("filesystem_inspection", "text_inspection", "macos_desktop"),
+}
+
+_ROUTE_SEED_HINTS: dict[str, tuple[str, ...]] = {
+    "text_search": ("search text", "find matching lines", "find files", "pattern"),
+    "process_inspect": ("show running processes", "find process by name", "open files for process"),
+    "metadata_inspect": ("file metadata", "disk usage", "disk space", "environment variable", "system name"),
+    "filesystem_mutate": ("create folder", "copy file", "move file", "change permissions"),
+    "filesystem_inspect": ("list files", "show directory contents", "print working directory", "find files"),
 }

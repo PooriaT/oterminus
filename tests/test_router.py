@@ -45,3 +45,19 @@ def test_route_suggestions_come_from_capability_registry() -> None:
         family for capability_id in route.suggested_capabilities for family in get_commands_by_capability(capability_id)
     }
     assert set(route.suggested_families).issubset(capability_families)
+
+
+def test_route_fallback_uses_category_affinity_not_alphabetical_pool() -> None:
+    route = route_request("pattern in files")
+
+    assert route.category == "text_search"
+    assert route.suggested_families
+    assert route.suggested_families[0] in {"grep", "find"}
+    assert "cat" not in route.suggested_families[:2]
+
+
+def test_route_capability_expansion_excludes_dangerous_families() -> None:
+    route = route_request("delete old logs")
+
+    assert route.category == "filesystem_mutate"
+    assert "chown" not in route.suggested_families
