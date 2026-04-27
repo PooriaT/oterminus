@@ -9,6 +9,7 @@ from collections.abc import Callable
 
 from oterminus.audit import AuditEvent, AuditLogger
 from oterminus.config import load_config
+from oterminus.completion import prompt_toolkit_completer
 from oterminus.direct_commands import detect_direct_command
 from oterminus.executor import Executor
 from oterminus.logging_utils import configure_logging
@@ -170,9 +171,23 @@ def repl(
     debug_trace: bool = False,
 ) -> int:
     print("oterminus REPL. Type 'help' for guidance, 'exit' or 'quit' to leave.")
+
+    prompt_session = None
+    completer = prompt_toolkit_completer()
+    if completer is not None:
+        try:
+            from prompt_toolkit import PromptSession
+
+            prompt_session = PromptSession(completer=completer)
+        except ImportError:
+            prompt_session = None
+
     while True:
         try:
-            request = input("oterminus> ").strip()
+            if prompt_session is None:
+                request = input("oterminus> ").strip()
+            else:
+                request = prompt_session.prompt("oterminus> ").strip()
         except (EOFError, KeyboardInterrupt):
             print()
             return 0

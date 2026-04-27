@@ -107,6 +107,8 @@ Run:
 poetry run oterminus
 ```
 
+In interactive REPL mode, `Tab` provides deterministic local autocomplete for built-ins (`help`, `exit`, `quit`), curated command names/categories, and local filesystem paths. Tab completion is local-only and does not call the planner or model.
+
 ## Install (global command)
 
 Build package artifacts:
