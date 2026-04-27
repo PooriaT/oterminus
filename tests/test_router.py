@@ -34,3 +34,4 @@ def test_route_request_process_suggestions_include_new_families() -> None:
     route = route_request("find processes matching python")
     assert route.category == "process_inspect"
     assert "pgrep" in route.suggested_families
+    assert "process_inspection" in route.suggested_capabilities

@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 import re
 
+from oterminus.commands import get_command_spec
+
 
 ROUTE_CATEGORIES = {
     "filesystem_inspect",
@@ -20,6 +22,7 @@ class RouteResult:
     confidence: float
     reason: str
     suggested_families: tuple[str, ...] = ()
+    suggested_capabilities: tuple[str, ...] = ()
 
 
 def route_request(user_input: str) -> RouteResult:
@@ -38,6 +41,7 @@ def route_request(user_input: str) -> RouteResult:
             confidence=0.92,
             reason="Request includes text-match/search wording.",
             suggested_families=("grep", "find"),
+            suggested_capabilities=_capabilities_for_families("grep", "find"),
         )
 
     if _has_any(text, _PROCESS_INSPECT_HINTS):
@@ -46,6 +50,7 @@ def route_request(user_input: str) -> RouteResult:
             confidence=0.87,
             reason="Request references running processes or resource usage.",
             suggested_families=("ps", "pgrep", "lsof"),
+            suggested_capabilities=_capabilities_for_families("ps", "pgrep", "lsof"),
         )
 
     if _has_any(text, _METADATA_HINTS):
@@ -54,6 +59,9 @@ def route_request(user_input: str) -> RouteResult:
             confidence=0.9,
             reason="Request asks for file metadata or disk usage properties.",
             suggested_families=("stat", "du", "df", "file", "uname", "whoami", "which", "env"),
+            suggested_capabilities=_capabilities_for_families(
+                "stat", "du", "df", "file", "uname", "whoami", "which", "env"
+            ),
         )
 
     if _has_any(text, _MUTATION_HINTS):
@@ -62,6 +70,7 @@ def route_request(user_input: str) -> RouteResult:
             confidence=0.9,
             reason="Request implies creating or changing filesystem state.",
             suggested_families=("mkdir", "cp", "mv", "chmod"),
+            suggested_capabilities=_capabilities_for_families("mkdir", "cp", "mv", "chmod"),
         )
 
     if _has_any(text, _INSPECTION_HINTS):
@@ -70,6 +79,9 @@ def route_request(user_input: str) -> RouteResult:
             confidence=0.84,
             reason="Request asks to view files, folders, or contents.",
             suggested_families=("ls", "pwd", "find", "cat", "head", "tail", "wc", "sort", "uniq", "open"),
+            suggested_capabilities=_capabilities_for_families(
+                "ls", "pwd", "find", "cat", "head", "tail", "wc", "sort", "uniq", "open"
+            ),
         )
 
     return RouteResult(
@@ -91,6 +103,15 @@ def _matches_hint(text: str, hint: str) -> bool:
 
     pattern = rf"(?<!\w){escaped}(?!\w)"
     return re.search(pattern, text) is not None
+
+
+def _capabilities_for_families(*families: str) -> tuple[str, ...]:
+    capabilities: set[str] = set()
+    for family in families:
+        spec = get_command_spec(family)
+        if spec is not None:
+            capabilities.add(spec.capability_id)
+    return tuple(sorted(capabilities))
 
 
 _TEXT_SEARCH_HINTS = (

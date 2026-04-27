@@ -27,6 +27,7 @@ def test_planner_includes_router_context_in_prompt() -> None:
     assert "Capability route:" in prompt
     assert "category=text_search" in prompt
     assert "suggested_families=grep, find" in prompt
+    assert "suggested_capabilities=filesystem_inspection, text_inspection" in prompt
 
 
 def test_planner_includes_unsupported_router_context() -> None:

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from oterminus.commands import supported_base_commands
+from oterminus.commands import command_examples_for_prompt, supported_base_commands, supported_capabilities
 from oterminus.router import RouteResult
 from oterminus.structured_commands import STRUCTURED_ARGUMENT_MODELS
 
@@ -40,6 +40,10 @@ def _format_structured_shapes() -> str:
 def build_system_prompt() -> str:
     structured_families = ", ".join(f"`{family}`" for family in sorted(STRUCTURED_ARGUMENT_MODELS))
     allowlisted_families = ", ".join(f"`{family}`" for family in sorted(supported_base_commands()))
+    capability_summaries = "; ".join(
+        f"{cap.capability_id} ({', '.join(cap.commands)})" for cap in supported_capabilities()
+    )
+    capability_examples = command_examples_for_prompt()
 
     return f"""
 You are `oterminus-planner`, a local terminal planning model.
@@ -69,6 +73,7 @@ Planning rules:
 - Propose exactly one action only.
 - Do not produce multi-step plans, alternatives, follow-up questions, or command sequences unless the user explicitly asks for that later.
 - Stay within the curated local command families: {allowlisted_families}.
+- Treat command families as members of curated capabilities: {capability_summaries}.
 - Never include shell chaining, pipelines, redirection, subshells, or command substitution.
 - Avoid unrelated conversation, tutorials, or policy commentary.
 
@@ -83,6 +88,9 @@ Structured-first policy:
 
 Supported structured families and argument shapes:
 {_format_structured_shapes()}
+
+Curated capability examples (compact):
+{capability_examples}
 
 Behavior guidance:
 - Prefer the most direct single command that satisfies the request.
@@ -101,9 +109,10 @@ def build_user_prompt(request: str, route: RouteResult | None = None) -> str:
         route_block = "none"
     else:
         suggested = ", ".join(route.suggested_families) if route.suggested_families else "none"
+        capabilities = ", ".join(route.suggested_capabilities) if route.suggested_capabilities else "none"
         route_block = (
             f"category={route.category}; confidence={route.confidence:.2f}; "
-            f"reason={route.reason}; suggested_families={suggested}"
+            f"reason={route.reason}; suggested_families={suggested}; suggested_capabilities={capabilities}"
         )
 
     return (

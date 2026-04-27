@@ -4,7 +4,7 @@ import re
 import shlex
 from pathlib import Path
 
-from oterminus.commands import CommandSpec, PathOperandMode, get_command_spec
+from oterminus.commands import CommandSpec, MaturityLevel, PathOperandMode, get_command_spec
 from oterminus.models import Proposal, ProposalMode, RiskLevel, ValidationResult
 from oterminus.policies import PolicyConfig, is_risk_allowed
 from oterminus.structured_commands import (
@@ -50,6 +50,7 @@ class Validator:
                 risk = RiskLevel.DANGEROUS
             else:
                 risk = spec.risk_level
+                reasons.extend(self._maturity_reasons(spec))
 
         if proposal.mode == ProposalMode.STRUCTURED:
             try:
@@ -124,6 +125,7 @@ class Validator:
             risk = RiskLevel.DANGEROUS
         else:
             risk = spec.risk_level
+            reasons.extend(self._maturity_reasons(spec))
             reasons.extend(self._validate_command_shape(spec, args[1:]))
 
         if spec is not None and spec.dangerous_flags and any(flag in args for flag in spec.dangerous_flags):
@@ -161,6 +163,11 @@ class Validator:
             rendered_command=command,
             argv=args,
         )
+
+    def _maturity_reasons(self, spec: CommandSpec) -> list[str]:
+        if spec.maturity_level == MaturityLevel.BLOCKED:
+            return [f"Command '{spec.name}' is blocked by curated command maturity policy."]
+        return []
 
     def _validate_command_shape(self, spec: CommandSpec, arguments: list[str]) -> list[str]:
         reasons: list[str] = []

@@ -389,3 +389,11 @@ def test_reject_experimental_when_structured_rendering_is_available() -> None:
         in reason
         for reason in result.reasons
     )
+
+
+def test_blocked_maturity_command_is_rejected_even_in_dangerous_mode() -> None:
+    validator = Validator(PolicyConfig(mode=RiskLevel.DANGEROUS, allow_dangerous=True))
+    result = validator.validate(make_proposal("sudo ls /var/root", mode=ProposalMode.EXPERIMENTAL))
+
+    assert result.accepted is False
+    assert any("blocked by curated command maturity policy" in reason for reason in result.reasons)
