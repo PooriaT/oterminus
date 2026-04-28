@@ -49,5 +49,42 @@ jobs:
       - name: Install dependencies
         run: poetry install --with dev
 
+      - name: Determine changed Python files
+        id: changed-py
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            git fetch --no-tags --depth=1 origin "${{ github.base_ref }}"
+            BASE_REF="origin/${{ github.base_ref }}"
+          else
+            BASE_REF="${{ github.event.before }}"
+          fi
+
+          CHANGED="$(git diff --name-only "${BASE_REF}" "${{ github.sha }}" -- '*.py' || true)"
+          if [[ -z "${CHANGED}" ]]; then
+            echo "files=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          FILES="$(echo "${CHANGED}" | tr '\n' ' ' | sed 's/[[:space:]]*$//')"
+          echo "files=${FILES}" >> "$GITHUB_OUTPUT"
+
       - name: Run tests
-        run: poetry run pytest
+        run: poetry run pytest --cov=src/oterminus --cov-report=term-missing
+
+      - name: Run lint checks
+        run: |
+          if [[ -n "${{ steps.changed-py.outputs.files }}" ]]; then
+            poetry run ruff check ${{ steps.changed-py.outputs.files }}
+          else
+            echo "No changed Python files to lint."
+          fi
+
+      - name: Verify formatting
+        run: |
+          if [[ -n "${{ steps.changed-py.outputs.files }}" ]]; then
+            poetry run ruff format --check ${{ steps.changed-py.outputs.files }}
+          else
+            echo "No changed Python files to format-check."
+          fi

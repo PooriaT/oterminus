@@ -351,6 +351,27 @@ When a request cannot be represented safely in these deterministic schemas, `ote
 
 `env` is supported in curated mode only for single-variable lookups (for example `env PATH`) to reduce accidental secret exposure from full environment dumps.
 
+## Developer quality commands
+
+For day-to-day development, use these lightweight checks:
+
+```bash
+poetry run pytest
+poetry run ruff check .
+poetry run ruff format .
+poetry run oterminus-evals
+```
+
+Notes:
+
+- CI runs `ruff check` and `ruff format --check` to keep linting/formatting deterministic.
+- CI test runs include a terminal coverage report via `pytest --cov=src/oterminus --cov-report=term-missing`.
+
+## Typing roadmap (TODO)
+
+`mypy` is intentionally not enabled yet to avoid introducing a large initial type-cleanup burden.
+Once the codebase is ready, add a scoped `mypy` config and incrementally enforce it by module.
+
 ## Regression evals (golden fixtures)
 
 `oterminus` includes a deterministic evaluation harness for regression protection. Evals run a stable set of natural-language requests through direct-command detection, planner payload parsing, and validation, then compare results against expected outcomes.
