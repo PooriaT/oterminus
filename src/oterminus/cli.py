@@ -5,6 +5,7 @@ import logging
 import subprocess
 import sys
 from datetime import datetime, timezone
+from dataclasses import dataclass
 from collections.abc import Callable
 from enum import Enum
 
@@ -26,6 +27,72 @@ from oterminus.router import route_request
 from oterminus.validator import Validator
 
 LOGGER = logging.getLogger("oterminus")
+
+
+@dataclass
+class SessionHistoryItem:
+    id: int
+    user_input: str
+    direct_command_detected: bool = False
+    routed_category: str | None = None
+    proposal_mode: str | None = None
+    command_family: str | None = None
+    rendered_command: str | None = None
+    risk_level: str | None = None
+    validation_status: str | None = None
+    execution_status: str = "pending"
+    exit_code: int | None = None
+    proposal: object | None = None
+    validation: object | None = None
+
+
+class SessionHistory:
+    def __init__(self) -> None:
+        self._items: list[SessionHistoryItem] = []
+        self._next_id = 1
+
+    def start(self, user_input: str) -> SessionHistoryItem:
+        item = SessionHistoryItem(id=self._next_id, user_input=user_input)
+        self._next_id += 1
+        self._items.append(item)
+        return item
+
+    def all_items(self) -> list[SessionHistoryItem]:
+        return list(self._items)
+
+    def find(self, history_id: int) -> SessionHistoryItem | None:
+        for item in self._items:
+            if item.id == history_id:
+                return item
+        return None
+
+    def render_table(self, limit: int | None = None) -> str:
+        items = self._items if limit is None else self._items[-limit:]
+        if not items:
+            return "No session history yet."
+
+        rows = [
+            (
+                str(item.id),
+                _truncate(item.user_input, 34),
+                _truncate(item.rendered_command or "(none)", 34),
+                item.risk_level or "-",
+                item.execution_status,
+            )
+            for item in items
+        ]
+        headers = ("id", "input", "command", "risk", "status")
+        widths = [
+            max(len(headers[idx]), *(len(row[idx]) for row in rows))
+            for idx in range(len(headers))
+        ]
+
+        def _line(values: tuple[str, ...]) -> str:
+            return "  ".join(value.ljust(widths[idx]) for idx, value in enumerate(values))
+
+        output = [_line(headers), _line(tuple("-" * width for width in widths))]
+        output.extend(_line(row) for row in rows)
+        return "\n".join(output)
 
 
 class RunMode(str, Enum):
@@ -86,14 +153,21 @@ def handle_request(
     audit_logger: AuditLogger | None = None,
     debug_trace: bool = False,
     run_mode: RunMode = RunMode.EXECUTE,
+    session_history: SessionHistory | None = None,
+    rerun_source_history_id: int | None = None,
 ) -> int:
     started_at = datetime.now(tz=timezone.utc)
     event = AuditEvent.start(user_input=request)
+    event.rerun_source_history_id = rerun_source_history_id
     LOGGER.info("request=%s", request)
+    history_item = session_history.start(request) if session_history is not None else None
 
     proposal = detect_direct_command(request)
     is_direct_command = proposal is not None
     event.direct_command_detected = is_direct_command
+    if history_item is not None:
+        history_item.direct_command_detected = is_direct_command
+        history_item.execution_status = "planning"
     try:
         if proposal is None:
             ambiguity = detect_ambiguity(request)
@@ -102,12 +176,16 @@ def handle_request(
             event.ambiguity_safe_options = list(ambiguity.suggested_safe_options) if ambiguity.is_ambiguous else []
             if ambiguity.is_ambiguous:
                 print(render_ambiguity_response(ambiguity))
+                if history_item is not None:
+                    history_item.execution_status = "blocked_ambiguous"
                 event.confirmation_result = "blocked_ambiguous"
                 event.duration_ms = _duration_ms_since(started_at)
                 _write_audit_event(audit_logger, event)
                 return 0
             route = route_request(request)
             event.routed_category = route.category
+            if history_item is not None:
+                history_item.routed_category = route.category
             if debug_trace:
                 print(f"[trace] route category={route.category} confidence={route.confidence:.2f}")
             planner = planner_factory if hasattr(planner_factory, "plan") else planner_factory()
@@ -117,6 +195,8 @@ def handle_request(
             print("[trace] Skipped Ollama planner.")
     except (PlannerError, OllamaClientError) as exc:
         print(f"Planning failed: {exc}")
+        if history_item is not None:
+            history_item.execution_status = "planner_error"
         event.confirmation_result = "planner_error"
         event.duration_ms = _duration_ms_since(started_at)
         _write_audit_event(audit_logger, event)
@@ -124,6 +204,10 @@ def handle_request(
 
     event.proposal_mode = proposal.mode.value
     event.command_family = proposal.command_family
+    if history_item is not None:
+        history_item.proposal_mode = proposal.mode.value
+        history_item.command_family = proposal.command_family
+        history_item.proposal = proposal
     if debug_trace:
         print(f"[trace] proposal mode={proposal.mode.value} family={proposal.command_family}")
 
@@ -133,6 +217,11 @@ def handle_request(
     event.rejection_reasons = list(validation.reasons)
     event.rendered_command = validation.rendered_command
     event.argv = list(validation.argv)
+    if history_item is not None:
+        history_item.rendered_command = validation.rendered_command
+        history_item.risk_level = validation.risk_level.value
+        history_item.validation_status = "accepted" if validation.accepted else "rejected"
+        history_item.validation = validation
     print(render_preview(proposal, validation, verbose=debug_trace, direct_command=is_direct_command))
     if debug_trace:
         if is_direct_command:
@@ -146,6 +235,8 @@ def handle_request(
         LOGGER.warning("proposal_rejected reasons=%s", validation.reasons)
         if run_mode == RunMode.EXPLAIN:
             print(render_explanation(proposal, validation, selected_mode=run_mode, direct_command=is_direct_command))
+        if history_item is not None:
+            history_item.execution_status = "rejected"
         event.confirmation_result = "not_prompted_rejected"
         event.duration_ms = _duration_ms_since(started_at)
         _write_audit_event(audit_logger, event)
@@ -154,6 +245,8 @@ def handle_request(
     if run_mode == RunMode.DRY_RUN:
         print("Dry-run mode: execution skipped after successful planning and validation.")
         LOGGER.info("dry_run_skipped_execution command=%s", validation.rendered_command)
+        if history_item is not None:
+            history_item.execution_status = "skipped_dry_run"
         event.confirmation_result = "skipped_dry_run"
         event.duration_ms = _duration_ms_since(started_at)
         _write_audit_event(audit_logger, event)
@@ -162,6 +255,8 @@ def handle_request(
     if run_mode == RunMode.EXPLAIN:
         print(render_explanation(proposal, validation, selected_mode=run_mode, direct_command=is_direct_command))
         LOGGER.info("explain_mode_skipped_execution command=%s", validation.rendered_command)
+        if history_item is not None:
+            history_item.execution_status = "skipped_explain"
         event.confirmation_result = "skipped_explain"
         event.duration_ms = _duration_ms_since(started_at)
         _write_audit_event(audit_logger, event)
@@ -175,12 +270,16 @@ def handle_request(
         print(f"[trace] confirmation={event.confirmation_result}")
     if not confirmed:
         print("Cancelled.")
+        if history_item is not None:
+            history_item.execution_status = "cancelled"
         event.duration_ms = _duration_ms_since(started_at)
         _write_audit_event(audit_logger, event)
         return 0
 
     if command is None or not validation.argv:
         print("Proposal cannot be executed because it could not be rendered into a safe command.")
+        if history_item is not None:
+            history_item.execution_status = "not_executable"
         event.duration_ms = _duration_ms_since(started_at)
         _write_audit_event(audit_logger, event)
         return 3
@@ -189,18 +288,27 @@ def handle_request(
         result = executor.run(validation.argv, display_command=command)
     except subprocess.TimeoutExpired:
         print(f"Execution timed out after {executor.timeout_seconds}s.")
+        if history_item is not None:
+            history_item.execution_status = "timed_out"
+            history_item.exit_code = 124
         event.execution_exit_code = 124
         event.duration_ms = _duration_ms_since(started_at)
         _write_audit_event(audit_logger, event)
         return 124
     except (OSError, subprocess.SubprocessError) as exc:
         print(f"Execution failed: {exc}")
+        if history_item is not None:
+            history_item.execution_status = "execution_failed"
+            history_item.exit_code = 1
         event.execution_exit_code = 1
         event.duration_ms = _duration_ms_since(started_at)
         _write_audit_event(audit_logger, event)
         return 1
     except KeyboardInterrupt:
         print("Execution interrupted.")
+        if history_item is not None:
+            history_item.execution_status = "interrupted"
+            history_item.exit_code = 130
         event.execution_exit_code = 130
         event.duration_ms = _duration_ms_since(started_at)
         _write_audit_event(audit_logger, event)
@@ -212,6 +320,9 @@ def handle_request(
         if result.stderr:
             print(result.stderr, end="" if result.stderr.endswith("\n") else "\n")
         LOGGER.info("exit_code=%s", result.returncode)
+        if history_item is not None:
+            history_item.execution_status = "executed"
+            history_item.exit_code = result.returncode
         event.execution_exit_code = result.returncode
         event.duration_ms = _duration_ms_since(started_at)
         _write_audit_event(audit_logger, event)
@@ -225,6 +336,9 @@ def handle_request(
     print(f"Exit code: {result.returncode}")
 
     LOGGER.info("exit_code=%s", result.returncode)
+    if history_item is not None:
+        history_item.execution_status = "executed"
+        history_item.exit_code = result.returncode
     event.execution_exit_code = result.returncode
     event.duration_ms = _duration_ms_since(started_at)
     _write_audit_event(audit_logger, event)
@@ -241,6 +355,7 @@ def repl(
     default_run_mode: RunMode = RunMode.EXECUTE,
 ) -> int:
     print("oterminus REPL. Type 'help' for guidance, 'exit' or 'quit' to leave.")
+    session_history = SessionHistory()
 
     prompt_session = None
     completer = prompt_toolkit_completer()
@@ -270,6 +385,19 @@ def repl(
         if discovery_response is not None:
             print(discovery_response)
             continue
+        history_response = handle_repl_history_command(
+            request,
+            session_history=session_history,
+            planner_factory=planner_factory,
+            validator=validator,
+            executor=executor,
+            audit_logger=audit_logger,
+            debug_trace=debug_trace,
+        )
+        if history_response is not None:
+            if isinstance(history_response, str):
+                print(history_response)
+            continue
 
         run_mode = default_run_mode
         lowered = request.lower()
@@ -291,6 +419,7 @@ def repl(
             audit_logger=audit_logger,
             debug_trace=debug_trace,
             run_mode=run_mode,
+            session_history=session_history,
         )
 
 
@@ -303,7 +432,7 @@ def handle_repl_discovery_command(request: str) -> str | None:
         return (
             "Enter either a natural-language terminal request or a direct shell command.\n"
             "Examples: 'find all .py files', 'ls -lh', 'cd src'\n"
-            "Built-ins: help, capabilities, commands, examples, dry-run <request>, explain <request>, exit, quit\n"
+            "Built-ins: help, capabilities, commands, examples, history, history <n>, explain <request>, explain <history_id>, rerun <history_id>, dry-run <request>, exit, quit\n"
             "Try: help capabilities | help <capability_id> | help <command_family> | examples <capability_id>"
         )
 
@@ -343,6 +472,73 @@ def handle_repl_discovery_command(request: str) -> str | None:
         return _unknown_help_target(target)
 
     return None
+
+
+def handle_repl_history_command(
+    request: str,
+    *,
+    session_history: SessionHistory,
+    planner_factory: Planner | Callable[[], Planner],
+    validator: Validator,
+    executor: Executor,
+    audit_logger: AuditLogger | None,
+    debug_trace: bool,
+) -> str | None:
+    lowered = request.lower().strip()
+    if lowered == "history":
+        return session_history.render_table()
+
+    if lowered.startswith("history "):
+        count = _parse_positive_int(lowered.split(maxsplit=1)[1])
+        if count is None:
+            return "Usage: history | history <n>"
+        return session_history.render_table(limit=count)
+
+    if lowered.startswith("explain "):
+        history_id = _parse_positive_int(lowered.split(maxsplit=1)[1])
+        if history_id is None:
+            return None
+        return _render_history_explanation(session_history, history_id)
+
+    if lowered.startswith("rerun "):
+        history_id = _parse_positive_int(lowered.split(maxsplit=1)[1])
+        if history_id is None:
+            return "Usage: rerun <history_id>"
+        history_item = session_history.find(history_id)
+        if history_item is None:
+            return f"History id {history_id} not found."
+        handle_request(
+            history_item.user_input,
+            planner_factory,
+            validator,
+            executor,
+            audit_logger=audit_logger,
+            debug_trace=debug_trace,
+            run_mode=RunMode.EXECUTE,
+            session_history=session_history,
+            rerun_source_history_id=history_id,
+        )
+        return ""
+    return None
+
+
+def _render_history_explanation(session_history: SessionHistory, history_id: int) -> str:
+    history_item = session_history.find(history_id)
+    if history_item is None:
+        return f"History id {history_id} not found."
+
+    if history_item.proposal is None or history_item.validation is None:
+        return (
+            f"History id {history_id} has limited details.\n"
+            f"Input: {history_item.user_input}\n"
+            f"Status: {history_item.execution_status}"
+        )
+    return render_explanation(
+        history_item.proposal,
+        history_item.validation,
+        selected_mode=RunMode.EXPLAIN,
+        direct_command=history_item.direct_command_detected,
+    )
 
 
 def _render_capability_help(capability_id: str) -> str:
@@ -489,6 +685,22 @@ def main(argv: list[str] | None = None) -> int:
 
 def _duration_ms_since(started_at: datetime) -> int:
     return int((datetime.now(tz=timezone.utc) - started_at).total_seconds() * 1000)
+
+
+def _truncate(value: str, width: int) -> str:
+    if len(value) <= width:
+        return value
+    return value[: width - 1] + "…"
+
+
+def _parse_positive_int(raw: str) -> int | None:
+    try:
+        parsed = int(raw.strip())
+    except ValueError:
+        return None
+    if parsed <= 0:
+        return None
+    return parsed
 
 
 def _run_mode_from_args(args: argparse.Namespace) -> RunMode:

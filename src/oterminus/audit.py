@@ -25,6 +25,7 @@ class AuditEvent:
     rejection_reasons: list[str] = field(default_factory=list)
     confirmation_result: str | None = None
     execution_exit_code: int | None = None
+    rerun_source_history_id: int | None = None
     duration_ms: int | None = None
 
     @classmethod
