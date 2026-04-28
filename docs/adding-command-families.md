@@ -1,5 +1,7 @@
 # Adding Command Families Safely
 
+Part of the docs handbook: see [docs index](index.md).
+
 This guide explains how to add new command families and capability packs to OTerminus **without weakening safety guarantees**.
 
 OTerminus is intentionally **curated**. It should not become a giant shell encyclopedia that tries to support every Unix command and every possible flag combination. The preferred path is to support high-value workflows with deterministic structured rendering.
