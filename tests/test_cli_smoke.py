@@ -391,7 +391,7 @@ def test_handle_request_explain_validation_failure_reports_policy_and_skips_exec
     )
     executor = Mock()
 
-    code = handle_request("delete everything", planner, validator, executor, run_mode=RunMode.EXPLAIN)
+    code = handle_request("delete /", planner, validator, executor, run_mode=RunMode.EXPLAIN)
 
     assert code == 3
     output = capsys.readouterr().out
@@ -482,6 +482,24 @@ def test_handle_request_natural_language_uses_planner(monkeypatch) -> None:
         ["find", ".", "-name", "*.py"],
         display_command="find . -name '*.py'",
     )
+
+
+def test_handle_request_ambiguous_request_is_intercepted(capsys) -> None:
+    from oterminus.cli import handle_request
+
+    planner = Mock()
+    validator = Mock()
+    executor = Mock()
+
+    code = handle_request("delete unnecessary files", planner, validator, executor)
+
+    assert code == 0
+    output = capsys.readouterr().out
+    assert "This request is ambiguous." in output
+    assert "list large files" in output
+    planner.plan.assert_not_called()
+    validator.validate.assert_not_called()
+    executor.run.assert_not_called()
 
 
 def test_ask_confirmation_requires_experimental_phrase(monkeypatch) -> None:
@@ -587,3 +605,36 @@ def test_handle_request_dry_run_writes_audit_without_execution(tmp_path: Path) -
     payload = json.loads(audit_path.read_text(encoding="utf-8").strip())
     assert payload["confirmation_result"] == "skipped_dry_run"
     assert payload["execution_exit_code"] is None
+
+
+def test_handle_request_ambiguous_writes_audit_without_executor(tmp_path: Path) -> None:
+    from oterminus.audit import AuditLogger
+    from oterminus.cli import handle_request
+
+    planner = Mock()
+    validator = Mock()
+    executor = Mock()
+    audit_path = tmp_path / "audit.jsonl"
+
+    code = handle_request(
+        "repair permissions",
+        planner,
+        validator,
+        executor,
+        audit_logger=AuditLogger(audit_path),
+    )
+
+    assert code == 0
+    payload = json.loads(audit_path.read_text(encoding="utf-8").strip())
+    assert payload["ambiguity_detected"] is True
+    assert payload["ambiguity_reason"] is not None
+    assert payload["ambiguity_safe_options"] == [
+        "list large files",
+        "list recently modified files",
+        "inspect permissions",
+        "show temporary-looking files",
+        "show project files",
+    ]
+    assert payload["confirmation_result"] == "blocked_ambiguous"
+    validator.validate.assert_not_called()
+    executor.run.assert_not_called()

@@ -14,10 +14,11 @@ It is built for local command-line and filesystem workflows with a safety-first 
 Natural-language requests now go through a lightweight deterministic capability router before detailed model planning:
 
 1. direct command detection (`ls -lh`, `cd src`, etc.)
-2. capability routing (broad family classification)
-3. planner proposal generation (structured-first, with route context)
-4. validation / policy checks
-5. user confirmation and execution
+2. ambiguity guardrails for vague/broad/destructive wording
+3. capability routing (broad family classification)
+4. planner proposal generation (structured-first, with route context)
+5. validation / policy checks
+6. user confirmation and execution
 
 Current routing buckets:
 
@@ -29,6 +30,24 @@ Current routing buckets:
 - `unsupported`
 
 The router is intentionally simple and rule-based in v1. It uses registry capability metadata (capability IDs, aliases, and command examples) to derive suggested families, which reduces duplicated command-family hints across routing and planning. It improves family selection hints for planning, but does not replace validator safety checks.
+
+## Ambiguous-request handling
+
+Before model planning, OTerminus now checks natural-language requests for ambiguity using deterministic local rules. If a request is broad, underspecified, or potentially destructive (for example, “clean this folder”, “fix this”, “delete unnecessary files”, or “make this project work”), OTerminus does **not** guess and does **not** execute.
+
+Instead, it returns safer inspection options:
+
+- list large files
+- list recently modified files
+- inspect permissions
+- show temporary-looking files
+- show project files
+
+This keeps the flow inspect-first:
+
+- Instead of “remove junk files”, inspect candidate files first.
+- Instead of “repair permissions”, inspect current permissions first.
+- Then provide a narrower follow-up request with exact paths and intended scope.
 
 ## Non-execution modes (`--dry-run`, `--explain`)
 
@@ -112,6 +131,9 @@ Each line is JSON with fields such as:
 - `timestamp`
 - `user_input`
 - `direct_command_detected`
+- `ambiguity_detected`
+- `ambiguity_reason`
+- `ambiguity_safe_options`
 - `routed_category`
 - `proposal_mode`
 - `command_family`

@@ -12,6 +12,9 @@ class AuditEvent:
     timestamp: str
     user_input: str
     direct_command_detected: bool
+    ambiguity_detected: bool = False
+    ambiguity_reason: str | None = None
+    ambiguity_safe_options: list[str] = field(default_factory=list)
     routed_category: str | None = None
     proposal_mode: str | None = None
     command_family: str | None = None
