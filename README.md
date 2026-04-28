@@ -129,6 +129,8 @@ Configure behavior using environment variables:
 - `OTERMINUS_ALLOW_DANGEROUS` (`true`/`false`; default: `false`)
 - `OTERMINUS_ALLOWED_ROOTS` (colon-separated absolute paths; optional)
 - `OTERMINUS_AUDIT_LOG_PATH` (path for local JSONL request audit log; default: `~/.oterminus/audit.jsonl`)
+- `OTERMINUS_AUDIT_ENABLED` (`true`/`false`; default: `true`)
+- `OTERMINUS_AUDIT_REDACT` (`true`/`false`; default: `true`)
 
 Example:
 
@@ -137,6 +139,8 @@ export OTERMINUS_POLICY_MODE=write
 export OTERMINUS_ALLOW_DANGEROUS=false
 export OTERMINUS_ALLOWED_ROOTS=/workspace:/tmp/safe-area
 export OTERMINUS_AUDIT_LOG_PATH=~/.oterminus/audit.jsonl
+export OTERMINUS_AUDIT_ENABLED=true
+export OTERMINUS_AUDIT_REDACT=true
 ```
 
 ## Local observability and debugging
@@ -169,6 +173,20 @@ Each line is JSON with fields such as:
 - `execution_exit_code`
 - `rerun_source_history_id`
 - `duration_ms`
+
+### Audit privacy controls
+
+Audit logs are **local-only** and stay on your machine. OTerminus does not upload audit logs or send telemetry.
+
+- `OTERMINUS_AUDIT_ENABLED=false` disables writing audit log lines entirely.
+- `OTERMINUS_AUDIT_REDACT=true` (default) redacts likely secret material in audit fields such as:
+  - user input and rendered commands
+  - argv values
+  - warning and rejection text
+- Redaction covers practical patterns like bearer tokens, GitHub tokens, API keys, passwords, secret flags (`--token`, `--password`, `--api-key`), environment-style assignments (`KEY=value`), and URLs with embedded credentials.
+- `OTERMINUS_AUDIT_REDACT=false` is an explicit opt-out and logs raw values.
+
+Use `audit status` (one-shot or in REPL) to inspect current audit settings and log path.
 
 ### Debug-friendly request trace
 

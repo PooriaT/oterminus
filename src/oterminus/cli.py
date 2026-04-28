@@ -351,6 +351,7 @@ def repl(
     executor: Executor,
     *,
     audit_logger: AuditLogger | None = None,
+    audit_enabled: bool = True,
     debug_trace: bool = False,
     default_run_mode: RunMode = RunMode.EXECUTE,
 ) -> int:
@@ -381,6 +382,9 @@ def repl(
             continue
         if request.lower() in {"exit", "quit"}:
             return 0
+        if request.lower().strip() == "audit status":
+            print(render_audit_status(audit_logger, enabled=audit_enabled))
+            continue
         discovery_response = handle_repl_discovery_command(request)
         if discovery_response is not None:
             print(discovery_response)
@@ -432,7 +436,7 @@ def handle_repl_discovery_command(request: str) -> str | None:
         return (
             "Enter either a natural-language terminal request or a direct shell command.\n"
             "Examples: 'find all .py files', 'ls -lh', 'cd src'\n"
-            "Built-ins: help, capabilities, commands, examples, history, history <n>, explain <request>, explain <history_id>, rerun <history_id>, dry-run <request>, exit, quit\n"
+            "Built-ins: help, capabilities, commands, examples, history, history <n>, explain <request>, explain <history_id>, rerun <history_id>, dry-run <request>, audit status, exit, quit\n"
             "Try: help capabilities | help <capability_id> | help <command_family> | examples <capability_id>"
         )
 
@@ -629,7 +633,11 @@ def main(argv: list[str] | None = None) -> int:
     config = load_config()
     validator = Validator(config.policy)
     executor = Executor(timeout_seconds=config.timeout_seconds)
-    audit_logger = AuditLogger(config.audit_log_path)
+    audit_logger = (
+        AuditLogger(config.audit_log_path, redact=config.audit_redact)
+        if config.audit_enabled
+        else None
+    )
     planner: Planner | None = None
     model_name: str | None = None
 
@@ -652,6 +660,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.request:
         request = " ".join(args.request)
+        if request.lower().strip() == "audit status":
+            print(render_audit_status(audit_logger, enabled=config.audit_enabled))
+            return 0
         direct = detect_direct_command(request) is not None
         if not direct:
             try:
@@ -678,6 +689,7 @@ def main(argv: list[str] | None = None) -> int:
         validator,
         executor,
         audit_logger=audit_logger,
+        audit_enabled=config.audit_enabled,
         debug_trace=args.verbose,
         default_run_mode=run_mode,
     )
@@ -773,6 +785,21 @@ def _write_audit_event(audit_logger: AuditLogger | None, event: AuditEvent) -> N
         audit_logger.write(event)
     except OSError as exc:
         LOGGER.debug("failed_to_write_audit_event error=%s", exc)
+
+
+def render_audit_status(audit_logger: AuditLogger | None, *, enabled: bool = True) -> str:
+    lines = [f"audit enabled: {'yes' if enabled else 'no'}"]
+    if not enabled:
+        lines.append("audit logging is disabled by OTERMINUS_AUDIT_ENABLED=false")
+        return "\n".join(lines)
+    if audit_logger is None:
+        lines.append("audit logger unavailable")
+        return "\n".join(lines)
+    details = audit_logger.status()
+    lines.append(f"path: {details['path']}")
+    lines.append(f"log file exists: {details['exists']}")
+    lines.append(f"redaction: {details['redaction']}")
+    return "\n".join(lines)
 
 
 def render_ambiguity_response(result: AmbiguityResult) -> str:

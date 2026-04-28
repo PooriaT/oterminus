@@ -11,6 +11,7 @@ from oterminus.cli import (
     handle_repl_discovery_command,
     handle_repl_history_command,
     parse_args,
+    render_audit_status,
 )
 from oterminus.models import ActionType, Proposal, ProposalMode, RiskLevel, ValidationResult
 from oterminus.ollama_client import parse_ollama_list_output
@@ -118,6 +119,8 @@ def test_main_repl_passes_global_run_mode(monkeypatch) -> None:
     config.policy = Mock()
     config.timeout_seconds = 30
     config.audit_log_path = Path("/tmp/oterminus-audit.jsonl")
+    config.audit_enabled = True
+    config.audit_redact = True
     captured: dict[str, object] = {}
 
     monkeypatch.setattr("oterminus.cli.configure_logging", lambda verbose: None)
@@ -125,7 +128,7 @@ def test_main_repl_passes_global_run_mode(monkeypatch) -> None:
     monkeypatch.setattr("oterminus.cli.ensure_startup_ready", lambda: "gemma3:latest")
     monkeypatch.setattr("oterminus.cli.Validator", lambda policy: Mock())
     monkeypatch.setattr("oterminus.cli.Executor", lambda timeout_seconds: Mock())
-    monkeypatch.setattr("oterminus.cli.AuditLogger", lambda path: Mock())
+    monkeypatch.setattr("oterminus.cli.AuditLogger", lambda path, redact: Mock())
 
     def fake_repl(_planner, _validator, _executor, **kwargs):
         captured.update(kwargs)
@@ -165,6 +168,8 @@ def test_main_dry_run_direct_command_does_not_require_startup(monkeypatch) -> No
     config.policy = Mock()
     config.timeout_seconds = 30
     config.audit_log_path = Path("/tmp/oterminus-audit.jsonl")
+    config.audit_enabled = True
+    config.audit_redact = True
 
     monkeypatch.setattr("oterminus.cli.configure_logging", lambda verbose: None)
     monkeypatch.setattr("oterminus.cli.load_config", lambda: config)
@@ -172,7 +177,7 @@ def test_main_dry_run_direct_command_does_not_require_startup(monkeypatch) -> No
     monkeypatch.setattr("oterminus.cli.ensure_startup_ready", startup_check)
     monkeypatch.setattr("oterminus.cli.Validator", lambda policy: Mock())
     monkeypatch.setattr("oterminus.cli.Executor", lambda timeout_seconds: Mock())
-    monkeypatch.setattr("oterminus.cli.AuditLogger", lambda path: Mock())
+    monkeypatch.setattr("oterminus.cli.AuditLogger", lambda path, redact: Mock())
     monkeypatch.setattr("oterminus.cli.handle_request", lambda *_args, **_kwargs: 0)
 
     code = main(["--dry-run", "pwd"])
@@ -191,6 +196,9 @@ def test_main_uses_selected_model(monkeypatch) -> None:
     config = Mock()
     config.policy = Mock()
     config.timeout_seconds = 45
+    config.audit_log_path = Path("/tmp/oterminus-audit.jsonl")
+    config.audit_enabled = True
+    config.audit_redact = True
 
     monkeypatch.setattr("oterminus.cli.configure_logging", lambda verbose: None)
     monkeypatch.setattr("oterminus.cli.load_config", lambda: config)
@@ -212,6 +220,60 @@ def test_main_uses_selected_model(monkeypatch) -> None:
     assert code == 17
     planner_client.assert_called_once_with(model="llama3.2:latest")
     assert planner_client.call_args.kwargs == {"model": "llama3.2:latest"}
+
+
+def test_render_audit_status_disabled() -> None:
+    output = render_audit_status(audit_logger=None, enabled=False)
+
+    assert "audit enabled: no" in output
+    assert "disabled by OTERMINUS_AUDIT_ENABLED=false" in output
+
+
+def test_main_audit_disabled_skips_audit_logger(monkeypatch) -> None:
+    from oterminus.cli import main
+
+    config = Mock()
+    config.policy = Mock()
+    config.timeout_seconds = 30
+    config.audit_log_path = Path("/tmp/oterminus-audit.jsonl")
+    config.audit_enabled = False
+    config.audit_redact = True
+
+    monkeypatch.setattr("oterminus.cli.configure_logging", lambda verbose: None)
+    monkeypatch.setattr("oterminus.cli.load_config", lambda: config)
+    monkeypatch.setattr("oterminus.cli.Validator", lambda policy: Mock())
+    monkeypatch.setattr("oterminus.cli.Executor", lambda timeout_seconds: Mock())
+    monkeypatch.setattr("oterminus.cli.ensure_startup_ready", lambda: "model")
+    monkeypatch.setattr("oterminus.cli.AuditLogger", Mock(side_effect=AssertionError("should not create logger")))
+    monkeypatch.setattr("oterminus.cli.handle_request", lambda *_args, **_kwargs: 0)
+
+    code = main(["pwd"])
+
+    assert code == 0
+
+
+def test_main_audit_status_command(monkeypatch, capsys) -> None:
+    from oterminus.cli import main
+
+    config = Mock()
+    config.policy = Mock()
+    config.timeout_seconds = 30
+    config.audit_log_path = Path("/tmp/oterminus-audit.jsonl")
+    config.audit_enabled = True
+    config.audit_redact = True
+
+    monkeypatch.setattr("oterminus.cli.configure_logging", lambda verbose: None)
+    monkeypatch.setattr("oterminus.cli.load_config", lambda: config)
+    monkeypatch.setattr("oterminus.cli.Validator", lambda policy: Mock())
+    monkeypatch.setattr("oterminus.cli.Executor", lambda timeout_seconds: Mock())
+    monkeypatch.setattr("oterminus.cli.AuditLogger", lambda path, redact: Mock(status=lambda: {"path": str(path), "exists": "no", "redaction": "enabled"}))
+
+    code = main(["audit", "status"])
+
+    assert code == 0
+    output = capsys.readouterr().out
+    assert "audit enabled: yes" in output
+    assert "redaction: enabled" in output
 
 
 def test_handle_request_cancel(monkeypatch) -> None:

@@ -138,6 +138,11 @@ class Validator:
             warnings.append("Broad permission change target detected.")
             risk = RiskLevel.DANGEROUS
 
+        if base == "env":
+            warnings.append(
+                "Environment values may include secrets; only query specific variables and avoid sensitive names."
+            )
+
         if spec is not None and spec.forbidden_operand_prefixes:
             forbidden_operands = self._forbidden_operands(spec, args[1:])
             if forbidden_operands:
