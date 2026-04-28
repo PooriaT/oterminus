@@ -40,3 +40,9 @@ def test_detect_ambiguity_direct_shell_command_text_is_not_ambiguous() -> None:
     result = detect_ambiguity("chmod +x run.sh")
 
     assert result.is_ambiguous is False
+
+
+def test_detect_ambiguity_does_not_match_inside_words() -> None:
+    result = detect_ambiguity("prefix this variable names")
+
+    assert result.is_ambiguous is False

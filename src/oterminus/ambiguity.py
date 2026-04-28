@@ -120,4 +120,4 @@ def _matches_hint(text: str, hint: str) -> bool:
     escaped = re.escape(hint.strip())
     if not escaped:
         return False
-    return re.search(rf"(?<!\\w){escaped}(?!\\w)", text) is not None
+    return re.search(rf"(?<!\w){escaped}(?!\w)", text) is not None
