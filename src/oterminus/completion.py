@@ -10,6 +10,8 @@ REPL_BUILTINS: tuple[str, ...] = (
     "capabilities",
     "commands",
     "examples",
+    "history",
+    "rerun",
     "exit",
     "quit",
     "dry-run",

@@ -69,6 +69,10 @@ In REPL mode, built-ins are available:
 
 - `dry-run <request>`
 - `explain <request>`
+- `history`
+- `history <n>`
+- `explain <history_id>`
+- `rerun <history_id>`
 - `capabilities`
 - `commands`
 - `examples` / `examples <capability_id>`
@@ -77,6 +81,17 @@ In REPL mode, built-ins are available:
 - `help <command_family>`
 
 Discovery built-ins are local-only REPL UX helpers: they do not call Ollama, do not execute commands, and only read the local command/capability registry metadata.
+
+## REPL session history commands
+
+OTerminus keeps an **in-memory history for the current REPL session only** (v1): nothing is persisted across restarts.
+
+- `history`: show a compact table of recent requests (id, input, command, risk, status)
+- `history <n>`: show only the last `n` requests
+- `explain <history_id>`: re-render explanation details for a previous request without execution
+- `rerun <history_id>`: replays a previous request through the normal pipeline
+
+`rerun` is intentionally safe: it does **not** execute immediately, it re-runs validation against current policy, shows preview again, and requires confirmation again. Previously rejected commands are still rejected unless current policy allows them.
 
 Command metadata for structured command support is maintained in a central merged registry built from modular capability packs under `src/oterminus/commands/` (filesystem, text, process, system, macOS, dangerous). Each command is tagged with a workflow capability (`capability_id`, label, concise description, aliases, examples, maturity), so OTerminus scales by curated user workflows rather than trying to mirror every shell man page.
 
@@ -152,6 +167,7 @@ Each line is JSON with fields such as:
 - `rejection_reasons`
 - `confirmation_result`
 - `execution_exit_code`
+- `rerun_source_history_id`
 - `duration_ms`
 
 ### Debug-friendly request trace
@@ -179,7 +195,7 @@ Run:
 poetry run oterminus
 ```
 
-In interactive REPL mode, `Tab` provides deterministic local autocomplete for built-ins (`help`, `capabilities`, `commands`, `examples`, `exit`, `quit`), curated command names/categories, and local filesystem paths. Tab completion is local-only and does not call the planner or model.
+In interactive REPL mode, `Tab` provides deterministic local autocomplete for built-ins (`help`, `capabilities`, `commands`, `examples`, `history`, `rerun`, `dry-run`, `explain`, `exit`, `quit`), curated command names/categories, and local filesystem paths. Tab completion is local-only and does not call the planner or model.
 
 ## Install (global command)
 

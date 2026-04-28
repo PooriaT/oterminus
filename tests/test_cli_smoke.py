@@ -4,7 +4,14 @@ from unittest.mock import Mock
 
 import subprocess
 
-from oterminus.cli import RunMode, ask_confirmation, handle_repl_discovery_command, parse_args
+from oterminus.cli import (
+    RunMode,
+    SessionHistory,
+    ask_confirmation,
+    handle_repl_discovery_command,
+    handle_repl_history_command,
+    parse_args,
+)
 from oterminus.models import ActionType, Proposal, ProposalMode, RiskLevel, ValidationResult
 from oterminus.ollama_client import parse_ollama_list_output
 from oterminus.policies import ConfirmationLevel
@@ -687,3 +694,216 @@ def test_handle_request_ambiguous_writes_audit_without_executor(tmp_path: Path) 
     assert payload["confirmation_result"] == "blocked_ambiguous"
     validator.validate.assert_not_called()
     executor.run.assert_not_called()
+
+
+def test_history_records_are_created(monkeypatch) -> None:
+    from oterminus.cli import handle_request
+
+    planner = Mock()
+    validator = Mock()
+    validator.validate.return_value = ValidationResult(
+        accepted=True,
+        risk_level=RiskLevel.SAFE,
+        rendered_command="pwd",
+        argv=["pwd"],
+    )
+    executor = Mock()
+    executor.run.return_value.returncode = 0
+    executor.run.return_value.stdout = "/tmp\n"
+    executor.run.return_value.stderr = ""
+    monkeypatch.setattr("builtins.input", lambda _: "y")
+
+    history = SessionHistory()
+    code = handle_request("pwd", planner, validator, executor, session_history=history)
+
+    assert code == 0
+    items = history.all_items()
+    assert len(items) == 1
+    assert items[0].id == 1
+    assert items[0].user_input == "pwd"
+    assert items[0].execution_status == "executed"
+    assert items[0].exit_code == 0
+
+
+def test_history_command_displays_records() -> None:
+    history = SessionHistory()
+    item = history.start("show files")
+    item.rendered_command = "find . -name '*.py'"
+    item.risk_level = "safe"
+    item.execution_status = "executed"
+
+    output = handle_repl_history_command(
+        "history",
+        session_history=history,
+        planner_factory=Mock(),
+        validator=Mock(),
+        executor=Mock(),
+        audit_logger=None,
+        debug_trace=False,
+    )
+
+    assert output is not None
+    assert "id" in output
+    assert "show files" in output
+    assert "find . -name '*.py'" in output
+
+
+def test_explain_history_item_does_not_execute(monkeypatch, capsys) -> None:
+    from oterminus.cli import handle_request
+
+    planner = Mock()
+    validator = Mock()
+    validator.validate.return_value = ValidationResult(
+        accepted=True,
+        risk_level=RiskLevel.SAFE,
+        rendered_command="pwd",
+        argv=["pwd"],
+    )
+    executor = Mock()
+    monkeypatch.setattr("builtins.input", lambda _: "n")
+    history = SessionHistory()
+
+    handle_request("pwd", planner, validator, executor, session_history=history)
+    executor.run.assert_not_called()
+
+    output = handle_repl_history_command(
+        "explain 1",
+        session_history=history,
+        planner_factory=planner,
+        validator=validator,
+        executor=executor,
+        audit_logger=None,
+        debug_trace=False,
+    )
+
+    assert output is not None
+    assert "--- oterminus explanation ---" in output
+    assert executor.run.call_count == 0
+    assert "blocked by explain mode" in output.lower()
+    assert "execution output" not in capsys.readouterr().out.lower()
+
+
+def test_rerun_revalidates_and_requires_confirmation(monkeypatch) -> None:
+    from oterminus.cli import handle_request
+
+    planner = Mock()
+    validator = Mock()
+    validator.validate.side_effect = [
+        ValidationResult(
+            accepted=True,
+            risk_level=RiskLevel.SAFE,
+            rendered_command="pwd",
+            argv=["pwd"],
+        ),
+        ValidationResult(
+            accepted=True,
+            risk_level=RiskLevel.SAFE,
+            rendered_command="pwd",
+            argv=["pwd"],
+        ),
+    ]
+    executor = Mock()
+    executor.run.return_value.returncode = 0
+    executor.run.return_value.stdout = ""
+    executor.run.return_value.stderr = ""
+    answers = iter(["n", "y"])
+    monkeypatch.setattr("builtins.input", lambda _: next(answers))
+    history = SessionHistory()
+
+    handle_request("pwd", planner, validator, executor, session_history=history)
+    output = handle_repl_history_command(
+        "rerun 1",
+        session_history=history,
+        planner_factory=planner,
+        validator=validator,
+        executor=executor,
+        audit_logger=None,
+        debug_trace=False,
+    )
+
+    assert output == ""
+    assert validator.validate.call_count == 2
+    assert executor.run.call_count == 1
+
+
+def test_rerun_cannot_bypass_rejection(monkeypatch) -> None:
+    from oterminus.cli import handle_request
+
+    planner = Mock()
+    validator = Mock()
+    validator.validate.return_value = ValidationResult(
+        accepted=False,
+        risk_level=RiskLevel.DANGEROUS,
+        reasons=["dangerous commands are disabled by policy"],
+        rendered_command="rm -rf /",
+        argv=["rm", "-rf", "/"],
+    )
+    executor = Mock()
+    monkeypatch.setattr("builtins.input", lambda _: "y")
+    history = SessionHistory()
+
+    handle_request("rm -rf /", planner, validator, executor, session_history=history)
+    handle_repl_history_command(
+        "rerun 1",
+        session_history=history,
+        planner_factory=planner,
+        validator=validator,
+        executor=executor,
+        audit_logger=None,
+        debug_trace=False,
+    )
+
+    assert validator.validate.call_count == 2
+    executor.run.assert_not_called()
+
+
+def test_history_id_not_found_is_clean() -> None:
+    output = handle_repl_history_command(
+        "rerun 99",
+        session_history=SessionHistory(),
+        planner_factory=Mock(),
+        validator=Mock(),
+        executor=Mock(),
+        audit_logger=None,
+        debug_trace=False,
+    )
+
+    assert output == "History id 99 not found."
+
+
+def test_rerun_writes_audit_source_history_id(monkeypatch, tmp_path: Path) -> None:
+    from oterminus.audit import AuditLogger
+    from oterminus.cli import handle_request
+
+    planner = Mock()
+    validator = Mock()
+    validator.validate.return_value = ValidationResult(
+        accepted=True,
+        risk_level=RiskLevel.SAFE,
+        rendered_command="pwd",
+        argv=["pwd"],
+    )
+    executor = Mock()
+    executor.run.return_value.returncode = 0
+    executor.run.return_value.stdout = ""
+    executor.run.return_value.stderr = ""
+    answers = iter(["n", "y"])
+    monkeypatch.setattr("builtins.input", lambda _: next(answers))
+    history = SessionHistory()
+    audit_path = tmp_path / "audit.jsonl"
+    audit_logger = AuditLogger(audit_path)
+
+    handle_request("pwd", planner, validator, executor, session_history=history, audit_logger=audit_logger)
+    handle_repl_history_command(
+        "rerun 1",
+        session_history=history,
+        planner_factory=planner,
+        validator=validator,
+        executor=executor,
+        audit_logger=audit_logger,
+        debug_trace=False,
+    )
+
+    lines = audit_path.read_text(encoding="utf-8").strip().splitlines()
+    rerun_payload = json.loads(lines[-1])
+    assert rerun_payload["rerun_source_history_id"] == 1
