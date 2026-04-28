@@ -6,6 +6,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from oterminus.audit_privacy import redact_argv, redact_text
+
 
 @dataclass
 class AuditEvent:
@@ -41,11 +43,37 @@ class AuditEvent:
 
 
 class AuditLogger:
-    def __init__(self, path: Path):
+    def __init__(self, path: Path, *, redact: bool = True):
         self.path = path
+        self.redact = redact
 
     def write(self, event: AuditEvent) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        serialized = json.dumps(event.to_payload(), sort_keys=True)
+        payload = event.to_payload()
+        if self.redact:
+            payload = self._redacted_payload(payload)
+        serialized = json.dumps(payload, sort_keys=True)
         with self.path.open("a", encoding="utf-8") as handle:
             handle.write(serialized + "\n")
+
+    def status(self) -> dict[str, str]:
+        return {
+            "path": str(self.path),
+            "exists": "yes" if self.path.exists() else "no",
+            "redaction": "enabled" if self.redact else "disabled (explicit opt-out)",
+        }
+
+    def _redacted_payload(self, payload: dict[str, Any]) -> dict[str, Any]:
+        cloned = dict(payload)
+        for field_name in ("user_input", "rendered_command", "ambiguity_reason"):
+            value = cloned.get(field_name)
+            if isinstance(value, str):
+                cloned[field_name] = redact_text(value)
+        for field_name in ("warnings", "rejection_reasons", "ambiguity_safe_options"):
+            raw = cloned.get(field_name)
+            if isinstance(raw, list):
+                cloned[field_name] = [redact_text(item) if isinstance(item, str) else item for item in raw]
+        raw_argv = cloned.get("argv")
+        if isinstance(raw_argv, list):
+            cloned["argv"] = redact_argv([str(item) for item in raw_argv])
+        return cloned

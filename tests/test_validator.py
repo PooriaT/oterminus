@@ -196,6 +196,14 @@ def test_validator_rejects_env_with_more_than_one_operand() -> None:
     assert any("allows at most 1 operand" in reason for reason in result.reasons)
 
 
+def test_validator_warns_about_environment_secrets_for_env_lookup() -> None:
+    validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))
+    result = validator.validate(make_proposal("env PATH"))
+
+    assert result.accepted is True
+    assert any("Environment values may include secrets" in warning for warning in result.warnings)
+
+
 def test_allowed_roots_find_checks_only_search_roots() -> None:
     validator = Validator(
         PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False, allowed_roots=["/allowed"])

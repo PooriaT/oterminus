@@ -16,6 +16,8 @@ class AppConfig:
     policy: PolicyConfig = field(default_factory=PolicyConfig)
     model: str | None = None
     audit_log_path: Path = field(default_factory=lambda: Path.home() / ".oterminus" / "audit.jsonl")
+    audit_enabled: bool = True
+    audit_redact: bool = True
 
 
 def get_user_config_path() -> Path:
@@ -68,10 +70,26 @@ def load_config() -> AppConfig:
         audit_log_path = Path(configured_audit_path).expanduser()
     else:
         audit_log_path = Path.home() / ".oterminus" / "audit.jsonl"
+    audit_enabled = _env_flag("OTERMINUS_AUDIT_ENABLED", default=True)
+    audit_redact = _env_flag("OTERMINUS_AUDIT_REDACT", default=True)
 
     return AppConfig(
         timeout_seconds=timeout_seconds,
         policy=PolicyConfig(mode=mode, allow_dangerous=allow_dangerous, allowed_roots=allowed_roots),
         model=model,
         audit_log_path=audit_log_path,
+        audit_enabled=audit_enabled,
+        audit_redact=audit_redact,
     )
+
+
+def _env_flag(name: str, *, default: bool) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    normalized = raw.strip().lower()
+    if normalized in {"1", "true", "yes", "on"}:
+        return True
+    if normalized in {"0", "false", "no", "off"}:
+        return False
+    return default
