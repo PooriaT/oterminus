@@ -48,6 +48,18 @@ def test_doctor_fails_when_ollama_cli_missing(monkeypatch, tmp_path: Path) -> No
     assert report.exit_code == 2
 
 
+def test_doctor_reports_config_parse_failure_instead_of_crashing(monkeypatch, tmp_path: Path) -> None:
+    _base_monkeypatches(monkeypatch, tmp_path)
+    monkeypatch.setattr("oterminus.doctor.load_config", Mock(side_effect=ValueError("invalid timeout")))
+
+    report = run_doctor()
+
+    assert _status_by_name(report, "app config").status is Status.FAIL
+    assert _status_by_name(report, "configured model").status is Status.WARN
+    assert _status_by_name(report, "audit log path").status is Status.WARN
+    assert report.exit_code == 2
+
+
 def test_doctor_warns_when_prompt_toolkit_missing(monkeypatch, tmp_path: Path) -> None:
     _base_monkeypatches(monkeypatch, tmp_path)
 
@@ -120,3 +132,12 @@ def test_doctor_command_returns_proper_exit_code(monkeypatch, tmp_path: Path) ->
     code = main(["doctor"])
 
     assert code == 2
+
+
+def test_doctor_skips_eval_fixture_check_outside_repo(monkeypatch, tmp_path: Path) -> None:
+    _base_monkeypatches(monkeypatch, tmp_path)
+    monkeypatch.chdir(tmp_path)
+
+    report = run_doctor()
+
+    assert _status_by_name(report, "eval fixtures").status is Status.WARN

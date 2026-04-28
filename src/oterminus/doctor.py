@@ -9,7 +9,7 @@ from enum import Enum
 from pathlib import Path
 
 from oterminus.commands import COMMAND_PACKS, COMMAND_REGISTRY
-from oterminus.config import get_user_config_path, load_config
+from oterminus.config import AppConfig, get_user_config_path, load_config
 from oterminus.evals import load_eval_cases
 from oterminus.setup import check_ollama_installed, check_ollama_running, get_available_models
 
@@ -83,9 +83,11 @@ def run_doctor() -> DoctorReport:
             )
         )
 
-    results.append(_check_configured_model(models, ollama_ready=cli_installed and ollama_running))
+    app_config, config_check = _load_app_config()
+    results.append(config_check)
+    results.append(_check_configured_model(app_config, models, ollama_ready=cli_installed and ollama_running))
     results.append(_check_config_file())
-    results.append(_check_audit_path())
+    results.append(_check_audit_path(app_config))
     results.append(_check_prompt_toolkit())
     results.append(_check_registry_loads())
     results.append(_check_registry_duplicates())
@@ -196,8 +198,35 @@ def _check_ollama_models() -> tuple[CheckResult, list[str]]:
     )
 
 
-def _check_configured_model(models: list[str], *, ollama_ready: bool) -> CheckResult:
-    configured_model = load_config().model
+def _load_app_config() -> tuple[AppConfig | None, CheckResult]:
+    try:
+        config = load_config()
+    except Exception as exc:
+        return (
+            None,
+            CheckResult(
+                name="app config",
+                status=Status.FAIL,
+                message="Configuration could not be parsed from environment/user settings.",
+                guidance=f"Fix malformed OTERMINUS_* values and config JSON. Details: {exc}",
+                critical=True,
+            ),
+        )
+    return (
+        config,
+        CheckResult(name="app config", status=Status.PASS, message="Configuration parsed successfully.", critical=True),
+    )
+
+
+def _check_configured_model(config: AppConfig | None, models: list[str], *, ollama_ready: bool) -> CheckResult:
+    if config is None:
+        return CheckResult(
+            name="configured model",
+            status=Status.WARN,
+            message="Skipped because app config failed to parse.",
+            guidance="Fix the app config check first, then rerun doctor.",
+        )
+    configured_model = config.model
     if not configured_model:
         return CheckResult(
             name="configured model",
@@ -266,8 +295,14 @@ def _check_config_file() -> CheckResult:
     )
 
 
-def _check_audit_path() -> CheckResult:
-    config = load_config()
+def _check_audit_path(config: AppConfig | None) -> CheckResult:
+    if config is None:
+        return CheckResult(
+            name="audit log path",
+            status=Status.WARN,
+            message="Skipped because app config failed to parse.",
+            guidance="Fix the app config check first, then rerun doctor.",
+        )
     if not config.audit_enabled:
         return CheckResult(name="audit log path", status=Status.WARN, message="Audit logging is disabled.")
 
@@ -344,6 +379,13 @@ def _check_registry_duplicates() -> CheckResult:
 
 
 def _check_eval_fixtures() -> CheckResult:
+    if not Path("pyproject.toml").exists():
+        return CheckResult(
+            name="eval fixtures",
+            status=Status.WARN,
+            message="Not running from a source checkout; fixture check skipped.",
+        )
+
     fixtures_dir = Path("evals/cases")
     try:
         cases = load_eval_cases(fixtures_dir)
