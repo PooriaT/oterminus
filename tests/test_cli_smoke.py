@@ -55,6 +55,34 @@ def test_main_repl_startup_validates_once(monkeypatch) -> None:
     setup_check.assert_called_once()
 
 
+def test_main_repl_passes_global_run_mode(monkeypatch) -> None:
+    from oterminus.cli import main
+
+    config = Mock()
+    config.policy = Mock()
+    config.timeout_seconds = 30
+    config.audit_log_path = Path("/tmp/oterminus-audit.jsonl")
+    captured: dict[str, object] = {}
+
+    monkeypatch.setattr("oterminus.cli.configure_logging", lambda verbose: None)
+    monkeypatch.setattr("oterminus.cli.load_config", lambda: config)
+    monkeypatch.setattr("oterminus.cli.ensure_startup_ready", lambda: "gemma3:latest")
+    monkeypatch.setattr("oterminus.cli.Validator", lambda policy: Mock())
+    monkeypatch.setattr("oterminus.cli.Executor", lambda timeout_seconds: Mock())
+    monkeypatch.setattr("oterminus.cli.AuditLogger", lambda path: Mock())
+
+    def fake_repl(_planner, _validator, _executor, **kwargs):
+        captured.update(kwargs)
+        return 0
+
+    monkeypatch.setattr("oterminus.cli.repl", fake_repl)
+
+    code = main(["--dry-run"])
+
+    assert code == 0
+    assert captured["default_run_mode"] == RunMode.DRY_RUN
+
+
 def test_main_request_exits_when_startup_setup_fails(monkeypatch, capsys) -> None:
     from oterminus.cli import main
 
@@ -370,6 +398,26 @@ def test_handle_request_explain_validation_failure_reports_policy_and_skips_exec
     assert "Policy        : Blocked by current policy checks." in output
     assert "dangerous commands are disabled by policy" in output
     executor.run.assert_not_called()
+
+
+def test_handle_request_explain_does_not_expand_single_dash_long_options(capsys) -> None:
+    from oterminus.cli import handle_request
+
+    planner = Mock()
+    validator = Mock()
+    validator.validate.return_value = ValidationResult(
+        accepted=True,
+        risk_level=RiskLevel.SAFE,
+        rendered_command="find . -name '*.py'",
+        argv=["find", ".", "-name", "*.py"],
+    )
+    executor = Mock()
+
+    code = handle_request("find . -name '*.py'", planner, validator, executor, run_mode=RunMode.EXPLAIN)
+
+    assert code == 0
+    output = capsys.readouterr().out
+    assert "Flags         :" not in output
 
 
 def test_handle_request_direct_command_verbose_shows_trace(monkeypatch, capsys) -> None:

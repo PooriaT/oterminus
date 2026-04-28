@@ -226,6 +226,7 @@ def repl(
     *,
     audit_logger: AuditLogger | None = None,
     debug_trace: bool = False,
+    default_run_mode: RunMode = RunMode.EXECUTE,
 ) -> int:
     print("oterminus REPL. Type 'help' for guidance, 'exit' or 'quit' to leave.")
 
@@ -261,7 +262,7 @@ def repl(
             )
             continue
 
-        run_mode = RunMode.EXECUTE
+        run_mode = default_run_mode
         lowered = request.lower()
         if lowered.startswith("dry-run "):
             run_mode = RunMode.DRY_RUN
@@ -336,7 +337,14 @@ def main(argv: list[str] | None = None) -> int:
     except SetupError as exc:
         print(exc)
         return 2
-    return repl(get_planner, validator, executor, audit_logger=audit_logger, debug_trace=args.verbose)
+    return repl(
+        get_planner,
+        validator,
+        executor,
+        audit_logger=audit_logger,
+        debug_trace=args.verbose,
+        default_run_mode=run_mode,
+    )
 
 
 def _duration_ms_since(started_at: datetime) -> int:
@@ -398,10 +406,11 @@ def _describe_flags(argv: list[str]) -> list[str]:
         if key.startswith("--"):
             descriptions.append(f"{key}: long-form option")
         elif key.startswith("-") and len(key) > 2:
-            for short_flag in key[1:]:
-                short_key = f"-{short_flag}"
-                if short_key in _FLAG_EXPLANATIONS:
-                    descriptions.append(f"{short_key}: {_FLAG_EXPLANATIONS[short_key]}")
+            short_keys = [f"-{short_flag}" for short_flag in key[1:]]
+            if not all(short_key in _FLAG_EXPLANATIONS for short_key in short_keys):
+                continue
+            for short_key in short_keys:
+                descriptions.append(f"{short_key}: {_FLAG_EXPLANATIONS[short_key]}")
     return sorted(set(descriptions))
 
 
