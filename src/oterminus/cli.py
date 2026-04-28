@@ -16,6 +16,7 @@ from oterminus.commands.types import MaturityLevel
 from oterminus.config import load_config
 from oterminus.completion import prompt_toolkit_completer
 from oterminus.direct_commands import detect_direct_command
+from oterminus.doctor import print_report, run_doctor
 from oterminus.executor import Executor
 from oterminus.logging_utils import configure_logging
 from oterminus.ollama_client import OllamaClientError, OllamaPlannerClient
@@ -629,6 +630,11 @@ def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv or sys.argv[1:])
     configure_logging(verbose=args.verbose)
     run_mode = _run_mode_from_args(args)
+
+    if args.request and " ".join(args.request).strip().lower() == "doctor":
+        report = run_doctor()
+        print_report(report)
+        return report.exit_code
 
     config = load_config()
     validator = Validator(config.policy)
