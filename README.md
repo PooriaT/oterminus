@@ -215,6 +215,39 @@ poetry run oterminus
 
 In interactive REPL mode, `Tab` provides deterministic local autocomplete for built-ins (`help`, `capabilities`, `commands`, `examples`, `history`, `rerun`, `dry-run`, `explain`, `exit`, `quit`), curated command names/categories, and local filesystem paths. Tab completion is local-only and does not call the planner or model.
 
+## Diagnostics: `oterminus doctor`
+
+Use the doctor command to troubleshoot local readiness without entering the assistant REPL or running a planning request:
+
+```bash
+oterminus doctor
+```
+
+It runs concise PASS/WARN/FAIL checks for:
+
+- Python/runtime compatibility
+- package importability
+- Ollama CLI/service/models/configured model
+- config and audit log path permissions
+- autocomplete dependency (`prompt_toolkit`)
+- command registry integrity (including duplicate names)
+- eval fixture directory and parseability
+- optional dev tooling availability (Poetry)
+
+Example output:
+
+```text
+oterminus doctor
+PASS  python version: Detected 3.13.2.
+PASS  oterminus package: Import succeeded.
+PASS  ollama CLI: Found on PATH.
+WARN  prompt_toolkit: Not installed; REPL autocomplete will be disabled.
+      ↳ Install dependencies with `poetry install` to enable autocomplete.
+Summary: 13 checks, 0 failed, 1 warnings
+```
+
+If critical checks fail, `oterminus doctor` exits non-zero so it can be used in scripts/CI.
+
 ## Install (global command)
 
 Build package artifacts:
