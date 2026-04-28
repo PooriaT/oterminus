@@ -1,7 +1,7 @@
 site_name: OTerminus
-site_url: https://github.com/oterminus/oterminus
-repo_url: https://github.com/oterminus/oterminus
-repo_name: oterminus/oterminus
+site_url: https://pooriat.github.io/oterminus/
+repo_url: https://github.com/PooriaT/oterminus
+repo_name: PooriaT/oterminus
 
 theme:
   name: material

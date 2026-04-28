@@ -76,7 +76,7 @@ poetry run oterminus --explain "find processes matching python"
 
 The README is the landing page. Full documentation is generated from [`docs/`](docs/index.md) and published to GitHub Pages after merges to `main` (once Pages is enabled in repository settings).
 
-- Hosted docs (after enablement): `https://<your-org-or-user>.github.io/<repo>/`
+- Hosted docs (after enablement): `https://pooriat.github.io/oterminus/`
 - Docs source of truth: [`docs/`](docs/index.md)
 - Architecture overview: [`docs/architecture/overview.md`](docs/architecture/overview.md)
 - Request lifecycle (central flow): [`docs/architecture/request-lifecycle.md`](docs/architecture/request-lifecycle.md)
