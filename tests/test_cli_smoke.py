@@ -4,7 +4,7 @@ from unittest.mock import Mock
 
 import subprocess
 
-from oterminus.cli import ask_confirmation, parse_args
+from oterminus.cli import RunMode, ask_confirmation, parse_args
 from oterminus.models import ActionType, Proposal, ProposalMode, RiskLevel, ValidationResult
 from oterminus.ollama_client import parse_ollama_list_output
 from oterminus.policies import ConfirmationLevel
@@ -13,6 +13,18 @@ from oterminus.policies import ConfirmationLevel
 def test_parse_args_one_shot() -> None:
     args = parse_args(["show", "files"])
     assert args.request == ["show", "files"]
+
+
+def test_parse_args_dry_run_mode() -> None:
+    args = parse_args(["--dry-run", "show", "files"])
+    assert args.dry_run is True
+    assert args.explain is False
+
+
+def test_parse_args_explain_mode() -> None:
+    args = parse_args(["--explain", "show", "files"])
+    assert args.explain is True
+    assert args.dry_run is False
 
 
 def test_parse_ollama_list_output_returns_model_names() -> None:
@@ -60,6 +72,29 @@ def test_main_request_exits_when_startup_setup_fails(monkeypatch, capsys) -> Non
 
     assert code == 2
     assert "Ollama is installed but not running." in capsys.readouterr().out
+
+
+def test_main_dry_run_direct_command_does_not_require_startup(monkeypatch) -> None:
+    from oterminus.cli import main
+
+    config = Mock()
+    config.policy = Mock()
+    config.timeout_seconds = 30
+    config.audit_log_path = Path("/tmp/oterminus-audit.jsonl")
+
+    monkeypatch.setattr("oterminus.cli.configure_logging", lambda verbose: None)
+    monkeypatch.setattr("oterminus.cli.load_config", lambda: config)
+    startup_check = Mock(side_effect=AssertionError("startup should not be called"))
+    monkeypatch.setattr("oterminus.cli.ensure_startup_ready", startup_check)
+    monkeypatch.setattr("oterminus.cli.Validator", lambda policy: Mock())
+    monkeypatch.setattr("oterminus.cli.Executor", lambda timeout_seconds: Mock())
+    monkeypatch.setattr("oterminus.cli.AuditLogger", lambda path: Mock())
+    monkeypatch.setattr("oterminus.cli.handle_request", lambda *_args, **_kwargs: 0)
+
+    code = main(["--dry-run", "pwd"])
+
+    assert code == 0
+    startup_check.assert_not_called()
 
 
 def test_main_uses_selected_model(monkeypatch) -> None:
@@ -215,6 +250,128 @@ def test_handle_request_direct_command_default_output_is_concise(monkeypatch, ca
     assert "Skipped Ollama planner." not in output
 
 
+def test_handle_request_dry_run_skips_confirmation_and_execution(capsys) -> None:
+    from oterminus.cli import handle_request
+
+    planner = Mock()
+    planner.plan.return_value = Proposal(
+        action_type=ActionType.SHELL_COMMAND,
+        mode=ProposalMode.STRUCTURED,
+        command_family="find",
+        arguments={"path": ".", "name": "*.py"},
+        summary="find files",
+        explanation="desc",
+        risk_level=RiskLevel.SAFE,
+        needs_confirmation=True,
+        notes=[],
+    )
+    validator = Mock()
+    validator.validate.return_value = ValidationResult(
+        accepted=True,
+        risk_level=RiskLevel.SAFE,
+        warnings=["safe warning"],
+        rendered_command="find . -name '*.py'",
+        argv=["find", ".", "-name", "*.py"],
+    )
+    executor = Mock()
+
+    code = handle_request("find files", planner, validator, executor, run_mode=RunMode.DRY_RUN)
+
+    assert code == 0
+    output = capsys.readouterr().out
+    assert "Dry-run mode: execution skipped" in output
+    executor.run.assert_not_called()
+
+
+def test_handle_request_explain_skips_execution(monkeypatch, capsys) -> None:
+    from oterminus.cli import handle_request
+
+    planner = Mock()
+    planner.plan.return_value = Proposal(
+        action_type=ActionType.SHELL_COMMAND,
+        mode=ProposalMode.STRUCTURED,
+        command_family="ps",
+        arguments={"all_processes": True},
+        summary="list processes",
+        explanation="desc",
+        risk_level=RiskLevel.SAFE,
+        needs_confirmation=True,
+        notes=[],
+    )
+    validator = Mock()
+    validator.validate.return_value = ValidationResult(
+        accepted=True,
+        risk_level=RiskLevel.SAFE,
+        rendered_command="ps -A",
+        argv=["ps", "-A"],
+    )
+    executor = Mock()
+    monkeypatch.setattr("builtins.input", lambda _: "y")
+
+    code = handle_request("show running processes", planner, validator, executor, run_mode=RunMode.EXPLAIN)
+
+    assert code == 0
+    output = capsys.readouterr().out
+    assert "--- oterminus explanation ---" in output
+    assert "Execution     : Blocked by explain mode" in output
+    executor.run.assert_not_called()
+
+
+def test_handle_request_dry_run_direct_command_skips_planner_and_execution(capsys) -> None:
+    from oterminus.cli import handle_request
+
+    planner = Mock()
+    validator = Mock()
+    validator.validate.return_value = ValidationResult(
+        accepted=True,
+        risk_level=RiskLevel.WRITE,
+        rendered_command="chmod +x run.sh",
+        argv=["chmod", "+x", "run.sh"],
+    )
+    executor = Mock()
+
+    code = handle_request("chmod +x run.sh", planner, validator, executor, run_mode=RunMode.DRY_RUN)
+
+    assert code == 0
+    assert "execution skipped" in capsys.readouterr().out.lower()
+    planner.plan.assert_not_called()
+    executor.run.assert_not_called()
+
+
+def test_handle_request_explain_validation_failure_reports_policy_and_skips_executor(capsys) -> None:
+    from oterminus.cli import handle_request
+
+    planner = Mock()
+    planner.plan.return_value = Proposal(
+        action_type=ActionType.SHELL_COMMAND,
+        mode=ProposalMode.EXPERIMENTAL,
+        command_family="rm",
+        command="rm -rf /",
+        summary="dangerous",
+        explanation="desc",
+        risk_level=RiskLevel.DANGEROUS,
+        needs_confirmation=True,
+        notes=[],
+    )
+    validator = Mock()
+    validator.validate.return_value = ValidationResult(
+        accepted=False,
+        risk_level=RiskLevel.DANGEROUS,
+        reasons=["dangerous commands are disabled by policy"],
+        rendered_command="rm -rf /",
+        argv=["rm", "-rf", "/"],
+    )
+    executor = Mock()
+
+    code = handle_request("delete everything", planner, validator, executor, run_mode=RunMode.EXPLAIN)
+
+    assert code == 3
+    output = capsys.readouterr().out
+    assert "Policy        : Blocked by current policy checks." in output
+    assert "dangerous commands are disabled by policy" in output
+    executor.run.assert_not_called()
+
+
 def test_handle_request_direct_command_verbose_shows_trace(monkeypatch, capsys) -> None:
     from oterminus.cli import handle_request
 
@@ -341,3 +498,44 @@ def test_handle_request_writes_structured_audit_log(monkeypatch, tmp_path: Path)
     assert payload["execution_exit_code"] == 0
     assert payload["argv"] == ["find", ".", "-name", "*.py"]
     assert payload["duration_ms"] >= 0
+
+
+def test_handle_request_dry_run_writes_audit_without_execution(tmp_path: Path) -> None:
+    from oterminus.audit import AuditLogger
+    from oterminus.cli import handle_request
+
+    planner = Mock()
+    planner.plan.return_value = Proposal(
+        action_type=ActionType.SHELL_COMMAND,
+        mode=ProposalMode.STRUCTURED,
+        command_family="find",
+        arguments={"path": ".", "name": "*.py"},
+        summary="list files",
+        explanation="desc",
+        risk_level=RiskLevel.SAFE,
+        needs_confirmation=True,
+        notes=[],
+    )
+    validator = Mock()
+    validator.validate.return_value = ValidationResult(
+        accepted=True,
+        risk_level=RiskLevel.SAFE,
+        rendered_command="find . -name '*.py'",
+        argv=["find", ".", "-name", "*.py"],
+    )
+    executor = Mock()
+    audit_path = tmp_path / "audit.jsonl"
+
+    code = handle_request(
+        "show files in this directory",
+        planner,
+        validator,
+        executor,
+        run_mode=RunMode.DRY_RUN,
+        audit_logger=AuditLogger(audit_path),
+    )
+
+    assert code == 0
+    payload = json.loads(audit_path.read_text(encoding="utf-8").strip())
+    assert payload["confirmation_result"] == "skipped_dry_run"
+    assert payload["execution_exit_code"] is None

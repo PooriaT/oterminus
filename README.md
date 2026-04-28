@@ -30,6 +30,27 @@ Current routing buckets:
 
 The router is intentionally simple and rule-based in v1. It uses registry capability metadata (capability IDs, aliases, and command examples) to derive suggested families, which reduces duplicated command-family hints across routing and planning. It improves family selection hints for planning, but does not replace validator safety checks.
 
+## Non-execution modes (`--dry-run`, `--explain`)
+
+OTerminus now supports two safe one-shot modes for learning, demos, debugging, and inspection without running shell commands:
+
+- `--dry-run`: runs direct-detection/routing/planning/validation and shows the rendered command preview, but never asks for confirmation and never executes.
+- `--explain`: runs the same pipeline and prints a structured explanation of why a command was chosen, risk level, key flags/arguments (when known), and whether policy would allow execution.
+
+Examples:
+
+```bash
+oterminus --dry-run "find large files in this folder"
+oterminus --explain "show running processes"
+oterminus --dry-run "make run.sh executable"
+oterminus --explain "search TODO in Python files"
+```
+
+In REPL mode, built-ins are available:
+
+- `dry-run <request>`
+- `explain <request>`
+
 Command metadata for structured command support is maintained in a central merged registry built from modular capability packs under `src/oterminus/commands/` (filesystem, text, process, system, macOS, dangerous). Each command is tagged with a workflow capability (`capability_id`, label, concise description, aliases, examples, maturity), so OTerminus scales by curated user workflows rather than trying to mirror every shell man page.
 
 OTerminus is intentionally **capability-first**, not “all shell commands”:

@@ -6,8 +6,10 @@ import subprocess
 import sys
 from datetime import datetime, timezone
 from collections.abc import Callable
+from enum import Enum
 
 from oterminus.audit import AuditEvent, AuditLogger
+from oterminus.commands import get_command_spec
 from oterminus.config import load_config
 from oterminus.completion import prompt_toolkit_completer
 from oterminus.direct_commands import detect_direct_command
@@ -24,9 +26,34 @@ from oterminus.validator import Validator
 LOGGER = logging.getLogger("oterminus")
 
 
+class RunMode(str, Enum):
+    EXECUTE = "execute"
+    DRY_RUN = "dry-run"
+    EXPLAIN = "explain"
+
+
+_FLAG_EXPLANATIONS: dict[str, str] = {
+    "-A": "show all entries/processes (often including hidden/system items)",
+    "-a": "show all entries/processes (often including hidden/system items)",
+    "-d": "show directory itself / use delimiter-oriented behavior depending on command",
+    "-f": "use full command line or force behavior depending on command",
+    "-h": "human-readable output or help depending on command",
+    "-l": "long format output",
+    "-n": "limit to N items/lines when paired with a value",
+    "-r": "recursive processing",
+    "-R": "recursive processing",
+    "-s": "summary or short-name output depending on command",
+    "-u": "user-oriented filtering/output depending on command",
+    "-x": "stay on one filesystem or exact matching depending on command",
+}
+
+
 def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="oterminus: local AI terminal assistant")
     parser.add_argument("request", nargs="*", help="Natural-language terminal request")
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument("--dry-run", action="store_true", help="Plan + validate, but never execute.")
+    group.add_argument("--explain", action="store_true", help="Explain command choice and safety decision, without executing.")
     parser.add_argument("--verbose", action="store_true", help="Enable debug logging")
     return parser.parse_args(argv)
 
@@ -56,6 +83,7 @@ def handle_request(
     *,
     audit_logger: AuditLogger | None = None,
     debug_trace: bool = False,
+    run_mode: RunMode = RunMode.EXECUTE,
 ) -> int:
     started_at = datetime.now(tz=timezone.utc)
     event = AuditEvent.start(user_input=request)
@@ -104,10 +132,28 @@ def handle_request(
 
     if not validation.accepted:
         LOGGER.warning("proposal_rejected reasons=%s", validation.reasons)
+        if run_mode == RunMode.EXPLAIN:
+            print(render_explanation(proposal, validation, selected_mode=run_mode, direct_command=is_direct_command))
         event.confirmation_result = "not_prompted_rejected"
         event.duration_ms = _duration_ms_since(started_at)
         _write_audit_event(audit_logger, event)
         return 3
+
+    if run_mode == RunMode.DRY_RUN:
+        print("Dry-run mode: execution skipped after successful planning and validation.")
+        LOGGER.info("dry_run_skipped_execution command=%s", validation.rendered_command)
+        event.confirmation_result = "skipped_dry_run"
+        event.duration_ms = _duration_ms_since(started_at)
+        _write_audit_event(audit_logger, event)
+        return 0
+
+    if run_mode == RunMode.EXPLAIN:
+        print(render_explanation(proposal, validation, selected_mode=run_mode, direct_command=is_direct_command))
+        LOGGER.info("explain_mode_skipped_execution command=%s", validation.rendered_command)
+        event.confirmation_result = "skipped_explain"
+        event.duration_ms = _duration_ms_since(started_at)
+        _write_audit_event(audit_logger, event)
+        return 0
 
     confirmed = ask_confirmation(confirmation_level(proposal.mode, validation.risk_level))
     event.confirmation_result = "confirmed" if confirmed else "cancelled"
@@ -210,8 +256,21 @@ def repl(
         if request.lower() == "help":
             print(
                 "Enter either a natural-language terminal request or a direct shell command.\n"
-                "Examples: 'find all .py files', 'ls -lh', 'cd src'"
+                "Examples: 'find all .py files', 'ls -lh', 'cd src'\n"
+                "Built-ins: dry-run <request>, explain <request>, help, exit, quit"
             )
+            continue
+
+        run_mode = RunMode.EXECUTE
+        lowered = request.lower()
+        if lowered.startswith("dry-run "):
+            run_mode = RunMode.DRY_RUN
+            request = request[8:].strip()
+        elif lowered.startswith("explain "):
+            run_mode = RunMode.EXPLAIN
+            request = request[8:].strip()
+        if not request:
+            print("Please provide a request after the REPL command prefix.")
             continue
 
         handle_request(
@@ -221,42 +280,129 @@ def repl(
             executor,
             audit_logger=audit_logger,
             debug_trace=debug_trace,
+            run_mode=run_mode,
         )
 
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv or sys.argv[1:])
     configure_logging(verbose=args.verbose)
+    run_mode = _run_mode_from_args(args)
 
     config = load_config()
     validator = Validator(config.policy)
     executor = Executor(timeout_seconds=config.timeout_seconds)
     audit_logger = AuditLogger(config.audit_log_path)
-    try:
-        model_name = ensure_startup_ready()
-    except SetupError as exc:
-        print(exc)
-        return 2
-
     planner: Planner | None = None
+    model_name: str | None = None
+
+    def ensure_planner_ready() -> str:
+        nonlocal model_name
+        if model_name is not None:
+            return model_name
+        model_name = ensure_startup_ready()
+        return model_name
 
     def get_planner() -> Planner:
         nonlocal planner
         if planner is not None:
             return planner
 
-        client = OllamaPlannerClient(model=model_name)
+        selected_model = ensure_planner_ready()
+        client = OllamaPlannerClient(model=selected_model)
         planner = Planner(client)
         return planner
 
     if args.request:
         request = " ".join(args.request)
-        return handle_request(request, get_planner, validator, executor, audit_logger=audit_logger, debug_trace=args.verbose)
+        direct = detect_direct_command(request) is not None
+        if not direct:
+            try:
+                ensure_planner_ready()
+            except SetupError as exc:
+                print(exc)
+                return 2
+        return handle_request(
+            request,
+            get_planner,
+            validator,
+            executor,
+            audit_logger=audit_logger,
+            debug_trace=args.verbose,
+            run_mode=run_mode,
+        )
+    try:
+        ensure_planner_ready()
+    except SetupError as exc:
+        print(exc)
+        return 2
     return repl(get_planner, validator, executor, audit_logger=audit_logger, debug_trace=args.verbose)
 
 
 def _duration_ms_since(started_at: datetime) -> int:
     return int((datetime.now(tz=timezone.utc) - started_at).total_seconds() * 1000)
+
+
+def _run_mode_from_args(args: argparse.Namespace) -> RunMode:
+    if args.dry_run:
+        return RunMode.DRY_RUN
+    if args.explain:
+        return RunMode.EXPLAIN
+    return RunMode.EXECUTE
+
+
+def render_explanation(proposal, validation, *, selected_mode: RunMode, direct_command: bool) -> str:
+    command = validation.rendered_command or proposal.command or "(unavailable)"
+    family = proposal.command_family or "(unknown)"
+    spec = get_command_spec(family) if proposal.command_family else None
+    lines = [
+        "--- oterminus explanation ---",
+        f"Selected mode : {selected_mode.value}",
+        f"Proposal mode : {proposal.mode.value}",
+        f"Direct input  : {'yes' if direct_command else 'no'}",
+        f"Command family: {family}",
+        f"Rendered cmd  : {command}",
+        f"Risk level    : {validation.risk_level.value}",
+    ]
+    if spec is not None:
+        lines.append(f"Family domain : {spec.capability_id} ({spec.capability_label})")
+
+    flag_notes = _describe_flags(validation.argv)
+    if flag_notes:
+        lines.append("Flags         : " + "; ".join(flag_notes))
+
+    if validation.warnings:
+        lines.append("Warnings      : " + "; ".join(validation.warnings))
+
+    if validation.accepted:
+        lines.append("Policy        : Allowed by current policy checks.")
+        lines.append("Execution     : Blocked by explain mode (intentionally not executed).")
+    else:
+        lines.append("Policy        : Blocked by current policy checks.")
+        if validation.reasons:
+            lines.append("Rejections    : " + "; ".join(validation.reasons))
+        lines.append("Execution     : Not executable due to validation failure.")
+
+    return "\n".join(lines)
+
+
+def _describe_flags(argv: list[str]) -> list[str]:
+    descriptions: list[str] = []
+    for token in argv[1:]:
+        if not token.startswith("-"):
+            continue
+        key = token.split("=", 1)[0]
+        if key in _FLAG_EXPLANATIONS:
+            descriptions.append(f"{key}: {_FLAG_EXPLANATIONS[key]}")
+            continue
+        if key.startswith("--"):
+            descriptions.append(f"{key}: long-form option")
+        elif key.startswith("-") and len(key) > 2:
+            for short_flag in key[1:]:
+                short_key = f"-{short_flag}"
+                if short_key in _FLAG_EXPLANATIONS:
+                    descriptions.append(f"{short_key}: {_FLAG_EXPLANATIONS[short_key]}")
+    return sorted(set(descriptions))
 
 
 def _write_audit_event(audit_logger: AuditLogger | None, event: AuditEvent) -> None:

@@ -5,7 +5,7 @@ from pathlib import Path
 
 from oterminus.commands import supported_base_commands, supported_capabilities
 
-REPL_BUILTINS: tuple[str, ...] = ("help", "exit", "quit")
+REPL_BUILTINS: tuple[str, ...] = ("help", "exit", "quit", "dry-run", "explain")
 NL_TEMPLATES: tuple[str, ...] = (
     "find all .py files",
     "show disk usage for this folder",

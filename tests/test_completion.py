@@ -14,6 +14,14 @@ def test_first_token_completion_includes_builtins_and_registry_commands() -> Non
     assert "head" in candidates
 
 
+def test_first_token_completion_includes_dry_run_and_explain_builtins() -> None:
+    dry_run_candidates = _texts(build_repl_completions("dry"))
+    explain_candidates = _texts(build_repl_completions("exp"))
+
+    assert "dry-run" in dry_run_candidates
+    assert "explain" in explain_candidates
+
+
 def test_first_token_completion_includes_clear_command() -> None:
     candidates = _texts(build_repl_completions("cle"))
 
