@@ -69,6 +69,14 @@ In REPL mode, built-ins are available:
 
 - `dry-run <request>`
 - `explain <request>`
+- `capabilities`
+- `commands`
+- `examples` / `examples <capability_id>`
+- `help capabilities`
+- `help <capability_id>`
+- `help <command_family>`
+
+Discovery built-ins are local-only REPL UX helpers: they do not call Ollama, do not execute commands, and only read the local command/capability registry metadata.
 
 Command metadata for structured command support is maintained in a central merged registry built from modular capability packs under `src/oterminus/commands/` (filesystem, text, process, system, macOS, dangerous). Each command is tagged with a workflow capability (`capability_id`, label, concise description, aliases, examples, maturity), so OTerminus scales by curated user workflows rather than trying to mirror every shell man page.
 
@@ -171,7 +179,7 @@ Run:
 poetry run oterminus
 ```
 
-In interactive REPL mode, `Tab` provides deterministic local autocomplete for built-ins (`help`, `exit`, `quit`), curated command names/categories, and local filesystem paths. Tab completion is local-only and does not call the planner or model.
+In interactive REPL mode, `Tab` provides deterministic local autocomplete for built-ins (`help`, `capabilities`, `commands`, `examples`, `exit`, `quit`), curated command names/categories, and local filesystem paths. Tab completion is local-only and does not call the planner or model.
 
 ## Install (global command)
 

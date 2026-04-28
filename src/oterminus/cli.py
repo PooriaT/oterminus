@@ -10,7 +10,8 @@ from enum import Enum
 
 from oterminus.ambiguity import AmbiguityResult, detect_ambiguity
 from oterminus.audit import AuditEvent, AuditLogger
-from oterminus.commands import get_command_spec
+from oterminus.commands import get_command_spec, supported_capabilities
+from oterminus.commands.types import MaturityLevel
 from oterminus.config import load_config
 from oterminus.completion import prompt_toolkit_completer
 from oterminus.direct_commands import detect_direct_command
@@ -265,12 +266,9 @@ def repl(
             continue
         if request.lower() in {"exit", "quit"}:
             return 0
-        if request.lower() == "help":
-            print(
-                "Enter either a natural-language terminal request or a direct shell command.\n"
-                "Examples: 'find all .py files', 'ls -lh', 'cd src'\n"
-                "Built-ins: dry-run <request>, explain <request>, help, exit, quit"
-            )
+        discovery_response = handle_repl_discovery_command(request)
+        if discovery_response is not None:
+            print(discovery_response)
             continue
 
         run_mode = default_run_mode
@@ -294,6 +292,137 @@ def repl(
             debug_trace=debug_trace,
             run_mode=run_mode,
         )
+
+
+def handle_repl_discovery_command(request: str) -> str | None:
+    lowered = request.lower().strip()
+    capabilities = supported_capabilities()
+    capability_map = {capability.capability_id: capability for capability in capabilities}
+
+    if lowered == "help":
+        return (
+            "Enter either a natural-language terminal request or a direct shell command.\n"
+            "Examples: 'find all .py files', 'ls -lh', 'cd src'\n"
+            "Built-ins: help, capabilities, commands, examples, dry-run <request>, explain <request>, exit, quit\n"
+            "Try: help capabilities | help <capability_id> | help <command_family> | examples <capability_id>"
+        )
+
+    if lowered == "capabilities":
+        lines = ["Supported capabilities:"]
+        lines.extend(f"- {capability.capability_id}: {capability.capability_label}" for capability in capabilities)
+        return "\n".join(lines)
+
+    if lowered == "commands":
+        lines = ["Supported command families by capability:"]
+        for capability in capabilities:
+            lines.append(f"- {capability.capability_id}: {', '.join(capability.commands)}")
+        return "\n".join(lines)
+
+    if lowered == "examples":
+        return _render_examples_by_capability()
+
+    if lowered.startswith("examples "):
+        target = lowered.split(maxsplit=1)[1]
+        if target not in capability_map:
+            return _unknown_help_target(target)
+        return _render_examples_for_capability(target)
+
+    if lowered == "help capabilities":
+        return (
+            "OTerminus is capability-first: command families are grouped by workflow capability.\n"
+            "The command registry answers both: which command families are allowed and which workflow they belong to.\n"
+            "Maturity levels: structured, direct-only, and experimental-only."
+        )
+
+    if lowered.startswith("help "):
+        target = lowered.split(maxsplit=1)[1]
+        if target in capability_map:
+            return _render_capability_help(target)
+        if get_command_spec(target) is not None:
+            return _render_command_family_help(target)
+        return _unknown_help_target(target)
+
+    return None
+
+
+def _render_capability_help(capability_id: str) -> str:
+    capability = next(item for item in supported_capabilities() if item.capability_id == capability_id)
+    lines = [
+        f"Capability: {capability.capability_id}",
+        f"Label: {capability.capability_label}",
+        f"Description: {capability.capability_description}",
+        f"Maturity in registry: {', '.join(capability.maturity_levels)}",
+        f"Supported command families: {', '.join(capability.commands)}",
+        "Example requests:",
+    ]
+    for command_name in capability.commands:
+        spec = get_command_spec(command_name)
+        if spec is not None and spec.examples:
+            lines.append(f"- {spec.examples[0]}")
+    return "\n".join(lines)
+
+
+def _render_command_family_help(command_family: str) -> str:
+    spec = get_command_spec(command_family)
+    if spec is None:
+        return _unknown_help_target(command_family)
+
+    lines = [
+        f"Command family: {spec.name}",
+        f"Capability: {spec.capability_id} ({spec.capability_label})",
+        f"Risk level: {spec.risk_level.value}",
+        f"Maturity: {_maturity_label(spec.maturity_level)}",
+    ]
+    if spec.examples:
+        lines.append("Examples:")
+        lines.extend(f"- {example}" for example in spec.examples)
+    if spec.notes:
+        lines.append("Warnings / notes:")
+        lines.extend(f"- {note}" for note in spec.notes)
+    return "\n".join(lines)
+
+
+def _render_examples_by_capability() -> str:
+    lines = ["Common example requests by capability:"]
+    for capability in supported_capabilities():
+        samples: list[str] = []
+        for command_name in capability.commands:
+            spec = get_command_spec(command_name)
+            if spec is None or not spec.examples:
+                continue
+            samples.append(spec.examples[0])
+            if len(samples) >= 2:
+                break
+        if samples:
+            lines.append(f"- {capability.capability_id}: {' | '.join(samples)}")
+    return "\n".join(lines)
+
+
+def _render_examples_for_capability(capability_id: str) -> str:
+    capability = next(item for item in supported_capabilities() if item.capability_id == capability_id)
+    lines = [f"Examples for {capability.capability_id}:"]
+    for command_name in capability.commands:
+        spec = get_command_spec(command_name)
+        if spec is not None and spec.examples:
+            lines.append(f"- {spec.examples[0]}")
+    return "\n".join(lines)
+
+
+def _unknown_help_target(target: str) -> str:
+    return (
+        f"Unknown help target: {target}\n"
+        "Try one of: help capabilities | help <capability_id> | help <command_family> | capabilities | commands | examples"
+    )
+
+
+def _maturity_label(level: MaturityLevel) -> str:
+    if level is MaturityLevel.STRUCTURED:
+        return "structured"
+    if level is MaturityLevel.DIRECT_ONLY:
+        return "direct-only"
+    if level is MaturityLevel.EXPERIMENTAL_ONLY:
+        return "experimental-only"
+    return "blocked"
 
 
 def main(argv: list[str] | None = None) -> int:

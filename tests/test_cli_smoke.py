@@ -4,7 +4,7 @@ from unittest.mock import Mock
 
 import subprocess
 
-from oterminus.cli import RunMode, ask_confirmation, parse_args
+from oterminus.cli import RunMode, ask_confirmation, handle_repl_discovery_command, parse_args
 from oterminus.models import ActionType, Proposal, ProposalMode, RiskLevel, ValidationResult
 from oterminus.ollama_client import parse_ollama_list_output
 from oterminus.policies import ConfirmationLevel
@@ -35,6 +35,55 @@ def test_parse_ollama_list_output_returns_model_names() -> None:
     )
 
     assert parse_ollama_list_output(output) == ["gemma3:latest", "llama3.2:latest"]
+
+
+def test_repl_help_capabilities_describes_model() -> None:
+    output = handle_repl_discovery_command("help capabilities")
+
+    assert output is not None
+    assert "capability-first" in output
+    assert "Maturity levels" in output
+
+
+def test_repl_capabilities_lists_known_capability_ids() -> None:
+    output = handle_repl_discovery_command("capabilities")
+
+    assert output is not None
+    assert "filesystem_inspection" in output
+    assert "destructive_operations" in output
+
+
+def test_repl_help_for_capability_includes_commands_and_examples() -> None:
+    output = handle_repl_discovery_command("help filesystem_inspection")
+
+    assert output is not None
+    assert "Capability: filesystem_inspection" in output
+    assert "Supported command families" in output
+    assert "Example requests" in output
+
+
+def test_repl_help_for_command_family_includes_risk_and_maturity() -> None:
+    output = handle_repl_discovery_command("help rm")
+
+    assert output is not None
+    assert "Command family: rm" in output
+    assert "Risk level:" in output
+    assert "Maturity:" in output
+
+
+def test_repl_examples_includes_grouped_capabilities() -> None:
+    output = handle_repl_discovery_command("examples")
+
+    assert output is not None
+    assert "Common example requests by capability" in output
+    assert "filesystem_inspection" in output
+
+
+def test_repl_unknown_help_target_returns_guidance() -> None:
+    output = handle_repl_discovery_command("help not_a_target")
+
+    assert output is not None
+    assert "Unknown help target" in output
 
 
 def test_main_repl_startup_validates_once(monkeypatch) -> None:

@@ -22,6 +22,16 @@ def test_first_token_completion_includes_dry_run_and_explain_builtins() -> None:
     assert "explain" in explain_candidates
 
 
+def test_first_token_completion_includes_discovery_builtins() -> None:
+    capability_candidates = _texts(build_repl_completions("cap"))
+    command_candidates = _texts(build_repl_completions("com"))
+    example_candidates = _texts(build_repl_completions("exa"))
+
+    assert "capabilities" in capability_candidates
+    assert "commands" in command_candidates
+    assert "examples" in example_candidates
+
+
 def test_first_token_completion_includes_clear_command() -> None:
     candidates = _texts(build_repl_completions("cle"))
 
