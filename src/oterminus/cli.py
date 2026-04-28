@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from collections.abc import Callable
 from enum import Enum
 
+from oterminus.ambiguity import AmbiguityResult, detect_ambiguity
 from oterminus.audit import AuditEvent, AuditLogger
 from oterminus.commands import get_command_spec
 from oterminus.config import load_config
@@ -94,6 +95,16 @@ def handle_request(
     event.direct_command_detected = is_direct_command
     try:
         if proposal is None:
+            ambiguity = detect_ambiguity(request)
+            event.ambiguity_detected = ambiguity.is_ambiguous
+            event.ambiguity_reason = ambiguity.reason if ambiguity.is_ambiguous else None
+            event.ambiguity_safe_options = list(ambiguity.suggested_safe_options) if ambiguity.is_ambiguous else []
+            if ambiguity.is_ambiguous:
+                print(render_ambiguity_response(ambiguity))
+                event.confirmation_result = "blocked_ambiguous"
+                event.duration_ms = _duration_ms_since(started_at)
+                _write_audit_event(audit_logger, event)
+                return 0
             route = route_request(request)
             event.routed_category = route.category
             if debug_trace:
@@ -421,6 +432,17 @@ def _write_audit_event(audit_logger: AuditLogger | None, event: AuditEvent) -> N
         audit_logger.write(event)
     except OSError as exc:
         LOGGER.debug("failed_to_write_audit_event error=%s", exc)
+
+
+def render_ambiguity_response(result: AmbiguityResult) -> str:
+    lines = [
+        "This request is ambiguous. I can help with one of these safer inspections:",
+        *(f"- {option}" for option in result.suggested_safe_options),
+    ]
+    if result.follow_up_questions:
+        lines.append("Helpful clarifying questions:")
+        lines.extend(f"- {question}" for question in result.follow_up_questions)
+    return "\n".join(lines)
 
 
 if __name__ == "__main__":
