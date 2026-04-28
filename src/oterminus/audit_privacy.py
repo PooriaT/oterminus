@@ -119,6 +119,10 @@ def _redact_url_token(token: str) -> str:
         return token
 
     host = parsed.hostname or ""
-    port = f":{parsed.port}" if parsed.port else ""
+    try:
+        parsed_port = parsed.port
+    except ValueError:
+        parsed_port = None
+    port = f":{parsed_port}" if parsed_port else ""
     netloc = f"{_REDACTED}@{host}{port}"
     return urlunsplit((parsed.scheme, netloc, parsed.path, parsed.query, parsed.fragment))

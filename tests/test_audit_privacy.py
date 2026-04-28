@@ -34,6 +34,15 @@ def test_redact_argv_redacts_sensitive_env_assignments() -> None:
     assert redacted[2] == "TOKEN=[REDACTED]"
 
 
+def test_redact_text_handles_invalid_url_port_without_crashing() -> None:
+    raw = "curl https://user:pass@example.com:bad/path"
+
+    redacted = redact_text(raw)
+
+    assert "user:pass@" not in redacted
+    assert "https://[REDACTED]@example.com/path" in redacted
+
+
 def test_audit_logger_respects_redaction_default(tmp_path: Path) -> None:
     path = tmp_path / "audit.jsonl"
     logger = AuditLogger(path)
