@@ -72,13 +72,24 @@ poetry run oterminus --dry-run "copy notes.txt to backup/notes.txt"
 poetry run oterminus --explain "find processes matching python"
 ```
 
-## Documentation handbook
+## Documentation
 
-The README is now a landing page. Full documentation lives under [`docs/`](docs/index.md).
+The README is the landing page. Full documentation is generated from [`docs/`](docs/index.md) and published to GitHub Pages after merges to `main` (once Pages is enabled in repository settings).
 
-- Docs home: [`docs/index.md`](docs/index.md)
+- Hosted docs (after enablement): `https://<your-org-or-user>.github.io/<repo>/`
+- Docs source of truth: [`docs/`](docs/index.md)
 - Architecture overview: [`docs/architecture/overview.md`](docs/architecture/overview.md)
 - Request lifecycle (central flow): [`docs/architecture/request-lifecycle.md`](docs/architecture/request-lifecycle.md)
 - User guide: [`docs/product/user-guide.md`](docs/product/user-guide.md)
 - Contributor command-family guide: [`docs/adding-command-families.md`](docs/adding-command-families.md)
 - Evals docs: [`docs/architecture/evals.md`](docs/architecture/evals.md)
+
+### Work on docs locally
+
+```bash
+poetry install --with docs
+poetry run mkdocs serve
+poetry run mkdocs build --strict
+```
+
+When behavior changes, update docs in the same pull request.

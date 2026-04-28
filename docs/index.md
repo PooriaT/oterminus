@@ -40,3 +40,23 @@ OTerminus is a local AI terminal assistant that is **capability-first**, **struc
 - Architecture docs: [`docs/architecture/`](architecture/)
 - Reference docs: [`docs/reference/`](reference/)
 - ADRs: [`docs/adr/`](adr/)
+
+## Build and preview docs locally
+
+```bash
+poetry install --with docs
+poetry run mkdocs serve
+poetry run mkdocs build --strict
+```
+
+## Documentation contributor notes
+
+When architecture, behavior, configuration, command support, or eval behavior changes, update docs in the same PR.
+
+Before opening a PR, run `poetry run mkdocs build --strict` and fix any warnings or broken links.
+
+Keep docs free of secrets, real tokens, personal local paths, or audit logs.
+
+## GitHub Pages setup note
+
+After merging this setup, enable Pages deployment in the repository: **Settings → Pages → Build and deployment → Source → GitHub Actions**.

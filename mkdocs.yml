@@ -1,0 +1,45 @@
+site_name: OTerminus
+site_url: https://github.com/oterminus/oterminus
+repo_url: https://github.com/oterminus/oterminus
+repo_name: oterminus/oterminus
+
+theme:
+  name: material
+
+plugins:
+  - search
+
+markdown_extensions:
+  - admonition
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Product:
+      - What is OTerminus?: product/what-is-oterminus.md
+      - User Guide: product/user-guide.md
+      - Supported Workflows: product/supported-workflows.md
+      - Policy Modes: product/policy-modes.md
+  - Architecture:
+      - Overview: architecture/overview.md
+      - Request Lifecycle: architecture/request-lifecycle.md
+      - Routing and Planning: architecture/routing-and-planning.md
+      - Validation and Policy: architecture/validation-and-policy.md
+      - Execution: architecture/execution.md
+      - Structured Rendering: architecture/structured-rendering.md
+      - Capability System: architecture/capability-system.md
+      - Command Registry: architecture/command-registry.md
+      - Observability: architecture/observability.md
+      - Evals: architecture/evals.md
+  - Reference:
+      - Configuration: reference/config.md
+      - Capability Map: reference/capability-map.md
+      - Command Families: reference/command-families.md
+      - Audit Log Schema: reference/audit-log-schema.md
+  - Contributing:
+      - Adding Command Families: adding-command-families.md
+  - ADRs:
+      - Capability-First, Not Shell-First: adr/0001-capability-first-not-shell-first.md
+      - Structured-First Planning: adr/0002-structured-first-planning.md
+      - Router Before Planner: adr/0003-router-before-planner.md
