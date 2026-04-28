@@ -47,11 +47,14 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-py3.13-poetry-
 
-      - name: Install dependencies
-        run: poetry install --with dev,docs
+      - name: Install Poetry dependencies
+        run: poetry install --with dev
+
+      - name: Install docs dependencies
+        run: python -m pip install mkdocs mkdocs-material
 
       - name: Build docs (strict)
-        run: poetry run mkdocs build --strict
+        run: mkdocs build --strict
 
       - name: Set up GitHub Pages
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'

@@ -44,16 +44,17 @@ OTerminus is a local AI terminal assistant that is **capability-first**, **struc
 ## Build and preview docs locally
 
 ```bash
-poetry install --with docs
-poetry run mkdocs serve
-poetry run mkdocs build --strict
+poetry install --with dev
+python -m pip install mkdocs mkdocs-material
+mkdocs serve
+mkdocs build --strict
 ```
 
 ## Documentation contributor notes
 
 When architecture, behavior, configuration, command support, or eval behavior changes, update docs in the same PR.
 
-Before opening a PR, run `poetry run mkdocs build --strict` and fix any warnings or broken links.
+Before opening a PR, run `mkdocs build --strict` and fix any warnings or broken links.
 
 Keep docs free of secrets, real tokens, personal local paths, or audit logs.
 

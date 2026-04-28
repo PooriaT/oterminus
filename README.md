@@ -87,9 +87,10 @@ The README is the landing page. Full documentation is generated from [`docs/`](d
 ### Work on docs locally
 
 ```bash
-poetry install --with docs
-poetry run mkdocs serve
-poetry run mkdocs build --strict
+poetry install --with dev
+python -m pip install mkdocs mkdocs-material
+mkdocs serve
+mkdocs build --strict
 ```
 
 When behavior changes, update docs in the same pull request.
