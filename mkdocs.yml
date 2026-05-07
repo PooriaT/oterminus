@@ -9,6 +9,9 @@ theme:
 plugins:
   - search
 
+extra_javascript:
+  - assets/javascripts/mermaid-fallback.js
+
 markdown_extensions:
   - admonition
   - pymdownx.superfences:
