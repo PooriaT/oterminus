@@ -38,6 +38,7 @@ nav:
       - Command Families: reference/command-families.md
       - Audit Log Schema: reference/audit-log-schema.md
   - Contributing:
+      - Contributor Workflow: contributing.md
       - Adding Command Families: adding-command-families.md
   - ADRs:
       - Capability-First, Not Shell-First: adr/0001-capability-first-not-shell-first.md

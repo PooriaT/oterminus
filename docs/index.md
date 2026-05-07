@@ -22,13 +22,14 @@ contributor reference material.
 5. [Validation and policy](architecture/validation-and-policy.md)
 6. [Execution](architecture/execution.md)
 
-### I want to add command support
+### I want to contribute changes
 
-1. [Capability system](architecture/capability-system.md)
-2. [Command registry](architecture/command-registry.md)
-3. [Capability map](reference/capability-map.md)
-4. [Command families reference](reference/command-families.md)
-5. [Adding command families safely](adding-command-families.md)
+1. [Contributor workflow](contributing.md)
+2. [Capability system](architecture/capability-system.md)
+3. [Command registry](architecture/command-registry.md)
+4. [Capability map](reference/capability-map.md)
+5. [Command families reference](reference/command-families.md)
+6. [Adding command families safely](adding-command-families.md)
 
 ### I want to debug or test behavior
 
@@ -48,10 +49,13 @@ contributor reference material.
 
 ```bash
 poetry install --with dev
-python -m pip install mkdocs mkdocs-material
-mkdocs serve
-mkdocs build --strict
+poetry run python -m pip install mkdocs mkdocs-material
+poetry run mkdocs serve
+poetry run mkdocs build --strict
 ```
+
+See the [contributor workflow](contributing.md) for the complete local lint, format, test, and docs
+checklist.
 
 ## Documentation contributor notes
 
@@ -59,7 +63,7 @@ When architecture, behavior, configuration, command support, or eval behavior ch
 in the same PR. Keep proposal-mode docs consistent across README and `docs/`: structured and
 experimental are the only supported first-class modes.
 
-Before opening a PR, run `mkdocs build --strict` and fix any warnings or broken links.
+Before opening a PR, run `poetry run mkdocs build --strict` and fix any warnings or broken links.
 
 Keep docs free of secrets, real tokens, personal local paths, or audit logs.
 
