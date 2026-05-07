@@ -4,7 +4,9 @@ This is the central execution flow for OTerminus.
 
 ```mermaid
 flowchart TD
-  A[User input] --> B[Direct command detection]
+  A[User input] --> A1{CLI diagnostics mode?}
+  A1 -->|doctor| A2[Run doctor checks and exit]
+  A1 -->|request| B[Direct command detection]
   B --> C{Direct command?}
   C -->|yes| C1[Build direct proposal]
   C -->|no| D[Ambiguity detection]
@@ -23,7 +25,8 @@ flowchart TD
   H --> I[Policy gate]
   I --> J[Preview renderer]
   J --> K{Run mode}
-  K -->|dry-run/explain| K1[Skip execution]
+  K -->|dry-run/explain| K1[Skip confirmation and execution]
+  K1 --> N[Audit log event]
   K -->|execute| L[User confirmation]
   L -->|cancel| L1[Stop]
   L -->|confirm| M[Executor]
@@ -37,6 +40,8 @@ flowchart TD
 
 Input can be:
 
+- the explicit diagnostics command (`doctor`), which runs readiness checks and exits outside the
+  normal request planning/execution lifecycle
 - natural language (`"find large files here"`)
 - direct command (`"ls -lah"`)
 
@@ -44,7 +49,8 @@ Input can be:
 
 If input already looks like a supported command family invocation, OTerminus skips LLM planning and
 builds a direct proposal. Direct proposals still continue through proposal parsing, validation,
-policy checks, preview, and confirmation.
+policy checks, preview, and confirmation in execute mode. In `--dry-run` or `--explain` one-shot
+mode, direct proposals do not require Ollama if direct detection succeeds.
 
 ### 3) Ambiguity handling
 
@@ -81,12 +87,17 @@ Validator enforces:
 - path safety checks (including allowed roots)
 - risk + policy mode compatibility
 
-### 8) Preview and confirmation
+### 8) Preview and run mode
 
 OTerminus renders preview details (command, mode, risk, warnings/rejections).
 
-Execution requires explicit confirmation. Experimental mode uses very-strong confirmation text.
-Failed validation or policy checks stop before execution.
+The normal execute mode requires explicit confirmation after a successful preview. Experimental mode
+uses very-strong confirmation text. Failed validation or policy checks stop before execution.
+
+One-shot `--dry-run` and `--explain` modes still use direct detection or planning, validation,
+policy checks, and preview rendering, but intentionally skip confirmation and execution. The REPL
+`dry-run <request>` and `explain <request>` built-ins provide the same inspection behavior inside an
+interactive session.
 
 ### 9) Execution
 
@@ -95,7 +106,8 @@ Executor runs command argv via subprocess, with special local handling for `cd` 
 ### 10) Audit logging
 
 When enabled, OTerminus writes a JSONL event with request lifecycle fields (routing, mode,
-validation, confirmation, exit code, duration).
+validation, confirmation, exit code, duration). Dry-run and explain requests record skipped execution
+status instead of an execution exit code.
 
 ### 11) Evals and tests
 

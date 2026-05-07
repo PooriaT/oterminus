@@ -1,6 +1,7 @@
 # Routing and Planning
 
-OTerminus separates deterministic intent routing from model-based planning.
+OTerminus separates deterministic intent routing from model-based planning. The `doctor` CLI mode is
+outside this request-planning path: it runs diagnostics and exits before routing or planner setup.
 
 ## Deterministic router
 
@@ -17,9 +18,16 @@ Route categories:
 
 Router also suggests likely command families/capabilities from registry metadata.
 
+## Direct command shortcut
+
+If a one-shot or REPL request already looks like a supported command invocation, OTerminus builds a
+direct proposal locally and skips Ollama planning. This shortcut also applies to `--dry-run` and
+`--explain`; direct-command inspection modes can complete without a live Ollama service as long as
+direct detection succeeds.
+
 ## Planner flow
 
-Planner calls Ollama with:
+Natural-language requests that are not direct commands use the planner. Planner calls Ollama with:
 
 - a system prompt
 - user prompt that includes request + route context + capability summaries

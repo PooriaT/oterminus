@@ -45,19 +45,21 @@ poetry run oterminus
 On first run, OTerminus checks Ollama readiness (`ollama` on PATH, running service, local models),
 then prompts you to select a model if one is not already configured.
 
-### Useful startup checks
-
-```bash
-poetry run oterminus doctor
-```
-
 ## Quick start examples
 
-### Interactive REPL
+### Common commands
 
 ```bash
 poetry run oterminus
+poetry run oterminus "show disk usage for this folder"
+poetry run oterminus --dry-run "copy notes.txt to backup/notes.txt"
+poetry run oterminus --explain "find processes matching python"
+poetry run oterminus doctor
 ```
+
+### Interactive REPL
+
+`poetry run oterminus` starts the interactive REPL after startup readiness checks.
 
 Examples inside REPL:
 
@@ -67,13 +69,15 @@ Examples inside REPL:
 - `dry-run search TODO in src`
 - `explain show disk space`
 
-### One-shot mode
+### One-shot and diagnostics modes
 
-```bash
-poetry run oterminus "show disk usage for this folder"
-poetry run oterminus --dry-run "copy notes.txt to backup/notes.txt"
-poetry run oterminus --explain "find processes matching python"
-```
+- One-shot requests such as `poetry run oterminus "show disk usage for this folder"` plan, validate,
+  preview, and then require confirmation before execution.
+- `--dry-run` and `--explain` are mutually exclusive one-shot inspection flags for requests. They
+  still validate and preview, but they do not ask for confirmation or execute.
+- `doctor` is diagnostics-only: it prints readiness checks and exits without starting the REPL,
+  executing a request, or invoking the Ollama planner. It cannot be combined with `--dry-run` or
+  `--explain`.
 
 ## Proposal modes
 

@@ -128,7 +128,15 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         help="Explain command choice and safety decision, without executing.",
     )
     parser.add_argument("--verbose", action="store_true", help="Enable debug logging")
-    return parser.parse_args(argv)
+    args = parser.parse_args(argv)
+    args.cli_mode = _cli_mode_from_request(args.request)
+    if args.cli_mode == "doctor" and (args.dry_run or args.explain):
+        parser.error("doctor cannot be combined with --dry-run or --explain")
+    return args
+
+
+def _cli_mode_from_request(request: list[str]) -> str:
+    return "doctor" if " ".join(request).strip().lower() == "doctor" else "request"
 
 
 def ask_confirmation(level: ConfirmationLevel) -> bool:
@@ -655,15 +663,19 @@ def _maturity_label(level: MaturityLevel) -> str:
     return "blocked"
 
 
+def run_doctor_cli() -> int:
+    report = run_doctor()
+    print_report(report)
+    return report.exit_code
+
+
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv or sys.argv[1:])
     configure_logging(verbose=args.verbose)
     run_mode = _run_mode_from_args(args)
 
-    if args.request and " ".join(args.request).strip().lower() == "doctor":
-        report = run_doctor()
-        print_report(report)
-        return report.exit_code
+    if args.cli_mode == "doctor":
+        return run_doctor_cli()
 
     config = load_config()
     validator = Validator(config.policy)

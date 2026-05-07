@@ -9,7 +9,7 @@ contributor reference material.
 ### I want to use OTerminus
 
 1. [What is OTerminus?](product/what-is-oterminus.md)
-2. [User guide](product/user-guide.md)
+2. [User guide](product/user-guide.md) — REPL, one-shot, doctor, dry-run, and explain modes
 3. [Supported workflows](product/supported-workflows.md)
 4. [Policy modes](product/policy-modes.md)
 
