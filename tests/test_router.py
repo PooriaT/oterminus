@@ -42,7 +42,9 @@ def test_route_suggestions_come_from_capability_registry() -> None:
     route = route_request("show running python processes")
 
     capability_families = {
-        family for capability_id in route.suggested_capabilities for family in get_commands_by_capability(capability_id)
+        family
+        for capability_id in route.suggested_capabilities
+        for family in get_commands_by_capability(capability_id)
     }
     assert set(route.suggested_families).issubset(capability_families)
 

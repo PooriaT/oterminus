@@ -48,9 +48,13 @@ def test_doctor_fails_when_ollama_cli_missing(monkeypatch, tmp_path: Path) -> No
     assert report.exit_code == 2
 
 
-def test_doctor_reports_config_parse_failure_instead_of_crashing(monkeypatch, tmp_path: Path) -> None:
+def test_doctor_reports_config_parse_failure_instead_of_crashing(
+    monkeypatch, tmp_path: Path
+) -> None:
     _base_monkeypatches(monkeypatch, tmp_path)
-    monkeypatch.setattr("oterminus.doctor.load_config", Mock(side_effect=ValueError("invalid timeout")))
+    monkeypatch.setattr(
+        "oterminus.doctor.load_config", Mock(side_effect=ValueError("invalid timeout"))
+    )
 
     report = run_doctor()
 
@@ -93,7 +97,10 @@ def test_doctor_fails_when_configured_model_missing(monkeypatch, tmp_path: Path)
 
 def test_doctor_checks_audit_path(monkeypatch, tmp_path: Path) -> None:
     _base_monkeypatches(monkeypatch, tmp_path)
-    monkeypatch.setattr("oterminus.doctor.os.access", lambda path, mode: False if Path(path) == tmp_path / "audit" else True)
+    monkeypatch.setattr(
+        "oterminus.doctor.os.access",
+        lambda path, mode: False if Path(path) == tmp_path / "audit" else True,
+    )
 
     report = run_doctor()
 
@@ -102,6 +109,7 @@ def test_doctor_checks_audit_path(monkeypatch, tmp_path: Path) -> None:
 
 def test_doctor_checks_registry_integrity(monkeypatch, tmp_path: Path) -> None:
     _base_monkeypatches(monkeypatch, tmp_path)
+
     class Spec:
         def __init__(self, name: str) -> None:
             self.name = name

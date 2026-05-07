@@ -59,7 +59,8 @@ COMMAND_PACK: tuple[CommandSpec, ...] = (
         examples=("env PATH",),
         natural_language_aliases=("environment variable",),
         notes=(
-            "Printing the full environment may include sensitive values; curated mode only allows single-variable lookups.",
+            "Printing the full environment may include sensitive values; curated mode only "
+            "allows single-variable lookups.",
         ),
     ),
     command(

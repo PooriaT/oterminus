@@ -29,7 +29,8 @@ Audit logs are newline-delimited JSON objects (JSONL), one event per handled req
 
 ## Redaction
 
-When audit redaction is enabled, text and argv fields are passed through redaction helpers before writing.
+When audit redaction is enabled, text and argv fields are passed through redaction helpers before
+writing.
 
 ## Example (illustrative)
 

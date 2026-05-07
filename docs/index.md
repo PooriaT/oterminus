@@ -1,6 +1,8 @@
 # OTerminus Documentation Handbook
 
-OTerminus is a local AI terminal assistant that is **capability-first**, **structured-first**, and **safety-first**. This handbook is the source of truth for product usage, architecture, and contributor reference material.
+OTerminus is a local AI terminal assistant that is **capability-first**, **structured-first**, and
+**safety-first**. This handbook is the source of truth for product usage, architecture, and
+contributor reference material.
 
 ## Recommended reading paths
 
@@ -53,7 +55,9 @@ mkdocs build --strict
 
 ## Documentation contributor notes
 
-When architecture, behavior, configuration, command support, or eval behavior changes, update docs in the same PR. Keep proposal-mode docs consistent across README and `docs/`: structured and experimental are the only supported first-class modes.
+When architecture, behavior, configuration, command support, or eval behavior changes, update docs
+in the same PR. Keep proposal-mode docs consistent across README and `docs/`: structured and
+experimental are the only supported first-class modes.
 
 Before opening a PR, run `mkdocs build --strict` and fix any warnings or broken links.
 
@@ -61,4 +65,5 @@ Keep docs free of secrets, real tokens, personal local paths, or audit logs.
 
 ## GitHub Pages setup note
 
-After merging this setup, enable Pages deployment in the repository: **Settings → Pages → Build and deployment → Source → GitHub Actions**.
+After merging this setup, enable Pages deployment in the repository: **Settings → Pages → Build and
+deployment → Source → GitHub Actions**.

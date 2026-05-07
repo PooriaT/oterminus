@@ -20,7 +20,8 @@ Audit configuration:
 
 ## Audit privacy
 
-With redaction enabled (default), likely secret material is masked in command/request/reason fields and argv.
+With redaction enabled (default), likely secret material is masked in command/request/reason fields
+and argv.
 
 ## Runtime diagnostics
 

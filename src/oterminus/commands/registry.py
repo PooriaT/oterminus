@@ -63,7 +63,11 @@ def supported_categories() -> tuple[str, ...]:
 
 
 def get_commands_by_capability(capability_id: str) -> tuple[str, ...]:
-    return tuple(sorted(spec.name for spec in COMMAND_REGISTRY.values() if spec.capability_id == capability_id))
+    return tuple(
+        sorted(
+            spec.name for spec in COMMAND_REGISTRY.values() if spec.capability_id == capability_id
+        )
+    )
 
 
 def supported_capabilities() -> tuple[CapabilitySummary, ...]:
@@ -101,7 +105,10 @@ def command_examples_for_prompt(max_examples: int = 8) -> str:
             if len(examples) >= 2:
                 break
         if examples:
-            rows.append(f"- {capability.capability_id}: " + " | ".join(f"`{example}`" for example in examples))
+            rows.append(
+                f"- {capability.capability_id}: "
+                + " | ".join(f"`{example}`" for example in examples)
+            )
         if len(rows) >= max_examples:
             break
     return "\n".join(rows)
@@ -116,7 +123,11 @@ def capability_summary_for_prompt(
     lines: list[str] = []
     for capability in supported_capabilities()[:max_capabilities]:
         command_sample = ", ".join(capability.commands[:max_commands_per_capability])
-        alias_sample = ", ".join(capability.aliases[:max_aliases_per_capability]) if capability.aliases else "none"
+        alias_sample = (
+            ", ".join(capability.aliases[:max_aliases_per_capability])
+            if capability.aliases
+            else "none"
+        )
         lines.append(
             f"- {capability.capability_id}: {capability.capability_description} "
             f"(commands: {command_sample}; aliases: {alias_sample})"
@@ -130,7 +141,9 @@ def command_examples_for_readme() -> str:
         lines.append(f"- `{capability.capability_id}`: {capability.capability_description}")
         lines.append(f"  - Commands: {', '.join(f'`{name}`' for name in capability.commands)}")
         if capability.aliases:
-            lines.append(f"  - NL aliases: {', '.join(f'`{alias}`' for alias in capability.aliases[:4])}")
+            lines.append(
+                f"  - NL aliases: {', '.join(f'`{alias}`' for alias in capability.aliases[:4])}"
+            )
         first_command = capability.commands[0] if capability.commands else None
         if first_command:
             example = COMMAND_REGISTRY[first_command].examples
@@ -158,8 +171,10 @@ def looks_like_direct_invocation(base: str, operands: list[str]) -> bool:
         if not operands:
             return True
         first = operands[0]
-        return first in {".", "..", "/"} or first.startswith(("/", "~/", "./", "../")) or any(
-            operand.startswith("-") for operand in operands
+        return (
+            first in {".", "..", "/"}
+            or first.startswith(("/", "~/", "./", "../"))
+            or any(operand.startswith("-") for operand in operands)
         )
 
     if spec.direct_detection_mode == DirectDetectionMode.GREP:
@@ -171,4 +186,9 @@ def looks_like_direct_invocation(base: str, operands: list[str]) -> bool:
 
 
 def _looks_like_path(value: str) -> bool:
-    return value in {".", "..", "~"} or value.startswith(("/", "~/", "./", "../")) or "/" in value or "." in value
+    return (
+        value in {".", "..", "~"}
+        or value.startswith(("/", "~/", "./", "../"))
+        or "/" in value
+        or "." in value
+    )

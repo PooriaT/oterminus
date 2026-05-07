@@ -1,6 +1,7 @@
 # Command Families Reference
 
-This table summarizes curated command families, risk, and maturity. Maturity describes how a command family is allowed to participate in the two first-class proposal modes: structured or experimental.
+This table summarizes curated command families, risk, and maturity. Maturity describes how a command
+family is allowed to participate in the two first-class proposal modes: structured or experimental.
 
 | Command | Capability | Risk | Maturity |
 |---|---|---|---|
@@ -39,8 +40,11 @@ This table summarizes curated command families, risk, and maturity. Maturity des
 
 Notes:
 
-- `structured` means the preferred path is available: `command_family + arguments` with deterministic Python rendering.
-- `direct_only` means accepted as direct command input, without a full structured family schema path.
-- `experimental_only` means constrained experimental fallback only; it is not a substitute for structured design when a safe schema is practical.
+- `structured` means the preferred path is available: `command_family + arguments` with
+  deterministic Python rendering.
+- `direct_only` means accepted as direct command input, without a full structured family schema
+  path.
+- `experimental_only` means constrained experimental fallback only; it is not a substitute for
+  structured design when a safe schema is practical.
 - `blocked` means tracked in registry but rejected by maturity policy.
 - Experimental mode has stronger confirmation requirements and remains strictly validated.

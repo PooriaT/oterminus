@@ -7,7 +7,8 @@ Accepted
 Unbounded shell support increases unsafe surface area, prompt complexity, and maintenance burden.
 
 ## Decision
-Organize support around curated workflow capabilities and command families with explicit metadata (`risk`, `maturity`, flags, operand constraints).
+Organize support around curated workflow capabilities and command families with explicit metadata
+(`risk`, `maturity`, flags, operand constraints).
 
 ## Consequences
 - Better safety and explainability.

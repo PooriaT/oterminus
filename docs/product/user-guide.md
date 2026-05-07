@@ -10,7 +10,8 @@ Startup checks:
 2. Ollama service is reachable (`ollama list`).
 3. At least one model is installed.
 
-If no model is configured yet, OTerminus shows installed models and prompts you to choose one. The selection is saved in `~/.oterminus/config.json` (or `OTERMINUS_CONFIG_PATH` if set).
+If no model is configured yet, OTerminus shows installed models and prompts you to choose one. The
+selection is saved in `~/.oterminus/config.json` (or `OTERMINUS_CONFIG_PATH` if set).
 
 ## Model selection behavior
 
@@ -60,8 +61,10 @@ These requests go through capability routing and planning before validation.
 
 Previews show the proposal mode so you can understand how OTerminus will handle the command:
 
-- **Structured** is the normal, preferred path. OTerminus uses a curated `command_family` and typed `arguments`, then renders the final command deterministically.
-- **Experimental** is a constrained fallback for command text that cannot be represented by structured arguments yet. It is still strictly validated and requires stronger confirmation.
+- **Structured** is the normal, preferred path. OTerminus uses a curated `command_family` and typed
+  `arguments`, then renders the final command deterministically.
+- **Experimental** is a constrained fallback for command text that cannot be represented by
+  structured arguments yet. It is still strictly validated and requires stronger confirmation.
 
 If validation or policy checks fail, OTerminus does not ask for execution confirmation.
 

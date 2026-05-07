@@ -1,6 +1,7 @@
 # What is OTerminus?
 
-OTerminus is a local terminal assistant that converts natural-language intent into one proposed terminal action at a time.
+OTerminus is a local terminal assistant that converts natural-language intent into one proposed
+terminal action at a time.
 
 ## Design intent
 
@@ -16,7 +17,8 @@ It intentionally does **not** try to emulate full shell freedom or all Unix comm
 ## Product principles
 
 - **Capability-first:** commands are grouped and controlled by workflow capability.
-- **Structured-first:** when a command family is supported, arguments are validated and rendered deterministically.
+- **Structured-first:** when a command family is supported, arguments are validated and rendered
+  deterministically.
 - **Policy-gated:** risk levels and policy mode control what can run.
 - **Confirm-before-execute:** execution requires explicit user confirmation.
 - **Local-first:** model interaction is local via Ollama; logs are local JSONL when enabled.

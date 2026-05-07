@@ -4,10 +4,12 @@
 Accepted
 
 ## Context
-Directly sending every natural-language request to planner increases ambiguity and can weaken intent steering.
+Directly sending every natural-language request to planner increases ambiguity and can weaken intent
+steering.
 
 ## Decision
-Run a deterministic capability router before planner invocation and pass route context into the planner prompt.
+Run a deterministic capability router before planner invocation and pass route context into the
+planner prompt.
 
 ## Consequences
 - Better planning hints and workflow classification.

@@ -24,9 +24,15 @@ def render_preview(
     return _render_detailed_preview(proposal, validation, verbose=verbose)
 
 
-def _render_detailed_preview(proposal: Proposal, validation: ValidationResult, *, verbose: bool) -> str:
+def _render_detailed_preview(
+    proposal: Proposal, validation: ValidationResult, *, verbose: bool
+) -> str:
     level = confirmation_level(proposal.mode, validation.risk_level)
-    header = "--- oterminus proposal (EXPERIMENTAL) ---" if proposal.is_experimental else "--- oterminus proposal ---"
+    header = (
+        "--- oterminus proposal (EXPERIMENTAL) ---"
+        if proposal.is_experimental
+        else "--- oterminus proposal ---"
+    )
     lines = [
         header,
         f"Summary      : {proposal.summary}",
@@ -42,7 +48,9 @@ def _render_detailed_preview(proposal: Proposal, validation: ValidationResult, *
         lines.insert(3, f"Command      : {command}")
 
     if proposal.command_family is not None:
-        lines.insert(3 if proposal.command is None else 4, f"Command fam. : {proposal.command_family}")
+        lines.insert(
+            3 if proposal.command is None else 4, f"Command fam. : {proposal.command_family}"
+        )
 
     if proposal.mode == ProposalMode.STRUCTURED and proposal.command:
         lines.append(f"Legacy cmd   : {proposal.command} (deprecated in structured mode)")
