@@ -100,6 +100,7 @@ published to GitHub Pages after merges to `main` (once Pages is enabled in repos
 - Request lifecycle (central flow):
   [`docs/architecture/request-lifecycle.md`](docs/architecture/request-lifecycle.md)
 - User guide: [`docs/product/user-guide.md`](docs/product/user-guide.md)
+- Contributor workflow: [`docs/contributing.md`](docs/contributing.md)
 - Contributor command-family guide:
   [`docs/adding-command-families.md`](docs/adding-command-families.md)
 - Evals docs: [`docs/architecture/evals.md`](docs/architecture/evals.md)
@@ -108,9 +109,11 @@ published to GitHub Pages after merges to `main` (once Pages is enabled in repos
 
 ```bash
 poetry install --with dev
-python -m pip install mkdocs mkdocs-material
-mkdocs serve
-mkdocs build --strict
+poetry run python -m pip install mkdocs mkdocs-material
+poetry run mkdocs serve
+poetry run mkdocs build --strict
 ```
 
-When behavior changes, update docs in the same pull request.
+For the full local quality checklist, including Ruff format/lint and pytest commands, see the
+[contributor workflow](docs/contributing.md). When behavior changes, update docs in the same pull
+request.
