@@ -92,7 +92,9 @@ def test_parse_legacy_raw_mode_is_normalized_to_experimental_with_note() -> None
     proposal = Planner.parse_proposal(raw)
     assert proposal.mode == ProposalMode.EXPERIMENTAL
     assert proposal.command == "stat -f %z README.md"
-    assert any("Legacy raw mode was normalized to experimental mode." in note for note in proposal.notes)
+    assert any(
+        "Legacy raw mode was normalized to experimental mode." in note for note in proposal.notes
+    )
 
 
 def test_parse_legacy_raw_mode_with_unparseable_structured_command_returns_planner_error() -> None:

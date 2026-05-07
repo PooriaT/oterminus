@@ -1,6 +1,10 @@
 from __future__ import annotations
 
-from oterminus.commands import capability_summary_for_prompt, command_examples_for_prompt, supported_base_commands
+from oterminus.commands import (
+    capability_summary_for_prompt,
+    command_examples_for_prompt,
+    supported_base_commands,
+)
 from oterminus.router import RouteResult
 from oterminus.structured_commands import STRUCTURED_ARGUMENT_MODELS
 
@@ -35,7 +39,9 @@ def _format_structured_shapes() -> str:
         "sort": '{"path": "README.md", "numeric": true|false, "reverse": true|false, "unique": true|false}',
         "uniq": '{"path": "README.md", "count": true|false, "repeated_only": true|false, "unique_only": true|false}',
     }
-    return "\n".join(f"- `{family}`: `{shapes[family]}`" for family in sorted(STRUCTURED_ARGUMENT_MODELS))
+    return "\n".join(
+        f"- `{family}`: `{shapes[family]}`" for family in sorted(STRUCTURED_ARGUMENT_MODELS)
+    )
 
 
 def build_system_prompt() -> str:
@@ -110,7 +116,9 @@ def build_user_prompt(request: str, route: RouteResult | None = None) -> str:
         route_block = "none"
     else:
         suggested = ", ".join(route.suggested_families) if route.suggested_families else "none"
-        capabilities = ", ".join(route.suggested_capabilities) if route.suggested_capabilities else "none"
+        capabilities = (
+            ", ".join(route.suggested_capabilities) if route.suggested_capabilities else "none"
+        )
         route_block = (
             f"category={route.category}; confidence={route.confidence:.2f}; "
             f"reason={route.reason}; suggested_families={suggested}; suggested_capabilities={capabilities}"
