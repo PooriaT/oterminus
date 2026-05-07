@@ -136,7 +136,8 @@ If your change introduces a new command/capability visible to users:
 - add/adjust completion tests if needed
 - update README and contributor docs when behavior/policy changes
 
-Documentation should explain workflow intent, not just command syntax.
+Documentation should explain workflow intent, not just command syntax. See the
+[contributor workflow](contributing.md) for the shared formatting, docs, test, and eval checklist.
 
 ## Acceptance checklist
 
