@@ -148,7 +148,9 @@ def test_reject_open_url_target() -> None:
         ("uniq -c README.md", RiskLevel.SAFE),
     ],
 )
-def test_risk_classification_for_next_wave_structured_families(command: str, expected_risk: RiskLevel) -> None:
+def test_risk_classification_for_next_wave_structured_families(
+    command: str, expected_risk: RiskLevel
+) -> None:
     validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))
     result = validator.validate(make_proposal(command))
 
@@ -331,7 +333,9 @@ def test_reject_unknown_command_family() -> None:
     result = validator.validate(proposal)
 
     assert result.accepted is False
-    assert any("Command family 'python' is not in the v1 allowlist." in reason for reason in result.reasons)
+    assert any(
+        "Command family 'python' is not in the v1 allowlist." in reason for reason in result.reasons
+    )
 
 
 def test_structured_command_with_disallowed_root_is_rejected() -> None:
@@ -356,9 +360,11 @@ def test_structured_command_with_disallowed_root_is_rejected() -> None:
     assert any("Paths outside allowed roots" in reason for reason in result.reasons)
 
 
-def test_accept_experimental_raw_command_with_warning() -> None:
+def test_accept_experimental_command_with_warning() -> None:
     validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))
-    result = validator.validate(make_proposal("stat -f %z README.md", mode=ProposalMode.EXPERIMENTAL))
+    result = validator.validate(
+        make_proposal("stat -f %z README.md", mode=ProposalMode.EXPERIMENTAL)
+    )
 
     assert result.accepted is True
     assert result.risk_level == RiskLevel.SAFE
@@ -368,7 +374,7 @@ def test_accept_experimental_raw_command_with_warning() -> None:
     )
 
 
-def test_structured_command_ignores_legacy_raw_command() -> None:
+def test_structured_command_ignores_legacy_command_text() -> None:
     validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))
     proposal = Proposal(
         action_type=ActionType.SHELL_COMMAND,
@@ -388,11 +394,12 @@ def test_structured_command_ignores_legacy_raw_command() -> None:
     assert result.accepted is True
     assert result.rendered_command == "find . -name '*.py'"
     assert any(
-        "Structured mode ignores the deprecated raw command field" in warning
+        "Structured mode ignores the deprecated command field" in warning
         for warning in result.warnings
     )
     assert any(
-        "Legacy raw command differs from deterministic structured rendering and was ignored." in warning
+        "Legacy command text differs from deterministic structured rendering and was ignored."
+        in warning
         for warning in result.warnings
     )
 

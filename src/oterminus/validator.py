@@ -46,7 +46,9 @@ class Validator:
         if proposal.command_family is not None:
             spec = get_command_spec(proposal.command_family)
             if spec is None:
-                reasons.append(f"Command family '{proposal.command_family}' is not in the v1 allowlist.")
+                reasons.append(
+                    f"Command family '{proposal.command_family}' is not in the v1 allowlist."
+                )
                 risk = RiskLevel.DANGEROUS
             else:
                 risk = spec.risk_level
@@ -62,11 +64,11 @@ class Validator:
                 args = list(rendered.argv)
                 if proposal.command:
                     warnings.append(
-                        "Structured mode ignores the deprecated raw command field and uses deterministic rendering."
+                        "Structured mode ignores the deprecated command field and uses deterministic rendering."
                     )
                     if proposal.command.strip() != command:
                         warnings.append(
-                            "Legacy raw command differs from deterministic structured rendering and was ignored."
+                            "Legacy command text differs from deterministic structured rendering and was ignored."
                         )
         else:
             command = (proposal.command or "").strip()
@@ -117,7 +119,7 @@ class Validator:
         spec = get_command_spec(base)
         if proposal.command_family is not None and proposal.command_family != base:
             reasons.append(
-                f"Raw command base '{base}' does not match command_family '{proposal.command_family}'."
+                f"Command base '{base}' does not match command_family '{proposal.command_family}'."
             )
 
         if spec is None:
@@ -128,12 +130,18 @@ class Validator:
             reasons.extend(self._maturity_reasons(spec))
             reasons.extend(self._validate_command_shape(spec, args[1:]))
 
-        if spec is not None and spec.dangerous_flags and any(flag in args for flag in spec.dangerous_flags):
+        if (
+            spec is not None
+            and spec.dangerous_flags
+            and any(flag in args for flag in spec.dangerous_flags)
+        ):
             warnings.append("Recursive deletion detected.")
             risk = RiskLevel.DANGEROUS
 
-        if spec is not None and spec.dangerous_target_literals and any(
-            arg in spec.dangerous_target_literals for arg in args[1:]
+        if (
+            spec is not None
+            and spec.dangerous_target_literals
+            and any(arg in spec.dangerous_target_literals for arg in args[1:])
         ):
             warnings.append("Broad permission change target detected.")
             risk = RiskLevel.DANGEROUS
@@ -210,7 +218,9 @@ class Validator:
 
         return _dedupe_preserve_order(reasons)
 
-    def _consume_flag(self, spec: CommandSpec, arguments: list[str], index: int) -> tuple[int, str | None]:
+    def _consume_flag(
+        self, spec: CommandSpec, arguments: list[str], index: int
+    ) -> tuple[int, str | None]:
         arg = arguments[index]
         flag_sets = (
             spec.allowed_flags,
@@ -225,14 +235,22 @@ class Validator:
             flag, value = arg.split("=", maxsplit=1)
             if not value:
                 return 1, f"Flag '{flag}' for '{spec.name}' requires a value."
-            if flag in spec.flags_with_values or flag in spec.path_valued_flags or flag in spec.leading_flags_with_values:
+            if (
+                flag in spec.flags_with_values
+                or flag in spec.path_valued_flags
+                or flag in spec.leading_flags_with_values
+            ):
                 return 1, None
             return 1, f"Unsupported flag '{arg}' for command '{spec.name}'."
 
         if arg in spec.allowed_flags or arg in spec.leading_flags or arg in spec.dangerous_flags:
             return 1, None
 
-        if arg in spec.flags_with_values or arg in spec.path_valued_flags or arg in spec.leading_flags_with_values:
+        if (
+            arg in spec.flags_with_values
+            or arg in spec.path_valued_flags
+            or arg in spec.leading_flags_with_values
+        ):
             if index + 1 >= len(arguments):
                 return 1, f"Flag '{arg}' for '{spec.name}' requires a value."
             return 2, None
@@ -302,7 +320,11 @@ class Validator:
             if arg.startswith("-"):
                 if "=" in arg:
                     flag, value = arg.split("=", maxsplit=1)
-                    if flag in spec.path_valued_flags and value and not self._is_non_path_flag_value(spec, flag, value):
+                    if (
+                        flag in spec.path_valued_flags
+                        and value
+                        and not self._is_non_path_flag_value(spec, flag, value)
+                    ):
                         path_operands.append(value)
                     index += 1
                     continue
@@ -331,10 +353,7 @@ class Validator:
             return False
 
         allowed_single_flags = {
-            flag
-            for flag_set in flag_sets
-            for flag in flag_set
-            if re.fullmatch(r"-[A-Za-z]", flag)
+            flag for flag_set in flag_sets for flag in flag_set if re.fullmatch(r"-[A-Za-z]", flag)
         }
         if not allowed_single_flags:
             return False

@@ -1,6 +1,10 @@
 from __future__ import annotations
 
-from oterminus.commands import capability_summary_for_prompt, command_examples_for_prompt, supported_base_commands
+from oterminus.commands import (
+    capability_summary_for_prompt,
+    command_examples_for_prompt,
+    supported_base_commands,
+)
 from oterminus.router import RouteResult
 from oterminus.structured_commands import STRUCTURED_ARGUMENT_MODELS
 
@@ -35,7 +39,9 @@ def _format_structured_shapes() -> str:
         "sort": '{"path": "README.md", "numeric": true|false, "reverse": true|false, "unique": true|false}',
         "uniq": '{"path": "README.md", "count": true|false, "repeated_only": true|false, "unique_only": true|false}',
     }
-    return "\n".join(f"- `{family}`: `{shapes[family]}`" for family in sorted(STRUCTURED_ARGUMENT_MODELS))
+    return "\n".join(
+        f"- `{family}`: `{shapes[family]}`" for family in sorted(STRUCTURED_ARGUMENT_MODELS)
+    )
 
 
 def build_system_prompt() -> str:
@@ -60,7 +66,7 @@ Output contract:
     "mode": "structured|experimental",
     "command_family": "... optional command family ...",
     "arguments": {{ "...": "..." }},
-    "command": "... optional raw command string ...",
+    "command": "... optional command string for experimental proposals ...",
     "summary": "...",
     "explanation": "...",
     "risk_level": "safe|write|dangerous",
@@ -79,11 +85,12 @@ Planning rules:
 
 Structured-first policy:
 - Prefer `"mode": "structured"` whenever the request cleanly fits one of the supported structured families: {structured_families}.
-- Use `"mode": "experimental"` for single-command shell proposals that stay within the curated allowlist but do not fit the supported structured subset.
+- Use `"mode": "experimental"` only for single-command shell proposals that stay within the curated allowlist but do not fit the supported structured subset.
 - If you return `"mode": "structured"`, always include `"command_family"` and `"arguments"`.
+- Only `"structured"` and `"experimental"` are valid modes; never emit any other mode value.
 - If you return `"mode": "structured"`, `"command_family"` and `"arguments"` are mandatory and authoritative.
 - If you return `"mode": "experimental"`, always include `"command"` and set `notes` to mention that the proposal is experimental.
-- For structured proposals, do not include `"command"` unless absolutely required for backward compatibility. Python ignores it and renders the final command deterministically from `"command_family"` + `"arguments"`.
+- For structured proposals, do not include `"command"`; Python renders the final command deterministically from `"command_family"` + `"arguments"`.
 - If structured support is unavailable for the intended action but the action still fits a single allowed shell command, prefer `"mode": "experimental"` and provide `"command"`.
 
 Supported structured families and argument shapes:
@@ -109,7 +116,9 @@ def build_user_prompt(request: str, route: RouteResult | None = None) -> str:
         route_block = "none"
     else:
         suggested = ", ".join(route.suggested_families) if route.suggested_families else "none"
-        capabilities = ", ".join(route.suggested_capabilities) if route.suggested_capabilities else "none"
+        capabilities = (
+            ", ".join(route.suggested_capabilities) if route.suggested_capabilities else "none"
+        )
         route_block = (
             f"category={route.category}; confidence={route.confidence:.2f}; "
             f"reason={route.reason}; suggested_families={suggested}; suggested_capabilities={capabilities}"

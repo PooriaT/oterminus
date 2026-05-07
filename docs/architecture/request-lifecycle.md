@@ -6,15 +6,20 @@ This is the central execution flow for OTerminus.
 flowchart TD
   A[User input] --> B[Direct command detection]
   B --> C{Direct command?}
-  C -->|yes| H[Validator]
+  C -->|yes| C1[Build direct proposal]
   C -->|no| D[Ambiguity detection]
   D --> E{Ambiguous?}
   E -->|yes| E1[Show safer inspection options and stop]
   E -->|no| F[Capability router]
-  F --> G[Planner]
-  G --> G1[Structured proposal parsing / normalization]
-  G1 --> R[Structured renderer when supported]
+  F --> G[Planner JSON proposal]
+  G --> P[Parse Proposal schema]
+  C1 --> P
+  P --> S{Structured support suitable?}
+  S -->|yes| S1[Structured mode: command_family + arguments]
+  S1 --> R[Deterministic Python renderer]
+  S -->|no| X1[Experimental mode: constrained command text]
   R --> H[Validator]
+  X1 --> H
   H --> I[Policy gate]
   I --> J[Preview renderer]
   J --> K{Run mode}
@@ -37,7 +42,7 @@ Input can be:
 
 ### 2) Direct command detection
 
-If input already looks like a supported command family invocation, OTerminus skips LLM planning and builds a direct proposal.
+If input already looks like a supported command family invocation, OTerminus skips LLM planning and builds a direct proposal. Direct proposals still continue through proposal parsing, validation, policy checks, preview, and confirmation.
 
 ### 3) Ambiguity handling
 
@@ -49,13 +54,13 @@ A deterministic router classifies the request into categories like `filesystem_i
 
 ### 5) Planner + parsing
 
-Planner asks Ollama for JSON output and validates it against the `Proposal` schema.
+Planner asks Ollama for JSON output and validates it against the `Proposal` schema. The schema supports only two first-class modes: `structured` and `experimental`.
 
-Planner then prefers structured mode when command family + arguments can be represented deterministically.
+Planner and parser prefer structured mode when command family + arguments can be represented deterministically. Experimental mode is used only when structured support is unavailable or unsuitable for a constrained single-command proposal.
 
-### 6) Structured rendering
+### 6) Structured or experimental proposal handling
 
-For supported families, Python renders final command strings/argv from typed arguments (instead of trusting raw shell text).
+For structured proposals, Python renders final command strings/argv from typed arguments instead of trusting command text. Experimental proposals may carry command text, but they remain constrained by parsing, registry, validator, policy, preview, and stronger confirmation.
 
 ### 7) Validation and policy
 
@@ -71,7 +76,7 @@ Validator enforces:
 
 OTerminus renders preview details (command, mode, risk, warnings/rejections).
 
-Execution requires explicit confirmation. Experimental mode uses very-strong confirmation text.
+Execution requires explicit confirmation. Experimental mode uses very-strong confirmation text. Failed validation or policy checks stop before execution.
 
 ### 9) Execution
 

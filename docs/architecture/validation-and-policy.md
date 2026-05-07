@@ -9,7 +9,7 @@ Validator enforces:
 - proposal command-family existence in curated registry
 - maturity-level restrictions (`blocked` rejected)
 - structured rendering success for structured mode
-- command parsing for experimental mode
+- command-text parsing and shell-shape checks for experimental mode
 - blocked shell operators/chaining/redirection/pipelines/substitution
 - flag and operand constraints per command spec
 - command-family/base-command consistency
@@ -26,7 +26,7 @@ Policy config fields:
 - `allow_dangerous`: explicit dangerous enable switch
 - `allowed_roots`: optional path allowlist
 
-A command is accepted only when validation reasons are empty.
+A command is accepted only when validation reasons are empty. Validator and policy results are authoritative for both structured and experimental proposals, including direct commands that skipped LLM planning.
 
 ## Rejection behavior
 
@@ -41,3 +41,5 @@ If validation fails:
 - standard: default
 - strong: dangerous risk
 - very strong: experimental mode
+
+Experimental mode does not bypass validation or policy. It exists only as a constrained fallback when structured rendering is unavailable or unsuitable.

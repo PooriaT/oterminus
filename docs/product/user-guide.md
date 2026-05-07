@@ -56,6 +56,15 @@ You can ask for tasks like:
 
 These requests go through capability routing and planning before validation.
 
+## Proposal modes in previews
+
+Previews show the proposal mode so you can understand how OTerminus will handle the command:
+
+- **Structured** is the normal, preferred path. OTerminus uses a curated `command_family` and typed `arguments`, then renders the final command deterministically.
+- **Experimental** is a constrained fallback for command text that cannot be represented by structured arguments yet. It is still strictly validated and requires stronger confirmation.
+
+If validation or policy checks fail, OTerminus does not ask for execution confirmation.
+
 ## Safety/inspection modes
 
 ### Dry run
@@ -91,5 +100,5 @@ REPL supports local tab completion (via `prompt_toolkit`) for:
 
 - OTerminus may block ambiguous broad/destructive requests and suggest safer read-only inspections.
 - Unsupported flags, operators, redirection/pipeline chains, and disallowed paths are rejected.
-- Experimental mode requires stronger confirmation.
+- Experimental mode is a constrained fallback and requires stronger confirmation.
 - Commands that fail validation or policy checks are never executed.

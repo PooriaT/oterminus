@@ -72,6 +72,15 @@ poetry run oterminus --dry-run "copy notes.txt to backup/notes.txt"
 poetry run oterminus --explain "find processes matching python"
 ```
 
+## Proposal modes
+
+OTerminus supports two first-class proposal modes:
+
+- **Structured**: the preferred normal path for supported capabilities. Proposals use `command_family` + typed `arguments`, and Python renders the final command/argv deterministically.
+- **Experimental**: a constrained fallback for single-command text that cannot yet be represented safely as structured arguments. It is still strictly validated, previewed, and confirmed before execution.
+
+See [structured rendering](docs/architecture/structured-rendering.md), [routing and planning](docs/architecture/routing-and-planning.md), and the [request lifecycle](docs/architecture/request-lifecycle.md) for details.
+
 ## Documentation
 
 The README is the landing page. Full documentation is generated from [`docs/`](docs/index.md) and published to GitHub Pages after merges to `main` (once Pages is enabled in repository settings).

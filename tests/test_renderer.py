@@ -14,7 +14,9 @@ def test_render_includes_sections() -> None:
         needs_confirmation=True,
         notes=["Current directory only"],
     )
-    validation = ValidationResult(accepted=True, risk_level=RiskLevel.SAFE, warnings=["demo warning"])
+    validation = ValidationResult(
+        accepted=True, risk_level=RiskLevel.SAFE, warnings=["demo warning"]
+    )
 
     text = render_preview(proposal, validation)
 
@@ -26,7 +28,7 @@ def test_render_includes_sections() -> None:
     assert "demo warning" in text
 
 
-def test_render_structured_preview_without_raw_command() -> None:
+def test_render_structured_preview_without_command_text() -> None:
     proposal = Proposal(
         action_type=ActionType.SHELL_COMMAND,
         mode=ProposalMode.STRUCTURED,
@@ -54,7 +56,7 @@ def test_render_structured_preview_without_raw_command() -> None:
     assert '"name": "*.py"' in text
 
 
-def test_render_structured_preview_with_legacy_raw_command() -> None:
+def test_render_structured_preview_with_legacy_command_text() -> None:
     proposal = Proposal(
         action_type=ActionType.SHELL_COMMAND,
         mode=ProposalMode.STRUCTURED,
@@ -70,7 +72,9 @@ def test_render_structured_preview_with_legacy_raw_command() -> None:
     validation = ValidationResult(
         accepted=True,
         risk_level=RiskLevel.SAFE,
-        warnings=["Structured mode ignores the deprecated raw command field and uses deterministic rendering."],
+        warnings=[
+            "Structured mode ignores the deprecated command field and uses deterministic rendering."
+        ],
         rendered_command="find . -name '*.py'",
         argv=["find", ".", "-name", "*.py"],
     )
@@ -96,7 +100,9 @@ def test_render_experimental_preview_is_clearly_labeled() -> None:
     validation = ValidationResult(
         accepted=True,
         risk_level=RiskLevel.SAFE,
-        warnings=["Experimental mode stays outside deterministic structured rendering and uses stricter confirmation."],
+        warnings=[
+            "Experimental mode stays outside deterministic structured rendering and uses stricter confirmation."
+        ],
         rendered_command="cat README.md",
         argv=["cat", "README.md"],
     )
@@ -161,7 +167,9 @@ def test_render_direct_command_default_keeps_user_facing_notes() -> None:
             "Printing the full environment may include sensitive values; prefer querying specific variable names.",
         ],
     )
-    validation = ValidationResult(accepted=True, risk_level=RiskLevel.SAFE, rendered_command="env", argv=["env"])
+    validation = ValidationResult(
+        accepted=True, risk_level=RiskLevel.SAFE, rendered_command="env", argv=["env"]
+    )
 
     text = render_preview(proposal, validation, direct_command=True)
 
@@ -181,7 +189,9 @@ def test_render_direct_command_verbose_shows_debug_notes() -> None:
         needs_confirmation=True,
         notes=["Detected as a direct shell command; skipped the LLM planner."],
     )
-    validation = ValidationResult(accepted=True, risk_level=RiskLevel.SAFE, rendered_command="cd src", argv=["cd", "src"])
+    validation = ValidationResult(
+        accepted=True, risk_level=RiskLevel.SAFE, rendered_command="cd src", argv=["cd", "src"]
+    )
 
     text = render_preview(proposal, validation, verbose=True, direct_command=True)
 
@@ -214,7 +224,9 @@ def test_render_natural_language_default_remains_informative() -> None:
     assert "Summary      : Find Python files" in text
     assert "Explanation  : Translated natural-language request to deterministic command." in text
     assert "Arguments" in text
-    assert "Notes        : `du` is unavailable in structured mode, so using `find` fallback." in text
+    assert (
+        "Notes        : `du` is unavailable in structured mode, so using `find` fallback." in text
+    )
 
 
 def test_render_direct_command_non_verbose_keeps_safety_warnings() -> None:

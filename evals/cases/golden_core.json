@@ -292,7 +292,18 @@
     "expected_argv": [
       "sudo",
       "ls"
-    ]
+    ],
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "experimental",
+      "command_family": "sudo",
+      "command": "sudo ls",
+      "summary": "run privileged list command",
+      "explanation": "blocked privileged command fixture",
+      "risk_level": "dangerous",
+      "needs_confirmation": true,
+      "notes": []
+    }
   },
   {
     "id": "direct-cd-experimental-allowed",
@@ -377,7 +388,7 @@
     ]
   },
   {
-    "id": "planner-raw-ls-normalized",
+    "id": "planner-command-ls-normalized",
     "user_input": "show files with sizes",
     "planner_proposal": {
       "action_type": "shell_command",
@@ -435,7 +446,7 @@
       "command_family": "open",
       "command": "open .",
       "summary": "open folder",
-      "explanation": "raw mode",
+      "explanation": "experimental fallback",
       "risk_level": "safe",
       "needs_confirmation": true,
       "notes": []
@@ -963,7 +974,7 @@
       "command_family": "env",
       "command": "env",
       "summary": "print env",
-      "explanation": "raw env",
+      "explanation": "experimental env fallback",
       "risk_level": "safe",
       "needs_confirmation": true,
       "notes": []
