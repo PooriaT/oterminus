@@ -16,8 +16,9 @@ OTerminus is a local AI terminal assistant that is **capability-first**, **struc
 1. [Architecture overview](architecture/overview.md)
 2. [Request lifecycle](architecture/request-lifecycle.md)
 3. [Routing and planning](architecture/routing-and-planning.md)
-4. [Validation and policy](architecture/validation-and-policy.md)
-5. [Execution](architecture/execution.md)
+4. [Structured rendering and proposal modes](architecture/structured-rendering.md)
+5. [Validation and policy](architecture/validation-and-policy.md)
+6. [Execution](architecture/execution.md)
 
 ### I want to add command support
 
@@ -52,7 +53,7 @@ mkdocs build --strict
 
 ## Documentation contributor notes
 
-When architecture, behavior, configuration, command support, or eval behavior changes, update docs in the same PR.
+When architecture, behavior, configuration, command support, or eval behavior changes, update docs in the same PR. Keep proposal-mode docs consistent across README and `docs/`: structured and experimental are the only supported first-class modes.
 
 Before opening a PR, run `mkdocs build --strict` and fix any warnings or broken links.
 
