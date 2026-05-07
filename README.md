@@ -1,10 +1,12 @@
 # OTerminus
 
-OTerminus is a local, safety-first terminal assistant. It turns natural-language requests into a **single proposed shell action**, shows a preview, and executes only after explicit confirmation.
+OTerminus is a local, safety-first terminal assistant. It turns natural-language requests into a
+**single proposed shell action**, shows a preview, and executes only after explicit confirmation.
 
 ## Why OTerminus exists
 
-Terminal copilots are useful, but unrestricted shell generation is risky. OTerminus exists to provide a practical middle ground:
+Terminal copilots are useful, but unrestricted shell generation is risky. OTerminus exists to
+provide a practical middle ground:
 
 - capability-first command support (curated workflows, not full shell emulation)
 - deterministic rendering for structured command families
@@ -40,7 +42,8 @@ poetry install
 poetry run oterminus
 ```
 
-On first run, OTerminus checks Ollama readiness (`ollama` on PATH, running service, local models), then prompts you to select a model if one is not already configured.
+On first run, OTerminus checks Ollama readiness (`ollama` on PATH, running service, local models),
+then prompts you to select a model if one is not already configured.
 
 ### Useful startup checks
 
@@ -76,21 +79,29 @@ poetry run oterminus --explain "find processes matching python"
 
 OTerminus supports two first-class proposal modes:
 
-- **Structured**: the preferred normal path for supported capabilities. Proposals use `command_family` + typed `arguments`, and Python renders the final command/argv deterministically.
-- **Experimental**: a constrained fallback for single-command text that cannot yet be represented safely as structured arguments. It is still strictly validated, previewed, and confirmed before execution.
+- **Structured**: the preferred normal path for supported capabilities. Proposals use
+  `command_family` + typed `arguments`, and Python renders the final command/argv deterministically.
+- **Experimental**: a constrained fallback for single-command text that cannot yet be represented
+  safely as structured arguments. It is still strictly validated, previewed, and confirmed before
+  execution.
 
-See [structured rendering](docs/architecture/structured-rendering.md), [routing and planning](docs/architecture/routing-and-planning.md), and the [request lifecycle](docs/architecture/request-lifecycle.md) for details.
+See [structured rendering](docs/architecture/structured-rendering.md), [routing and
+planning](docs/architecture/routing-and-planning.md), and the [request
+lifecycle](docs/architecture/request-lifecycle.md) for details.
 
 ## Documentation
 
-The README is the landing page. Full documentation is generated from [`docs/`](docs/index.md) and published to GitHub Pages after merges to `main` (once Pages is enabled in repository settings).
+The README is the landing page. Full documentation is generated from [`docs/`](docs/index.md) and
+published to GitHub Pages after merges to `main` (once Pages is enabled in repository settings).
 
 - Hosted docs (after enablement): `https://pooriat.github.io/oterminus/`
 - Docs source of truth: [`docs/`](docs/index.md)
 - Architecture overview: [`docs/architecture/overview.md`](docs/architecture/overview.md)
-- Request lifecycle (central flow): [`docs/architecture/request-lifecycle.md`](docs/architecture/request-lifecycle.md)
+- Request lifecycle (central flow):
+  [`docs/architecture/request-lifecycle.md`](docs/architecture/request-lifecycle.md)
 - User guide: [`docs/product/user-guide.md`](docs/product/user-guide.md)
-- Contributor command-family guide: [`docs/adding-command-families.md`](docs/adding-command-families.md)
+- Contributor command-family guide:
+  [`docs/adding-command-families.md`](docs/adding-command-families.md)
 - Evals docs: [`docs/architecture/evals.md`](docs/architecture/evals.md)
 
 ### Work on docs locally

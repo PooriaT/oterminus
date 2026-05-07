@@ -299,7 +299,18 @@ _ROUTE_CAPABILITIES: dict[str, tuple[str, ...]] = {
 _ROUTE_SEED_HINTS: dict[str, tuple[str, ...]] = {
     "text_search": ("search text", "find matching lines", "find files", "pattern"),
     "process_inspect": ("show running processes", "find process by name", "open files for process"),
-    "metadata_inspect": ("file metadata", "disk usage", "disk space", "environment variable", "system name"),
+    "metadata_inspect": (
+        "file metadata",
+        "disk usage",
+        "disk space",
+        "environment variable",
+        "system name",
+    ),
     "filesystem_mutate": ("create folder", "copy file", "move file", "change permissions"),
-    "filesystem_inspect": ("list files", "show directory contents", "print working directory", "find files"),
+    "filesystem_inspect": (
+        "list files",
+        "show directory contents",
+        "print working directory",
+        "find files",
+    ),
 }

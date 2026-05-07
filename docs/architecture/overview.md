@@ -11,16 +11,24 @@ OTerminus processes each request through a layered local pipeline:
 7. preview + confirmation
 8. execution + audit logging
 
-The architecture is built for deterministic control surfaces around LLM output, not free-form shell execution. The model never executes commands directly; it can only propose JSON that OTerminus parses, validates, previews, and confirms.
+The architecture is built for deterministic control surfaces around LLM output, not free-form shell
+execution. The model never executes commands directly; it can only propose JSON that OTerminus
+parses, validates, previews, and confirms.
 
 ## Proposal mode model
 
 OTerminus has two supported first-class proposal modes:
 
-- **Structured mode** is the preferred normal path. A proposal carries `command_family` plus typed `arguments`; Python validates those arguments and renders the final command string and `argv` deterministically. Use this path whenever a capability has structured support.
-- **Experimental mode** is a constrained fallback for single-command text that is allowed by the registry but not yet safely represented by structured arguments. It remains subject to shell-shape checks, allowlists, policy gates, preview, and stronger confirmation. It is not a shortcut around capability or renderer design.
+- **Structured mode** is the preferred normal path. A proposal carries `command_family` plus typed
+  `arguments`; Python validates those arguments and renders the final command string and `argv`
+  deterministically. Use this path whenever a capability has structured support.
+- **Experimental mode** is a constrained fallback for single-command text that is allowed by the
+  registry but not yet safely represented by structured arguments. It remains subject to shell-shape
+  checks, allowlists, policy gates, preview, and stronger confirmation. It is not a shortcut around
+  capability or renderer design.
 
-Legacy `"mode": "raw"` payloads may be accepted only as internal parse-boundary compatibility and are normalized before downstream handling. Raw is not a public or architectural proposal mode.
+Legacy `"mode": "raw"` payloads may be accepted only as internal parse-boundary compatibility and
+are normalized before downstream handling. Raw is not a public or architectural proposal mode.
 
 ## Architecture invariants
 

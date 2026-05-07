@@ -12,7 +12,9 @@ class Executor:
         self.timeout_seconds = timeout_seconds
         self.previous_cwd: str | None = None
 
-    def run(self, command: str | list[str], *, display_command: str | None = None) -> ExecutionResult:
+    def run(
+        self, command: str | list[str], *, display_command: str | None = None
+    ) -> ExecutionResult:
         if isinstance(command, str):
             args = shlex.split(command)
             rendered_command = command

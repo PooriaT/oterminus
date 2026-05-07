@@ -1,6 +1,7 @@
 # Capability System
 
-OTerminus groups commands into workflow capabilities rather than exposing unrestricted shell behavior.
+OTerminus groups commands into workflow capabilities rather than exposing unrestricted shell
+behavior.
 
 ## Why capability-first
 
@@ -18,7 +19,8 @@ Each command spec includes:
 - `capability_description`
 - command examples and natural-language aliases
 
-Capability summaries are derived from merged registry metadata and reused for prompts and REPL discovery.
+Capability summaries are derived from merged registry metadata and reused for prompts and REPL
+discovery.
 
 ## Current capability domains
 

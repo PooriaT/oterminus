@@ -34,9 +34,14 @@ class EvalCase(BaseModel):
     def validate_expectations(self) -> EvalCase:
         if self.expected_planner_error_contains:
             return self
-        if self.expected_mode is None or self.expected_risk_level is None or self.expected_acceptance is None:
+        if (
+            self.expected_mode is None
+            or self.expected_risk_level is None
+            or self.expected_acceptance is None
+        ):
             raise ValueError(
-                "expected_mode, expected_risk_level, and expected_acceptance are required unless expected_planner_error_contains is set."
+                "expected_mode, expected_risk_level, and expected_acceptance are required "
+                "unless expected_planner_error_contains is set."
             )
         return self
 
@@ -112,7 +117,9 @@ def evaluate_case(case: EvalCase, validator: Validator) -> EvalResult:
         try:
             proposal = Planner.parse_proposal(json.dumps(case.planner_proposal))
         except PlannerError as exc:
-            if case.expected_planner_error_contains and case.expected_planner_error_contains in str(exc):
+            if case.expected_planner_error_contains and case.expected_planner_error_contains in str(
+                exc
+            ):
                 return EvalResult(case_id=case.id, passed=True, mismatches=[])
             return EvalResult(
                 case_id=case.id,
@@ -130,7 +137,9 @@ def evaluate_case(case: EvalCase, validator: Validator) -> EvalResult:
 
     if case.expected_mode is not None and proposal.mode != case.expected_mode:
         mismatches.append(
-            EvalMismatch(field="mode", expected=case.expected_mode.value, actual=proposal.mode.value)
+            EvalMismatch(
+                field="mode", expected=case.expected_mode.value, actual=proposal.mode.value
+            )
         )
 
     if proposal.command_family != case.expected_command_family:
@@ -160,7 +169,10 @@ def evaluate_case(case: EvalCase, validator: Validator) -> EvalResult:
             )
         )
 
-    if case.expected_rendered_command is not None and validation.rendered_command != case.expected_rendered_command:
+    if (
+        case.expected_rendered_command is not None
+        and validation.rendered_command != case.expected_rendered_command
+    ):
         mismatches.append(
             EvalMismatch(
                 field="rendered_command",
@@ -177,7 +189,9 @@ def evaluate_case(case: EvalCase, validator: Validator) -> EvalResult:
     return EvalResult(case_id=case.id, passed=len(mismatches) == 0, mismatches=mismatches)
 
 
-def run_eval_cases(cases: list[EvalCase], validator: Validator) -> tuple[list[EvalResult], EvalSummary]:
+def run_eval_cases(
+    cases: list[EvalCase], validator: Validator
+) -> tuple[list[EvalResult], EvalSummary]:
     results = [evaluate_case(case, validator) for case in cases]
     passed = sum(1 for result in results if result.passed)
     summary = EvalSummary(total=len(results), passed=passed, failed=len(results) - passed)

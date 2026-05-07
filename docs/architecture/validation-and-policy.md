@@ -26,7 +26,9 @@ Policy config fields:
 - `allow_dangerous`: explicit dangerous enable switch
 - `allowed_roots`: optional path allowlist
 
-A command is accepted only when validation reasons are empty. Validator and policy results are authoritative for both structured and experimental proposals, including direct commands that skipped LLM planning.
+A command is accepted only when validation reasons are empty. Validator and policy results are
+authoritative for both structured and experimental proposals, including direct commands that skipped
+LLM planning.
 
 ## Rejection behavior
 
@@ -42,4 +44,5 @@ If validation fails:
 - strong: dangerous risk
 - very strong: experimental mode
 
-Experimental mode does not bypass validation or policy. It exists only as a constrained fallback when structured rendering is unavailable or unsuitable.
+Experimental mode does not bypass validation or policy. It exists only as a constrained fallback
+when structured rendering is unavailable or unsuitable.

@@ -151,7 +151,9 @@ def test_main_request_exits_when_startup_setup_fails(monkeypatch, capsys) -> Non
     def fail_setup() -> str:
         from oterminus.setup import SetupError
 
-        raise SetupError("Ollama is installed but not running. Please start it using `ollama serve`.")
+        raise SetupError(
+            "Ollama is installed but not running. Please start it using `ollama serve`."
+        )
 
     monkeypatch.setattr("oterminus.cli.ensure_startup_ready", fail_setup)
 
@@ -244,7 +246,9 @@ def test_main_audit_disabled_skips_audit_logger(monkeypatch) -> None:
     monkeypatch.setattr("oterminus.cli.Validator", lambda policy: Mock())
     monkeypatch.setattr("oterminus.cli.Executor", lambda timeout_seconds: Mock())
     monkeypatch.setattr("oterminus.cli.ensure_startup_ready", lambda: "model")
-    monkeypatch.setattr("oterminus.cli.AuditLogger", Mock(side_effect=AssertionError("should not create logger")))
+    monkeypatch.setattr(
+        "oterminus.cli.AuditLogger", Mock(side_effect=AssertionError("should not create logger"))
+    )
     monkeypatch.setattr("oterminus.cli.handle_request", lambda *_args, **_kwargs: 0)
 
     code = main(["pwd"])
@@ -266,7 +270,12 @@ def test_main_audit_status_command(monkeypatch, capsys) -> None:
     monkeypatch.setattr("oterminus.cli.load_config", lambda: config)
     monkeypatch.setattr("oterminus.cli.Validator", lambda policy: Mock())
     monkeypatch.setattr("oterminus.cli.Executor", lambda timeout_seconds: Mock())
-    monkeypatch.setattr("oterminus.cli.AuditLogger", lambda path, redact: Mock(status=lambda: {"path": str(path), "exists": "no", "redaction": "enabled"}))
+    monkeypatch.setattr(
+        "oterminus.cli.AuditLogger",
+        lambda path, redact: Mock(
+            status=lambda: {"path": str(path), "exists": "no", "redaction": "enabled"}
+        ),
+    )
 
     code = main(["audit", "status"])
 
@@ -454,7 +463,9 @@ def test_handle_request_explain_skips_execution(monkeypatch, capsys) -> None:
     executor = Mock()
     monkeypatch.setattr("builtins.input", lambda _: "y")
 
-    code = handle_request("show running processes", planner, validator, executor, run_mode=RunMode.EXPLAIN)
+    code = handle_request(
+        "show running processes", planner, validator, executor, run_mode=RunMode.EXPLAIN
+    )
 
     assert code == 0
     output = capsys.readouterr().out
@@ -484,7 +495,9 @@ def test_handle_request_dry_run_direct_command_skips_planner_and_execution(capsy
     executor.run.assert_not_called()
 
 
-def test_handle_request_explain_validation_failure_reports_policy_and_skips_executor(capsys) -> None:
+def test_handle_request_explain_validation_failure_reports_policy_and_skips_executor(
+    capsys,
+) -> None:
     from oterminus.cli import handle_request
 
     planner = Mock()
@@ -531,7 +544,9 @@ def test_handle_request_explain_does_not_expand_single_dash_long_options(capsys)
     )
     executor = Mock()
 
-    code = handle_request("find . -name '*.py'", planner, validator, executor, run_mode=RunMode.EXPLAIN)
+    code = handle_request(
+        "find . -name '*.py'", planner, validator, executor, run_mode=RunMode.EXPLAIN
+    )
 
     assert code == 0
     output = capsys.readouterr().out
@@ -955,7 +970,9 @@ def test_rerun_writes_audit_source_history_id(monkeypatch, tmp_path: Path) -> No
     audit_path = tmp_path / "audit.jsonl"
     audit_logger = AuditLogger(audit_path)
 
-    handle_request("pwd", planner, validator, executor, session_history=history, audit_logger=audit_logger)
+    handle_request(
+        "pwd", planner, validator, executor, session_history=history, audit_logger=audit_logger
+    )
     handle_repl_history_command(
         "rerun 1",
         session_history=history,

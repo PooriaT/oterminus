@@ -506,7 +506,9 @@ def validate_structured_arguments(
         ) from exc
 
 
-def render_structured_command(command_family: str, arguments: dict[str, Any] | None) -> RenderedCommand:
+def render_structured_command(
+    command_family: str, arguments: dict[str, Any] | None
+) -> RenderedCommand:
     validated = validate_structured_arguments(command_family, arguments)
 
     if command_family == "ls":
@@ -892,7 +894,11 @@ def _parse_cp_argv(operands: list[str]) -> dict[str, Any] | None:
     paths: list[str] = []
 
     for operand in operands:
-        flags = _expand_short_flag_cluster(operand, {"R", "p", "n"}) if operand.startswith("-") else None
+        flags = (
+            _expand_short_flag_cluster(operand, {"R", "p", "n"})
+            if operand.startswith("-")
+            else None
+        )
         if flags is not None:
             for flag in flags:
                 if flag == "-R":
@@ -1219,7 +1225,9 @@ def _parse_pgrep_argv(operands: list[str]) -> dict[str, Any] | None:
             index += 2
             continue
         if pattern is None:
-            flags = _expand_short_flag_cluster(operand, {"f", "l"}) if operand.startswith("-") else None
+            flags = (
+                _expand_short_flag_cluster(operand, {"f", "l"}) if operand.startswith("-") else None
+            )
             if flags is not None:
                 for flag in flags:
                     if flag == "-f":
@@ -1265,7 +1273,11 @@ def _parse_lsof_argv(operands: list[str]) -> dict[str, Any] | None:
                 arguments["command_prefix"] = value
             index += 2
             continue
-        flags = _expand_short_flag_cluster(operand, {"a", "n", "P"}) if operand.startswith("-") else None
+        flags = (
+            _expand_short_flag_cluster(operand, {"a", "n", "P"})
+            if operand.startswith("-")
+            else None
+        )
         if flags is not None:
             for flag in flags:
                 if flag == "-a":
@@ -1289,7 +1301,11 @@ def _parse_wc_argv(operands: list[str]) -> dict[str, Any] | None:
     arguments: dict[str, Any] = {"lines": False, "words": False, "bytes": False}
     paths: list[str] = []
     for operand in operands:
-        flags = _expand_short_flag_cluster(operand, {"l", "w", "c"}) if operand.startswith("-") else None
+        flags = (
+            _expand_short_flag_cluster(operand, {"l", "w", "c"})
+            if operand.startswith("-")
+            else None
+        )
         if flags is not None:
             for flag in flags:
                 if flag == "-l":
@@ -1312,7 +1328,11 @@ def _parse_sort_argv(operands: list[str]) -> dict[str, Any] | None:
     arguments: dict[str, Any] = {"numeric": False, "reverse": False, "unique": False}
     path: str | None = None
     for operand in operands:
-        flags = _expand_short_flag_cluster(operand, {"n", "r", "u"}) if operand.startswith("-") else None
+        flags = (
+            _expand_short_flag_cluster(operand, {"n", "r", "u"})
+            if operand.startswith("-")
+            else None
+        )
         if flags is not None:
             for flag in flags:
                 if flag == "-n":
@@ -1337,7 +1357,11 @@ def _parse_uniq_argv(operands: list[str]) -> dict[str, Any] | None:
     arguments: dict[str, Any] = {"count": False, "repeated_only": False, "unique_only": False}
     path: str | None = None
     for operand in operands:
-        flags = _expand_short_flag_cluster(operand, {"c", "d", "u"}) if operand.startswith("-") else None
+        flags = (
+            _expand_short_flag_cluster(operand, {"c", "d", "u"})
+            if operand.startswith("-")
+            else None
+        )
         if flags is not None:
             for flag in flags:
                 if flag == "-c":

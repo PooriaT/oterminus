@@ -84,8 +84,7 @@ class SessionHistory:
         ]
         headers = ("id", "input", "command", "risk", "status")
         widths = [
-            max(len(headers[idx]), *(len(row[idx]) for row in rows))
-            for idx in range(len(headers))
+            max(len(headers[idx]), *(len(row[idx]) for row in rows)) for idx in range(len(headers))
         ]
 
         def _line(values: tuple[str, ...]) -> str:
@@ -123,7 +122,11 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("request", nargs="*", help="Natural-language terminal request")
     group = parser.add_mutually_exclusive_group()
     group.add_argument("--dry-run", action="store_true", help="Plan + validate, but never execute.")
-    group.add_argument("--explain", action="store_true", help="Explain command choice and safety decision, without executing.")
+    group.add_argument(
+        "--explain",
+        action="store_true",
+        help="Explain command choice and safety decision, without executing.",
+    )
     parser.add_argument("--verbose", action="store_true", help="Enable debug logging")
     return parser.parse_args(argv)
 
@@ -142,7 +145,6 @@ def ask_confirmation(level: ConfirmationLevel) -> bool:
     if level == ConfirmationLevel.STRONG:
         return answer == "EXECUTE"
     return answer.lower() in {"y", "yes"}
-
 
 
 def handle_request(
@@ -174,7 +176,9 @@ def handle_request(
             ambiguity = detect_ambiguity(request)
             event.ambiguity_detected = ambiguity.is_ambiguous
             event.ambiguity_reason = ambiguity.reason if ambiguity.is_ambiguous else None
-            event.ambiguity_safe_options = list(ambiguity.suggested_safe_options) if ambiguity.is_ambiguous else []
+            event.ambiguity_safe_options = (
+                list(ambiguity.suggested_safe_options) if ambiguity.is_ambiguous else []
+            )
             if ambiguity.is_ambiguous:
                 print(render_ambiguity_response(ambiguity))
                 if history_item is not None:
@@ -223,10 +227,16 @@ def handle_request(
         history_item.risk_level = validation.risk_level.value
         history_item.validation_status = "accepted" if validation.accepted else "rejected"
         history_item.validation = validation
-    print(render_preview(proposal, validation, verbose=debug_trace, direct_command=is_direct_command))
+    print(
+        render_preview(proposal, validation, verbose=debug_trace, direct_command=is_direct_command)
+    )
     if debug_trace:
         if is_direct_command:
-            print("[trace] Validation accepted." if validation.accepted else "[trace] Validation rejected.")
+            print(
+                "[trace] Validation accepted."
+                if validation.accepted
+                else "[trace] Validation rejected."
+            )
         print(
             f"[trace] validation accepted={validation.accepted} "
             f"warnings={len(validation.warnings)} rejections={len(validation.reasons)}"
@@ -235,7 +245,11 @@ def handle_request(
     if not validation.accepted:
         LOGGER.warning("proposal_rejected reasons=%s", validation.reasons)
         if run_mode == RunMode.EXPLAIN:
-            print(render_explanation(proposal, validation, selected_mode=run_mode, direct_command=is_direct_command))
+            print(
+                render_explanation(
+                    proposal, validation, selected_mode=run_mode, direct_command=is_direct_command
+                )
+            )
         if history_item is not None:
             history_item.execution_status = "rejected"
         event.confirmation_result = "not_prompted_rejected"
@@ -254,7 +268,11 @@ def handle_request(
         return 0
 
     if run_mode == RunMode.EXPLAIN:
-        print(render_explanation(proposal, validation, selected_mode=run_mode, direct_command=is_direct_command))
+        print(
+            render_explanation(
+                proposal, validation, selected_mode=run_mode, direct_command=is_direct_command
+            )
+        )
         LOGGER.info("explain_mode_skipped_execution command=%s", validation.rendered_command)
         if history_item is not None:
             history_item.execution_status = "skipped_explain"
@@ -437,13 +455,19 @@ def handle_repl_discovery_command(request: str) -> str | None:
         return (
             "Enter either a natural-language terminal request or a direct shell command.\n"
             "Examples: 'find all .py files', 'ls -lh', 'cd src'\n"
-            "Built-ins: help, capabilities, commands, examples, history, history <n>, explain <request>, explain <history_id>, rerun <history_id>, dry-run <request>, audit status, exit, quit\n"
-            "Try: help capabilities | help <capability_id> | help <command_family> | examples <capability_id>"
+            "Built-ins: help, capabilities, commands, examples, history, history <n>, "
+            "explain <request>, explain <history_id>, rerun <history_id>, "
+            "dry-run <request>, audit status, exit, quit\n"
+            "Try: help capabilities | help <capability_id> | help <command_family> | "
+            "examples <capability_id>"
         )
 
     if lowered == "capabilities":
         lines = ["Supported capabilities:"]
-        lines.extend(f"- {capability.capability_id}: {capability.capability_label}" for capability in capabilities)
+        lines.extend(
+            f"- {capability.capability_id}: {capability.capability_label}"
+            for capability in capabilities
+        )
         return "\n".join(lines)
 
     if lowered == "commands":
@@ -547,7 +571,9 @@ def _render_history_explanation(session_history: SessionHistory, history_id: int
 
 
 def _render_capability_help(capability_id: str) -> str:
-    capability = next(item for item in supported_capabilities() if item.capability_id == capability_id)
+    capability = next(
+        item for item in supported_capabilities() if item.capability_id == capability_id
+    )
     lines = [
         f"Capability: {capability.capability_id}",
         f"Label: {capability.capability_label}",
@@ -600,7 +626,9 @@ def _render_examples_by_capability() -> str:
 
 
 def _render_examples_for_capability(capability_id: str) -> str:
-    capability = next(item for item in supported_capabilities() if item.capability_id == capability_id)
+    capability = next(
+        item for item in supported_capabilities() if item.capability_id == capability_id
+    )
     lines = [f"Examples for {capability.capability_id}:"]
     for command_name in capability.commands:
         spec = get_command_spec(command_name)
@@ -612,7 +640,8 @@ def _render_examples_for_capability(capability_id: str) -> str:
 def _unknown_help_target(target: str) -> str:
     return (
         f"Unknown help target: {target}\n"
-        "Try one of: help capabilities | help <capability_id> | help <command_family> | capabilities | commands | examples"
+        "Try one of: help capabilities | help <capability_id> | help <command_family> | "
+        "capabilities | commands | examples"
     )
 
 
@@ -729,7 +758,9 @@ def _run_mode_from_args(args: argparse.Namespace) -> RunMode:
     return RunMode.EXECUTE
 
 
-def render_explanation(proposal, validation, *, selected_mode: RunMode, direct_command: bool) -> str:
+def render_explanation(
+    proposal, validation, *, selected_mode: RunMode, direct_command: bool
+) -> str:
     command = validation.rendered_command or proposal.command or "(unavailable)"
     family = proposal.command_family or "(unknown)"
     spec = get_command_spec(family) if proposal.command_family else None

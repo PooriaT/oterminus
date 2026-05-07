@@ -90,7 +90,9 @@ def ensure_startup_ready(input_fn: Callable[[str], str] = input) -> str:
         )
 
     if not check_ollama_running():
-        raise SetupError("Ollama is installed but not running. Please start it using `ollama serve`.")
+        raise SetupError(
+            "Ollama is installed but not running. Please start it using `ollama serve`."
+        )
 
     try:
         models = get_available_models()

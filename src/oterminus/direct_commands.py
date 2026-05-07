@@ -43,7 +43,10 @@ def detect_direct_command(request: str) -> Proposal | None:
             arguments=arguments,
             command=command,
             summary=f"Run direct command: {spec.name}",
-            explanation="Input already looks like a shell command, so it will be validated locally and rendered deterministically when possible.",
+            explanation=(
+                "Input already looks like a shell command, so it will be validated locally and "
+                "rendered deterministically when possible."
+            ),
             needs_confirmation=True,
             notes=notes,
         )
@@ -54,7 +57,10 @@ def detect_direct_command(request: str) -> Proposal | None:
         command_family=base,
         command=command,
         summary=f"Run direct command: {spec.name}",
-        explanation="Input already looks like a shell command, so it will be validated locally and executed as an experimental fallback.",
+        explanation=(
+            "Input already looks like a shell command, so it will be validated locally and "
+            "executed as an experimental fallback."
+        ),
         needs_confirmation=True,
         notes=notes,
     )

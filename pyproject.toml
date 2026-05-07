@@ -5,7 +5,9 @@ description = "Local AI-powered terminal assistant with explicit confirmation an
 authors = ["oterminus contributors"]
 readme = "README.md"
 include = ["README.md"]
-packages = [{ include = "oterminus", from = "src", format = ["sdist", "wheel"] }]
+packages = [
+    { include = "oterminus", from = "src", format = ["sdist", "wheel"] },
+]
 
 [tool.poetry.dependencies]
 python = "^3.13"

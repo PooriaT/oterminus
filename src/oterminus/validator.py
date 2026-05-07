@@ -78,7 +78,8 @@ class Validator:
 
                 if proposal.mode == ProposalMode.EXPERIMENTAL:
                     warnings.append(
-                        "Experimental mode stays outside deterministic structured rendering and uses stricter confirmation."
+                        "Experimental mode stays outside deterministic structured rendering and "
+                        "uses stricter confirmation."
                     )
                     try:
                         parsed_structured = parse_raw_command_as_structured(command)

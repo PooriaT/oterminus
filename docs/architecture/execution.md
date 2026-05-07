@@ -25,4 +25,5 @@ CLI maps execution failures to user-visible statuses:
 - keyboard interruption
 - non-zero command exit codes
 
-Execution output is printed in a deterministic block (`--- execution output ---`) except for `clear` special handling.
+Execution output is printed in a deterministic block (`--- execution output ---`) except for `clear`
+special handling.

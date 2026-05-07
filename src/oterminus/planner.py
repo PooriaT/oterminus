@@ -25,7 +25,9 @@ class Planner:
 
     def plan(self, request: str) -> Proposal:
         route = route_request(request)
-        raw = self.client.chat_json(system_prompt=SYSTEM_PROMPT, user_prompt=build_user_prompt(request, route=route))
+        raw = self.client.chat_json(
+            system_prompt=SYSTEM_PROMPT, user_prompt=build_user_prompt(request, route=route)
+        )
         return self.parse_proposal(raw)
 
     @staticmethod
@@ -47,7 +49,11 @@ class Planner:
 
     @staticmethod
     def _prefer_structured_rendering(proposal: Proposal) -> Proposal:
-        if proposal.command_family and proposal.arguments is not None and supports_structured_family(proposal.command_family):
+        if (
+            proposal.command_family
+            and proposal.arguments is not None
+            and supports_structured_family(proposal.command_family)
+        ):
             return Proposal.model_validate(
                 {
                     **proposal.model_dump(),

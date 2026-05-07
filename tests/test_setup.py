@@ -39,7 +39,9 @@ def test_model_selection_flow(monkeypatch, tmp_path) -> None:
     monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(config_path))
     answers = iter(["bad", "2"])
 
-    selected = setup.run_first_time_setup(["gemma3:latest", "llama3.2:latest"], input_fn=lambda _: next(answers))
+    selected = setup.run_first_time_setup(
+        ["gemma3:latest", "llama3.2:latest"], input_fn=lambda _: next(answers)
+    )
 
     assert selected == "llama3.2:latest"
     saved = json.loads(config_path.read_text(encoding="utf-8"))
@@ -54,7 +56,9 @@ def test_config_persistence_skips_prompt_when_model_is_valid(monkeypatch, tmp_pa
     def fail_prompt(_: str) -> str:
         raise AssertionError("prompt should not be called")
 
-    selected = setup.run_first_time_setup(["gemma3:latest", "llama3.2:latest"], input_fn=fail_prompt)
+    selected = setup.run_first_time_setup(
+        ["gemma3:latest", "llama3.2:latest"], input_fn=fail_prompt
+    )
     assert selected == "gemma3:latest"
 
 
@@ -63,7 +67,9 @@ def test_missing_configured_model_reprompts(monkeypatch, tmp_path) -> None:
     config_path.write_text(json.dumps({"model": "removed:model"}), encoding="utf-8")
     monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(config_path))
 
-    selected = setup.run_first_time_setup(["gemma3:latest", "llama3.2:latest"], input_fn=lambda _: "1")
+    selected = setup.run_first_time_setup(
+        ["gemma3:latest", "llama3.2:latest"], input_fn=lambda _: "1"
+    )
 
     assert selected == "gemma3:latest"
     saved = json.loads(config_path.read_text(encoding="utf-8"))

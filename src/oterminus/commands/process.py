@@ -39,6 +39,8 @@ COMMAND_PACK: tuple[CommandSpec, ...] = (
         flags_with_values=("-c", "-p"),
         examples=("lsof -p 1234",),
         natural_language_aliases=("open files for process",),
-        notes=("Lists open files and sockets; output can expose sensitive process or path information.",),
+        notes=(
+            "Lists open files and sockets; output can expose sensitive process or path information.",
+        ),
     ),
 )

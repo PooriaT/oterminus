@@ -85,7 +85,9 @@ def run_doctor() -> DoctorReport:
 
     app_config, config_check = _load_app_config()
     results.append(config_check)
-    results.append(_check_configured_model(app_config, models, ollama_ready=cli_installed and ollama_running))
+    results.append(
+        _check_configured_model(app_config, models, ollama_ready=cli_installed and ollama_running)
+    )
     results.append(_check_config_file())
     results.append(_check_audit_path(app_config))
     results.append(_check_prompt_toolkit())
@@ -112,7 +114,12 @@ def print_report(report: DoctorReport) -> None:
 
 def _check_python_version() -> CheckResult:
     if sys.version_info >= (3, 13):
-        return CheckResult(name="python version", status=Status.PASS, message=f"Detected {sys.version.split()[0]}.", critical=True)
+        return CheckResult(
+            name="python version",
+            status=Status.PASS,
+            message=f"Detected {sys.version.split()[0]}.",
+            critical=True,
+        )
     return CheckResult(
         name="python version",
         status=Status.FAIL,
@@ -133,12 +140,16 @@ def _check_package_importable() -> CheckResult:
             guidance=f"Reinstall the package (e.g. `poetry install`). Details: {exc}",
             critical=True,
         )
-    return CheckResult(name="oterminus package", status=Status.PASS, message="Import succeeded.", critical=True)
+    return CheckResult(
+        name="oterminus package", status=Status.PASS, message="Import succeeded.", critical=True
+    )
 
 
 def _check_ollama_cli(installed: bool) -> CheckResult:
     if installed:
-        return CheckResult(name="ollama CLI", status=Status.PASS, message="Found on PATH.", critical=True)
+        return CheckResult(
+            name="ollama CLI", status=Status.PASS, message="Found on PATH.", critical=True
+        )
     return CheckResult(
         name="ollama CLI",
         status=Status.FAIL,
@@ -150,7 +161,12 @@ def _check_ollama_cli(installed: bool) -> CheckResult:
 
 def _check_ollama_service(running: bool) -> CheckResult:
     if running:
-        return CheckResult(name="ollama service", status=Status.PASS, message="Reachable via `ollama list`.", critical=True)
+        return CheckResult(
+            name="ollama service",
+            status=Status.PASS,
+            message="Reachable via `ollama list`.",
+            critical=True,
+        )
     return CheckResult(
         name="ollama service",
         status=Status.FAIL,
@@ -214,11 +230,18 @@ def _load_app_config() -> tuple[AppConfig | None, CheckResult]:
         )
     return (
         config,
-        CheckResult(name="app config", status=Status.PASS, message="Configuration parsed successfully.", critical=True),
+        CheckResult(
+            name="app config",
+            status=Status.PASS,
+            message="Configuration parsed successfully.",
+            critical=True,
+        ),
     )
 
 
-def _check_configured_model(config: AppConfig | None, models: list[str], *, ollama_ready: bool) -> CheckResult:
+def _check_configured_model(
+    config: AppConfig | None, models: list[str], *, ollama_ready: bool
+) -> CheckResult:
     if config is None:
         return CheckResult(
             name="configured model",
@@ -244,7 +267,12 @@ def _check_configured_model(config: AppConfig | None, models: list[str], *, olla
         )
 
     if configured_model in models:
-        return CheckResult(name="configured model", status=Status.PASS, message=f"`{configured_model}` is installed.", critical=True)
+        return CheckResult(
+            name="configured model",
+            status=Status.PASS,
+            message=f"`{configured_model}` is installed.",
+            critical=True,
+        )
 
     return CheckResult(
         name="configured model",
@@ -284,7 +312,12 @@ def _check_config_file() -> CheckResult:
 
     writable_target = path if path.exists() else parent
     if os.access(writable_target, os.W_OK):
-        return CheckResult(name="config path", status=Status.PASS, message=f"Readable/writable at {path}.", critical=True)
+        return CheckResult(
+            name="config path",
+            status=Status.PASS,
+            message=f"Readable/writable at {path}.",
+            critical=True,
+        )
 
     return CheckResult(
         name="config path",
@@ -304,7 +337,9 @@ def _check_audit_path(config: AppConfig | None) -> CheckResult:
             guidance="Fix the app config check first, then rerun doctor.",
         )
     if not config.audit_enabled:
-        return CheckResult(name="audit log path", status=Status.WARN, message="Audit logging is disabled.")
+        return CheckResult(
+            name="audit log path", status=Status.WARN, message="Audit logging is disabled."
+        )
 
     audit_dir = config.audit_log_path.expanduser().parent
     try:
@@ -319,7 +354,12 @@ def _check_audit_path(config: AppConfig | None) -> CheckResult:
         )
 
     if os.access(audit_dir, os.W_OK):
-        return CheckResult(name="audit log path", status=Status.PASS, message=f"Directory writable: {audit_dir}.", critical=True)
+        return CheckResult(
+            name="audit log path",
+            status=Status.PASS,
+            message=f"Directory writable: {audit_dir}.",
+            critical=True,
+        )
 
     return CheckResult(
         name="audit log path",
@@ -340,7 +380,9 @@ def _check_prompt_toolkit() -> CheckResult:
             message="Not installed; REPL autocomplete will be disabled.",
             guidance="Install dependencies with `poetry install` to enable autocomplete.",
         )
-    return CheckResult(name="prompt_toolkit", status=Status.PASS, message="Autocomplete dependency available.")
+    return CheckResult(
+        name="prompt_toolkit", status=Status.PASS, message="Autocomplete dependency available."
+    )
 
 
 def _check_registry_loads() -> CheckResult:
@@ -354,7 +396,12 @@ def _check_registry_loads() -> CheckResult:
             guidance=f"Check command spec metadata and imports. Details: {exc}",
             critical=True,
         )
-    return CheckResult(name="command registry", status=Status.PASS, message=f"Loaded {count} command specs.", critical=True)
+    return CheckResult(
+        name="command registry",
+        status=Status.PASS,
+        message=f"Loaded {count} command specs.",
+        critical=True,
+    )
 
 
 def _check_registry_duplicates() -> CheckResult:
@@ -367,7 +414,12 @@ def _check_registry_duplicates() -> CheckResult:
             seen.add(spec.name)
 
     if not duplicates:
-        return CheckResult(name="duplicate command names", status=Status.PASS, message="No duplicate command names detected.", critical=True)
+        return CheckResult(
+            name="duplicate command names",
+            status=Status.PASS,
+            message="No duplicate command names detected.",
+            critical=True,
+        )
     duplicate_names = ", ".join(sorted(duplicates))
     return CheckResult(
         name="duplicate command names",
@@ -398,17 +450,28 @@ def _check_eval_fixtures() -> CheckResult:
             critical=True,
         )
 
-    return CheckResult(name="eval fixtures", status=Status.PASS, message=f"Loaded {len(cases)} fixture case(s).", critical=True)
+    return CheckResult(
+        name="eval fixtures",
+        status=Status.PASS,
+        message=f"Loaded {len(cases)} fixture case(s).",
+        critical=True,
+    )
 
 
 def _check_dev_tools() -> CheckResult:
     in_repo = Path("pyproject.toml").exists()
     if not in_repo:
-        return CheckResult(name="dev tools", status=Status.WARN, message="pyproject.toml not found; dev tool checks skipped.")
+        return CheckResult(
+            name="dev tools",
+            status=Status.WARN,
+            message="pyproject.toml not found; dev tool checks skipped.",
+        )
 
     poetry_path = shutil.which("poetry")
     if poetry_path:
-        return CheckResult(name="dev tools", status=Status.PASS, message=f"Poetry available at {poetry_path}.")
+        return CheckResult(
+            name="dev tools", status=Status.PASS, message=f"Poetry available at {poetry_path}."
+        )
     return CheckResult(
         name="dev tools",
         status=Status.WARN,

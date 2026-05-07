@@ -12,7 +12,9 @@ def test_load_config_audit_path_from_env(monkeypatch, tmp_path: Path) -> None:
     assert config.audit_log_path == tmp_path / "audit-lines.jsonl"
 
 
-def test_load_config_invalid_user_audit_path_type_falls_back_to_default(monkeypatch, tmp_path: Path) -> None:
+def test_load_config_invalid_user_audit_path_type_falls_back_to_default(
+    monkeypatch, tmp_path: Path
+) -> None:
     config_path = tmp_path / "config.json"
     config_path.write_text('{"audit_log_path": 123}', encoding="utf-8")
     monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(config_path))
@@ -23,7 +25,9 @@ def test_load_config_invalid_user_audit_path_type_falls_back_to_default(monkeypa
     assert config.audit_log_path == Path.home() / ".oterminus" / "audit.jsonl"
 
 
-def test_load_config_audit_controls_default_to_enabled_and_redacted(monkeypatch, tmp_path: Path) -> None:
+def test_load_config_audit_controls_default_to_enabled_and_redacted(
+    monkeypatch, tmp_path: Path
+) -> None:
     monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(tmp_path / "config.json"))
     monkeypatch.delenv("OTERMINUS_AUDIT_ENABLED", raising=False)
     monkeypatch.delenv("OTERMINUS_AUDIT_REDACT", raising=False)

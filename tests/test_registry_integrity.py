@@ -3,7 +3,13 @@ from __future__ import annotations
 from pathlib import Path
 import inspect
 
-from oterminus.commands import COMMAND_PACKS, COMMAND_REGISTRY, MaturityLevel, supported_base_commands, supported_categories
+from oterminus.commands import (
+    COMMAND_PACKS,
+    COMMAND_REGISTRY,
+    MaturityLevel,
+    supported_base_commands,
+    supported_categories,
+)
 from oterminus.completion import build_repl_completions
 from oterminus.models import RiskLevel
 from oterminus.prompts import build_system_prompt

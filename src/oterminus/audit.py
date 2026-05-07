@@ -72,7 +72,9 @@ class AuditLogger:
         for field_name in ("warnings", "rejection_reasons", "ambiguity_safe_options"):
             raw = cloned.get(field_name)
             if isinstance(raw, list):
-                cloned[field_name] = [redact_text(item) if isinstance(item, str) else item for item in raw]
+                cloned[field_name] = [
+                    redact_text(item) if isinstance(item, str) else item for item in raw
+                ]
         raw_argv = cloned.get("argv")
         if isinstance(raw_argv, list):
             cloned["argv"] = redact_argv([str(item) for item in raw_argv])

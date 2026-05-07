@@ -16,7 +16,8 @@ _ENV_ASSIGNMENT_RE = re.compile(
     flags=re.IGNORECASE,
 )
 _FLAG_SECRET_RE = re.compile(
-    r"(?P<flag>--(?:token|password|passwd|secret|api-key|api_key|access-token|access_token|auth|authorization))(?P<sep>\s+|=)(?P<value>\S+)",
+    r"(?P<flag>--(?:token|password|passwd|secret|api-key|api_key|access-token|access_token|auth|"
+    r"authorization))(?P<sep>\s+|=)(?P<value>\S+)",
     flags=re.IGNORECASE,
 )
 _SHORT_FLAG_SECRET_RE = re.compile(r"(?P<flag>-(?:p|k))(?P<sep>\s+)(?P<value>\S+)")
@@ -89,7 +90,10 @@ def _replace_value(match: re.Match[str]) -> str:
 
 def _looks_sensitive_env_name(name: str) -> bool:
     lowered = name.lower()
-    return any(marker in lowered for marker in ("token", "secret", "password", "passwd", "api_key", "api-key", "auth"))
+    return any(
+        marker in lowered
+        for marker in ("token", "secret", "password", "passwd", "api_key", "api-key", "auth")
+    )
 
 
 def _looks_sensitive_env_assignment(token: str) -> bool:

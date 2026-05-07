@@ -75,7 +75,9 @@ def load_config() -> AppConfig:
 
     return AppConfig(
         timeout_seconds=timeout_seconds,
-        policy=PolicyConfig(mode=mode, allow_dangerous=allow_dangerous, allowed_roots=allowed_roots),
+        policy=PolicyConfig(
+            mode=mode, allow_dangerous=allow_dangerous, allowed_roots=allowed_roots
+        ),
         model=model,
         audit_log_path=audit_log_path,
         audit_enabled=audit_enabled,

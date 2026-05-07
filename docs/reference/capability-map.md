@@ -17,4 +17,7 @@ Current capabilities and command families:
 - `destructive_operations` — high-risk operations
   - `rm`, `sudo`
 
-Capability metadata (descriptions, aliases, maturity summaries) is generated from command specs in the merged registry. Common, safe-enough capabilities should prefer structured mode with typed arguments and deterministic rendering; uncommon or difficult-to-model capabilities should remain constrained experimental or blocked.
+Capability metadata (descriptions, aliases, maturity summaries) is generated from command specs in
+the merged registry. Common, safe-enough capabilities should prefer structured mode with typed
+arguments and deterministic rendering; uncommon or difficult-to-model capabilities should remain
+constrained experimental or blocked.
