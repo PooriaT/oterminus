@@ -4,6 +4,8 @@ from unittest.mock import Mock
 
 import subprocess
 
+import pytest
+
 from oterminus.cli import (
     RunMode,
     SessionHistory,
@@ -21,18 +23,57 @@ from oterminus.policies import ConfirmationLevel
 def test_parse_args_one_shot() -> None:
     args = parse_args(["show", "files"])
     assert args.request == ["show", "files"]
+    assert args.cli_mode == "request"
+
+
+def test_parse_args_doctor_mode() -> None:
+    args = parse_args(["doctor"])
+    assert args.request == ["doctor"]
+    assert args.cli_mode == "doctor"
+    assert args.dry_run is False
+    assert args.explain is False
+
+
+def test_parse_args_rejects_doctor_with_dry_run() -> None:
+    with pytest.raises(SystemExit) as exc_info:
+        parse_args(["doctor", "--dry-run"])
+
+    assert exc_info.value.code == 2
+
+
+def test_parse_args_rejects_dry_run_doctor_request() -> None:
+    with pytest.raises(SystemExit) as exc_info:
+        parse_args(["--dry-run", "doctor"])
+
+    assert exc_info.value.code == 2
+
+
+def test_parse_args_rejects_explain_doctor_request() -> None:
+    with pytest.raises(SystemExit) as exc_info:
+        parse_args(["--explain", "doctor"])
+
+    assert exc_info.value.code == 2
+
+
+def test_parse_args_rejects_mutually_exclusive_run_modes() -> None:
+    with pytest.raises(SystemExit) as exc_info:
+        parse_args(["--dry-run", "--explain", "show", "files"])
+
+    assert exc_info.value.code == 2
 
 
 def test_parse_args_dry_run_mode() -> None:
     args = parse_args(["--dry-run", "show", "files"])
     assert args.dry_run is True
     assert args.explain is False
+    assert args.cli_mode == "request"
 
 
 def test_parse_args_explain_mode() -> None:
     args = parse_args(["--explain", "show", "files"])
     assert args.explain is True
     assert args.dry_run is False
+    assert args.cli_mode == "request"
 
 
 def test_parse_ollama_list_output_returns_model_names() -> None:
@@ -92,6 +133,25 @@ def test_repl_unknown_help_target_returns_guidance() -> None:
 
     assert output is not None
     assert "Unknown help target" in output
+
+
+def test_main_doctor_runs_diagnostics_without_repl_or_startup(monkeypatch) -> None:
+    from oterminus.cli import main
+
+    doctor_cli = Mock(return_value=2)
+    monkeypatch.setattr("oterminus.cli.configure_logging", lambda verbose: None)
+    monkeypatch.setattr("oterminus.cli.run_doctor_cli", doctor_cli)
+    monkeypatch.setattr("oterminus.cli.load_config", Mock(side_effect=AssertionError("no config")))
+    monkeypatch.setattr(
+        "oterminus.cli.ensure_startup_ready",
+        Mock(side_effect=AssertionError("no Ollama startup check")),
+    )
+    monkeypatch.setattr("oterminus.cli.repl", Mock(side_effect=AssertionError("no REPL")))
+
+    code = main(["doctor"])
+
+    assert code == 2
+    doctor_cli.assert_called_once_with()
 
 
 def test_main_repl_startup_validates_once(monkeypatch) -> None:
@@ -186,6 +246,168 @@ def test_main_dry_run_direct_command_does_not_require_startup(monkeypatch) -> No
 
     assert code == 0
     startup_check.assert_not_called()
+
+
+def test_main_dry_run_direct_command_does_not_call_planner_or_executor(monkeypatch) -> None:
+    from oterminus.cli import main
+
+    config = Mock()
+    config.policy = Mock()
+    config.timeout_seconds = 30
+    config.audit_log_path = Path("/tmp/oterminus-audit.jsonl")
+    config.audit_enabled = False
+    config.audit_redact = True
+    validator = Mock()
+    validator.validate.return_value = ValidationResult(
+        accepted=True,
+        risk_level=RiskLevel.SAFE,
+        rendered_command="ls",
+        argv=["ls"],
+    )
+    executor = Mock()
+
+    monkeypatch.setattr("oterminus.cli.configure_logging", lambda verbose: None)
+    monkeypatch.setattr("oterminus.cli.load_config", lambda: config)
+    monkeypatch.setattr("oterminus.cli.Validator", lambda policy: validator)
+    monkeypatch.setattr("oterminus.cli.Executor", lambda timeout_seconds: executor)
+    monkeypatch.setattr(
+        "oterminus.cli.ensure_startup_ready",
+        Mock(side_effect=AssertionError("direct command should not need Ollama")),
+    )
+    monkeypatch.setattr(
+        "oterminus.cli.OllamaPlannerClient", Mock(side_effect=AssertionError("no planner client"))
+    )
+
+    code = main(["--dry-run", "ls"])
+
+    assert code == 0
+    executor.run.assert_not_called()
+
+
+def test_main_explain_direct_command_does_not_call_planner_or_executor(monkeypatch) -> None:
+    from oterminus.cli import main
+
+    config = Mock()
+    config.policy = Mock()
+    config.timeout_seconds = 30
+    config.audit_log_path = Path("/tmp/oterminus-audit.jsonl")
+    config.audit_enabled = False
+    config.audit_redact = True
+    validator = Mock()
+    validator.validate.return_value = ValidationResult(
+        accepted=True,
+        risk_level=RiskLevel.SAFE,
+        rendered_command="ls",
+        argv=["ls"],
+    )
+    executor = Mock()
+
+    monkeypatch.setattr("oterminus.cli.configure_logging", lambda verbose: None)
+    monkeypatch.setattr("oterminus.cli.load_config", lambda: config)
+    monkeypatch.setattr("oterminus.cli.Validator", lambda policy: validator)
+    monkeypatch.setattr("oterminus.cli.Executor", lambda timeout_seconds: executor)
+    monkeypatch.setattr(
+        "oterminus.cli.ensure_startup_ready",
+        Mock(side_effect=AssertionError("direct command should not need Ollama")),
+    )
+    monkeypatch.setattr(
+        "oterminus.cli.OllamaPlannerClient", Mock(side_effect=AssertionError("no planner client"))
+    )
+
+    code = main(["--explain", "ls"])
+
+    assert code == 0
+    executor.run.assert_not_called()
+
+
+def test_main_dry_run_natural_language_uses_planner_and_skips_executor(monkeypatch) -> None:
+    from oterminus.cli import main
+
+    config = Mock()
+    config.policy = Mock()
+    config.timeout_seconds = 30
+    config.audit_log_path = Path("/tmp/oterminus-audit.jsonl")
+    config.audit_enabled = False
+    config.audit_redact = True
+    validator = Mock()
+    validator.validate.return_value = ValidationResult(
+        accepted=True,
+        risk_level=RiskLevel.SAFE,
+        rendered_command="ls",
+        argv=["ls"],
+    )
+    executor = Mock()
+    planner = Mock()
+    planner.plan.return_value = Proposal(
+        action_type=ActionType.SHELL_COMMAND,
+        mode=ProposalMode.STRUCTURED,
+        command_family="ls",
+        arguments={"path": "."},
+        summary="list files",
+        explanation="desc",
+        risk_level=RiskLevel.SAFE,
+        needs_confirmation=True,
+        notes=[],
+    )
+
+    monkeypatch.setattr("oterminus.cli.configure_logging", lambda verbose: None)
+    monkeypatch.setattr("oterminus.cli.load_config", lambda: config)
+    monkeypatch.setattr("oterminus.cli.Validator", lambda policy: validator)
+    monkeypatch.setattr("oterminus.cli.Executor", lambda timeout_seconds: executor)
+    monkeypatch.setattr("oterminus.cli.ensure_startup_ready", Mock(return_value="gemma3:latest"))
+    monkeypatch.setattr("oterminus.cli.OllamaPlannerClient", Mock(return_value=Mock()))
+    monkeypatch.setattr("oterminus.cli.Planner", lambda client: planner)
+
+    code = main(["--dry-run", "show", "files"])
+
+    assert code == 0
+    planner.plan.assert_called_once_with("show files")
+    executor.run.assert_not_called()
+
+
+def test_main_explain_natural_language_uses_planner_and_skips_executor(monkeypatch) -> None:
+    from oterminus.cli import main
+
+    config = Mock()
+    config.policy = Mock()
+    config.timeout_seconds = 30
+    config.audit_log_path = Path("/tmp/oterminus-audit.jsonl")
+    config.audit_enabled = False
+    config.audit_redact = True
+    validator = Mock()
+    validator.validate.return_value = ValidationResult(
+        accepted=True,
+        risk_level=RiskLevel.SAFE,
+        rendered_command="ls",
+        argv=["ls"],
+    )
+    executor = Mock()
+    planner = Mock()
+    planner.plan.return_value = Proposal(
+        action_type=ActionType.SHELL_COMMAND,
+        mode=ProposalMode.STRUCTURED,
+        command_family="ls",
+        arguments={"path": "."},
+        summary="list files",
+        explanation="desc",
+        risk_level=RiskLevel.SAFE,
+        needs_confirmation=True,
+        notes=[],
+    )
+
+    monkeypatch.setattr("oterminus.cli.configure_logging", lambda verbose: None)
+    monkeypatch.setattr("oterminus.cli.load_config", lambda: config)
+    monkeypatch.setattr("oterminus.cli.Validator", lambda policy: validator)
+    monkeypatch.setattr("oterminus.cli.Executor", lambda timeout_seconds: executor)
+    monkeypatch.setattr("oterminus.cli.ensure_startup_ready", Mock(return_value="gemma3:latest"))
+    monkeypatch.setattr("oterminus.cli.OllamaPlannerClient", Mock(return_value=Mock()))
+    monkeypatch.setattr("oterminus.cli.Planner", lambda client: planner)
+
+    code = main(["--explain", "show", "files"])
+
+    assert code == 0
+    planner.plan.assert_called_once_with("show files")
+    executor.run.assert_not_called()
 
 
 def test_main_uses_selected_model(monkeypatch) -> None:

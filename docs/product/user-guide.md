@@ -10,6 +10,15 @@ Startup checks:
 2. Ollama service is reachable (`ollama list`).
 3. At least one model is installed.
 
+You can run diagnostics explicitly with:
+
+```bash
+poetry run oterminus doctor
+```
+
+`doctor` prints the readiness report and exits. It does not start the REPL, execute a request, or
+invoke the Ollama planner.
+
 If no model is configured yet, OTerminus shows installed models and prompts you to choose one. The
 selection is saved in `~/.oterminus/config.json` (or `OTERMINUS_CONFIG_PATH` if set).
 
@@ -21,11 +30,21 @@ selection is saved in `~/.oterminus/config.json` (or `OTERMINUS_CONFIG_PATH` if 
 
 ## Running OTerminus
 
+OTerminus has three user-facing CLI entry points:
+
+- REPL mode: `poetry run oterminus`
+- one-shot request mode: `poetry run oterminus "show disk usage for this folder"`
+- diagnostics mode: `poetry run oterminus doctor`
+
 ### REPL mode
 
 ```bash
 poetry run oterminus
 ```
+
+REPL mode starts an interactive session after normal startup readiness checks. Requests entered in
+the REPL follow the same direct-detection, planning, validation, preview, confirmation, and execution
+contract as one-shot requests.
 
 REPL built-ins include:
 
@@ -41,11 +60,27 @@ REPL built-ins include:
 poetry run oterminus "find all .py files"
 ```
 
+One-shot mode accepts the remaining command-line words as a single request. It plans or detects the
+command, validates it, renders a preview, and asks for confirmation before execution.
+
+### Doctor mode
+
+```bash
+poetry run oterminus doctor
+```
+
+Doctor mode is diagnostic-only. It prints readiness and integrity checks, including configuration,
+selected model, Ollama CLI/service/model availability, audit path, registry, eval fixture, and
+developer-tool status where applicable. It exits with the doctor report status and does not start
+the REPL, execute a request, or invoke the Ollama planner.
+
 ### Direct commands
 
 You can enter supported command families directly (for example `ls -la`, `cd src`, `pwd`).
 
-Direct commands skip LLM planning and still pass through validator + policy gates before execution.
+Direct commands skip LLM planning when local direct-command detection succeeds. They still pass
+through validator + policy gates and show a preview before any execution. In normal execute mode,
+they still require confirmation.
 
 ### Natural-language requests
 
@@ -76,7 +111,13 @@ If validation or policy checks fail, OTerminus does not ask for execution confir
 poetry run oterminus --dry-run "copy notes.txt to backup/notes.txt"
 ```
 
-Runs planning + validation + preview, but does not execute.
+Runs direct detection or planning, validation, and preview, but does not ask for confirmation or
+execute. Direct commands that can be detected locally skip Ollama planning, so a command like
+`poetry run oterminus --dry-run "ls"` does not require a live Ollama service. Natural-language
+requests still use the planner.
+
+The CLI flag is for one-shot requests only. Inside the REPL, use the built-in form
+`dry-run <request>` instead.
 
 ### Explain mode
 
@@ -84,7 +125,17 @@ Runs planning + validation + preview, but does not execute.
 poetry run oterminus --explain "show running processes"
 ```
 
-Prints command rationale and policy interpretation, but does not execute.
+Runs direct detection or planning, validation, preview, and an explanation of the command choice and
+policy interpretation, but does not ask for confirmation or execute. Direct commands that can be
+detected locally skip Ollama planning, so a command like `poetry run oterminus --explain "ls"` does
+not require a live Ollama service. Natural-language requests still use the planner.
+
+The CLI flag is for one-shot requests only. Inside the REPL, use the built-in form
+`explain <request>` or `explain <history_id>` instead.
+
+`--dry-run` and `--explain` are mutually exclusive and apply to requests, not to the `doctor`
+diagnostics command. For example, `poetry run oterminus --dry-run doctor` and
+`poetry run oterminus doctor --dry-run` are invalid combinations.
 
 ## Autocomplete
 

@@ -1,6 +1,18 @@
 # Execution
 
-Execution only happens after successful validation and explicit user confirmation.
+Execution only happens after successful validation and explicit user confirmation. Diagnostics and
+inspection modes intentionally stop earlier: `doctor` is outside the execution lifecycle, while
+`--dry-run`, `--explain`, and the REPL `dry-run`/`explain` built-ins skip confirmation and execution.
+
+## Run-mode behavior
+
+- Execute mode: validate, preview, ask for confirmation, then run only if confirmed.
+- Dry-run mode: run direct detection or planning, validation, and preview, then stop without
+  confirmation or execution.
+- Explain mode: run direct detection or planning, validation, preview, and explanation rendering,
+  then stop without confirmation or execution.
+
+Direct-command dry-run/explain requests skip Ollama planning when direct detection succeeds.
 
 ## Executor behavior
 

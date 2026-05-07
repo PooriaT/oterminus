@@ -28,6 +28,12 @@ Supported persistent fields:
 - model and optional audit path can come from user config
 - invalid/missing user config falls back safely to defaults
 
+## Diagnostics visibility
+
+`poetry run oterminus doctor` reports the current configuration and readiness state that affects
+startup, including whether the configured model is available and whether the audit path is usable.
+It does not introduce additional configuration keys or environment variables.
+
 ## Example
 
 ```bash
