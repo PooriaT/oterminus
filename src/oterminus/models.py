@@ -64,14 +64,7 @@ class Proposal(BaseModel):
             if migration_note not in notes:
                 notes.append(migration_note)
             payload["notes"] = notes
-            has_command = payload.get("command") is not None
-            has_arguments = arguments is not None
-            has_command_family = payload.get("command_family") is not None
-            payload["mode"] = (
-                ProposalMode.STRUCTURED
-                if has_arguments or (has_command_family and not has_command)
-                else ProposalMode.EXPERIMENTAL
-            )
+            payload["mode"] = ProposalMode.EXPERIMENTAL
 
         if payload.get("mode") is None:
             has_command = payload.get("command") is not None

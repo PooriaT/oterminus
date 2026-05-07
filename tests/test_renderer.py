@@ -26,7 +26,7 @@ def test_render_includes_sections() -> None:
     assert "demo warning" in text
 
 
-def test_render_structured_preview_without_raw_command() -> None:
+def test_render_structured_preview_without_command_text() -> None:
     proposal = Proposal(
         action_type=ActionType.SHELL_COMMAND,
         mode=ProposalMode.STRUCTURED,
@@ -54,7 +54,7 @@ def test_render_structured_preview_without_raw_command() -> None:
     assert '"name": "*.py"' in text
 
 
-def test_render_structured_preview_with_legacy_raw_command() -> None:
+def test_render_structured_preview_with_legacy_command_text() -> None:
     proposal = Proposal(
         action_type=ActionType.SHELL_COMMAND,
         mode=ProposalMode.STRUCTURED,
@@ -70,7 +70,7 @@ def test_render_structured_preview_with_legacy_raw_command() -> None:
     validation = ValidationResult(
         accepted=True,
         risk_level=RiskLevel.SAFE,
-        warnings=["Structured mode ignores the deprecated raw command field and uses deterministic rendering."],
+        warnings=["Structured mode ignores the deprecated command field and uses deterministic rendering."],
         rendered_command="find . -name '*.py'",
         argv=["find", ".", "-name", "*.py"],
     )

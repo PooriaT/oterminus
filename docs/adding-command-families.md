@@ -25,7 +25,7 @@ Capability packs group commands by workflow intent (for example filesystem inspe
 ## Design principles (read before adding anything)
 
 1. **Curate, don’t mirror shells.** Only add commands that support clear user workflows.
-2. **Structured-first is the default.** Prefer deterministic command-family renderers over raw command execution.
+2. **Structured-first is the default.** Prefer deterministic command-family renderers over free-form command execution.
 3. **Experimental mode is a constrained fallback.** It is not a shortcut for skipping structured design.
 4. **Small allowlists beat broad compatibility.** Keep flags/operands intentionally minimal.
 5. **Safety metadata is mandatory.** Every command must have explicit risk and maturity policy.

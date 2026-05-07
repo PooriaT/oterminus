@@ -62,11 +62,11 @@ class Validator:
                 args = list(rendered.argv)
                 if proposal.command:
                     warnings.append(
-                        "Structured mode ignores the deprecated raw command field and uses deterministic rendering."
+                        "Structured mode ignores the deprecated command field and uses deterministic rendering."
                     )
                     if proposal.command.strip() != command:
                         warnings.append(
-                            "Legacy raw command differs from deterministic structured rendering and was ignored."
+                            "Legacy command text differs from deterministic structured rendering and was ignored."
                         )
         else:
             command = (proposal.command or "").strip()
@@ -117,7 +117,7 @@ class Validator:
         spec = get_command_spec(base)
         if proposal.command_family is not None and proposal.command_family != base:
             reasons.append(
-                f"Raw command base '{base}' does not match command_family '{proposal.command_family}'."
+                f"Command base '{base}' does not match command_family '{proposal.command_family}'."
             )
 
         if spec is None:

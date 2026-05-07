@@ -31,7 +31,7 @@ Planner parses model JSON into a strict `Proposal` schema.
 Planner prefers structured mode when possible:
 
 - if planner output already includes `command_family + arguments` for a structured family
-- or if raw command text can be parsed into a supported structured family
+- or if direct command text can be parsed into a supported structured family
 
 Otherwise, proposal stays experimental.
 

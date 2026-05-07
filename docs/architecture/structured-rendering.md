@@ -22,4 +22,4 @@ When requests cannot be represented by structured schemas, OTerminus can fall ba
 
 ## Compatibility handling
 
-Legacy raw-mode payloads are normalized to current structured/experimental modes during proposal validation.
+Legacy `"mode": "raw"` payloads are accepted only at parse boundaries and normalized to experimental mode before any downstream handling.

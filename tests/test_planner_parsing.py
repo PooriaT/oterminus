@@ -4,6 +4,10 @@ from oterminus.models import ActionType, Proposal, ProposalMode
 from oterminus.planner import Planner, PlannerError
 
 
+def test_proposal_mode_exposes_only_structured_and_experimental() -> None:
+    assert {mode.value for mode in ProposalMode} == {"structured", "experimental"}
+
+
 def test_parse_supported_command_ls_proposal_is_normalized_to_structured() -> None:
     raw = (
         '{"action_type":"shell_command","command":"ls -lh",'
@@ -94,7 +98,7 @@ def test_parse_legacy_raw_mode_is_normalized_to_experimental_with_note() -> None
 def test_parse_legacy_raw_mode_with_unparseable_structured_command_returns_planner_error() -> None:
     raw = (
         '{"action_type":"shell_command","mode":"raw","command_family":"ls","command":"ls -h",'
-        '"summary":"list files","explanation":"legacy payload with raw command",'
+        '"summary":"list files","explanation":"legacy payload with command text",'
         '"risk_level":"safe","needs_confirmation":true,"notes":[]}'
     )
     with pytest.raises(PlannerError):
@@ -138,7 +142,7 @@ def test_validate_missing_mode_with_command_family_and_command_stays_experimenta
     assert proposal.command_family == "ls"
 
 
-def test_parse_structured_proposal_without_raw_command() -> None:
+def test_parse_structured_proposal_without_command_text() -> None:
     raw = (
         '{"action_type":"shell_command","mode":"structured","command_family":"find",'
         '"arguments":{"path":".","name":"*.py"},"summary":"find python files",'
@@ -152,7 +156,7 @@ def test_parse_structured_proposal_without_raw_command() -> None:
     assert proposal.arguments == {"path": ".", "name": "*.py"}
 
 
-def test_parse_structured_proposal_with_legacy_raw_command_keeps_structured_authority() -> None:
+def test_parse_structured_proposal_with_legacy_command_text_keeps_structured_authority() -> None:
     raw = (
         '{"action_type":"shell_command","mode":"structured","command_family":"find",'
         '"arguments":{"path":".","name":"*.py"},"command":"find src -name \'*.py\'",'
@@ -166,25 +170,17 @@ def test_parse_structured_proposal_with_legacy_raw_command_keeps_structured_auth
     assert proposal.arguments == {"path": ".", "name": "*.py"}
 
 
-def test_parse_legacy_raw_mode_with_supported_structured_fields_is_normalized() -> None:
+def test_parse_legacy_raw_mode_with_structured_arguments_is_rejected() -> None:
     raw = (
         '{"action_type":"shell_command","mode":"raw","command_family":"cp",'
         '"arguments":{"source":"src.txt","destination":"dest.txt","recursive":false,"preserve":true,"no_clobber":true},'
         '"command":"cp -p -n src.txt dest.txt",'
-        '"summary":"copy file carefully","explanation":"use deterministic copy rendering",'
+        '"summary":"copy file carefully","explanation":"legacy mode with structured arguments",'
         '"risk_level":"write","needs_confirmation":true,"notes":[]}'
     )
-    proposal = Planner.parse_proposal(raw)
-    assert proposal.mode == ProposalMode.STRUCTURED
-    assert proposal.command == "cp -p -n src.txt dest.txt"
-    assert proposal.command_family == "cp"
-    assert proposal.arguments == {
-        "source": "src.txt",
-        "destination": "dest.txt",
-        "recursive": False,
-        "preserve": True,
-        "no_clobber": True,
-    }
+
+    with pytest.raises(PlannerError):
+        Planner.parse_proposal(raw)
 
 
 def test_parse_symbolic_chmod_stays_experimental_when_structured_not_feasible() -> None:
@@ -202,7 +198,7 @@ def test_parse_explicit_experimental_proposal_is_preserved() -> None:
     raw = (
         '{"action_type":"shell_command","mode":"experimental","command_family":"stat",'
         '"command":"stat -f %z README.md","summary":"show size",'
-        '"explanation":"experimental raw fallback","risk_level":"safe",'
+        '"explanation":"experimental fallback","risk_level":"safe",'
         '"needs_confirmation":true,"notes":["experimental"]}'
     )
     proposal = Planner.parse_proposal(raw)
