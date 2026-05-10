@@ -8,6 +8,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
+from oterminus.ambiguity import detect_ambiguity
 from oterminus.direct_commands import detect_direct_command
 from oterminus.models import ProposalMode, RiskLevel
 from oterminus.planner import Planner, PlannerError
@@ -28,11 +29,14 @@ class EvalCase(BaseModel):
     expected_rendered_command: str | None = None
     expected_argv: list[str] | None = None
     expected_planner_error_contains: str | None = None
+    expected_ambiguity_detected: bool | None = None
+    expected_ambiguity_reason_contains: str | None = None
+    expected_ambiguity_safe_options: list[str] | None = None
     optional_notes: str | None = None
 
     @model_validator(mode="after")
     def validate_expectations(self) -> EvalCase:
-        if self.expected_planner_error_contains:
+        if self.expected_planner_error_contains or self.expected_ambiguity_detected is True:
             return self
         if (
             self.expected_mode is None
@@ -101,16 +105,60 @@ def evaluate_case(case: EvalCase, validator: Validator) -> EvalResult:
 
     proposal = detect_direct_command(case.user_input)
     if proposal is None:
+        ambiguity = detect_ambiguity(case.user_input)
+        if case.expected_ambiguity_detected is not None and (
+            ambiguity.is_ambiguous != case.expected_ambiguity_detected
+        ):
+            mismatches.append(
+                EvalMismatch(
+                    field="ambiguity_detected",
+                    expected=case.expected_ambiguity_detected,
+                    actual=ambiguity.is_ambiguous,
+                )
+            )
+        if ambiguity.is_ambiguous:
+            if case.expected_ambiguity_reason_contains is not None and (
+                case.expected_ambiguity_reason_contains not in ambiguity.reason
+            ):
+                mismatches.append(
+                    EvalMismatch(
+                        field="ambiguity_reason",
+                        expected=f"contains {case.expected_ambiguity_reason_contains!r}",
+                        actual=ambiguity.reason,
+                    )
+                )
+            if case.expected_ambiguity_safe_options is not None and (
+                list(ambiguity.suggested_safe_options) != case.expected_ambiguity_safe_options
+            ):
+                mismatches.append(
+                    EvalMismatch(
+                        field="ambiguity_safe_options",
+                        expected=case.expected_ambiguity_safe_options,
+                        actual=list(ambiguity.suggested_safe_options),
+                    )
+                )
+            if case.planner_proposal is not None:
+                mismatches.append(
+                    EvalMismatch(
+                        field="planner_proposal",
+                        expected="omitted when ambiguity stops before planner",
+                        actual="present",
+                    )
+                )
+            return EvalResult(case_id=case.id, passed=len(mismatches) == 0, mismatches=mismatches)
+        if case.expected_ambiguity_detected is True:
+            return EvalResult(case_id=case.id, passed=False, mismatches=mismatches)
         if case.planner_proposal is None:
             return EvalResult(
                 case_id=case.id,
                 passed=False,
                 mismatches=[
+                    *mismatches,
                     EvalMismatch(
                         field="planner_proposal",
                         expected="fixture with planner_proposal for non-direct input",
                         actual=None,
-                    )
+                    ),
                 ],
             )
 
