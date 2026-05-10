@@ -42,9 +42,10 @@ OTerminus has three user-facing CLI entry points:
 poetry run oterminus
 ```
 
-REPL mode starts an interactive session after normal startup readiness checks. Requests entered in
-the REPL follow the same direct-detection, planning, validation, preview, confirmation, and execution
-contract as one-shot requests.
+REPL mode starts an interactive session. Requests entered in the REPL follow the same lifecycle as
+one-shot requests: direct-command detection, natural-language ambiguity handling when applicable,
+planning for specific natural-language requests, validation, preview, confirmation, execution, and
+audit logging.
 
 REPL built-ins include:
 
@@ -60,8 +61,10 @@ REPL built-ins include:
 poetry run oterminus "find all .py files"
 ```
 
-One-shot mode accepts the remaining command-line words as a single request. It plans or detects the
-command, validates it, renders a preview, and asks for confirmation before execution.
+One-shot mode accepts the remaining command-line words as a single request. It detects direct
+commands first, checks non-direct natural-language requests for ambiguity, plans specific
+natural-language requests, validates accepted proposals, renders a preview, and asks for
+confirmation before execution.
 
 ### Doctor mode
 
@@ -90,7 +93,40 @@ You can ask for tasks like:
 - “search TODO in Python files”
 - “find processes matching python”
 
-These requests go through capability routing and planning before validation.
+These requests first pass through ambiguity detection. If the request is specific enough, it goes
+through capability routing and planning before validation.
+
+### Ambiguous natural-language requests
+
+OTerminus may stop vague natural-language requests before any planner call. Examples include:
+
+```text
+clean this folder
+delete unnecessary files
+repair permissions
+make this project work
+```
+
+Expected behavior:
+
+- OTerminus stops before planning.
+- It shows that the request is ambiguous and includes the reason when useful.
+- It suggests safe read-only inspection alternatives, such as listing large files, recently modified
+  files, temporary-looking files, project files, or inspecting permissions.
+- It does not ask for confirmation and does not execute anything.
+
+Use a more specific request when you know the target and action. Specific requests can continue to
+routing, planning, validation, preview, and confirmation, for example:
+
+```text
+list large files in this folder
+show permissions for run.sh
+make run.sh executable
+```
+
+Ambiguity detection is only for vague natural-language requests. Direct shell commands such as
+`chmod +x run.sh` or `rm -rf build` are not intercepted as ambiguous; they continue to the direct
+command path and must still pass validator and policy checks before any execution.
 
 ## Proposal modes in previews
 
@@ -114,7 +150,8 @@ poetry run oterminus --dry-run "copy notes.txt to backup/notes.txt"
 Runs direct detection or planning, validation, and preview, but does not ask for confirmation or
 execute. Direct commands that can be detected locally skip Ollama planning, so a command like
 `poetry run oterminus --dry-run "ls"` does not require a live Ollama service. Natural-language
-requests still use the planner.
+requests use ambiguity detection first; ambiguous requests stop without planning, while specific
+requests continue to the planner.
 
 The CLI flag is for one-shot requests only. Inside the REPL, use the built-in form
 `dry-run <request>` instead.
@@ -128,7 +165,8 @@ poetry run oterminus --explain "show running processes"
 Runs direct detection or planning, validation, preview, and an explanation of the command choice and
 policy interpretation, but does not ask for confirmation or execute. Direct commands that can be
 detected locally skip Ollama planning, so a command like `poetry run oterminus --explain "ls"` does
-not require a live Ollama service. Natural-language requests still use the planner.
+not require a live Ollama service. Natural-language requests use ambiguity detection first;
+ambiguous requests stop without planning, while specific requests continue to the planner.
 
 The CLI flag is for one-shot requests only. Inside the REPL, use the built-in form
 `explain <request>` or `explain <history_id>` instead.
@@ -152,7 +190,10 @@ REPL supports local tab completion (via `prompt_toolkit`) for:
 
 ## Safety expectations
 
-- OTerminus may block ambiguous broad/destructive requests and suggest safer read-only inspections.
+- OTerminus may block ambiguous broad/destructive natural-language requests before planning and
+  suggest safer read-only inspections.
+- Direct shell commands are not intercepted as ambiguous; they still go through validation and
+  policy checks.
 - Unsupported flags, operators, redirection/pipeline chains, and disallowed paths are rejected.
 - Experimental mode is a constrained fallback and requires stronger confirmation.
 - Commands that fail validation or policy checks are never executed.

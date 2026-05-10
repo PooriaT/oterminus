@@ -9,14 +9,16 @@ contributor reference material.
 ### I want to use OTerminus
 
 1. [What is OTerminus?](product/what-is-oterminus.md)
-2. [User guide](product/user-guide.md) — REPL, one-shot, doctor, dry-run, and explain modes
+2. [User guide](product/user-guide.md) — REPL, one-shot, doctor, dry-run, explain, and
+   ambiguity handling
 3. [Supported workflows](product/supported-workflows.md)
 4. [Policy modes](product/policy-modes.md)
 
 ### I want to understand the architecture
 
 1. [Architecture overview](architecture/overview.md)
-2. [Request lifecycle](architecture/request-lifecycle.md)
+2. [Request lifecycle](architecture/request-lifecycle.md) — direct-command detection, ambiguity
+   handling, planning, validation, and execution
 3. [Routing and planning](architecture/routing-and-planning.md)
 4. [Structured rendering and proposal modes](architecture/structured-rendering.md)
 5. [Validation and policy](architecture/validation-and-policy.md)

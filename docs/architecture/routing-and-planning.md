@@ -2,10 +2,22 @@
 
 OTerminus separates deterministic intent routing from model-based planning. The `doctor` CLI mode is
 outside this request-planning path: it runs diagnostics and exits before routing or planner setup.
+Before routing, OTerminus first checks for direct commands and then applies ambiguity detection to
+non-direct natural-language requests.
+
+## Lifecycle before routing
+
+Routing is reached only after two earlier checks:
+
+1. **Direct command detection**: supported direct shell commands skip the planner but still continue
+   to validation and policy. They are not treated as ambiguous natural language.
+2. **Ambiguity detection**: vague natural-language requests stop before routing and planner calls.
+   OTerminus shows safe read-only inspection alternatives and does not execute anything.
 
 ## Deterministic router
 
-`route_request()` classifies natural-language input using local hints and regex boundary matching.
+`route_request()` classifies specific natural-language input using local hints and regex boundary
+matching.
 
 Route categories:
 
@@ -27,7 +39,8 @@ direct detection succeeds.
 
 ## Planner flow
 
-Natural-language requests that are not direct commands use the planner. Planner calls Ollama with:
+Natural-language requests that are not direct commands and are not blocked as ambiguous use the
+planner. Planner calls Ollama with:
 
 - a system prompt
 - user prompt that includes request + route context + capability summaries
