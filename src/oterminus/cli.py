@@ -206,7 +206,7 @@ def handle_request(
         elif debug_trace:
             print("[trace] Detected as direct shell command.")
             print("[trace] Skipped Ollama planner.")
-    except (PlannerError, OllamaClientError) as exc:
+    except (PlannerError, OllamaClientError, SetupError) as exc:
         print(f"Planning failed: {exc}")
         if history_item is not None:
             history_item.execution_status = "planner_error"
@@ -710,13 +710,6 @@ def main(argv: list[str] | None = None) -> int:
         if request.lower().strip() == "audit status":
             print(render_audit_status(audit_logger, enabled=config.audit_enabled))
             return 0
-        direct = detect_direct_command(request) is not None
-        if not direct:
-            try:
-                ensure_planner_ready()
-            except SetupError as exc:
-                print(exc)
-                return 2
         return handle_request(
             request,
             get_planner,
@@ -726,11 +719,6 @@ def main(argv: list[str] | None = None) -> int:
             debug_trace=args.verbose,
             run_mode=run_mode,
         )
-    try:
-        ensure_planner_ready()
-    except SetupError as exc:
-        print(exc)
-        return 2
     return repl(
         get_planner,
         validator,
@@ -852,10 +840,11 @@ def render_audit_status(audit_logger: AuditLogger | None, *, enabled: bool = Tru
 
 
 def render_ambiguity_response(result: AmbiguityResult) -> str:
-    lines = [
-        "This request is ambiguous. I can help with one of these safer inspections:",
-        *(f"- {option}" for option in result.suggested_safe_options),
-    ]
+    lines = ["This request is ambiguous."]
+    if result.reason:
+        lines.append(f"Reason: {result.reason}")
+    lines.append("Safer inspections I can do instead:")
+    lines.extend(f"- {option}" for option in result.suggested_safe_options)
     if result.follow_up_questions:
         lines.append("Helpful clarifying questions:")
         lines.extend(f"- {question}" for question in result.follow_up_questions)

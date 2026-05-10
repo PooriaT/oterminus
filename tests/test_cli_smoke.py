@@ -154,12 +154,12 @@ def test_main_doctor_runs_diagnostics_without_repl_or_startup(monkeypatch) -> No
     doctor_cli.assert_called_once_with()
 
 
-def test_main_repl_startup_validates_once(monkeypatch) -> None:
+def test_main_repl_defers_startup_until_planner_is_needed(monkeypatch) -> None:
     from oterminus.cli import main
 
     monkeypatch.setattr("oterminus.cli.configure_logging", lambda verbose: None)
     monkeypatch.setattr("oterminus.cli.load_config", Mock())
-    setup_check = Mock(return_value="gemma3:latest")
+    setup_check = Mock(side_effect=AssertionError("startup should be lazy"))
     monkeypatch.setattr("oterminus.cli.ensure_startup_ready", setup_check)
     monkeypatch.setattr(
         "oterminus.cli.repl",
@@ -169,7 +169,7 @@ def test_main_repl_startup_validates_once(monkeypatch) -> None:
     code = main(["--verbose"])
 
     assert code == 0
-    setup_check.assert_called_once()
+    setup_check.assert_not_called()
 
 
 def test_main_repl_passes_global_run_mode(monkeypatch) -> None:
@@ -205,8 +205,15 @@ def test_main_repl_passes_global_run_mode(monkeypatch) -> None:
 def test_main_request_exits_when_startup_setup_fails(monkeypatch, capsys) -> None:
     from oterminus.cli import main
 
+    config = Mock()
+    config.policy = Mock()
+    config.timeout_seconds = 30
+    config.audit_log_path = Path("/tmp/oterminus-audit.jsonl")
+    config.audit_enabled = False
+    config.audit_redact = True
+
     monkeypatch.setattr("oterminus.cli.configure_logging", lambda verbose: None)
-    monkeypatch.setattr("oterminus.cli.load_config", Mock())
+    monkeypatch.setattr("oterminus.cli.load_config", lambda: config)
 
     def fail_setup() -> str:
         from oterminus.setup import SetupError
@@ -990,6 +997,147 @@ def test_handle_request_ambiguous_writes_audit_without_executor(tmp_path: Path) 
         "show temporary-looking files",
         "show project files",
     ]
+    assert payload["confirmation_result"] == "blocked_ambiguous"
+    validator.validate.assert_not_called()
+    executor.run.assert_not_called()
+
+
+def test_handle_request_ambiguous_lifecycle_blocks_before_confirmation(monkeypatch, capsys) -> None:
+    from oterminus.cli import handle_request
+
+    planner = Mock()
+    validator = Mock()
+    executor = Mock()
+    monkeypatch.setattr(
+        "builtins.input", Mock(side_effect=AssertionError("confirmation should not be shown"))
+    )
+
+    for request in ("clean this folder", "delete unnecessary files", "repair permissions"):
+        code = handle_request(request, planner, validator, executor)
+
+        assert code == 0
+
+    output = capsys.readouterr().out
+    assert output.count("This request is ambiguous.") == 3
+    assert "Safer inspections I can do instead:" in output
+    planner.plan.assert_not_called()
+    validator.validate.assert_not_called()
+    executor.run.assert_not_called()
+
+
+def test_handle_request_ambiguous_dry_run_and_explain_stop_before_planner_or_executor() -> None:
+    from oterminus.cli import handle_request
+
+    planner = Mock()
+    validator = Mock()
+    executor = Mock()
+
+    dry_run_code = handle_request(
+        "clean this folder", planner, validator, executor, run_mode=RunMode.DRY_RUN
+    )
+    explain_code = handle_request(
+        "repair permissions", planner, validator, executor, run_mode=RunMode.EXPLAIN
+    )
+
+    assert dry_run_code == 0
+    assert explain_code == 0
+    planner.plan.assert_not_called()
+    validator.validate.assert_not_called()
+    executor.run.assert_not_called()
+
+
+def test_handle_request_direct_commands_skip_ambiguity_and_go_to_validator() -> None:
+    from oterminus.cli import handle_request
+    from oterminus.policies import PolicyConfig
+    from oterminus.validator import Validator
+
+    planner = Mock()
+    validator = Mock(wraps=Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False)))
+    executor = Mock()
+
+    chmod_code = handle_request(
+        "chmod +x run.sh", planner, validator, executor, run_mode=RunMode.DRY_RUN
+    )
+    rm_code = handle_request("rm -rf build", planner, validator, executor, run_mode=RunMode.DRY_RUN)
+
+    assert chmod_code == 0
+    assert rm_code == 3
+    assert validator.validate.call_count == 2
+    planner.plan.assert_not_called()
+    executor.run.assert_not_called()
+
+
+def test_handle_request_specific_natural_language_permission_request_uses_planner(
+    monkeypatch,
+) -> None:
+    from oterminus.cli import handle_request
+
+    planner = Mock()
+    planner.plan.return_value = Proposal(
+        action_type=ActionType.SHELL_COMMAND,
+        mode=ProposalMode.STRUCTURED,
+        command_family="chmod",
+        arguments={"path": "run.sh", "mode": "755"},
+        summary="make executable",
+        explanation="desc",
+        risk_level=RiskLevel.WRITE,
+        needs_confirmation=True,
+        notes=[],
+    )
+    validator = Mock()
+    validator.validate.return_value = ValidationResult(
+        accepted=True,
+        risk_level=RiskLevel.WRITE,
+        rendered_command="chmod 755 run.sh",
+        argv=["chmod", "755", "run.sh"],
+    )
+    executor = Mock()
+    executor.run.return_value.returncode = 0
+    executor.run.return_value.stdout = ""
+    executor.run.return_value.stderr = ""
+    monkeypatch.setattr("builtins.input", lambda _: "y")
+
+    code = handle_request("make run.sh executable", planner, validator, executor)
+
+    assert code == 0
+    planner.plan.assert_called_once_with("make run.sh executable")
+    validator.validate.assert_called_once()
+    executor.run.assert_called_once_with(
+        ["chmod", "755", "run.sh"], display_command="chmod 755 run.sh"
+    )
+
+
+def test_main_ambiguous_request_does_not_require_startup_or_planner(
+    monkeypatch, tmp_path: Path
+) -> None:
+    from oterminus.cli import main
+
+    config = Mock()
+    config.policy = Mock()
+    config.timeout_seconds = 30
+    config.audit_log_path = tmp_path / "audit.jsonl"
+    config.audit_enabled = True
+    config.audit_redact = False
+    validator = Mock()
+    executor = Mock()
+
+    monkeypatch.setattr("oterminus.cli.configure_logging", lambda verbose: None)
+    monkeypatch.setattr("oterminus.cli.load_config", lambda: config)
+    monkeypatch.setattr("oterminus.cli.Validator", lambda policy: validator)
+    monkeypatch.setattr("oterminus.cli.Executor", lambda timeout_seconds: executor)
+    monkeypatch.setattr(
+        "oterminus.cli.ensure_startup_ready",
+        Mock(side_effect=AssertionError("ambiguous request should not need Ollama setup")),
+    )
+    monkeypatch.setattr(
+        "oterminus.cli.OllamaPlannerClient", Mock(side_effect=AssertionError("no planner client"))
+    )
+
+    code = main(["clean", "this", "folder"])
+
+    assert code == 0
+    payload = json.loads(config.audit_log_path.read_text(encoding="utf-8").strip())
+    assert payload["ambiguity_detected"] is True
     assert payload["confirmation_result"] == "blocked_ambiguous"
     validator.validate.assert_not_called()
     executor.run.assert_not_called()

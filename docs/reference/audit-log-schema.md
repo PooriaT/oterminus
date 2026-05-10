@@ -22,10 +22,24 @@ Audit logs are newline-delimited JSON objects (JSONL), one event per handled req
 - `validation_accepted` (nullable bool)
 - `warnings` (string array)
 - `rejection_reasons` (string array)
-- `confirmation_result` (nullable string)
+- `confirmation_result` (nullable string; includes statuses such as `confirmed`, `cancelled`,
+  `skipped_dry_run`, `skipped_explain`, `not_prompted_rejected`, and `blocked_ambiguous`)
 - `execution_exit_code` (nullable int)
 - `rerun_source_history_id` (nullable int)
 - `duration_ms` (nullable int)
+
+## Ambiguity outcomes
+
+Natural-language ambiguity detection runs after direct-command detection and before planner setup.
+When an ambiguous request is blocked, the event records:
+
+- `ambiguity_detected: true`
+- `ambiguity_reason` with the matched phrase or broad-scope reason
+- `ambiguity_safe_options` with read-only inspection alternatives
+- `confirmation_result: "blocked_ambiguous"`
+
+Planner, validator, confirmation, and executor fields remain unset because the request stops before
+those stages.
 
 ## Redaction
 

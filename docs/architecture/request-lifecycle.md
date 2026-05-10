@@ -1,6 +1,8 @@
 # Request Lifecycle
 
-This is the central execution flow for OTerminus.
+This is the central execution flow for OTerminus. The order is deliberate: OTerminus detects direct
+shell commands before applying natural-language ambiguity heuristics. Only non-direct,
+natural-language requests are checked for ambiguity before capability routing and planner calls.
 
 ```mermaid
 flowchart TD
@@ -11,7 +13,8 @@ flowchart TD
   C -->|yes| C1[Build direct proposal]
   C -->|no| D[Ambiguity detection]
   D --> E{Ambiguous?}
-  E -->|yes| E1[Show safer inspection options and stop]
+  E -->|yes| E1[Show safer inspection options]
+  E1 --> N
   E -->|no| F[Capability router]
   F --> G[Planner JSON proposal]
   G --> P[Parse Proposal schema]
@@ -47,15 +50,25 @@ Input can be:
 
 ### 2) Direct command detection
 
-If input already looks like a supported command family invocation, OTerminus skips LLM planning and
-builds a direct proposal. Direct proposals still continue through proposal parsing, validation,
-policy checks, preview, and confirmation in execute mode. In `--dry-run` or `--explain` one-shot
-mode, direct proposals do not require Ollama if direct detection succeeds.
+Direct command detection runs before ambiguity detection. If input already looks like a supported
+command family invocation, OTerminus skips LLM planning and builds a direct proposal. Examples such
+as `chmod +x run.sh` and `rm -rf build` are not intercepted as ambiguous natural language.
+
+Direct proposals still continue through proposal parsing, structured rendering when available,
+validation, policy checks, preview, and confirmation in execute mode. In `--dry-run` or `--explain`
+one-shot mode, direct proposals do not require Ollama if direct detection succeeds.
 
 ### 3) Ambiguity handling
 
-For natural language, broad/destructive underspecified wording is blocked early and replaced with
-safer read-only inspection options.
+Ambiguity detection runs only for non-direct natural-language requests. It looks for broad,
+destructive, or underspecified wording such as “clean this folder”, “delete unnecessary files”, or
+“repair permissions”. When such a request is ambiguous, OTerminus shows a short explanation and safe
+read-only inspection alternatives.
+
+Ambiguous requests stop before planner setup, planner calls, validation, confirmation prompts, and
+execution. Nothing is executed, including in dry-run or explain mode. Their audit events use
+`confirmation_result: "blocked_ambiguous"` and include the ambiguity reason plus suggested safe
+options.
 
 ### 4) Capability router
 
@@ -74,8 +87,9 @@ unsuitable for a constrained single-command proposal.
 ### 6) Structured or experimental proposal handling
 
 For structured proposals, Python renders final command strings/argv from typed arguments instead of
-trusting command text. Experimental proposals may carry command text, but they remain constrained by
-parsing, registry, validator, policy, preview, and stronger confirmation.
+trusting command text. Direct commands may also be normalized into structured arguments when a parser
+is available. Experimental proposals may carry command text, but they remain constrained by parsing,
+registry, validator, policy, preview, and stronger confirmation.
 
 ### 7) Validation and policy
 
@@ -94,10 +108,11 @@ OTerminus renders preview details (command, mode, risk, warnings/rejections).
 The normal execute mode requires explicit confirmation after a successful preview. Experimental mode
 uses very-strong confirmation text. Failed validation or policy checks stop before execution.
 
-One-shot `--dry-run` and `--explain` modes still use direct detection or planning, validation,
-policy checks, and preview rendering, but intentionally skip confirmation and execution. The REPL
-`dry-run <request>` and `explain <request>` built-ins provide the same inspection behavior inside an
-interactive session.
+One-shot `--dry-run` and `--explain` modes still use direct detection and, for specific
+natural-language requests, planning, validation, policy checks, and preview rendering. Ambiguous
+natural-language requests stop earlier in every run mode. Dry-run and explain intentionally skip
+confirmation and execution after successful validation. The REPL `dry-run <request>` and
+`explain <request>` built-ins provide the same inspection behavior inside an interactive session.
 
 ### 9) Execution
 
@@ -106,8 +121,9 @@ Executor runs command argv via subprocess, with special local handling for `cd` 
 ### 10) Audit logging
 
 When enabled, OTerminus writes a JSONL event with request lifecycle fields (routing, mode,
-validation, confirmation, exit code, duration). Dry-run and explain requests record skipped execution
-status instead of an execution exit code.
+validation, confirmation, exit code, duration). Ambiguous requests record the ambiguity outcome and
+`blocked_ambiguous` status without planner, validation, confirmation, or execution fields. Dry-run
+and explain requests record skipped execution status instead of an execution exit code.
 
 ### 11) Evals and tests
 

@@ -1,6 +1,8 @@
 # Validation and Policy
 
-Validation is the primary safety gate before any execution.
+Validation is the primary safety gate before any execution. It runs after direct-command detection,
+capability routing/planning for natural-language requests, and structured rendering. Ambiguous
+natural-language requests stop before validation because they do not produce a proposal.
 
 ## Validation responsibilities
 
@@ -28,7 +30,8 @@ Policy config fields:
 
 A command is accepted only when validation reasons are empty. Validator and policy results are
 authoritative for both structured and experimental proposals, including direct commands that skipped
-LLM planning.
+LLM planning. Direct shell commands are not intercepted by natural-language ambiguity detection;
+they continue to this validation and policy path.
 
 ## Rejection behavior
 

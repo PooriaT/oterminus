@@ -7,10 +7,16 @@ OTerminus provides local observability through audit events and optional verbose
 When enabled, each request lifecycle writes one JSON line with fields covering:
 
 - request metadata
-- routing and proposal decisions
+- ambiguity outcome for blocked natural-language requests
+- routing and proposal decisions when planning continues
 - validation outcome and reasons/warnings
-- confirmation result
+- confirmation result or lifecycle stop status
 - execution exit code and timing
+
+For ambiguous natural-language requests, the audit event records `ambiguity_detected`,
+`ambiguity_reason`, `ambiguity_safe_options`, and `confirmation_result: "blocked_ambiguous"`.
+Because the request stops before planning, validation, confirmation, and execution, the downstream
+fields for those stages remain unset.
 
 Audit configuration:
 

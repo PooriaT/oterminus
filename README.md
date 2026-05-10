@@ -18,14 +18,20 @@ provide a practical middle ground:
 
 OTerminus is designed around an inspect-and-confirm execution contract:
 
-1. detect direct commands and handle ambiguity
-2. route requests by capability
-3. plan proposals in a structured-first format
-4. validate and policy-check the command
-5. show a deterministic preview
-6. require explicit user confirmation before execution
+1. detect direct commands first
+2. intercept vague natural-language requests as ambiguous when needed
+3. route specific natural-language requests by capability
+4. plan proposals in a structured-first format
+5. validate and policy-check the command
+6. show a deterministic preview
+7. require explicit user confirmation before execution
 
-If validation or policy checks fail, OTerminus does not execute.
+Direct shell commands are not blocked by natural-language ambiguity heuristics; they still go through
+validation and policy checks. Ambiguous natural-language requests stop before planning and execution
+and suggest safer read-only inspections. See the [user guide](docs/product/user-guide.md) and
+[request lifecycle](docs/architecture/request-lifecycle.md) for details.
+
+If ambiguity handling, validation, or policy checks block a request, OTerminus does not execute.
 
 ## Quick install and setup
 
