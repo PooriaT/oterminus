@@ -1,15 +1,37 @@
 # Configuration Reference
 
+OTerminus reads a small set of runtime settings from environment variables and a user config JSON
+file. The implementation in `src/oterminus/config.py` is the source of truth for supported keys.
+
+## Supported settings
+
+| Setting | Environment variable | User config field | Default | Notes |
+| --- | --- | --- | --- | --- |
+| Execution timeout | `OTERMINUS_TIMEOUT_SECONDS` | Not supported | `60` | Parsed as an integer number of seconds and passed to the executor. |
+| Policy mode | `OTERMINUS_POLICY_MODE` | Not supported | `write` | Must be one of `safe`, `write`, or `dangerous`. |
+| Dangerous-operation gate | `OTERMINUS_ALLOW_DANGEROUS` | Not supported | `false` | Only the exact value `true` enables dangerous operations, and only when policy mode is `dangerous`. |
+| Allowed path roots | `OTERMINUS_ALLOWED_ROOTS` | Not supported | Empty list | Colon-separated roots. When set, path operands must resolve under one of these roots. |
+| User config path | `OTERMINUS_CONFIG_PATH` | Environment-only | `~/.oterminus/config.json` | Selects which JSON config file is loaded and saved. |
+| Selected Ollama model | Not supported | `model` | None | Saved during first-run setup. There is currently no supported `OTERMINUS_MODEL` environment override. |
+| Audit log path | `OTERMINUS_AUDIT_LOG_PATH` | `audit_log_path` | `~/.oterminus/audit.jsonl` | Environment value overrides the user config field. |
+| Audit enabled | `OTERMINUS_AUDIT_ENABLED` | Not supported | `true` | Accepts `1`, `true`, `yes`, or `on` as true; `0`, `false`, `no`, or `off` as false. Invalid values keep the default. |
+| Audit redaction | `OTERMINUS_AUDIT_REDACT` | Not supported | `true` | Uses the same boolean parsing as `OTERMINUS_AUDIT_ENABLED`. |
+
 ## Environment variables
 
-- `OTERMINUS_TIMEOUT_SECONDS` (default `60`)
-- `OTERMINUS_POLICY_MODE` (`safe` | `write` | `dangerous`, default `write`)
-- `OTERMINUS_ALLOW_DANGEROUS` (`true`/`false`, default `false`)
-- `OTERMINUS_ALLOWED_ROOTS` (colon-separated absolute roots)
-- `OTERMINUS_CONFIG_PATH` (override user config file path)
-- `OTERMINUS_AUDIT_LOG_PATH` (override audit JSONL path)
-- `OTERMINUS_AUDIT_ENABLED` (`true`/`false`, default `true`)
-- `OTERMINUS_AUDIT_REDACT` (`true`/`false`, default `true`)
+Supported `OTERMINUS_*` variables are:
+
+- `OTERMINUS_TIMEOUT_SECONDS`
+- `OTERMINUS_POLICY_MODE`
+- `OTERMINUS_ALLOW_DANGEROUS`
+- `OTERMINUS_ALLOWED_ROOTS`
+- `OTERMINUS_CONFIG_PATH`
+- `OTERMINUS_AUDIT_LOG_PATH`
+- `OTERMINUS_AUDIT_ENABLED`
+- `OTERMINUS_AUDIT_REDACT`
+
+`OTERMINUS_MODEL` is not currently implemented. Set the persisted `model` field in the user config
+file, or let first-run setup write it after you choose from installed Ollama models.
 
 ## User config file
 
@@ -17,16 +39,37 @@ Default path:
 
 - `~/.oterminus/config.json`
 
+Set `OTERMINUS_CONFIG_PATH` to read and write a different config JSON file.
+
 Supported persistent fields:
 
-- `model` (selected Ollama model)
-- `audit_log_path` (optional persisted audit path)
+```json
+{
+  "model": "gemma4",
+  "audit_log_path": "~/.oterminus/audit.jsonl"
+}
+```
+
+The `model` field is the selected local Ollama model. The `audit_log_path` field is optional and is
+used only when `OTERMINUS_AUDIT_LOG_PATH` is unset.
 
 ## Precedence behavior
 
-- environment variables override defaults
-- model and optional audit path can come from user config
-- invalid/missing user config falls back safely to defaults
+Precedence depends on the setting:
+
+1. Environment variables are used first for settings that support an environment variable.
+2. The user config file is used for persisted settings that support a JSON field.
+3. Built-in defaults are used when neither of the above provides a usable value.
+
+In practice:
+
+- `audit_log_path` follows full precedence: `OTERMINUS_AUDIT_LOG_PATH`, then user config
+  `audit_log_path`, then `~/.oterminus/audit.jsonl`.
+- `model` is user-config only; there is no environment override.
+- timeout, policy, allowed roots, audit enabled, and audit redaction are environment-only and fall
+  back directly to defaults.
+- malformed, missing, unreadable, or non-object user config JSON is ignored and defaults are used
+  where applicable.
 
 ## Diagnostics visibility
 
@@ -40,6 +83,7 @@ It does not introduce additional configuration keys or environment variables.
 export OTERMINUS_POLICY_MODE=write
 export OTERMINUS_ALLOW_DANGEROUS=false
 export OTERMINUS_ALLOWED_ROOTS=/workspace:/tmp/safe-area
+export OTERMINUS_AUDIT_LOG_PATH=~/.oterminus/audit.jsonl
 export OTERMINUS_AUDIT_ENABLED=true
 export OTERMINUS_AUDIT_REDACT=true
 ```
