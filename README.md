@@ -79,8 +79,9 @@ Examples inside REPL:
 
 - One-shot requests such as `poetry run oterminus "show disk usage for this folder"` plan, validate,
   preview, and then require confirmation before execution.
-- `--dry-run` and `--explain` are mutually exclusive one-shot inspection flags for requests. They
-  still validate and preview, but they do not ask for confirmation or execute.
+- `--dry-run` and `--explain` are mutually exclusive one-shot inspection flags for requests. Both
+  validate and preview without confirmation or execution; explain mode also describes command choice,
+  relevant flags/arguments, risk, and policy interpretation.
 - `doctor` is diagnostics-only: it prints readiness checks and exits without starting the REPL,
   executing a request, or invoking the Ollama planner. It cannot be combined with `--dry-run` or
   `--explain`.
@@ -110,6 +111,7 @@ published to GitHub Pages after merges to `main` (once Pages is enabled in repos
 - Request lifecycle (central flow):
   [`docs/architecture/request-lifecycle.md`](docs/architecture/request-lifecycle.md)
 - User guide: [`docs/product/user-guide.md`](docs/product/user-guide.md)
+- Configuration reference: [`docs/reference/config.md`](docs/reference/config.md)
 - Contributor workflow: [`docs/contributing.md`](docs/contributing.md)
 - Contributor command-family guide:
   [`docs/adding-command-families.md`](docs/adding-command-families.md)

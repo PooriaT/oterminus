@@ -147,11 +147,15 @@ If validation or policy checks fail, OTerminus does not ask for execution confir
 poetry run oterminus --dry-run "copy notes.txt to backup/notes.txt"
 ```
 
-Runs direct detection or planning, validation, and preview, but does not ask for confirmation or
-execute. Direct commands that can be detected locally skip Ollama planning, so a command like
-`poetry run oterminus --dry-run "ls"` does not require a live Ollama service. Natural-language
-requests use ambiguity detection first; ambiguous requests stop without planning, while specific
-requests continue to the planner.
+Dry run is a safety preview for checking what OTerminus would do. It still follows the normal
+inspection path: detect a direct command when possible, or plan a specific natural-language request
+after ambiguity checks; then validate the proposal and render the preview. It stops there: dry run
+does not show a confirmation prompt and never executes the command.
+
+Use dry run when you want to verify detection, planning, validation, policy outcome, and the final
+rendered command before deciding whether to run the request normally. Direct commands that can be
+detected locally skip Ollama planning, so a command like `poetry run oterminus --dry-run "ls"` does
+not require a live Ollama service. Ambiguous natural-language requests stop before planning.
 
 The CLI flag is for one-shot requests only. Inside the REPL, use the built-in form
 `dry-run <request>` instead.
@@ -162,11 +166,16 @@ The CLI flag is for one-shot requests only. Inside the REPL, use the built-in fo
 poetry run oterminus --explain "show running processes"
 ```
 
-Runs direct detection or planning, validation, preview, and an explanation of the command choice and
-policy interpretation, but does not ask for confirmation or execute. Direct commands that can be
-detected locally skip Ollama planning, so a command like `poetry run oterminus --explain "ls"` does
-not require a live Ollama service. Natural-language requests use ambiguity detection first;
-ambiguous requests stop without planning, while specific requests continue to the planner.
+Explain mode is for learning and debugging why OTerminus chose a command. Like dry run, it performs
+direct-command detection or natural-language planning, validation, and preview, then skips the
+confirmation prompt and execution. It additionally renders reasoning about the selected command,
+available flag or argument meanings, risk level, and policy interpretation, including blocked-policy
+rationale when validation or policy rejects a proposal.
+
+Use explain mode when you want to understand the path from request to command rather than simply
+check the final preview. Direct commands that can be detected locally skip Ollama planning, so a
+command like `poetry run oterminus --explain "ls"` does not require a live Ollama service. Ambiguous
+natural-language requests stop before planning.
 
 The CLI flag is for one-shot requests only. Inside the REPL, use the built-in form
 `explain <request>` or `explain <history_id>` instead.
