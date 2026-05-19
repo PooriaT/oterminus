@@ -1,6 +1,11 @@
 from pathlib import Path
+from unittest.mock import Mock
 
-from oterminus.completion import build_repl_completions
+from oterminus.completion import (
+    build_repl_completions,
+    get_completion_backend_status,
+    prompt_toolkit_completer,
+)
 
 
 def _texts(candidates) -> list[str]:
@@ -40,6 +45,12 @@ def test_first_token_completion_includes_clear_command() -> None:
     candidates = _texts(build_repl_completions("cle"))
 
     assert "clear" in candidates
+
+
+def test_first_token_completion_includes_audit_command() -> None:
+    candidates = _texts(build_repl_completions("aud"))
+
+    assert "audit" in candidates
 
 
 def test_first_token_completion_includes_supported_capabilities() -> None:
@@ -104,3 +115,22 @@ def test_path_completion_ignores_permission_errors(tmp_path: Path, monkeypatch) 
     candidates = _texts(build_repl_completions("cat protected/", cwd=tmp_path))
 
     assert candidates == []
+
+
+def test_prompt_toolkit_completer_returns_prompt_toolkit_completion_objects() -> None:
+    completer = prompt_toolkit_completer()
+    assert completer is not None
+
+    document = Mock()
+    document.text_before_cursor = "he"
+    items = list(completer.get_completions(document, None))
+
+    assert any(item.text == "help" for item in items)
+    assert all(hasattr(item, "start_position") for item in items)
+
+
+def test_get_completion_backend_status_reports_prompt_toolkit() -> None:
+    backend, completer = get_completion_backend_status()
+
+    assert backend == "prompt_toolkit"
+    assert completer is not None

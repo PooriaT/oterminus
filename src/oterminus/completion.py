@@ -12,6 +12,8 @@ REPL_BUILTINS: tuple[str, ...] = (
     "examples",
     "history",
     "rerun",
+    "audit",
+    "clear",
     "exit",
     "quit",
     "dry-run",
@@ -122,3 +124,10 @@ def prompt_toolkit_completer() -> object | None:
                 yield Completion(candidate.text, start_position=candidate.start_position)
 
     return OterminusCompleter()
+
+
+def get_completion_backend_status() -> tuple[str, object | None]:
+    completer = prompt_toolkit_completer()
+    if completer is not None:
+        return "prompt_toolkit", completer
+    return "plain_input", None

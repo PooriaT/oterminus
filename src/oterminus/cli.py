@@ -14,7 +14,7 @@ from oterminus.audit import AuditEvent, AuditLogger
 from oterminus.commands import get_command_spec, supported_capabilities
 from oterminus.commands.types import MaturityLevel
 from oterminus.config import load_config
-from oterminus.completion import prompt_toolkit_completer
+from oterminus.completion import get_completion_backend_status
 from oterminus.direct_commands import detect_direct_command
 from oterminus.doctor import print_report, run_doctor
 from oterminus.executor import Executor
@@ -385,22 +385,16 @@ def repl(
     print("oterminus REPL. Type 'help' for guidance, 'exit' or 'quit' to leave.")
     session_history = SessionHistory()
 
-    prompt_session = None
-    completer = prompt_toolkit_completer()
-    if completer is not None:
-        try:
-            from prompt_toolkit import PromptSession
-
-            prompt_session = PromptSession(completer=completer)
-        except ImportError:
-            prompt_session = None
+    prompt_session, backend_name = create_prompt_session()
+    if debug_trace:
+        if backend_name == "prompt_toolkit":
+            print("[trace] prompt_toolkit completion enabled")
+        else:
+            print("[trace] prompt_toolkit unavailable; falling back to plain input()")
 
     while True:
         try:
-            if prompt_session is None:
-                request = input("oterminus> ").strip()
-            else:
-                request = prompt_session.prompt("oterminus> ").strip()
+            request = read_repl_input(prompt_session).strip()
         except (EOFError, KeyboardInterrupt):
             print()
             return 0
@@ -452,6 +446,23 @@ def repl(
             run_mode=run_mode,
             session_history=session_history,
         )
+
+
+def create_prompt_session() -> tuple[object | None, str]:
+    backend_name, completer = get_completion_backend_status()
+    if completer is None:
+        return None, backend_name
+    try:
+        from prompt_toolkit import PromptSession
+    except ImportError:
+        return None, "plain_input"
+    return PromptSession(completer=completer), backend_name
+
+
+def read_repl_input(prompt_session: object | None) -> str:
+    if prompt_session is None:
+        return input("oterminus> ")
+    return prompt_session.prompt("oterminus> ")
 
 
 def handle_repl_discovery_command(request: str) -> str | None:
