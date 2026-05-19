@@ -827,10 +827,7 @@ def clear_audit_log(audit_logger: AuditLogger | None, *, enabled: bool) -> str:
     try:
         path.write_text("", encoding="utf-8")
     except OSError as exc:
-        return (
-            f"Unable to clear audit log at {path}: "
-            f"{exc.strerror or exc.__class__.__name__}."
-        )
+        return f"Unable to clear audit log at {path}: {exc.strerror or exc.__class__.__name__}."
     return f"Cleared audit log at {path}."
 
 
