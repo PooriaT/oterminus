@@ -41,6 +41,12 @@ When an ambiguous request is blocked, the event records:
 Planner, validator, confirmation, and executor fields remain unset because the request stops before
 those stages.
 
+## Rerun lineage
+
+When a REPL user invokes `rerun <history_id>`, OTerminus reprocesses the original input as a new
+request event. The new event sets `rerun_source_history_id` to the source history entry ID. Normal
+validation/policy/confirmation rules still apply.
+
 ## Redaction
 
 When audit redaction is enabled, text and argv fields are passed through redaction helpers before

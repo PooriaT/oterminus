@@ -1263,6 +1263,53 @@ def test_history_command_displays_records() -> None:
     assert "find . -name '*.py'" in output
 
 
+def test_history_empty_state_message() -> None:
+    output = handle_repl_history_command(
+        "history",
+        session_history=SessionHistory(),
+        planner_factory=Mock(),
+        validator=Mock(),
+        executor=Mock(),
+        audit_logger=None,
+        debug_trace=False,
+    )
+    assert output == "No session history yet."
+
+
+def test_history_limit_and_invalid_limit_usage() -> None:
+    history = SessionHistory()
+    for idx in range(1, 4):
+        item = history.start(f"request {idx}")
+        item.rendered_command = f"echo {idx}"
+        item.risk_level = "safe"
+        item.execution_status = "executed"
+
+    limited = handle_repl_history_command(
+        "history 2",
+        session_history=history,
+        planner_factory=Mock(),
+        validator=Mock(),
+        executor=Mock(),
+        audit_logger=None,
+        debug_trace=False,
+    )
+    assert limited is not None
+    assert "request 1" not in limited
+    assert "request 2" in limited
+    assert "request 3" in limited
+
+    invalid = handle_repl_history_command(
+        "history -2",
+        session_history=history,
+        planner_factory=Mock(),
+        validator=Mock(),
+        executor=Mock(),
+        audit_logger=None,
+        debug_trace=False,
+    )
+    assert invalid == "Usage: history | history <n>"
+
+
 def test_explain_history_item_does_not_execute(monkeypatch, capsys) -> None:
     from oterminus.cli import handle_request
 
@@ -1296,6 +1343,61 @@ def test_explain_history_item_does_not_execute(monkeypatch, capsys) -> None:
     assert executor.run.call_count == 0
     assert "blocked by explain mode" in output.lower()
     assert "execution output" not in capsys.readouterr().out.lower()
+
+
+def test_explain_history_id_not_found_and_limited_details() -> None:
+    history = SessionHistory()
+    item = history.start("clean this folder")
+    item.execution_status = "blocked_ambiguous"
+
+    missing = handle_repl_history_command(
+        "explain 42",
+        session_history=history,
+        planner_factory=Mock(),
+        validator=Mock(),
+        executor=Mock(),
+        audit_logger=None,
+        debug_trace=False,
+    )
+    assert missing == "History id 42 not found."
+
+    limited = handle_repl_history_command(
+        "explain 1",
+        session_history=history,
+        planner_factory=Mock(),
+        validator=Mock(),
+        executor=Mock(),
+        audit_logger=None,
+        debug_trace=False,
+    )
+    assert limited is not None
+    assert "limited details" in limited.lower()
+    assert "blocked_ambiguous" in limited
+
+
+def test_explain_invalid_numeric_target_shows_usage() -> None:
+    output = handle_repl_history_command(
+        "explain -1",
+        session_history=SessionHistory(),
+        planner_factory=Mock(),
+        validator=Mock(),
+        executor=Mock(),
+        audit_logger=None,
+        debug_trace=False,
+    )
+    assert output == "Usage: explain <history_id> | explain <request>"
+
+
+def test_history_row_truncates_newlines_and_long_text() -> None:
+    history = SessionHistory()
+    item = history.start("very long\nrequest " + ("x" * 100))
+    item.rendered_command = "echo start\t" + ("y" * 100)
+    item.risk_level = "safe"
+    item.execution_status = "executed"
+
+    output = history.render_table()
+    assert "\nrequest" not in output
+    assert "…" in output
 
 
 def test_rerun_revalidates_and_requires_confirmation(monkeypatch) -> None:

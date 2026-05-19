@@ -180,6 +180,25 @@ natural-language requests stop before planning.
 The CLI flag is for one-shot requests only. Inside the REPL, use the built-in form
 `explain <request>` or `explain <history_id>` instead.
 
+## REPL session history and rerun safety
+
+REPL history is currently **in-memory and session-local only**. It is cleared when you exit the
+REPL process.
+
+- `history` shows all records from the current REPL session.
+- `history <n>` shows the most recent `n` records.
+- `explain <history_id>` explains the recorded plan/validation result for that entry and **never
+  executes**.
+- `rerun <history_id>` replays the original user input through the full request lifecycle again
+  (ambiguity checks when applicable, planning/direct-detection path, validation/policy, preview, and
+  explicit confirmation before execution).
+
+`rerun` does not execute previously rendered command text directly, and cannot bypass policy gates
+for rejected, ambiguous, cancelled, dry-run, or explain-only outcomes.
+
+History output and audit events may include command text and local paths. Review carefully before
+sharing terminal screenshots or log snippets publicly.
+
 `--dry-run` and `--explain` are mutually exclusive and apply to requests, not to the `doctor`
 diagnostics command. For example, `poetry run oterminus --dry-run doctor` and
 `poetry run oterminus doctor --dry-run` are invalid combinations.
