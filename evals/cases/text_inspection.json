@@ -1,0 +1,34 @@
+[
+  {
+    "id": "planner-structured-wc-lines",
+    "user_input": "count lines in README.md",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "wc",
+      "arguments": {
+        "paths": [
+          "README.md"
+        ],
+        "lines": true,
+        "words": false,
+        "bytes": false
+      },
+      "summary": "count lines",
+      "explanation": "use wc line count",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "structured",
+    "expected_command_family": "wc",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "wc -l README.md",
+    "expected_argv": [
+      "wc",
+      "-l",
+      "README.md"
+    ]
+  }
+]
