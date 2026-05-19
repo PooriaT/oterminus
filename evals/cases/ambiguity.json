@@ -24,5 +24,34 @@
       "show temporary-looking files",
       "show project files"
     ]
+  },
+  {
+    "id": "specific-make-run-sh-executable",
+    "user_input": "make ./run.sh executable",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "chmod",
+      "arguments": {
+        "mode": "u+x",
+        "path": "./run.sh"
+      },
+      "summary": "make script executable",
+      "explanation": "use chmod to set executable bit",
+      "risk_level": "write",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_ambiguity_detected": false,
+    "expected_mode": "structured",
+    "expected_command_family": "chmod",
+    "expected_risk_level": "write",
+    "expected_acceptance": true,
+    "expected_rendered_command": "chmod u+x ./run.sh",
+    "expected_argv": [
+      "chmod",
+      "u+x",
+      "./run.sh"
+    ]
   }
 ]
