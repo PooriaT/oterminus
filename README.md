@@ -131,3 +131,5 @@ poetry run mkdocs build --strict
 For the full local quality checklist, including Ruff format/lint and pytest commands, see the
 [contributor workflow](docs/contributing.md). When behavior changes, update docs in the same pull
 request.
+
+- Optional local persistent REPL history is available via `OTERMINUS_HISTORY_ENABLED=true`; reruns still go through normal validation + confirmation.

@@ -5,8 +5,8 @@ import logging
 import subprocess
 import sys
 import json
+from pathlib import Path
 from datetime import datetime, timezone
-from dataclasses import dataclass
 from collections.abc import Callable
 from enum import Enum
 
@@ -27,6 +27,7 @@ from oterminus.discovery import (
 from oterminus.config import load_config
 from oterminus.completion import get_completion_backend_status
 from oterminus.direct_commands import detect_direct_command
+from oterminus.history import PersistentHistoryStore, SessionHistory
 from oterminus.doctor import print_report, run_doctor
 from oterminus.executor import Executor
 from oterminus.logging_utils import configure_logging
@@ -39,71 +40,6 @@ from oterminus.router import route_request
 from oterminus.validator import Validator
 
 LOGGER = logging.getLogger("oterminus")
-
-
-@dataclass
-class SessionHistoryItem:
-    id: int
-    user_input: str
-    direct_command_detected: bool = False
-    routed_category: str | None = None
-    proposal_mode: str | None = None
-    command_family: str | None = None
-    rendered_command: str | None = None
-    risk_level: str | None = None
-    validation_status: str | None = None
-    execution_status: str = "pending"
-    exit_code: int | None = None
-    proposal: object | None = None
-    validation: object | None = None
-
-
-class SessionHistory:
-    def __init__(self) -> None:
-        self._items: list[SessionHistoryItem] = []
-        self._next_id = 1
-
-    def start(self, user_input: str) -> SessionHistoryItem:
-        item = SessionHistoryItem(id=self._next_id, user_input=user_input)
-        self._next_id += 1
-        self._items.append(item)
-        return item
-
-    def all_items(self) -> list[SessionHistoryItem]:
-        return list(self._items)
-
-    def find(self, history_id: int) -> SessionHistoryItem | None:
-        for item in self._items:
-            if item.id == history_id:
-                return item
-        return None
-
-    def render_table(self, limit: int | None = None) -> str:
-        items = self._items if limit is None else self._items[-limit:]
-        if not items:
-            return "No session history yet."
-
-        rows = [
-            (
-                str(item.id),
-                _truncate(item.user_input, 34),
-                _truncate(item.rendered_command or "(none)", 34),
-                item.risk_level or "-",
-                item.execution_status,
-            )
-            for item in items
-        ]
-        headers = ("id", "input", "command", "risk", "status")
-        widths = [
-            max(len(headers[idx]), *(len(row[idx]) for row in rows)) for idx in range(len(headers))
-        ]
-
-        def _line(values: tuple[str, ...]) -> str:
-            return "  ".join(value.ljust(widths[idx]) for idx, value in enumerate(values))
-
-        output = [_line(headers), _line(tuple("-" * width for width in widths))]
-        output.extend(_line(row) for row in rows)
-        return "\n".join(output)
 
 
 class RunMode(str, Enum):
@@ -177,12 +113,17 @@ def handle_request(
     run_mode: RunMode = RunMode.EXECUTE,
     session_history: SessionHistory | None = None,
     rerun_source_history_id: int | None = None,
+    persistent_store: PersistentHistoryStore | None = None,
 ) -> int:
     started_at = datetime.now(tz=timezone.utc)
     event = AuditEvent.start(user_input=request)
     event.rerun_source_history_id = rerun_source_history_id
     LOGGER.info("request=%s", request)
     history_item = session_history.start(request) if session_history is not None else None
+
+    def _persist_if_needed() -> None:
+        if history_item is not None and persistent_store is not None:
+            persistent_store.append(history_item)
 
     proposal = detect_direct_command(request)
     is_direct_command = proposal is not None
@@ -205,6 +146,7 @@ def handle_request(
                 event.confirmation_result = "blocked_ambiguous"
                 event.duration_ms = _duration_ms_since(started_at)
                 _write_audit_event(audit_logger, event)
+                _persist_if_needed()
                 return 0
             route = route_request(request)
             event.routed_category = route.category
@@ -224,6 +166,7 @@ def handle_request(
         event.confirmation_result = "planner_error"
         event.duration_ms = _duration_ms_since(started_at)
         _write_audit_event(audit_logger, event)
+        _persist_if_needed()
         return 2
 
     event.proposal_mode = proposal.mode.value
@@ -274,6 +217,7 @@ def handle_request(
         event.confirmation_result = "not_prompted_rejected"
         event.duration_ms = _duration_ms_since(started_at)
         _write_audit_event(audit_logger, event)
+        _persist_if_needed()
         return 3
 
     if run_mode == RunMode.DRY_RUN:
@@ -284,6 +228,7 @@ def handle_request(
         event.confirmation_result = "skipped_dry_run"
         event.duration_ms = _duration_ms_since(started_at)
         _write_audit_event(audit_logger, event)
+        _persist_if_needed()
         return 0
 
     if run_mode == RunMode.EXPLAIN:
@@ -298,6 +243,7 @@ def handle_request(
         event.confirmation_result = "skipped_explain"
         event.duration_ms = _duration_ms_since(started_at)
         _write_audit_event(audit_logger, event)
+        _persist_if_needed()
         return 0
 
     confirmed = ask_confirmation(confirmation_level(proposal.mode, validation.risk_level))
@@ -312,6 +258,7 @@ def handle_request(
             history_item.execution_status = "cancelled"
         event.duration_ms = _duration_ms_since(started_at)
         _write_audit_event(audit_logger, event)
+        _persist_if_needed()
         return 0
 
     if command is None or not validation.argv:
@@ -320,6 +267,7 @@ def handle_request(
             history_item.execution_status = "not_executable"
         event.duration_ms = _duration_ms_since(started_at)
         _write_audit_event(audit_logger, event)
+        _persist_if_needed()
         return 3
 
     try:
@@ -380,6 +328,7 @@ def handle_request(
     event.execution_exit_code = result.returncode
     event.duration_ms = _duration_ms_since(started_at)
     _write_audit_event(audit_logger, event)
+    _persist_if_needed()
     return result.returncode
 
 
@@ -392,9 +341,13 @@ def repl(
     audit_enabled: bool = True,
     debug_trace: bool = False,
     default_run_mode: RunMode = RunMode.EXECUTE,
+    persistent_store: PersistentHistoryStore | None = None,
 ) -> int:
     print("oterminus REPL. Type 'help' for guidance, 'exit' or 'quit' to leave.")
     session_history = SessionHistory()
+    if persistent_store is not None:
+        for item in persistent_store.load():
+            session_history.add_persisted(item)
 
     prompt_session, backend_name = create_prompt_session()
     if debug_trace:
@@ -432,6 +385,7 @@ def repl(
             executor=executor,
             audit_logger=audit_logger,
             debug_trace=debug_trace,
+            persistent_store=persistent_store,
         )
         if history_response is not None:
             if isinstance(history_response, str):
@@ -525,10 +479,17 @@ def handle_repl_history_command(
     executor: Executor,
     audit_logger: AuditLogger | None,
     debug_trace: bool,
+    persistent_store: PersistentHistoryStore | None = None,
 ) -> str | None:
     lowered = request.lower().strip()
     if lowered == "history":
         return session_history.render_table()
+
+    if lowered == "history session":
+        return session_history.render_table(source="session")
+
+    if lowered == "history persisted":
+        return session_history.render_table(source="persisted")
 
     if lowered.startswith("history "):
         count = _parse_positive_int(lowered.split(maxsplit=1)[1])
@@ -561,7 +522,10 @@ def handle_repl_history_command(
             debug_trace=debug_trace,
             run_mode=RunMode.EXECUTE,
             session_history=session_history,
-            rerun_source_history_id=history_id,
+            rerun_source_history_id=(
+                history_item.persisted_id if history_item.source == "persisted" else history_id
+            ),
+            persistent_store=persistent_store,
         )
         return ""
     return None
@@ -610,6 +574,21 @@ def main(argv: list[str] | None = None) -> int:
     )
     planner: Planner | None = None
     model_name: str | None = None
+    raw_history_path = getattr(config, "history_path", Path.home() / ".oterminus" / "history.jsonl")
+    if isinstance(raw_history_path, Path):
+        history_path = raw_history_path
+    elif isinstance(raw_history_path, str):
+        history_path = Path(raw_history_path).expanduser()
+    else:
+        history_path = Path.home() / ".oterminus" / "history.jsonl"
+    raw_history_limit = getattr(config, "history_limit", 100)
+    history_limit = raw_history_limit if isinstance(raw_history_limit, int) else 100
+    persistent_store = PersistentHistoryStore(
+        history_path,
+        enabled=bool(getattr(config, "history_enabled", False)),
+        limit=history_limit,
+        redact=bool(getattr(config, "history_redact", getattr(config, "audit_redact", True))),
+    )
 
     def ensure_planner_ready() -> str:
         nonlocal model_name
@@ -644,6 +623,7 @@ def main(argv: list[str] | None = None) -> int:
             audit_logger=audit_logger,
             debug_trace=args.verbose,
             run_mode=run_mode,
+            persistent_store=persistent_store,
         )
     return repl(
         get_planner,
@@ -653,6 +633,7 @@ def main(argv: list[str] | None = None) -> int:
         audit_enabled=config.audit_enabled,
         debug_trace=args.verbose,
         default_run_mode=run_mode,
+        persistent_store=persistent_store,
     )
 
 

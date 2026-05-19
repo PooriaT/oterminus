@@ -80,3 +80,5 @@ When audit is disabled, tail and clear commands do not create a new log file.
   "duration_ms": 73
 }
 ```
+
+Note: persistent REPL history uses a separate local JSONL file and is not an audit log replacement; reruns from persisted history still emit normal audit events.
