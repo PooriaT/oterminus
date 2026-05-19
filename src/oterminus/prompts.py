@@ -9,7 +9,7 @@ from oterminus.router import RouteResult
 from oterminus.structured_commands import STRUCTURED_ARGUMENT_MODELS
 
 
-def _format_structured_shapes() -> str:
+def _format_structured_shapes(structured_families: tuple[str, ...]) -> str:
     shapes = {
         "ls": (
             '{"path": ".", "long": true|false, "human_readable": true|false, '
@@ -75,16 +75,20 @@ def _format_structured_shapes() -> str:
             '"repeated_only": true|false, "unique_only": true|false}'
         ),
     }
-    return "\n".join(
-        f"- `{family}`: `{shapes[family]}`" for family in sorted(STRUCTURED_ARGUMENT_MODELS)
+    return "\n".join(f"- `{family}`: `{shapes[family]}`" for family in structured_families)
+
+
+def build_system_prompt(*, disabled_pack_ids: frozenset[str] | None = None) -> str:
+    enabled_families = set(supported_base_commands(disabled_pack_ids))
+    structured_family_list = tuple(
+        family for family in sorted(STRUCTURED_ARGUMENT_MODELS) if family in enabled_families
     )
-
-
-def build_system_prompt() -> str:
-    structured_families = ", ".join(f"`{family}`" for family in sorted(STRUCTURED_ARGUMENT_MODELS))
-    allowlisted_families = ", ".join(f"`{family}`" for family in sorted(supported_base_commands()))
-    capability_summaries = capability_summary_for_prompt()
-    capability_examples = command_examples_for_prompt()
+    structured_families = ", ".join(f"`{family}`" for family in structured_family_list)
+    allowlisted_families = ", ".join(
+        f"`{family}`" for family in sorted(supported_base_commands(disabled_pack_ids))
+    )
+    capability_summaries = capability_summary_for_prompt(disabled_pack_ids=disabled_pack_ids)
+    capability_examples = command_examples_for_prompt(disabled_pack_ids=disabled_pack_ids)
 
     return f"""
 You are `oterminus-planner`, a local terminal planning model.
@@ -136,7 +140,7 @@ deterministically from `"command_family"` + `"arguments"`.
 allowed shell command, prefer `"mode": "experimental"` and provide `"command"`.
 
 Supported structured families and argument shapes:
-{_format_structured_shapes()}
+{_format_structured_shapes(structured_family_list)}
 
 Curated capability examples (compact):
 {capability_examples}
@@ -151,9 +155,6 @@ single local command exists, and you must state the limitation in `notes`.
 - If the request falls outside local terminal/filesystem work, do not chat about it; choose the \
 closest conservative single local command and explain the limitation in `notes`.
 """.strip()
-
-
-SYSTEM_PROMPT = build_system_prompt()
 
 
 def build_user_prompt(request: str, route: RouteResult | None = None) -> str:

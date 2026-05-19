@@ -96,3 +96,6 @@ export OTERMINUS_AUDIT_REDACT=true
 - `OTERMINUS_HISTORY_PATH` (default: `~/.oterminus/history.jsonl`): local path for persisted history.
 - `OTERMINUS_HISTORY_LIMIT` (default: `100`): number of recent persisted records loaded into REPL.
 - `OTERMINUS_HISTORY_REDACT` (default: follows `OTERMINUS_AUDIT_REDACT`): redact sensitive fields before persistence.
+
+## Command pack availability
+Set `OTERMINUS_DISABLED_COMMAND_PACKS` to a comma-separated list of pack IDs (e.g. `dangerous`, `process,macos`). Pack IDs are case-insensitive and validated. Disabled packs are removed from planner/completion context and commands are rejected by validator before execution. This is separate from capability IDs and does not change policy mode.

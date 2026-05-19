@@ -182,3 +182,6 @@ A good command-family addition makes OTerminus **more deterministic, auditable, 
 If a proposed command would require huge flag coverage, fragile parsing, or privileged mutations,
 prefer one of: - a smaller curated subset, - an explicit experimental-only constraint, - or an
 explicit blocked entry with rationale.
+
+## Command pack availability
+Set `OTERMINUS_DISABLED_COMMAND_PACKS` to a comma-separated list of pack IDs (e.g. `dangerous`, `process,macos`). Pack IDs are case-insensitive and validated. Disabled packs are removed from planner/completion context and commands are rejected by validator before execution. This is separate from capability IDs and does not change policy mode.

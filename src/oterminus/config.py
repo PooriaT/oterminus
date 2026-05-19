@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from oterminus.models import RiskLevel
+from oterminus.commands import available_pack_ids
 from oterminus.policies import PolicyConfig
 
 
@@ -85,11 +86,17 @@ def load_config() -> AppConfig:
         else Path.home() / ".oterminus" / "history.jsonl"
     )
     history_redact = _env_flag("OTERMINUS_HISTORY_REDACT", default=audit_redact)
+    disabled_command_packs = _parse_disabled_command_packs(
+        os.getenv("OTERMINUS_DISABLED_COMMAND_PACKS", "")
+    )
 
     return AppConfig(
         timeout_seconds=timeout_seconds,
         policy=PolicyConfig(
-            mode=mode, allow_dangerous=allow_dangerous, allowed_roots=allowed_roots
+            mode=mode,
+            allow_dangerous=allow_dangerous,
+            allowed_roots=allowed_roots,
+            disabled_command_packs=disabled_command_packs,
         ),
         model=model,
         audit_log_path=audit_log_path,
@@ -112,3 +119,17 @@ def _env_flag(name: str, *, default: bool) -> bool:
     if normalized in {"0", "false", "no", "off"}:
         return False
     return default
+
+
+def _parse_disabled_command_packs(raw: str) -> frozenset[str]:
+    values = frozenset(part.strip().lower() for part in raw.split(",") if part.strip())
+    unknown = sorted(values - set(available_pack_ids()))
+    if unknown:
+        msg = (
+            "Unknown value(s) in OTERMINUS_DISABLED_COMMAND_PACKS: "
+            + ", ".join(unknown)
+            + ". Available pack IDs: "
+            + ", ".join(available_pack_ids())
+        )
+        raise ValueError(msg)
+    return values

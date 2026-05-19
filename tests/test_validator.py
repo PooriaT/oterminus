@@ -424,3 +424,18 @@ def test_blocked_maturity_command_is_rejected_even_in_dangerous_mode() -> None:
 
     assert result.accepted is False
     assert any("blocked by curated command maturity policy" in reason for reason in result.reasons)
+
+
+def test_validator_rejects_command_from_disabled_pack() -> None:
+    validator = Validator(PolicyConfig(disabled_command_packs=frozenset({"process"})))
+    result = validator.validate(make_proposal("ps -Af"))
+
+    assert result.accepted is False
+    assert any("command pack 'process' is disabled" in reason for reason in result.reasons)
+
+
+def test_validator_accepts_command_when_pack_enabled() -> None:
+    validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))
+    result = validator.validate(make_proposal("ps -Af"))
+
+    assert result.accepted is True
