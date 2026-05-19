@@ -128,6 +128,14 @@ def test_repl_examples_includes_grouped_capabilities() -> None:
     assert "filesystem_inspection" in output
 
 
+def test_repl_examples_for_capability_stays_local_and_returns_examples() -> None:
+    output = handle_repl_discovery_command("examples filesystem_inspection")
+
+    assert output is not None
+    assert "Examples for filesystem_inspection" in output
+    assert "find . -name '*.py'" in output or "ls -la" in output
+
+
 def test_repl_unknown_help_target_returns_guidance() -> None:
     output = handle_repl_discovery_command("help not_a_target")
 

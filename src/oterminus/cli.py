@@ -21,6 +21,7 @@ from oterminus.discovery import (
     render_help,
     render_help_capabilities,
     render_unknown_help_target,
+    render_examples_for_capability,
 )
 from oterminus.config import load_config
 from oterminus.completion import get_completion_backend_status
@@ -490,6 +491,12 @@ def handle_repl_discovery_command(request: str) -> str | None:
 
     if lowered == "examples":
         return render_examples()
+
+    if lowered.startswith("examples "):
+        target = lowered.split(maxsplit=1)[1]
+        if target not in capability_map:
+            return render_unknown_help_target(target)
+        return render_examples_for_capability(target)
 
     if lowered == "help capabilities":
         return render_help_capabilities()

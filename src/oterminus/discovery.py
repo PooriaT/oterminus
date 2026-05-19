@@ -45,6 +45,27 @@ def render_examples() -> str:
     return "\n".join(lines)
 
 
+def render_examples_for_capability(capability_id: str) -> str:
+    capability = next(
+        (item for item in supported_capabilities() if item.capability_id == capability_id),
+        None,
+    )
+    if capability is None:
+        return f"Unknown capability: {capability_id}\nTry: capabilities"
+
+    lines = [f"Examples for {capability.capability_id}:"]
+    has_any = False
+    for command_name in capability.commands:
+        spec = get_command_spec(command_name)
+        if spec is None or not spec.examples:
+            continue
+        lines.append(f"- {spec.examples[0]}")
+        has_any = True
+    if not has_any:
+        lines.append("- (no registry examples available)")
+    return "\n".join(lines)
+
+
 def render_help_capabilities() -> str:
     return (
         "capability-first model:\n"
