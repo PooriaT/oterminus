@@ -126,7 +126,13 @@ def handle_request(
         if history_item is not None and persistent_store is not None:
             persistent_store.append(history_item)
 
-    proposal = detect_direct_command(request, disabled_pack_ids=disabled_pack_ids)
+    effective_disabled_pack_ids = (
+        disabled_pack_ids
+        if disabled_pack_ids is not None
+        else validator.policy.disabled_command_packs
+    )
+
+    proposal = detect_direct_command(request, disabled_pack_ids=effective_disabled_pack_ids)
     is_direct_command = proposal is not None
     event.direct_command_detected = is_direct_command
     if history_item is not None:
@@ -421,6 +427,7 @@ def repl(
             run_mode=run_mode,
             session_history=session_history,
             persistent_store=persistent_store,
+            disabled_pack_ids=disabled_pack_ids,
         )
 
 
@@ -641,6 +648,7 @@ def main(argv: list[str] | None = None) -> int:
             debug_trace=args.verbose,
             run_mode=run_mode,
             persistent_store=persistent_store,
+            disabled_pack_ids=validator.policy.disabled_command_packs,
         )
     return repl(
         get_planner,
