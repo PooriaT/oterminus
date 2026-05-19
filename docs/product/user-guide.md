@@ -186,12 +186,24 @@ diagnostics command. For example, `poetry run oterminus --dry-run doctor` and
 
 ## Autocomplete
 
-REPL supports local tab completion (via `prompt_toolkit`) for:
+Tab completion is available only in interactive REPL mode (`poetry run oterminus`) and is local
+(`prompt_toolkit`) for:
 
 - built-ins
 - supported command families
 - capability IDs (and optional capability hints)
 - local filesystem paths
+
+Autocomplete is deterministic and does not call Ollama.
+
+If tab completion does not work:
+
+```bash
+poetry install
+poetry run oterminus
+```
+
+If you use a globally installed or `pipx` build, rebuild/reinstall after dependency changes.
 
 ## Clear command
 

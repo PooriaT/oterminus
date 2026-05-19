@@ -1356,3 +1356,48 @@ def test_rerun_writes_audit_source_history_id(monkeypatch, tmp_path: Path) -> No
     lines = audit_path.read_text(encoding="utf-8").strip().splitlines()
     rerun_payload = json.loads(lines[-1])
     assert rerun_payload["rerun_source_history_id"] == 1
+
+
+def test_create_prompt_session_falls_back_when_prompt_toolkit_unavailable(monkeypatch) -> None:
+    from oterminus.cli import create_prompt_session
+
+    monkeypatch.setattr(
+        "oterminus.cli.get_completion_backend_status", lambda: ("plain_input", None)
+    )
+
+    session, backend = create_prompt_session()
+
+    assert session is None
+    assert backend == "plain_input"
+
+
+def test_repl_debug_trace_reports_plain_input_backend(monkeypatch, capsys) -> None:
+    from oterminus.cli import repl
+
+    monkeypatch.setattr("oterminus.cli.create_prompt_session", lambda: (None, "plain_input"))
+    answers = iter(["exit"])
+    monkeypatch.setattr("builtins.input", lambda _: next(answers))
+
+    code = repl(Mock(), Mock(), Mock(), debug_trace=True)
+
+    assert code == 0
+    output = capsys.readouterr().out
+    assert "[trace] prompt_toolkit unavailable; falling back to plain input()" in output
+
+
+def test_repl_debug_trace_reports_prompt_toolkit_backend(monkeypatch, capsys) -> None:
+    from oterminus.cli import repl
+
+    class FakePromptSession:
+        def prompt(self, _prompt: str) -> str:
+            return "exit"
+
+    monkeypatch.setattr(
+        "oterminus.cli.create_prompt_session", lambda: (FakePromptSession(), "prompt_toolkit")
+    )
+
+    code = repl(Mock(), Mock(), Mock(), debug_trace=True)
+
+    assert code == 0
+    output = capsys.readouterr().out
+    assert "[trace] prompt_toolkit completion enabled" in output
