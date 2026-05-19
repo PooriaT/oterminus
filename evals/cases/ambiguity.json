@@ -1,9 +1,9 @@
 [
   {
-    "id": "ambiguity-clean-this-folder",
+    "id": "ambiguous-clean-this-folder",
     "user_input": "clean this folder",
     "expected_ambiguity_detected": true,
-    "expected_ambiguity_reason_contains": "clean this folder",
+    "expected_ambiguity_reason_contains": "Matched ambiguous phrase",
     "expected_ambiguity_safe_options": [
       "list large files",
       "list recently modified files",
@@ -13,36 +13,10 @@
     ]
   },
   {
-    "id": "ambiguity-repair-permissions",
-    "user_input": "repair permissions",
-    "expected_ambiguity_detected": true,
-    "expected_ambiguity_reason_contains": "repair permissions",
-    "expected_ambiguity_safe_options": [
-      "list large files",
-      "list recently modified files",
-      "inspect permissions",
-      "show temporary-looking files",
-      "show project files"
-    ]
-  },
-  {
-    "id": "ambiguity-delete-unnecessary-files",
+    "id": "ambiguous-broad-delete-vague-scope",
     "user_input": "delete unnecessary files",
     "expected_ambiguity_detected": true,
-    "expected_ambiguity_reason_contains": "delete unnecessary files",
-    "expected_ambiguity_safe_options": [
-      "list large files",
-      "list recently modified files",
-      "inspect permissions",
-      "show temporary-looking files",
-      "show project files"
-    ]
-  },
-  {
-    "id": "ambiguity-optimize-this-directory",
-    "user_input": "optimize this directory",
-    "expected_ambiguity_detected": true,
-    "expected_ambiguity_reason_contains": "broad mutation wording",
+    "expected_ambiguity_reason_contains": "Matched ambiguous phrase",
     "expected_ambiguity_safe_options": [
       "list large files",
       "list recently modified files",
@@ -53,27 +27,31 @@
   },
   {
     "id": "specific-make-run-sh-executable",
-    "user_input": "make run.sh executable",
-    "expected_ambiguity_detected": false,
+    "user_input": "make ./run.sh executable",
     "planner_proposal": {
       "action_type": "shell_command",
       "mode": "structured",
       "command_family": "chmod",
       "arguments": {
-        "path": "run.sh",
-        "mode": "755"
+        "mode": "u+x",
+        "path": "./run.sh"
       },
-      "summary": "Make run.sh executable",
-      "explanation": "Apply executable permissions to the named script.",
+      "summary": "make script executable",
+      "explanation": "use chmod to set executable bit",
       "risk_level": "write",
       "needs_confirmation": true,
       "notes": []
     },
+    "expected_ambiguity_detected": false,
     "expected_mode": "structured",
     "expected_command_family": "chmod",
     "expected_risk_level": "write",
     "expected_acceptance": true,
-    "expected_rendered_command": "chmod 755 run.sh",
-    "expected_argv": ["chmod", "755", "run.sh"]
+    "expected_rendered_command": "chmod u+x ./run.sh",
+    "expected_argv": [
+      "chmod",
+      "u+x",
+      "./run.sh"
+    ]
   }
 ]

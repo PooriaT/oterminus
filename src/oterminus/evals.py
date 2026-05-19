@@ -76,7 +76,7 @@ def load_eval_cases(fixtures_dir: Path) -> list[EvalCase]:
         raise FileNotFoundError(f"Eval fixtures directory does not exist: {fixtures_dir}")
 
     cases: list[EvalCase] = []
-    seen_ids: set[str] = set()
+    seen_ids: dict[str, Path] = {}
 
     for path in sorted(fixtures_dir.glob("*.json")):
         payload = json.loads(path.read_text())
@@ -90,8 +90,11 @@ def load_eval_cases(fixtures_dir: Path) -> list[EvalCase]:
                 raise ValueError(f"Invalid eval fixture in {path} at index {index}: {exc}") from exc
 
             if case.id in seen_ids:
-                raise ValueError(f"Duplicate eval fixture id: {case.id}")
-            seen_ids.add(case.id)
+                first_path = seen_ids[case.id]
+                raise ValueError(
+                    f"Duplicate eval fixture id '{case.id}' in {first_path} and {path}"
+                )
+            seen_ids[case.id] = path
             cases.append(case)
 
     if not cases:

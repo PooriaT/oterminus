@@ -1,0 +1,69 @@
+[
+  {
+    "id": "direct-open-local",
+    "user_input": "open .",
+    "expected_mode": "structured",
+    "expected_command_family": "open",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "open .",
+    "expected_argv": [
+      "open",
+      "."
+    ]
+  },
+  {
+    "id": "direct-open-url-blocked",
+    "user_input": "open https://example.com",
+    "expected_mode": "experimental",
+    "expected_command_family": "open",
+    "expected_risk_level": "safe",
+    "expected_acceptance": false,
+    "expected_rendered_command": "open https://example.com",
+    "expected_argv": [
+      "open",
+      "https://example.com"
+    ]
+  },
+  {
+    "id": "planner-experimental-when-structured-available-blocked",
+    "user_input": "please open this folder",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "experimental",
+      "command_family": "open",
+      "command": "open .",
+      "summary": "open folder",
+      "explanation": "experimental fallback",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "structured",
+    "expected_command_family": "open",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "open .",
+    "expected_argv": [
+      "open",
+      "."
+    ],
+    "optional_notes": "Planner normalization should coerce this to structured mode."
+  },
+  {
+    "id": "planner-structured-open-url-parse-fails",
+    "user_input": "could you open the project website",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "experimental",
+      "command_family": "open",
+      "command": "open https://example.com",
+      "summary": "open url",
+      "explanation": "fallback",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_planner_error_contains": "path must refer to a local filesystem target"
+  }
+]

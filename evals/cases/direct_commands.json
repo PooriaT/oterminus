@@ -1,0 +1,129 @@
+[
+  {
+    "id": "direct-ls-long-human",
+    "user_input": "ls -lh",
+    "expected_mode": "structured",
+    "expected_command_family": "ls",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "ls -l -h .",
+    "expected_argv": [
+      "ls",
+      "-l",
+      "-h",
+      "."
+    ]
+  },
+  {
+    "id": "direct-pwd",
+    "user_input": "pwd",
+    "expected_mode": "structured",
+    "expected_command_family": "pwd",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "pwd",
+    "expected_argv": [
+      "pwd"
+    ]
+  },
+  {
+    "id": "direct-clear",
+    "user_input": "clear",
+    "expected_mode": "structured",
+    "expected_command_family": "clear",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "clear",
+    "expected_argv": [
+      "clear"
+    ]
+  },
+  {
+    "id": "direct-find-python",
+    "user_input": "find . -name '*.py'",
+    "expected_mode": "structured",
+    "expected_command_family": "find",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "find . -name '*.py'",
+    "expected_argv": [
+      "find",
+      ".",
+      "-name",
+      "*.py"
+    ]
+  },
+  {
+    "id": "direct-grep-recursive",
+    "user_input": "grep -rin TODO src",
+    "expected_mode": "structured",
+    "expected_command_family": "grep",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "grep -i -n -r TODO src",
+    "expected_argv": [
+      "grep",
+      "-i",
+      "-n",
+      "-r",
+      "TODO",
+      "src"
+    ]
+  },
+  {
+    "id": "direct-ps-full",
+    "user_input": "ps -Af",
+    "expected_mode": "structured",
+    "expected_command_family": "ps",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "ps -A -f",
+    "expected_argv": [
+      "ps",
+      "-A",
+      "-f"
+    ]
+  },
+  {
+    "id": "direct-which-python",
+    "user_input": "which python3",
+    "expected_mode": "structured",
+    "expected_command_family": "which",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "which python3",
+    "expected_argv": [
+      "which",
+      "python3"
+    ]
+  },
+  {
+    "id": "direct-sort-reverse-unique",
+    "user_input": "sort -ru README.md",
+    "expected_mode": "structured",
+    "expected_command_family": "sort",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "sort -r -u README.md",
+    "expected_argv": [
+      "sort",
+      "-r",
+      "-u",
+      "README.md"
+    ]
+  },
+  {
+    "id": "direct-uniq-count",
+    "user_input": "uniq -c README.md",
+    "expected_mode": "structured",
+    "expected_command_family": "uniq",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "uniq -c README.md",
+    "expected_argv": [
+      "uniq",
+      "-c",
+      "README.md"
+    ]
+  }
+]
