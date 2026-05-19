@@ -70,6 +70,8 @@ poetry run oterminus doctor
 Examples inside REPL:
 
 - `find all .py files`
+- `capabilities` / `commands` / `examples`
+- `help capabilities` / `help filesystem_inspection` / `help ls`
 - `show running processes`
 - `ls -lah`
 - `dry-run search TODO in src`

@@ -91,7 +91,7 @@ def test_repl_help_capabilities_describes_model() -> None:
 
     assert output is not None
     assert "capability-first" in output
-    assert "Maturity levels" in output
+    assert "curated workflows" in output
 
 
 def test_repl_capabilities_lists_known_capability_ids() -> None:
@@ -108,7 +108,7 @@ def test_repl_help_for_capability_includes_commands_and_examples() -> None:
     assert output is not None
     assert "Capability: filesystem_inspection" in output
     assert "Supported command families" in output
-    assert "Example requests" in output
+    assert "Examples:" in output
 
 
 def test_repl_help_for_command_family_includes_risk_and_maturity() -> None:
@@ -124,7 +124,7 @@ def test_repl_examples_includes_grouped_capabilities() -> None:
     output = handle_repl_discovery_command("examples")
 
     assert output is not None
-    assert "Common example requests by capability" in output
+    assert "Example requests by capability" in output
     assert "filesystem_inspection" in output
 
 

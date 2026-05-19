@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from oterminus.commands import supported_base_commands, supported_capabilities
+from oterminus.discovery import discovery_help_targets
 
 REPL_BUILTINS: tuple[str, ...] = (
     "help",
@@ -94,6 +95,9 @@ def build_repl_completions(
     is_first_token = len(tokens) == 0
 
     suggestions: set[str] = set()
+    if len(tokens) == 1 and tokens[0] == "help":
+        suggestions.update(discovery_help_targets())
+
     if is_first_token:
         suggestions.update(REPL_BUILTINS)
         suggestions.update(supported_base_commands())

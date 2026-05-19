@@ -47,10 +47,10 @@ one-shot requests: direct-command detection, natural-language ambiguity handling
 planning for specific natural-language requests, validation, preview, confirmation, execution, and
 audit logging.
 
-REPL built-ins include:
+REPL built-ins include (all local, deterministic, and backed by command-registry metadata; they do not call Ollama):
 
 - `help`, `help capabilities`, `help <capability_id>`, `help <command_family>`
-- `capabilities`, `commands`, `examples`, `examples <capability_id>`
+- `capabilities`, `commands`, `examples`
 - `history`, `history <n>`, `explain <history_id>`, `rerun <history_id>`
 - `dry-run <request>`, `explain <request>`
 - `audit status`, `exit`, `quit`
