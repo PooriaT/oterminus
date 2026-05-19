@@ -7,14 +7,7 @@ eval regressions before review.
 ## Set up development dependencies
 
 ```bash
-poetry install --with dev
-```
-
-The docs site also needs MkDocs packages in the same Poetry environment before serving or building
-locally:
-
-```bash
-poetry run python -m pip install mkdocs mkdocs-material
+poetry install --with dev,docs
 ```
 
 ## Formatting and linting
@@ -87,6 +80,7 @@ Validate docs before review:
 
 ```bash
 poetry run mkdocs build --strict
+poetry run python scripts/check_docs_links.py
 ```
 
 The docs workflow runs the strict build on pull requests and pushes to `main`, but deploys only
@@ -112,7 +106,7 @@ poetry run oterminus-evals
 - [ ] Tests pass.
 - [ ] Docs are updated if behavior, architecture, command support, config, policy, validation,
       evals, or user-facing behavior changed.
-- [ ] `poetry run mkdocs build --strict` passes.
+- [ ] `poetry run mkdocs build --strict` and `poetry run python scripts/check_docs_links.py` pass.
 - [ ] Evals are updated and run if planner, router, validator, policy, structured rendering, or
       command-family behavior changed.
 - [ ] No secrets, real audit logs, tokens, or personal local paths were added to docs or fixtures.
