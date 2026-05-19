@@ -100,14 +100,16 @@ poetry run mkdocs build --strict
 poetry run oterminus-evals
 ```
 
-## PR checklist
+## Pull request template and checklist
 
-- [ ] Python code is formatted with Ruff.
-- [ ] Ruff format check and lint check pass.
-- [ ] Tests pass with coverage (`poetry run pytest --cov=src/oterminus --cov-report=term-missing`).
-- [ ] Docs are updated if behavior, architecture, command support, config, policy, validation,
-      evals, or user-facing behavior changed.
-- [ ] `poetry run mkdocs build --strict` and `poetry run python scripts/check_docs_links.py` pass.
-- [ ] Evals are updated and run if planner, router, validator, policy, structured rendering, or
-      command-family behavior changed.
-- [ ] No secrets, real audit logs, tokens, or personal local paths were added to docs or fixtures.
+Every pull request should use `.github/pull_request_template.md` and keep every checklist item in
+place. If an item is not applicable, mark it as `N/A` in the PR description instead of deleting it.
+
+In addition to formatting, lint, test, docs, and eval checks, the PR template requires explicit
+confirmation that core architecture invariants still hold for behavior-affecting changes (for
+example capability-first command support, structured-first behavior, ambiguity gates, validator and
+policy separation, and local-only audit logging expectations).
+
+When command registry/spec files change, refresh generated command reference docs in the same PR.
+When behavior, architecture, command support, config, evals, policy, validation, or user-facing
+behavior changes, docs updates are mandatory in the same PR (not follow-up work).
