@@ -33,6 +33,8 @@ and argv.
 
 - `--verbose` prints concise trace lines for routing/proposal/validation/confirmation
 - `audit status` reports current audit settings and path
+- `audit tail [n]` prints recent local audit events without executing a request
+- `audit clear` requires explicit confirmation before clearing the local audit log
 - `oterminus doctor` runs readiness and integrity checks
 
 See [audit log schema reference](../reference/audit-log-schema.md).

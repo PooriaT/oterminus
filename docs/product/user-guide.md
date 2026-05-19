@@ -53,7 +53,7 @@ REPL built-ins include (all local, deterministic, and backed by command-registry
 - `capabilities`, `commands`, `examples`
 - `history`, `history <n>`, `explain <history_id>`, `rerun <history_id>`
 - `dry-run <request>`, `explain <request>`
-- `audit status`, `exit`, `quit`
+- `audit status`, `audit tail [n]`, `audit clear`, `exit`, `quit`
 
 ### One-shot mode
 
@@ -208,6 +208,22 @@ If you use a globally installed or `pipx` build, rebuild/reinstall after depende
 ## Clear command
 
 `clear` is supported and handled specially by the local executor using ANSI clear-screen output.
+
+## Audit management commands
+
+Audit logs are local JSONL files (default: `~/.oterminus/audit.jsonl`) and are not uploaded by
+OTerminus.
+
+- `audit status` shows whether audit is enabled, the active path, file presence, and redaction
+  state.
+- `audit tail` shows the most recent 10 events; `audit tail <n>` shows the newest `n` events.
+- `audit clear` prompts for exact confirmation (`CLEAR AUDIT`) before clearing the local audit log.
+
+When audit logging is disabled (`OTERMINUS_AUDIT_ENABLED=false`), tail/clear commands report that
+audit is disabled and do not create a log file.
+
+Redaction is enabled by default (`OTERMINUS_AUDIT_REDACT=true`). Even with redaction, logs may
+still contain local paths and command context, so review before sharing publicly.
 
 ## Safety expectations
 

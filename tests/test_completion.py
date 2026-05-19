@@ -51,6 +51,9 @@ def test_first_token_completion_includes_audit_command() -> None:
     candidates = _texts(build_repl_completions("aud"))
 
     assert "audit" in candidates
+    assert "audit status" in candidates
+    assert "audit tail" in candidates
+    assert "audit clear" in candidates
 
 
 def test_first_token_completion_includes_supported_capabilities() -> None:

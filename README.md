@@ -76,6 +76,7 @@ Examples inside REPL:
 - `ls -lah`
 - `dry-run search TODO in src`
 - `explain show disk space`
+- `audit status` / `audit tail` / `audit clear`
 
 ### One-shot and diagnostics modes
 

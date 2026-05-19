@@ -279,3 +279,32 @@ def test_repl_documented_built_ins_are_handled_without_ollama_or_execution(
     assert "skipped_dry_run" in output
     assert "skipped_explain" in output
     executor.run.assert_not_called()
+
+
+def test_one_shot_audit_tail_and_clear_do_not_call_planner_or_executor(
+    monkeypatch, tmp_path: Path, capsys
+) -> None:
+    from oterminus.cli import main
+
+    config = _config(tmp_path)
+    _validator, executor = _install_main_dependencies(monkeypatch, config)
+    config.audit_log_path.write_text(
+        '{"timestamp":"t","user_input":"x [REDACTED]","confirmation_result":"confirmed","execution_exit_code":0}\n',
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        "oterminus.cli.ensure_startup_ready",
+        Mock(side_effect=AssertionError("audit commands should not require Ollama")),
+    )
+
+    code = main(["audit", "tail"])
+    assert code == 0
+    assert "x [REDACTED]" in capsys.readouterr().out
+    executor.run.assert_not_called()
+
+    monkeypatch.setattr("builtins.input", Mock(return_value="CLEAR AUDIT"))
+    code = main(["audit", "clear"])
+    assert code == 0
+    assert "Cleared audit log" in capsys.readouterr().out
+    assert config.audit_log_path.read_text(encoding="utf-8") == ""
+    executor.run.assert_not_called()

@@ -14,6 +14,8 @@ from oterminus.cli import (
     handle_repl_history_command,
     parse_args,
     render_audit_status,
+    render_audit_tail,
+    clear_audit_log,
 )
 from oterminus.models import ActionType, Proposal, ProposalMode, RiskLevel, ValidationResult
 from oterminus.ollama_client import parse_ollama_list_output
@@ -510,7 +512,9 @@ def test_main_audit_status_command(monkeypatch, capsys) -> None:
     monkeypatch.setattr(
         "oterminus.cli.AuditLogger",
         lambda path, redact: Mock(
-            status=lambda: {"path": str(path), "exists": "no", "redaction": "enabled"}
+            path=path,
+            redact=True,
+            status=lambda: {"path": str(path), "exists": "no", "redaction": "enabled"},
         ),
     )
 
@@ -519,7 +523,63 @@ def test_main_audit_status_command(monkeypatch, capsys) -> None:
     assert code == 0
     output = capsys.readouterr().out
     assert "audit enabled: yes" in output
-    assert "redaction: enabled" in output
+    assert "redaction enabled: true" in output
+
+
+def test_render_audit_tail_missing_file(tmp_path: Path) -> None:
+    logger = Mock(path=tmp_path / "audit.jsonl")
+    output = render_audit_tail("audit tail", audit_logger=logger, enabled=True)
+    assert "Audit log not found" in output
+
+
+def test_render_audit_tail_limit_and_redacted_output(tmp_path: Path) -> None:
+    path = tmp_path / "audit.jsonl"
+    path.write_text(
+        "\n".join(
+            [
+                '{"timestamp":"t1","user_input":"one","confirmation_result":"confirmed","execution_exit_code":0}',
+                '{"timestamp":"t2","user_input":"two [REDACTED]","confirmation_result":"cancelled","execution_exit_code":null}',
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    logger = Mock(path=path)
+    output = render_audit_tail("audit tail 1", audit_logger=logger, enabled=True)
+    assert "Showing 1 most recent audit event(s)" in output
+    assert "two [REDACTED]" in output
+    assert "input='one'" not in output
+
+
+def test_render_audit_tail_unreadable_path(tmp_path: Path) -> None:
+    path = tmp_path / "audit-dir"
+    path.mkdir()
+    logger = Mock(path=path)
+    output = render_audit_tail("audit tail", audit_logger=logger, enabled=True)
+    assert "Unable to read audit log" in output
+
+
+def test_clear_audit_log_cancelled_and_confirmed(tmp_path: Path, monkeypatch) -> None:
+    path = tmp_path / "audit.jsonl"
+    path.write_text("line\n", encoding="utf-8")
+    logger = Mock(path=path)
+    monkeypatch.setattr("builtins.input", lambda _prompt: "nope")
+    cancelled = clear_audit_log(logger, enabled=True)
+    assert cancelled == "Audit clear cancelled."
+    assert path.read_text(encoding="utf-8") == "line\n"
+    monkeypatch.setattr("builtins.input", lambda _prompt: "CLEAR AUDIT")
+    confirmed = clear_audit_log(logger, enabled=True)
+    assert "Cleared audit log" in confirmed
+    assert path.read_text(encoding="utf-8") == ""
+
+
+def test_clear_audit_log_unwritable_path(tmp_path: Path, monkeypatch) -> None:
+    path = tmp_path / "audit-dir"
+    path.mkdir()
+    logger = Mock(path=path)
+    monkeypatch.setattr("builtins.input", lambda _prompt: "CLEAR AUDIT")
+    output = clear_audit_log(logger, enabled=True)
+    assert "Unable to clear audit log" in output
 
 
 def test_handle_request_cancel(monkeypatch) -> None:
