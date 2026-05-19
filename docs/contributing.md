@@ -94,7 +94,8 @@ Run the checks that match your change before opening a PR:
 poetry run ruff format .
 poetry run ruff format --check .
 poetry run ruff check .
-poetry run pytest
+poetry run pytest --cov=src/oterminus --cov-report=term-missing
+poetry run python scripts/check_docs_links.py
 poetry run mkdocs build --strict
 poetry run oterminus-evals
 ```
@@ -103,7 +104,7 @@ poetry run oterminus-evals
 
 - [ ] Python code is formatted with Ruff.
 - [ ] Ruff format check and lint check pass.
-- [ ] Tests pass.
+- [ ] Tests pass with coverage (`poetry run pytest --cov=src/oterminus --cov-report=term-missing`).
 - [ ] Docs are updated if behavior, architecture, command support, config, policy, validation,
       evals, or user-facing behavior changed.
 - [ ] `poetry run mkdocs build --strict` and `poetry run python scripts/check_docs_links.py` pass.
