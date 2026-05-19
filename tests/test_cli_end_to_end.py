@@ -1,0 +1,281 @@
+from __future__ import annotations
+
+import json
+from pathlib import Path
+from unittest.mock import Mock
+
+import pytest
+
+from oterminus.config import AppConfig
+from oterminus.models import ActionType, Proposal, ProposalMode, RiskLevel
+from oterminus.policies import PolicyConfig
+from oterminus.validator import Validator
+
+
+def _config(tmp_path: Path, *, audit_enabled: bool = True) -> AppConfig:
+    return AppConfig(
+        timeout_seconds=30,
+        policy=PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False),
+        audit_log_path=tmp_path / "audit.jsonl",
+        audit_enabled=audit_enabled,
+        audit_redact=False,
+    )
+
+
+def _planned_ls_proposal() -> Proposal:
+    return Proposal(
+        action_type=ActionType.SHELL_COMMAND,
+        mode=ProposalMode.STRUCTURED,
+        command_family="ls",
+        arguments={
+            "path": ".",
+            "long": False,
+            "human_readable": False,
+            "all": False,
+            "recursive": False,
+        },
+        summary="show files",
+        explanation="List files in the current directory.",
+        risk_level=RiskLevel.SAFE,
+        needs_confirmation=True,
+        notes=[],
+    )
+
+
+def _install_main_dependencies(monkeypatch, config: AppConfig) -> tuple[Mock, Mock]:
+    validator = Mock(wraps=Validator(config.policy))
+    executor = Mock()
+    executor.timeout_seconds = config.timeout_seconds
+    executor.run.return_value.returncode = 0
+    executor.run.return_value.stdout = ""
+    executor.run.return_value.stderr = ""
+
+    monkeypatch.setattr("oterminus.cli.configure_logging", lambda verbose: None)
+    monkeypatch.setattr("oterminus.cli.load_config", lambda: config)
+    monkeypatch.setattr("oterminus.cli.Validator", lambda policy: validator)
+    monkeypatch.setattr("oterminus.cli.Executor", lambda timeout_seconds: executor)
+    return validator, executor
+
+
+def _read_audit_payload(path: Path) -> dict[str, object]:
+    return json.loads(path.read_text(encoding="utf-8").strip())
+
+
+def test_doctor_command_is_diagnostics_only(monkeypatch) -> None:
+    from oterminus.cli import main
+
+    report = type("Report", (), {"results": (), "exit_code": 2})()
+    run_doctor = Mock(return_value=report)
+    print_report = Mock()
+
+    monkeypatch.setattr("oterminus.cli.configure_logging", lambda verbose: None)
+    monkeypatch.setattr("oterminus.cli.run_doctor", run_doctor)
+    monkeypatch.setattr("oterminus.cli.print_report", print_report)
+    monkeypatch.setattr("oterminus.cli.load_config", Mock(side_effect=AssertionError("no config")))
+    monkeypatch.setattr("oterminus.cli.repl", Mock(side_effect=AssertionError("no REPL")))
+    monkeypatch.setattr("oterminus.cli.Executor", Mock(side_effect=AssertionError("no executor")))
+    monkeypatch.setattr("oterminus.cli.Planner", Mock(side_effect=AssertionError("no planner")))
+    monkeypatch.setattr(
+        "oterminus.cli.OllamaPlannerClient",
+        Mock(side_effect=AssertionError("no planner client")),
+    )
+
+    code = main(["doctor"])
+
+    assert code == 2
+    run_doctor.assert_called_once_with()
+    print_report.assert_called_once_with(report)
+
+
+@pytest.mark.parametrize(
+    "argv",
+    (
+        ["--dry-run", "--explain", "ls"],
+        ["doctor", "--dry-run"],
+        ["doctor", "--explain"],
+        ["--dry-run", "doctor"],
+        ["--explain", "doctor"],
+    ),
+)
+def test_parser_rejects_mutually_exclusive_or_invalid_modes(argv, capsys) -> None:
+    from oterminus.cli import main
+
+    with pytest.raises(SystemExit) as exc_info:
+        main(argv)
+
+    assert exc_info.value.code == 2
+    error = capsys.readouterr().err
+    assert "error:" in error
+
+
+def test_direct_dry_run_validates_previews_audits_and_skips_execution(
+    monkeypatch, tmp_path: Path, capsys
+) -> None:
+    from oterminus.cli import main
+
+    config = _config(tmp_path)
+    validator, executor = _install_main_dependencies(monkeypatch, config)
+    monkeypatch.setattr(
+        "oterminus.cli.ensure_startup_ready",
+        Mock(side_effect=AssertionError("direct dry-run should not require Ollama")),
+    )
+    monkeypatch.setattr("oterminus.cli.Planner", Mock(side_effect=AssertionError("no planner")))
+    monkeypatch.setattr("builtins.input", Mock(side_effect=AssertionError("no confirmation")))
+
+    code = main(["--dry-run", "ls"])
+
+    assert code == 0
+    output = capsys.readouterr().out
+    assert "--- command preview ---" in output
+    assert "Dry-run mode: execution skipped" in output
+    validator.validate.assert_called_once()
+    executor.run.assert_not_called()
+    payload = _read_audit_payload(config.audit_log_path)
+    assert payload["user_input"] == "ls"
+    assert payload["direct_command_detected"] is True
+    assert payload["validation_accepted"] is True
+    assert payload["confirmation_result"] == "skipped_dry_run"
+    assert payload["execution_exit_code"] is None
+
+
+def test_direct_explain_validates_renders_explanation_audits_and_skips_execution(
+    monkeypatch, tmp_path: Path, capsys
+) -> None:
+    from oterminus.cli import main
+
+    config = _config(tmp_path)
+    validator, executor = _install_main_dependencies(monkeypatch, config)
+    monkeypatch.setattr(
+        "oterminus.cli.ensure_startup_ready",
+        Mock(side_effect=AssertionError("direct explain should not require Ollama")),
+    )
+    monkeypatch.setattr("oterminus.cli.Planner", Mock(side_effect=AssertionError("no planner")))
+    monkeypatch.setattr("builtins.input", Mock(side_effect=AssertionError("no confirmation")))
+
+    code = main(["--explain", "ls"])
+
+    assert code == 0
+    output = capsys.readouterr().out
+    assert "--- command preview ---" in output
+    assert "--- oterminus explanation ---" in output
+    assert "Execution     : Blocked by explain mode" in output
+    validator.validate.assert_called_once()
+    executor.run.assert_not_called()
+    payload = _read_audit_payload(config.audit_log_path)
+    assert payload["user_input"] == "ls"
+    assert payload["direct_command_detected"] is True
+    assert payload["validation_accepted"] is True
+    assert payload["confirmation_result"] == "skipped_explain"
+    assert payload["execution_exit_code"] is None
+
+
+@pytest.mark.parametrize(
+    ("flag", "expected_status"),
+    (("--dry-run", "skipped_dry_run"), ("--explain", "skipped_explain")),
+)
+def test_natural_language_inspection_modes_use_planner_without_executor(
+    monkeypatch, tmp_path: Path, capsys, flag: str, expected_status: str
+) -> None:
+    from oterminus.cli import main
+
+    config = _config(tmp_path)
+    validator, executor = _install_main_dependencies(monkeypatch, config)
+    planner = Mock()
+    planner.plan.return_value = _planned_ls_proposal()
+
+    monkeypatch.setattr("oterminus.cli.ensure_startup_ready", Mock(return_value="gemma3:latest"))
+    monkeypatch.setattr("oterminus.cli.OllamaPlannerClient", Mock(return_value=Mock()))
+    monkeypatch.setattr("oterminus.cli.Planner", lambda client: planner)
+    monkeypatch.setattr("builtins.input", Mock(side_effect=AssertionError("no confirmation")))
+
+    code = main([flag, "show", "files"])
+
+    assert code == 0
+    output = capsys.readouterr().out
+    assert "--- oterminus proposal ---" in output
+    if flag == "--dry-run":
+        assert "Dry-run mode: execution skipped" in output
+    else:
+        assert "--- oterminus explanation ---" in output
+    planner.plan.assert_called_once_with("show files")
+    validator.validate.assert_called_once()
+    executor.run.assert_not_called()
+    payload = _read_audit_payload(config.audit_log_path)
+    assert payload["user_input"] == "show files"
+    assert payload["direct_command_detected"] is False
+    assert payload["routed_category"] == "filesystem_inspect"
+    assert payload["confirmation_result"] == expected_status
+    assert payload["execution_exit_code"] is None
+
+
+def test_one_shot_execute_mode_decline_stops_before_executor(
+    monkeypatch, tmp_path: Path, capsys
+) -> None:
+    from oterminus.cli import main
+
+    config = _config(tmp_path)
+    validator, executor = _install_main_dependencies(monkeypatch, config)
+    monkeypatch.setattr(
+        "oterminus.cli.ensure_startup_ready",
+        Mock(side_effect=AssertionError("direct command should not need Ollama")),
+    )
+    monkeypatch.setattr("builtins.input", Mock(return_value="n"))
+
+    code = main(["ls"])
+
+    assert code == 0
+    assert "Cancelled." in capsys.readouterr().out
+    validator.validate.assert_called_once()
+    executor.run.assert_not_called()
+    payload = _read_audit_payload(config.audit_log_path)
+    assert payload["confirmation_result"] == "cancelled"
+    assert payload["execution_exit_code"] is None
+
+
+def test_one_shot_execute_mode_confirmation_runs_executor(monkeypatch, tmp_path: Path) -> None:
+    from oterminus.cli import main
+
+    config = _config(tmp_path)
+    _validator, executor = _install_main_dependencies(monkeypatch, config)
+    monkeypatch.setattr(
+        "oterminus.cli.ensure_startup_ready",
+        Mock(side_effect=AssertionError("direct command should not need Ollama")),
+    )
+    monkeypatch.setattr("builtins.input", Mock(return_value="y"))
+
+    code = main(["ls"])
+
+    assert code == 0
+    executor.run.assert_called_once_with(["ls", "."], display_command="ls .")
+    payload = _read_audit_payload(config.audit_log_path)
+    assert payload["confirmation_result"] == "confirmed"
+    assert payload["execution_exit_code"] == 0
+
+
+def test_repl_documented_built_ins_are_handled_without_ollama_or_execution(
+    monkeypatch, tmp_path: Path, capsys
+) -> None:
+    from oterminus.cli import main
+
+    config = _config(tmp_path)
+    _validator, executor = _install_main_dependencies(monkeypatch, config)
+    inputs = iter(["help", "dry-run ls", "explain ls", "audit status", "history", "exit"])
+
+    monkeypatch.setattr("oterminus.cli.create_prompt_session", lambda: (None, "plain_input"))
+    monkeypatch.setattr(
+        "oterminus.cli.ensure_startup_ready",
+        Mock(side_effect=AssertionError("direct REPL built-ins should not require Ollama")),
+    )
+    monkeypatch.setattr("builtins.input", Mock(side_effect=lambda _prompt: next(inputs)))
+
+    code = main(["--verbose"])
+
+    assert code == 0
+    output = capsys.readouterr().out
+    assert "Built-ins: help" in output
+    assert "Dry-run mode: execution skipped" in output
+    assert "--- oterminus explanation ---" in output
+    assert "audit enabled: yes" in output
+    assert "skipped_dry_run" in output
+    assert "skipped_explain" in output
+    executor.run.assert_not_called()
