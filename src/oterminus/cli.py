@@ -4,6 +4,7 @@ import argparse
 import logging
 import subprocess
 import sys
+import json
 from datetime import datetime, timezone
 from dataclasses import dataclass
 from collections.abc import Callable
@@ -413,8 +414,11 @@ def repl(
             continue
         if request.lower() in {"exit", "quit"}:
             return 0
-        if request.lower().strip() == "audit status":
-            print(render_audit_status(audit_logger, enabled=audit_enabled))
+        audit_response = handle_audit_command(
+            request, audit_logger=audit_logger, audit_enabled=audit_enabled
+        )
+        if audit_response is not None:
+            print(audit_response)
             continue
         discovery_response = handle_repl_discovery_command(request)
         if discovery_response is not None:
@@ -623,8 +627,11 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.request:
         request = " ".join(args.request)
-        if request.lower().strip() == "audit status":
-            print(render_audit_status(audit_logger, enabled=config.audit_enabled))
+        audit_response = handle_audit_command(
+            request, audit_logger=audit_logger, audit_enabled=config.audit_enabled
+        )
+        if audit_response is not None:
+            print(audit_response)
             return 0
         return handle_request(
             request,
@@ -749,10 +756,73 @@ def render_audit_status(audit_logger: AuditLogger | None, *, enabled: bool = Tru
         lines.append("audit logger unavailable")
         return "\n".join(lines)
     details = audit_logger.status()
-    lines.append(f"path: {details['path']}")
-    lines.append(f"log file exists: {details['exists']}")
-    lines.append(f"redaction: {details['redaction']}")
+    lines.append(f"audit log path: {details['path']}")
+    lines.append(f"log file exists: {'true' if details['exists'] == 'yes' else 'false'}")
+    lines.append(f"redaction enabled: {'true' if audit_logger.redact else 'false'}")
     return "\n".join(lines)
+
+
+def handle_audit_command(
+    request: str, *, audit_logger: AuditLogger | None, audit_enabled: bool
+) -> str | None:
+    lowered = request.lower().strip()
+    if lowered == "audit status":
+        return render_audit_status(audit_logger, enabled=audit_enabled)
+    if lowered.startswith("audit tail"):
+        return render_audit_tail(request, audit_logger=audit_logger, enabled=audit_enabled)
+    if lowered == "audit clear":
+        return clear_audit_log(audit_logger, enabled=audit_enabled)
+    return None
+
+
+def render_audit_tail(request: str, *, audit_logger: AuditLogger | None, enabled: bool) -> str:
+    if not enabled or audit_logger is None:
+        return "Audit logging is disabled."
+    parts = request.strip().split()
+    limit = 10
+    if len(parts) == 3:
+        parsed = _parse_positive_int(parts[2])
+        if parsed is None:
+            return "Usage: audit tail [n]"
+        limit = parsed
+    elif len(parts) > 3:
+        return "Usage: audit tail [n]"
+
+    path = audit_logger.path
+    if not path.exists():
+        return f"Audit log not found at {path}."
+    lines = path.read_text(encoding="utf-8").splitlines()
+    if not lines:
+        return "Audit log is empty."
+    selected = lines[-limit:]
+    output = [f"Showing {len(selected)} most recent audit event(s):"]
+    for raw in selected:
+        try:
+            event = json.loads(raw)
+        except json.JSONDecodeError:
+            output.append(f"- {raw}")
+            continue
+        timestamp = event.get("timestamp", "?")
+        user_input = event.get("user_input", "")
+        confirmation_result = event.get("confirmation_result")
+        exit_code = event.get("execution_exit_code")
+        output.append(
+            f"- {timestamp} | input={user_input!r} | confirmation={confirmation_result} | exit={exit_code}"
+        )
+    return "\n".join(output)
+
+
+def clear_audit_log(audit_logger: AuditLogger | None, *, enabled: bool) -> str:
+    if not enabled or audit_logger is None:
+        return "Audit logging is disabled."
+    path = audit_logger.path
+    if not path.exists():
+        return f"Audit log not found at {path}."
+    answer = input("Type CLEAR AUDIT to delete the local audit log: ").strip()
+    if answer != "CLEAR AUDIT":
+        return "Audit clear cancelled."
+    path.write_text("", encoding="utf-8")
+    return f"Cleared audit log at {path}."
 
 
 def render_ambiguity_response(result: AmbiguityResult) -> str:

@@ -46,6 +46,14 @@ those stages.
 When audit redaction is enabled, text and argv fields are passed through redaction helpers before
 writing.
 
+## User-facing audit commands
+
+- `audit status`: reports enabled/disabled state, configured path, file existence, and redaction.
+- `audit tail [n]`: shows most recent events from the local JSONL file (default `n=10`).
+- `audit clear`: asks for exact confirmation (`CLEAR AUDIT`) before clearing the local log.
+
+When audit is disabled, tail and clear commands do not create a new log file.
+
 ## Example (illustrative)
 
 ```json

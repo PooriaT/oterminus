@@ -71,6 +71,10 @@ In practice:
 - malformed, missing, unreadable, or non-object user config JSON is ignored and defaults are used
   where applicable.
 
+Audit management commands (`audit status`, `audit tail [n]`, and `audit clear`) read this active
+configuration. If `OTERMINUS_AUDIT_ENABLED=false`, tail/clear report disabled state and do not
+create a log file.
+
 ## Diagnostics visibility
 
 `poetry run oterminus doctor` reports the current configuration and readiness state that affects
