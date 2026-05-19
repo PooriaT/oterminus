@@ -413,6 +413,7 @@ def repl(
             debug_trace=debug_trace,
             run_mode=run_mode,
             session_history=session_history,
+            persistent_store=persistent_store,
         )
 
 
