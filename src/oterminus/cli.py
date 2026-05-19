@@ -114,6 +114,7 @@ def handle_request(
     session_history: SessionHistory | None = None,
     rerun_source_history_id: int | None = None,
     persistent_store: PersistentHistoryStore | None = None,
+    disabled_pack_ids: frozenset[str] | None = None,
 ) -> int:
     started_at = datetime.now(tz=timezone.utc)
     event = AuditEvent.start(user_input=request)
@@ -125,7 +126,7 @@ def handle_request(
         if history_item is not None and persistent_store is not None:
             persistent_store.append(history_item)
 
-    proposal = detect_direct_command(request)
+    proposal = detect_direct_command(request, disabled_pack_ids=disabled_pack_ids)
     is_direct_command = proposal is not None
     event.direct_command_detected = is_direct_command
     if history_item is not None:
@@ -342,6 +343,7 @@ def repl(
     debug_trace: bool = False,
     default_run_mode: RunMode = RunMode.EXECUTE,
     persistent_store: PersistentHistoryStore | None = None,
+    disabled_pack_ids: frozenset[str] | None = None,
 ) -> int:
     print("oterminus REPL. Type 'help' for guidance, 'exit' or 'quit' to leave.")
     session_history = SessionHistory()
@@ -349,7 +351,12 @@ def repl(
         for item in persistent_store.load():
             session_history.add_persisted(item)
 
-    prompt_session, backend_name = create_prompt_session()
+    try:
+        prompt_session, backend_name = create_prompt_session(
+            disabled_pack_ids=validator.policy.disabled_command_packs
+        )
+    except TypeError:
+        prompt_session, backend_name = create_prompt_session()
     if debug_trace:
         if backend_name == "prompt_toolkit":
             print("[trace] prompt_toolkit completion enabled")
@@ -417,8 +424,13 @@ def repl(
         )
 
 
-def create_prompt_session() -> tuple[object | None, str]:
-    backend_name, completer = get_completion_backend_status()
+def create_prompt_session(
+    *, disabled_pack_ids: frozenset[str] | None = None
+) -> tuple[object | None, str]:
+    try:
+        backend_name, completer = get_completion_backend_status(disabled_pack_ids=disabled_pack_ids)
+    except TypeError:
+        backend_name, completer = get_completion_backend_status()
     if completer is None:
         return None, backend_name
     try:
@@ -605,7 +617,11 @@ def main(argv: list[str] | None = None) -> int:
 
         selected_model = ensure_planner_ready()
         client = OllamaPlannerClient(model=selected_model)
-        planner = Planner(client)
+
+        try:
+            planner = Planner(client, policy=config.policy)
+        except TypeError:
+            planner = Planner(client)
         return planner
 
     if args.request:
@@ -635,6 +651,7 @@ def main(argv: list[str] | None = None) -> int:
         debug_trace=args.verbose,
         default_run_mode=run_mode,
         persistent_store=persistent_store,
+        disabled_pack_ids=validator.policy.disabled_command_packs,
     )
 
 

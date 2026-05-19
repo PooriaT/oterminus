@@ -90,6 +90,7 @@ def build_repl_completions(
     cwd: Path | None = None,
     *,
     include_capability_hints: bool = False,
+    disabled_pack_ids: frozenset[str] | None = None,
 ) -> list[CompletionCandidate]:
     working_dir = cwd or Path.cwd()
     word_start = _word_start_index(text_before_cursor)
@@ -103,11 +104,11 @@ def build_repl_completions(
 
     if is_first_token:
         suggestions.update(REPL_BUILTINS)
-        suggestions.update(supported_base_commands())
-        for capability in supported_capabilities():
+        suggestions.update(supported_base_commands(disabled_pack_ids))
+        for capability in supported_capabilities(disabled_pack_ids):
             suggestions.add(capability.capability_id)
         if include_capability_hints:
-            for capability in supported_capabilities():
+            for capability in supported_capabilities(disabled_pack_ids):
                 suggestions.add(capability.capability_label)
                 suggestions.update(capability.aliases)
         suggestions.update(NL_TEMPLATES)
@@ -118,7 +119,7 @@ def build_repl_completions(
     return [CompletionCandidate(text=match, start_position=start_position) for match in matches]
 
 
-def prompt_toolkit_completer() -> object | None:
+def prompt_toolkit_completer(*, disabled_pack_ids: frozenset[str] | None = None) -> object | None:
     try:
         from prompt_toolkit.completion import Completer, Completion
     except ImportError:
@@ -127,14 +128,18 @@ def prompt_toolkit_completer() -> object | None:
     class OterminusCompleter(Completer):
         def get_completions(self, document, complete_event):  # type: ignore[override]
             del complete_event
-            for candidate in build_repl_completions(document.text_before_cursor):
+            for candidate in build_repl_completions(
+                document.text_before_cursor, disabled_pack_ids=disabled_pack_ids
+            ):
                 yield Completion(candidate.text, start_position=candidate.start_position)
 
     return OterminusCompleter()
 
 
-def get_completion_backend_status() -> tuple[str, object | None]:
-    completer = prompt_toolkit_completer()
+def get_completion_backend_status(
+    *, disabled_pack_ids: frozenset[str] | None = None
+) -> tuple[str, object | None]:
+    completer = prompt_toolkit_completer(disabled_pack_ids=disabled_pack_ids)
     if completer is not None:
         return "prompt_toolkit", completer
     return "plain_input", None

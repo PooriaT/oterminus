@@ -71,3 +71,9 @@ def test_detect_direct_command_falls_back_when_structured_parse_errors(monkeypat
     assert proposal.mode == ProposalMode.EXPERIMENTAL
     assert proposal.command == "open ."
     assert any("Structured parsing skipped: boom" in note for note in proposal.notes)
+
+
+def test_detect_direct_command_respects_disabled_packs() -> None:
+    proposal = detect_direct_command("ps -Af", disabled_pack_ids=frozenset({"process"}))
+
+    assert proposal is None

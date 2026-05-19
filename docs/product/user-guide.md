@@ -257,3 +257,6 @@ still contain local paths and command context, so review before sharing publicly
 ## Persistent REPL history (optional)
 
 Set `OTERMINUS_HISTORY_ENABLED=true` to persist selected history records locally to JSONL (`OTERMINUS_HISTORY_PATH`, default `~/.oterminus/history.jsonl`). This is local-only, can be disabled at any time, and `rerun <id>` still re-plans/revalidates/reconfirms. Redaction follows `OTERMINUS_HISTORY_REDACT` (defaults to audit redaction behavior). Do not share history files publicly without review.
+
+## Command pack availability
+Set `OTERMINUS_DISABLED_COMMAND_PACKS` to a comma-separated list of pack IDs (e.g. `dangerous`, `process,macos`). Pack IDs are case-insensitive and validated. Disabled packs are removed from planner/completion context and commands are rejected by validator before execution. This is separate from capability IDs and does not change policy mode.

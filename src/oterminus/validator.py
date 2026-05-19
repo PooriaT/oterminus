@@ -4,7 +4,13 @@ import re
 import shlex
 from pathlib import Path
 
-from oterminus.commands import CommandSpec, MaturityLevel, PathOperandMode, get_command_spec
+from oterminus.commands import (
+    CommandSpec,
+    MaturityLevel,
+    PathOperandMode,
+    get_command_spec,
+    get_pack_for_command,
+)
 from oterminus.models import Proposal, ProposalMode, RiskLevel, ValidationResult
 from oterminus.policies import PolicyConfig, is_risk_allowed
 from oterminus.structured_commands import (
@@ -51,6 +57,11 @@ class Validator:
                 )
                 risk = RiskLevel.DANGEROUS
             else:
+                pack_id = get_pack_for_command(spec.name)
+                if pack_id in self.policy.disabled_command_packs:
+                    reasons.append(
+                        f"Command '{spec.name}' is unavailable because command pack '{pack_id}' is disabled."
+                    )
                 risk = spec.risk_level
                 reasons.extend(self._maturity_reasons(spec))
 
@@ -128,6 +139,11 @@ class Validator:
             risk = RiskLevel.DANGEROUS
         else:
             risk = spec.risk_level
+            pack_id = get_pack_for_command(spec.name)
+            if pack_id in self.policy.disabled_command_packs:
+                reasons.append(
+                    f"Command '{spec.name}' is unavailable because command pack '{pack_id}' is disabled."
+                )
             reasons.extend(self._maturity_reasons(spec))
             reasons.extend(self._validate_command_shape(spec, args[1:]))
 

@@ -11,6 +11,7 @@ class PolicyConfig:
     mode: RiskLevel = RiskLevel.WRITE
     allow_dangerous: bool = False
     allowed_roots: list[str] = field(default_factory=list)
+    disabled_command_packs: frozenset[str] = field(default_factory=frozenset)
 
 
 class ConfirmationLevel(str, Enum):

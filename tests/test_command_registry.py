@@ -18,7 +18,7 @@ from oterminus.models import RiskLevel
 
 
 def test_all_command_packs_are_loaded_into_registry() -> None:
-    packed_names = {spec.name for pack in COMMAND_PACKS for spec in pack}
+    packed_names = {spec.name for pack in COMMAND_PACKS for spec in pack.commands}
 
     assert packed_names
     assert packed_names == set(supported_base_commands())

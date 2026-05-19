@@ -6,7 +6,8 @@ from pydantic import ValidationError
 
 from oterminus.models import Proposal, ProposalMode
 from oterminus.ollama_client import OllamaPlannerClient
-from oterminus.prompts import SYSTEM_PROMPT, build_user_prompt
+from oterminus.policies import PolicyConfig
+from oterminus.prompts import build_system_prompt, build_user_prompt
 from oterminus.router import route_request
 from oterminus.structured_commands import (
     StructuredCommandError,
@@ -20,13 +21,15 @@ class PlannerError(RuntimeError):
 
 
 class Planner:
-    def __init__(self, client: OllamaPlannerClient):
+    def __init__(self, client: OllamaPlannerClient, policy: PolicyConfig | None = None):
         self.client = client
+        self.policy = policy or PolicyConfig()
 
     def plan(self, request: str) -> Proposal:
         route = route_request(request)
         raw = self.client.chat_json(
-            system_prompt=SYSTEM_PROMPT, user_prompt=build_user_prompt(request, route=route)
+            system_prompt=build_system_prompt(disabled_pack_ids=self.policy.disabled_command_packs),
+            user_prompt=build_user_prompt(request, route=route),
         )
         return self.parse_proposal(raw)
 

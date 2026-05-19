@@ -72,3 +72,22 @@ def test_load_config_history_env_overrides(monkeypatch, tmp_path: Path) -> None:
     assert config.history_path == tmp_path / "history.jsonl"
     assert config.history_limit == 7
     assert config.history_redact is False
+
+
+def test_load_config_disabled_command_packs(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(tmp_path / "config.json"))
+    monkeypatch.setenv("OTERMINUS_DISABLED_COMMAND_PACKS", " dangerous, PROCESS ")
+
+    config = load_config()
+
+    assert config.policy.disabled_command_packs == frozenset({"dangerous", "process"})
+
+
+def test_load_config_rejects_unknown_disabled_command_pack(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(tmp_path / "config.json"))
+    monkeypatch.setenv("OTERMINUS_DISABLED_COMMAND_PACKS", "notapack")
+
+    import pytest
+
+    with pytest.raises(ValueError, match=r"Unknown value\(s\)"):
+        load_config()

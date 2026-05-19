@@ -80,11 +80,13 @@ def _format_structured_shapes() -> str:
     )
 
 
-def build_system_prompt() -> str:
+def build_system_prompt(*, disabled_pack_ids: frozenset[str] | None = None) -> str:
     structured_families = ", ".join(f"`{family}`" for family in sorted(STRUCTURED_ARGUMENT_MODELS))
-    allowlisted_families = ", ".join(f"`{family}`" for family in sorted(supported_base_commands()))
-    capability_summaries = capability_summary_for_prompt()
-    capability_examples = command_examples_for_prompt()
+    allowlisted_families = ", ".join(
+        f"`{family}`" for family in sorted(supported_base_commands(disabled_pack_ids))
+    )
+    capability_summaries = capability_summary_for_prompt(disabled_pack_ids=disabled_pack_ids)
+    capability_examples = command_examples_for_prompt(disabled_pack_ids=disabled_pack_ids)
 
     return f"""
 You are `oterminus-planner`, a local terminal planning model.
@@ -151,9 +153,6 @@ single local command exists, and you must state the limitation in `notes`.
 - If the request falls outside local terminal/filesystem work, do not chat about it; choose the \
 closest conservative single local command and explain the limitation in `notes`.
 """.strip()
-
-
-SYSTEM_PROMPT = build_system_prompt()
 
 
 def build_user_prompt(request: str, route: RouteResult | None = None) -> str:

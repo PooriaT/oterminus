@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import shlex
 
-from oterminus.commands import get_command_spec, looks_like_direct_invocation
+from oterminus.commands import get_enabled_command_spec, looks_like_direct_invocation
 from oterminus.models import ActionType, Proposal, ProposalMode
 from oterminus.structured_commands import StructuredCommandError, parse_raw_command_as_structured
 
 
-def detect_direct_command(request: str) -> Proposal | None:
+def detect_direct_command(
+    request: str, *, disabled_pack_ids: frozenset[str] | None = None
+) -> Proposal | None:
     command = request.strip()
     if not command:
         return None
@@ -21,11 +23,11 @@ def detect_direct_command(request: str) -> Proposal | None:
         return None
 
     base = args[0]
-    spec = get_command_spec(base)
+    spec = get_enabled_command_spec(base, disabled_pack_ids)
     if spec is None or not spec.direct_supported:
         return None
 
-    if not looks_like_direct_invocation(base, args[1:]):
+    if not looks_like_direct_invocation(base, args[1:], disabled_pack_ids):
         return None
 
     notes = ["Detected as a direct shell command; skipped the LLM planner.", *spec.notes]
