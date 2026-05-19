@@ -12,6 +12,7 @@ When enabled, each request lifecycle writes one JSON line with fields covering:
 - validation outcome and reasons/warnings
 - confirmation result or lifecycle stop status
 - execution exit code and timing
+- rerun lineage (`rerun_source_history_id`) when a request is triggered via `rerun <history_id>`
 
 For ambiguous natural-language requests, the audit event records `ambiguity_detected`,
 `ambiguity_reason`, `ambiguity_safe_options`, and `confirmation_result: "blocked_ambiguous"`.

@@ -537,8 +537,11 @@ def handle_repl_history_command(
         return session_history.render_table(limit=count)
 
     if lowered.startswith("explain "):
-        history_id = _parse_positive_int(lowered.split(maxsplit=1)[1])
+        explain_target = request.strip().split(maxsplit=1)[1].strip()
+        history_id = _parse_positive_int(explain_target)
         if history_id is None:
+            if _looks_like_history_id(explain_target):
+                return "Usage: explain <history_id> | explain <request>"
             return None
         return _render_history_explanation(session_history, history_id)
 
@@ -658,6 +661,7 @@ def _duration_ms_since(started_at: datetime) -> int:
 
 
 def _truncate(value: str, width: int) -> str:
+    value = " ".join(value.split())
     if len(value) <= width:
         return value
     return value[: width - 1] + "…"
@@ -671,6 +675,15 @@ def _parse_positive_int(raw: str) -> int | None:
     if parsed <= 0:
         return None
     return parsed
+
+
+def _looks_like_history_id(raw: str) -> bool:
+    candidate = raw.strip()
+    if not candidate:
+        return False
+    if candidate[0] in "+-":
+        return candidate[1:].isdigit()
+    return candidate.isdigit()
 
 
 def _run_mode_from_args(args: argparse.Namespace) -> RunMode:

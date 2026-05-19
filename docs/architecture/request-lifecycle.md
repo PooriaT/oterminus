@@ -128,3 +128,12 @@ and explain requests record skipped execution status instead of an execution exi
 ### 11) Evals and tests
 
 Deterministic fixture evals and unit tests assert lifecycle invariants and prevent regressions.
+
+## REPL history-aware commands in lifecycle terms
+
+In REPL mode, `history`, `history <n>`, and `explain <history_id>` are local inspection commands
+for the current process session and do not execute shell commands.
+
+`rerun <history_id>` does not shortcut execution. It submits the original user input back into the
+same request lifecycle described above, including ambiguity handling, planning/direct detection,
+validation/policy, preview, and explicit execute confirmation.
