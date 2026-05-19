@@ -1,23 +1,13 @@
 # Capability Map
 
-Current capabilities and command families:
+<!-- Generated from the command registry. Do not edit command tables manually; update command specs instead. -->
 
-- `filesystem_inspection` — inspect local files, folders, and metadata
-  - `cd`, `ls`, `pwd`, `find`, `du`, `stat`, `file`
-- `filesystem_mutation` — create/copy/move/permission changes
-  - `mkdir`, `cp`, `mv`, `chmod`, `touch`, `chown`
-- `text_inspection` — inspect/search/transform text
-  - `cat`, `head`, `tail`, `grep`, `wc`, `sort`, `uniq`
-- `process_inspection` — inspect processes and open files
-  - `ps`, `pgrep`, `lsof`
-- `system_inspection` — inspect identity/system/env state
-  - `clear`, `whoami`, `uname`, `which`, `env`, `df`
-- `macos_desktop` — open local paths via macOS desktop integration
-  - `open`
-- `destructive_operations` — high-risk operations
-  - `rm`, `sudo`
-
-Capability metadata (descriptions, aliases, maturity summaries) is generated from command specs in
-the merged registry. Common, safe-enough capabilities should prefer structured mode with typed
-arguments and deterministic rendering; uncommon or difficult-to-model capabilities should remain
-constrained experimental or blocked.
+| Capability ID | Label | Description | Commands | Risk levels present | Maturity levels present | Notes |
+|---|---|---|---|---|---|---|
+| destructive_operations | Destructive operations | High-risk operations that can remove data or escalate privileges. | `rm`, `sudo` | dangerous | blocked, experimental_only | — |
+| filesystem_inspection | Filesystem inspection | Inspect local files, folders, and metadata safely. | `cd`, `du`, `file`, `find`, `ls`, `pwd`, `stat` | safe | direct_only, structured | Changes the oterminus working directory for the current REPL session. |
+| filesystem_mutation | Filesystem mutation | Create, copy, move, or modify files and directory state. | `chmod`, `chown`, `cp`, `mkdir`, `mv`, `touch` | dangerous, write | experimental_only, structured | — |
+| macos_desktop | macOS desktop integration | Open local paths in Finder or default macOS apps. | `open` | safe | structured | Opens a local file or folder via macOS LaunchServices. |
+| process_inspection | Process inspection | Inspect running processes and open files. | `lsof`, `pgrep`, `ps` | safe | structured | Lists open files and sockets; output can expose sensitive process or path information. |
+| system_inspection | System inspection | Inspect local environment, identity, and system properties. | `clear`, `df`, `env`, `uname`, `which`, `whoami` | safe | structured | Clears the current terminal screen for a clean session view.<br>Printing the full environment may include sensitive values; curated mode only allows single-variable lookups. |
+| text_inspection | Text inspection | Inspect, filter, and transform file text content. | `cat`, `grep`, `head`, `sort`, `tail`, `uniq`, `wc` | safe | structured | — |

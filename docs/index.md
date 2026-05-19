@@ -66,6 +66,8 @@ experimental are the only supported first-class modes.
 
 Before opening a PR, run `poetry run mkdocs build --strict` and fix any warnings or broken links.
 
+Command capability reference pages are generated from the registry; run `poetry run python scripts/generate_command_reference.py --write` after command-spec changes and verify with `--check` before opening a PR.
+
 Keep docs free of secrets, real tokens, personal local paths, or audit logs.
 
 ## GitHub Pages setup note
