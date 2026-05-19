@@ -573,6 +573,15 @@ def test_clear_audit_log_cancelled_and_confirmed(tmp_path: Path, monkeypatch) ->
     assert path.read_text(encoding="utf-8") == ""
 
 
+def test_clear_audit_log_unwritable_path(tmp_path: Path, monkeypatch) -> None:
+    path = tmp_path / "audit-dir"
+    path.mkdir()
+    logger = Mock(path=path)
+    monkeypatch.setattr("builtins.input", lambda _prompt: "CLEAR AUDIT")
+    output = clear_audit_log(logger, enabled=True)
+    assert "Unable to clear audit log" in output
+
+
 def test_handle_request_cancel(monkeypatch) -> None:
     from oterminus.cli import handle_request
 
