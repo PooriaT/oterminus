@@ -47,7 +47,7 @@ def _display_path(path: Path) -> str:
 def check_markdown_file(path: Path, errors: list[str]) -> None:
     base = path.parent
     for link in iter_markdown_links(path):
-        if not link or link.startswith("#") or is_external(link):
+        if not link or is_external(link):
             continue
         if link.startswith("<") and link.endswith(">"):
             link = link[1:-1]
