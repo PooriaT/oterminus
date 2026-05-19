@@ -60,6 +60,9 @@ jobs:
       - name: Check docs links and consistency
         run: poetry run python scripts/check_docs_links.py
 
+      - name: Check generated command reference docs
+        run: poetry run python scripts/generate_command_reference.py --check
+
       - name: Build docs (strict)
         run: poetry run mkdocs build --strict
 

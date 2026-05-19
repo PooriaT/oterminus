@@ -139,6 +139,25 @@ If your change introduces a new command/capability visible to users:
 Documentation should explain workflow intent, not just command syntax. See the
 [contributor workflow](contributing.md) for the shared formatting, docs, test, and eval checklist.
 
+
+## Generated reference docs workflow
+
+The capability map and command-family reference pages are generated from the command registry:
+
+- `docs/reference/capability-map.md`
+- `docs/reference/command-families.md`
+
+When you add or change command specs in `src/oterminus/commands/`, refresh and validate the
+reference docs:
+
+```bash
+poetry run python scripts/generate_command_reference.py --write
+poetry run python scripts/generate_command_reference.py --check
+poetry run mkdocs build --strict
+```
+
+Do not edit command tables in those reference pages by hand; update registry specs and regenerate.
+
 ## Acceptance checklist
 
 Before merging, confirm all of the following:
