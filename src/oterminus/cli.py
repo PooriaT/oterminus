@@ -12,7 +12,17 @@ from enum import Enum
 from oterminus.ambiguity import AmbiguityResult, detect_ambiguity
 from oterminus.audit import AuditEvent, AuditLogger
 from oterminus.commands import get_command_spec, supported_capabilities
-from oterminus.commands.types import MaturityLevel
+from oterminus.discovery import (
+    render_capabilities,
+    render_capability_help,
+    render_command_help,
+    render_commands,
+    render_examples,
+    render_help,
+    render_help_capabilities,
+    render_unknown_help_target,
+    render_examples_for_capability,
+)
 from oterminus.config import load_config
 from oterminus.completion import get_completion_backend_status
 from oterminus.direct_commands import detect_direct_command
@@ -471,53 +481,33 @@ def handle_repl_discovery_command(request: str) -> str | None:
     capability_map = {capability.capability_id: capability for capability in capabilities}
 
     if lowered == "help":
-        return (
-            "Enter either a natural-language terminal request or a direct shell command.\n"
-            "Examples: 'find all .py files', 'ls -lh', 'cd src'\n"
-            "Built-ins: help, capabilities, commands, examples, history, history <n>, "
-            "explain <request>, explain <history_id>, rerun <history_id>, "
-            "dry-run <request>, audit status, exit, quit\n"
-            "Try: help capabilities | help <capability_id> | help <command_family> | "
-            "examples <capability_id>"
-        )
+        return render_help()
 
     if lowered == "capabilities":
-        lines = ["Supported capabilities:"]
-        lines.extend(
-            f"- {capability.capability_id}: {capability.capability_label}"
-            for capability in capabilities
-        )
-        return "\n".join(lines)
+        return render_capabilities()
 
     if lowered == "commands":
-        lines = ["Supported command families by capability:"]
-        for capability in capabilities:
-            lines.append(f"- {capability.capability_id}: {', '.join(capability.commands)}")
-        return "\n".join(lines)
+        return render_commands()
 
     if lowered == "examples":
-        return _render_examples_by_capability()
+        return render_examples()
 
     if lowered.startswith("examples "):
         target = lowered.split(maxsplit=1)[1]
         if target not in capability_map:
-            return _unknown_help_target(target)
-        return _render_examples_for_capability(target)
+            return render_unknown_help_target(target)
+        return render_examples_for_capability(target)
 
     if lowered == "help capabilities":
-        return (
-            "OTerminus is capability-first: command families are grouped by workflow capability.\n"
-            "The command registry answers both: which command families are allowed and which workflow they belong to.\n"
-            "Maturity levels: structured, direct-only, and experimental-only."
-        )
+        return render_help_capabilities()
 
     if lowered.startswith("help "):
         target = lowered.split(maxsplit=1)[1]
         if target in capability_map:
-            return _render_capability_help(target)
+            return render_capability_help(target)
         if get_command_spec(target) is not None:
-            return _render_command_family_help(target)
-        return _unknown_help_target(target)
+            return render_command_help(target)
+        return render_unknown_help_target(target)
 
     return None
 
@@ -587,91 +577,6 @@ def _render_history_explanation(session_history: SessionHistory, history_id: int
         selected_mode=RunMode.EXPLAIN,
         direct_command=history_item.direct_command_detected,
     )
-
-
-def _render_capability_help(capability_id: str) -> str:
-    capability = next(
-        item for item in supported_capabilities() if item.capability_id == capability_id
-    )
-    lines = [
-        f"Capability: {capability.capability_id}",
-        f"Label: {capability.capability_label}",
-        f"Description: {capability.capability_description}",
-        f"Maturity in registry: {', '.join(capability.maturity_levels)}",
-        f"Supported command families: {', '.join(capability.commands)}",
-        "Example requests:",
-    ]
-    for command_name in capability.commands:
-        spec = get_command_spec(command_name)
-        if spec is not None and spec.examples:
-            lines.append(f"- {spec.examples[0]}")
-    return "\n".join(lines)
-
-
-def _render_command_family_help(command_family: str) -> str:
-    spec = get_command_spec(command_family)
-    if spec is None:
-        return _unknown_help_target(command_family)
-
-    lines = [
-        f"Command family: {spec.name}",
-        f"Capability: {spec.capability_id} ({spec.capability_label})",
-        f"Risk level: {spec.risk_level.value}",
-        f"Maturity: {_maturity_label(spec.maturity_level)}",
-    ]
-    if spec.examples:
-        lines.append("Examples:")
-        lines.extend(f"- {example}" for example in spec.examples)
-    if spec.notes:
-        lines.append("Warnings / notes:")
-        lines.extend(f"- {note}" for note in spec.notes)
-    return "\n".join(lines)
-
-
-def _render_examples_by_capability() -> str:
-    lines = ["Common example requests by capability:"]
-    for capability in supported_capabilities():
-        samples: list[str] = []
-        for command_name in capability.commands:
-            spec = get_command_spec(command_name)
-            if spec is None or not spec.examples:
-                continue
-            samples.append(spec.examples[0])
-            if len(samples) >= 2:
-                break
-        if samples:
-            lines.append(f"- {capability.capability_id}: {' | '.join(samples)}")
-    return "\n".join(lines)
-
-
-def _render_examples_for_capability(capability_id: str) -> str:
-    capability = next(
-        item for item in supported_capabilities() if item.capability_id == capability_id
-    )
-    lines = [f"Examples for {capability.capability_id}:"]
-    for command_name in capability.commands:
-        spec = get_command_spec(command_name)
-        if spec is not None and spec.examples:
-            lines.append(f"- {spec.examples[0]}")
-    return "\n".join(lines)
-
-
-def _unknown_help_target(target: str) -> str:
-    return (
-        f"Unknown help target: {target}\n"
-        "Try one of: help capabilities | help <capability_id> | help <command_family> | "
-        "capabilities | commands | examples"
-    )
-
-
-def _maturity_label(level: MaturityLevel) -> str:
-    if level is MaturityLevel.STRUCTURED:
-        return "structured"
-    if level is MaturityLevel.DIRECT_ONLY:
-        return "direct-only"
-    if level is MaturityLevel.EXPERIMENTAL_ONLY:
-        return "experimental-only"
-    return "blocked"
 
 
 def run_doctor_cli() -> int:

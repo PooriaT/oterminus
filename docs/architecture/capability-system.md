@@ -20,7 +20,7 @@ Each command spec includes:
 - command examples and natural-language aliases
 
 Capability summaries are derived from merged registry metadata and reused for prompts and REPL
-discovery.
+discovery (`capabilities`, `commands`, `examples`, and `help <target>`). These discovery commands are local and deterministic; they do not invoke planner, validator, policy, executor, or Ollama.
 
 ## Current capability domains
 

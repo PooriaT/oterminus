@@ -134,3 +134,11 @@ def test_get_completion_backend_status_reports_prompt_toolkit() -> None:
 
     assert backend == "prompt_toolkit"
     assert completer is not None
+
+
+def test_help_completion_suggests_capabilities_and_command_families() -> None:
+    capability_candidates = _texts(build_repl_completions("help file"))
+    command_candidates = _texts(build_repl_completions("help pw"))
+
+    assert "filesystem_inspection" in capability_candidates
+    assert "pwd" in command_candidates
