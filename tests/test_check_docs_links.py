@@ -61,7 +61,6 @@ def test_mkdocs_nav_missing_file_fails(tmp_path: Path, monkeypatch: pytest.Monke
     assert any("nav target does not exist" in err for err in errors)
 
 
-
 def test_same_file_anchor_passes(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     page = tmp_path / "docs" / "page.md"
     page.parent.mkdir(parents=True)
@@ -84,6 +83,7 @@ def test_same_file_anchor_missing_fails(tmp_path: Path, monkeypatch: pytest.Monk
     errors: list[str] = []
     check_docs_links.check_markdown_file(page, errors)
     assert any("missing anchor" in err for err in errors)
+
 
 def test_readme_docs_link_checked() -> None:
     errors = check_docs_links.run_checks()
