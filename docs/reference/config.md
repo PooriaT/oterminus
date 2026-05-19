@@ -91,3 +91,8 @@ export OTERMINUS_AUDIT_LOG_PATH=~/.oterminus/audit.jsonl
 export OTERMINUS_AUDIT_ENABLED=true
 export OTERMINUS_AUDIT_REDACT=true
 ```
+
+- `OTERMINUS_HISTORY_ENABLED` (default: `false`): enable local JSONL persistent REPL history.
+- `OTERMINUS_HISTORY_PATH` (default: `~/.oterminus/history.jsonl`): local path for persisted history.
+- `OTERMINUS_HISTORY_LIMIT` (default: `100`): number of recent persisted records loaded into REPL.
+- `OTERMINUS_HISTORY_REDACT` (default: follows `OTERMINUS_AUDIT_REDACT`): redact sensitive fields before persistence.

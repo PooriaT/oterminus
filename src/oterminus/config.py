@@ -18,6 +18,10 @@ class AppConfig:
     audit_log_path: Path = field(default_factory=lambda: Path.home() / ".oterminus" / "audit.jsonl")
     audit_enabled: bool = True
     audit_redact: bool = True
+    history_enabled: bool = False
+    history_path: Path = field(default_factory=lambda: Path.home() / ".oterminus" / "history.jsonl")
+    history_limit: int = 100
+    history_redact: bool = True
 
 
 def get_user_config_path() -> Path:
@@ -72,6 +76,15 @@ def load_config() -> AppConfig:
         audit_log_path = Path.home() / ".oterminus" / "audit.jsonl"
     audit_enabled = _env_flag("OTERMINUS_AUDIT_ENABLED", default=True)
     audit_redact = _env_flag("OTERMINUS_AUDIT_REDACT", default=True)
+    history_enabled = _env_flag("OTERMINUS_HISTORY_ENABLED", default=False)
+    history_limit = int(os.getenv("OTERMINUS_HISTORY_LIMIT", "100"))
+    history_path_raw = os.getenv("OTERMINUS_HISTORY_PATH")
+    history_path = (
+        Path(history_path_raw).expanduser()
+        if history_path_raw
+        else Path.home() / ".oterminus" / "history.jsonl"
+    )
+    history_redact = _env_flag("OTERMINUS_HISTORY_REDACT", default=audit_redact)
 
     return AppConfig(
         timeout_seconds=timeout_seconds,
@@ -82,6 +95,10 @@ def load_config() -> AppConfig:
         audit_log_path=audit_log_path,
         audit_enabled=audit_enabled,
         audit_redact=audit_redact,
+        history_enabled=history_enabled,
+        history_path=history_path,
+        history_limit=history_limit,
+        history_redact=history_redact,
     )
 
 

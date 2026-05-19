@@ -39,3 +39,5 @@ and argv.
 - `oterminus doctor` runs readiness and integrity checks
 
 See [audit log schema reference](../reference/audit-log-schema.md).
+
+Persistent REPL history is optional and local-only (JSONL). It stores request/decision metadata (not stdout/stderr) and may be redacted before write.

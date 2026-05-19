@@ -253,3 +253,7 @@ still contain local paths and command context, so review before sharing publicly
 - Unsupported flags, operators, redirection/pipeline chains, and disallowed paths are rejected.
 - Experimental mode is a constrained fallback and requires stronger confirmation.
 - Commands that fail validation or policy checks are never executed.
+
+## Persistent REPL history (optional)
+
+Set `OTERMINUS_HISTORY_ENABLED=true` to persist selected history records locally to JSONL (`OTERMINUS_HISTORY_PATH`, default `~/.oterminus/history.jsonl`). This is local-only, can be disabled at any time, and `rerun <id>` still re-plans/revalidates/reconfirms. Redaction follows `OTERMINUS_HISTORY_REDACT` (defaults to audit redaction behavior). Do not share history files publicly without review.

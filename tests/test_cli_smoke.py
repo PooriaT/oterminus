@@ -1571,3 +1571,26 @@ def test_repl_debug_trace_reports_prompt_toolkit_backend(monkeypatch, capsys) ->
     assert code == 0
     output = capsys.readouterr().out
     assert "[trace] prompt_toolkit completion enabled" in output
+
+
+def test_repl_passes_persistent_store_to_handle_request(monkeypatch) -> None:
+    from oterminus.cli import repl
+
+    captured: dict[str, object] = {}
+
+    monkeypatch.setattr("oterminus.cli.create_prompt_session", lambda: (None, "plain_input"))
+    answers = iter(["show files", "exit"])
+    monkeypatch.setattr("builtins.input", lambda _: next(answers))
+
+    def fake_handle_request(*_args, **kwargs) -> int:
+        captured["persistent_store"] = kwargs.get("persistent_store")
+        return 0
+
+    monkeypatch.setattr("oterminus.cli.handle_request", fake_handle_request)
+
+    store = Mock()
+    store.load.return_value = []
+    code = repl(Mock(), Mock(), Mock(), persistent_store=store)
+
+    assert code == 0
+    assert captured["persistent_store"] is store
