@@ -120,8 +120,7 @@ published to GitHub Pages after merges to `main` (once Pages is enabled in repos
 ### Work on docs locally
 
 ```bash
-poetry install --with dev
-poetry run python -m pip install mkdocs mkdocs-material
+poetry install --with dev,docs
 poetry run mkdocs serve
 poetry run mkdocs build --strict
 ```

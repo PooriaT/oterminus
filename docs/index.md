@@ -50,8 +50,7 @@ contributor reference material.
 ## Build and preview docs locally
 
 ```bash
-poetry install --with dev
-poetry run python -m pip install mkdocs mkdocs-material
+poetry install --with dev,docs
 poetry run mkdocs serve
 poetry run mkdocs build --strict
 ```
