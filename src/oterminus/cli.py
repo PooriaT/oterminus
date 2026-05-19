@@ -791,7 +791,10 @@ def render_audit_tail(request: str, *, audit_logger: AuditLogger | None, enabled
     path = audit_logger.path
     if not path.exists():
         return f"Audit log not found at {path}."
-    lines = path.read_text(encoding="utf-8").splitlines()
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except OSError as exc:
+        return f"Unable to read audit log at {path}: {exc.strerror or exc.__class__.__name__}."
     if not lines:
         return "Audit log is empty."
     selected = lines[-limit:]

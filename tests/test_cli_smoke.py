@@ -551,6 +551,14 @@ def test_render_audit_tail_limit_and_redacted_output(tmp_path: Path) -> None:
     assert "input='one'" not in output
 
 
+def test_render_audit_tail_unreadable_path(tmp_path: Path) -> None:
+    path = tmp_path / "audit-dir"
+    path.mkdir()
+    logger = Mock(path=path)
+    output = render_audit_tail("audit tail", audit_logger=logger, enabled=True)
+    assert "Unable to read audit log" in output
+
+
 def test_clear_audit_log_cancelled_and_confirmed(tmp_path: Path, monkeypatch) -> None:
     path = tmp_path / "audit.jsonl"
     path.write_text("line\n", encoding="utf-8")
