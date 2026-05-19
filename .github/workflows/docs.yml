@@ -9,6 +9,8 @@ on:
       - .github/workflows/docs.yml
       - pyproject.toml
       - poetry.lock
+      - src/oterminus/commands/**
+      - scripts/generate_command_reference.py
   push:
     branches:
       - main
