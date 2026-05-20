@@ -10,6 +10,7 @@ from oterminus.commands import (
     get_command_spec,
     looks_like_direct_invocation,
     merge_command_packs,
+    normalize_platform_id,
     supported_base_commands,
     supported_capabilities,
     supported_categories,
@@ -21,7 +22,8 @@ def test_all_command_packs_are_loaded_into_registry() -> None:
     packed_names = {spec.name for pack in COMMAND_PACKS for spec in pack.commands}
 
     assert packed_names
-    assert packed_names == set(supported_base_commands())
+    assert set(supported_base_commands(platform_id="darwin")).issubset(packed_names)
+    assert set(supported_base_commands(platform_id="linux")).issubset(packed_names)
 
 
 def test_duplicate_command_names_are_rejected() -> None:
@@ -52,7 +54,8 @@ def test_supported_base_commands_includes_curated_entries() -> None:
     assert "find" in commands
     assert "clear" in commands
     assert "cp" in commands
-    assert "open" in commands
+    assert "open" not in supported_base_commands(platform_id="linux")
+    assert "open" in supported_base_commands(platform_id="darwin")
     assert "lsof" in commands
 
 
@@ -71,7 +74,8 @@ def test_registry_exposes_supported_families_and_direct_commands() -> None:
     assert "system_inspection" in supported_categories()
     assert "process_inspection" in supported_categories()
     assert "find" in direct_supported_base_commands()
-    assert "open" in direct_supported_base_commands()
+    assert "open" in direct_supported_base_commands(platform_id="darwin")
+    assert "open" not in direct_supported_base_commands(platform_id="linux")
     assert "ps" in direct_supported_base_commands()
     assert "macos_integration" in supported_categories()
 
@@ -139,3 +143,10 @@ def test_capability_summary_for_prompt_remains_compact() -> None:
 
     assert len(summary.splitlines()) == 3
     assert len(summary) < 600
+
+
+def test_platform_normalization() -> None:
+    assert normalize_platform_id("darwin") == "darwin"
+    assert normalize_platform_id("linux") == "linux"
+    assert normalize_platform_id("linux2") == "linux"
+    assert normalize_platform_id("win32") == "windows"

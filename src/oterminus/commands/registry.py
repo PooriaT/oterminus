@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from collections.abc import Iterable, Sequence
+import sys
 
 from .dangerous import COMMAND_PACK as DANGEROUS_COMMANDS
 from .filesystem import COMMAND_PACK as FILESYSTEM_COMMANDS
@@ -28,6 +29,7 @@ class CommandPack:
     label: str
     description: str
     commands: tuple[CommandSpec, ...]
+    supported_platforms: frozenset[str] | None = None
 
     def __iter__(self):
         return iter(self.commands)
@@ -43,7 +45,13 @@ COMMAND_PACKS: tuple[CommandPack, ...] = (
     CommandPack("text", "Text", "Text and content inspection commands.", TEXT_COMMANDS),
     CommandPack("process", "Process", "Process inspection commands.", PROCESS_COMMANDS),
     CommandPack("system", "System", "System information commands.", SYSTEM_COMMANDS),
-    CommandPack("macos", "macOS", "macOS-specific desktop commands.", MACOS_COMMANDS),
+    CommandPack(
+        "macos",
+        "macOS",
+        "macOS-specific desktop commands.",
+        MACOS_COMMANDS,
+        supported_platforms=frozenset({"darwin"}),
+    ),
     CommandPack("dangerous", "Dangerous", "High-risk command families.", DANGEROUS_COMMANDS),
 )
 
@@ -69,6 +77,52 @@ COMMAND_REGISTRY: dict[str, CommandSpec] = merge_command_packs(
 _COMMAND_TO_PACK_ID: dict[str, str] = {
     spec.name: pack.pack_id for pack in COMMAND_PACKS for spec in pack.commands
 }
+_PACK_BY_ID: dict[str, CommandPack] = {pack.pack_id: pack for pack in COMMAND_PACKS}
+
+
+def normalize_platform_id(value: str) -> str:
+    lowered = value.lower()
+    if lowered.startswith("darwin") or lowered.startswith("mac"):
+        return "darwin"
+    if lowered.startswith("linux"):
+        return "linux"
+    if lowered.startswith("win"):
+        return "windows"
+    return lowered
+
+
+def current_platform_id() -> str:
+    return normalize_platform_id(sys.platform)
+
+
+def is_pack_supported_on_platform(pack: CommandPack, platform_id: str | None = None) -> bool:
+    supported = pack.supported_platforms
+    if not supported:
+        return True
+    platform = normalize_platform_id(platform_id or current_platform_id())
+    return platform in supported
+
+
+def is_command_supported_on_platform(spec: CommandSpec, platform_id: str | None = None) -> bool:
+    supported = spec.supported_platforms
+    if supported is not None:
+        if len(supported) == 0:
+            return True
+        platform = normalize_platform_id(platform_id or current_platform_id())
+        return platform in supported
+    pack_id = get_pack_for_command(spec.name)
+    if pack_id is None:
+        return True
+    return is_pack_supported_on_platform(_PACK_BY_ID[pack_id], platform_id)
+
+
+def command_supported_platforms(spec: CommandSpec) -> frozenset[str] | None:
+    if spec.supported_platforms is not None:
+        return spec.supported_platforms
+    pack_id = get_pack_for_command(spec.name)
+    if pack_id is None:
+        return None
+    return _PACK_BY_ID[pack_id].supported_platforms
 
 
 def available_pack_ids() -> tuple[str, ...]:
@@ -81,12 +135,14 @@ def get_pack_for_command(command_name: str) -> str | None:
 
 def get_enabled_command_registry(
     disabled_pack_ids: frozenset[str] | None = None,
+    platform_id: str | None = None,
 ) -> dict[str, CommandSpec]:
     disabled = disabled_pack_ids or frozenset()
     return {
         name: spec
         for name, spec in COMMAND_REGISTRY.items()
         if get_pack_for_command(name) not in disabled
+        and is_command_supported_on_platform(spec, platform_id)
     }
 
 
@@ -95,7 +151,7 @@ def get_command_spec(name: str) -> CommandSpec | None:
 
 
 def get_enabled_command_spec(
-    name: str, disabled_pack_ids: frozenset[str] | None = None
+    name: str, disabled_pack_ids: frozenset[str] | None = None, platform_id: str | None = None
 ) -> CommandSpec | None:
     spec = COMMAND_REGISTRY.get(name)
     if spec is None:
@@ -103,11 +159,15 @@ def get_enabled_command_spec(
     disabled = disabled_pack_ids if isinstance(disabled_pack_ids, frozenset) else frozenset()
     if get_pack_for_command(name) in disabled:
         return None
+    if not is_command_supported_on_platform(spec, platform_id):
+        return None
     return spec
 
 
-def supported_base_commands(disabled_pack_ids: frozenset[str] | None = None) -> tuple[str, ...]:
-    return tuple(sorted(get_enabled_command_registry(disabled_pack_ids)))
+def supported_base_commands(
+    disabled_pack_ids: frozenset[str] | None = None, platform_id: str | None = None
+) -> tuple[str, ...]:
+    return tuple(sorted(get_enabled_command_registry(disabled_pack_ids, platform_id)))
 
 
 def supported_categories() -> tuple[str, ...]:
@@ -124,8 +184,9 @@ def get_commands_by_capability(capability_id: str) -> tuple[str, ...]:
 
 def supported_capabilities(
     disabled_pack_ids: frozenset[str] | None = None,
+    platform_id: str | None = None,
 ) -> tuple[CapabilitySummary, ...]:
-    registry = get_enabled_command_registry(disabled_pack_ids)
+    registry = get_enabled_command_registry(disabled_pack_ids, platform_id)
     capability_ids = sorted({spec.capability_id for spec in registry.values()})
     summaries: list[CapabilitySummary] = []
     for capability_id in capability_ids:
@@ -148,11 +209,14 @@ def supported_capabilities(
 
 
 def command_examples_for_prompt(
-    max_examples: int = 8, *, disabled_pack_ids: frozenset[str] | None = None
+    max_examples: int = 8,
+    *,
+    disabled_pack_ids: frozenset[str] | None = None,
+    platform_id: str | None = None,
 ) -> str:
     rows: list[str] = []
-    registry = get_enabled_command_registry(disabled_pack_ids)
-    for capability in supported_capabilities(disabled_pack_ids):
+    registry = get_enabled_command_registry(disabled_pack_ids, platform_id)
+    for capability in supported_capabilities(disabled_pack_ids, platform_id):
         if not capability.commands:
             continue
         examples = []
@@ -178,9 +242,10 @@ def capability_summary_for_prompt(
     max_commands_per_capability: int = 4,
     max_aliases_per_capability: int = 2,
     disabled_pack_ids: frozenset[str] | None = None,
+    platform_id: str | None = None,
 ) -> str:
     lines: list[str] = []
-    for capability in supported_capabilities(disabled_pack_ids)[:max_capabilities]:
+    for capability in supported_capabilities(disabled_pack_ids, platform_id)[:max_capabilities]:
         command_sample = ", ".join(capability.commands[:max_commands_per_capability])
         alias_sample = (
             ", ".join(capability.aliases[:max_aliases_per_capability])
@@ -213,18 +278,22 @@ def command_examples_for_readme() -> str:
 
 def direct_supported_base_commands(
     disabled_pack_ids: frozenset[str] | None = None,
+    platform_id: str | None = None,
 ) -> frozenset[str]:
     return frozenset(
         name
-        for name, spec in get_enabled_command_registry(disabled_pack_ids).items()
+        for name, spec in get_enabled_command_registry(disabled_pack_ids, platform_id).items()
         if spec.direct_supported
     )
 
 
 def looks_like_direct_invocation(
-    base: str, operands: list[str], disabled_pack_ids: frozenset[str] | None = None
+    base: str,
+    operands: list[str],
+    disabled_pack_ids: frozenset[str] | None = None,
+    platform_id: str | None = None,
 ) -> bool:
-    spec = get_enabled_command_spec(base, disabled_pack_ids)
+    spec = get_enabled_command_spec(base, disabled_pack_ids, platform_id)
     if spec is None or not spec.direct_supported:
         return False
 

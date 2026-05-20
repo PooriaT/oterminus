@@ -37,3 +37,7 @@ See [reference capability map](../reference/capability-map.md).
 ## Command pack availability
 Command-pack enable/disable behavior is documented in the configuration reference:
 [Command pack availability](../reference/config.md#command-pack-availability).
+
+
+## Platform-aware capability visibility
+Capability summaries are built from platform-filtered command families, so platform-specific capabilities (for example `macos_desktop`) are only advertised where supported.

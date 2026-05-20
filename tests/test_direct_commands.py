@@ -20,7 +20,7 @@ def test_detect_direct_command_rejects_natural_language_find() -> None:
 
 
 def test_detect_direct_command_for_new_curated_family() -> None:
-    proposal = detect_direct_command("open .")
+    proposal = detect_direct_command("open .", platform_id="darwin")
 
     assert proposal is not None
     assert proposal.mode == ProposalMode.STRUCTURED
@@ -65,7 +65,7 @@ def test_detect_direct_command_falls_back_when_structured_parse_errors(monkeypat
 
     monkeypatch.setattr(direct_commands, "parse_raw_command_as_structured", _raise)
 
-    proposal = detect_direct_command("open .")
+    proposal = detect_direct_command("open .", platform_id="darwin")
 
     assert proposal is not None
     assert proposal.mode == ProposalMode.EXPERIMENTAL
@@ -77,3 +77,8 @@ def test_detect_direct_command_respects_disabled_packs() -> None:
     proposal = detect_direct_command("ps -Af", disabled_pack_ids=frozenset({"process"}))
 
     assert proposal is None
+
+
+def test_detect_direct_command_respects_platform_support() -> None:
+    assert detect_direct_command("open .", platform_id="linux") is None
+    assert detect_direct_command("open .", platform_id="darwin") is not None

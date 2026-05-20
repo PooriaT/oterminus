@@ -58,3 +58,9 @@ def test_planner_system_prompt_env_shape_requires_variable_operand() -> None:
     prompt = build_system_prompt()
 
     assert '- `env`: `{"variable": "PATH"}`' in prompt
+
+
+def test_planner_system_prompt_filters_platform_unsupported_commands() -> None:
+    prompt = build_system_prompt(platform_id="linux")
+    assert "`open`" not in prompt
+    assert "macos_desktop" not in prompt

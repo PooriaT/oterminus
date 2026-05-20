@@ -187,3 +187,7 @@ explicit blocked entry with rationale.
 Command-pack disabling is configured with `OTERMINUS_DISABLED_COMMAND_PACKS`. Keep the canonical
 rules in one place and refer to the config reference:
 [Command pack availability](reference/config.md#command-pack-availability).
+
+
+## Declare platform support
+When adding platform-specific commands, set `supported_platforms` on the command spec (or pack) using normalized ids (`darwin`, `linux`, `windows`). Keep validator enforcement intact: unsupported platform commands must be rejected before execution.

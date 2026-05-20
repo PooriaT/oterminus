@@ -39,3 +39,7 @@ See [command families reference](../reference/command-families.md).
 ## Command pack availability
 For the canonical behavior and env var details, see
 [Command pack availability](../reference/config.md#command-pack-availability).
+
+
+## Platform-aware availability
+Command specs can declare `supported_platforms` (normalized ids: `darwin`, `linux`, `windows`). Unsupported commands are filtered from prompt/autocomplete registry views, but validation remains authoritative and rejects unsupported commands before execution.

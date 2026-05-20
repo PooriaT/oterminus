@@ -8,8 +8,11 @@ from oterminus.commands import (
     CommandSpec,
     MaturityLevel,
     PathOperandMode,
+    command_supported_platforms,
+    current_platform_id,
     get_command_spec,
     get_pack_for_command,
+    is_command_supported_on_platform,
 )
 from oterminus.models import Proposal, ProposalMode, RiskLevel, ValidationResult
 from oterminus.policies import PolicyConfig, is_risk_allowed
@@ -63,6 +66,7 @@ class Validator:
                         f"Command '{spec.name}' is unavailable because command pack '{pack_id}' is disabled."
                     )
                 risk = spec.risk_level
+                reasons.extend(self._platform_reasons(spec))
                 reasons.extend(self._maturity_reasons(spec))
 
         if proposal.mode == ProposalMode.STRUCTURED:
@@ -144,6 +148,7 @@ class Validator:
                 reasons.append(
                     f"Command '{spec.name}' is unavailable because command pack '{pack_id}' is disabled."
                 )
+            reasons.extend(self._platform_reasons(spec))
             reasons.extend(self._maturity_reasons(spec))
             reasons.extend(self._validate_command_shape(spec, args[1:]))
 
@@ -198,6 +203,19 @@ class Validator:
         if spec.maturity_level == MaturityLevel.BLOCKED:
             return [f"Command '{spec.name}' is blocked by curated command maturity policy."]
         return []
+
+    def _platform_reasons(self, spec: CommandSpec) -> list[str]:
+        platform_id = current_platform_id()
+        if is_command_supported_on_platform(spec, platform_id):
+            return []
+        supported = command_supported_platforms(spec)
+        if not supported:
+            return []
+        targets = ", ".join(sorted(supported))
+        return [
+            f"Command '{spec.name}' is unavailable on platform '{platform_id}'. "
+            f"It is only supported on: {targets}."
+        ]
 
     def _validate_command_shape(self, spec: CommandSpec, arguments: list[str]) -> list[str]:
         reasons: list[str] = []

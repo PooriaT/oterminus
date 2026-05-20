@@ -151,3 +151,13 @@ def test_completion_excludes_disabled_pack_commands() -> None:
     candidates = _texts(build_repl_completions("op", disabled_pack_ids=frozenset({"macos"})))
 
     assert "open" not in candidates
+
+
+def test_completion_excludes_platform_unsupported_commands() -> None:
+    candidates = _texts(build_repl_completions("op", platform_id="linux"))
+    assert "open" not in candidates
+
+
+def test_help_completion_excludes_platform_unsupported_commands() -> None:
+    candidates = _texts(build_repl_completions("help op", platform_id="linux"))
+    assert "open" not in candidates

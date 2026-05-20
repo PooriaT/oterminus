@@ -54,6 +54,7 @@ class CommandSpec:
     examples: tuple[str, ...] = ()
     natural_language_aliases: tuple[str, ...] = ()
     notes: tuple[str, ...] = ()
+    supported_platforms: frozenset[str] | None = None
 
 
 def _frozenset(values: Iterable[str] = ()) -> frozenset[str]:
@@ -86,6 +87,7 @@ def command(
     examples: Iterable[str] = (),
     natural_language_aliases: Iterable[str] = (),
     notes: Iterable[str] = (),
+    supported_platforms: Iterable[str] | None = None,
 ) -> CommandSpec:
     return CommandSpec(
         name=name,
@@ -112,4 +114,7 @@ def command(
         examples=tuple(examples),
         natural_language_aliases=tuple(natural_language_aliases),
         notes=tuple(notes),
+        supported_platforms=(
+            _frozenset(supported_platforms) if supported_platforms is not None else None
+        ),
     )

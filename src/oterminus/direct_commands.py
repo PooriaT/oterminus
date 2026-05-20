@@ -8,7 +8,7 @@ from oterminus.structured_commands import StructuredCommandError, parse_raw_comm
 
 
 def detect_direct_command(
-    request: str, *, disabled_pack_ids: frozenset[str] | None = None
+    request: str, *, disabled_pack_ids: frozenset[str] | None = None, platform_id: str | None = None
 ) -> Proposal | None:
     command = request.strip()
     if not command:
@@ -23,11 +23,11 @@ def detect_direct_command(
         return None
 
     base = args[0]
-    spec = get_enabled_command_spec(base, disabled_pack_ids)
+    spec = get_enabled_command_spec(base, disabled_pack_ids, platform_id)
     if spec is None or not spec.direct_supported:
         return None
 
-    if not looks_like_direct_invocation(base, args[1:], disabled_pack_ids):
+    if not looks_like_direct_invocation(base, args[1:], disabled_pack_ids, platform_id):
         return None
 
     notes = ["Detected as a direct shell command; skipped the LLM planner.", *spec.notes]

@@ -20,5 +20,6 @@ COMMAND_PACK: tuple[CommandSpec, ...] = (
         examples=("open .",),
         natural_language_aliases=("open in finder", "reveal in finder"),
         notes=("Opens a local file or folder via macOS LaunchServices.",),
+        supported_platforms=("darwin",),
     ),
 )

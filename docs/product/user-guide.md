@@ -271,3 +271,7 @@ still contain local paths and command context, so review before sharing publicly
 You can disable specific command packs with `OTERMINUS_DISABLED_COMMAND_PACKS`. For the exact
 format, validation rules, and behavior details, see
 [Command pack availability](../reference/config.md#command-pack-availability).
+
+
+## Platform-specific commands
+Some command families are platform-specific. For example, `open` is available by default on macOS (`darwin`) only. On unsupported platforms, these commands are hidden from suggestions and planner hints, and rejected by validator before execution.
