@@ -6,6 +6,7 @@ import sys
 
 from .dangerous import COMMAND_PACK as DANGEROUS_COMMANDS
 from .filesystem import COMMAND_PACK as FILESYSTEM_COMMANDS
+from .git import COMMAND_PACK as GIT_COMMANDS
 from .macos import COMMAND_PACK as MACOS_COMMANDS
 from .process import COMMAND_PACK as PROCESS_COMMANDS
 from .system import COMMAND_PACK as SYSTEM_COMMANDS
@@ -43,6 +44,7 @@ COMMAND_PACKS: tuple[CommandPack, ...] = (
         FILESYSTEM_COMMANDS,
     ),
     CommandPack("text", "Text", "Text and content inspection commands.", TEXT_COMMANDS),
+    CommandPack("git", "Git", "Read-only local Git repository inspection commands.", GIT_COMMANDS),
     CommandPack("process", "Process", "Process inspection commands.", PROCESS_COMMANDS),
     CommandPack("system", "System", "System information commands.", SYSTEM_COMMANDS),
     CommandPack(
@@ -238,7 +240,7 @@ def command_examples_for_prompt(
 
 def capability_summary_for_prompt(
     *,
-    max_capabilities: int = 7,
+    max_capabilities: int = 8,
     max_commands_per_capability: int = 4,
     max_aliases_per_capability: int = 2,
     disabled_pack_ids: frozenset[str] | None = None,
@@ -318,7 +320,28 @@ def looks_like_direct_invocation(
             _looks_like_path(operand) for operand in operands
         )
 
+    if base == "git":
+        return _is_supported_git_direct_operands(operands)
+
     return len(operands) >= spec.min_operands
+
+
+def _is_supported_git_direct_operands(operands: list[str]) -> bool:
+    if operands == ["status", "--short"]:
+        return True
+    if operands == ["branch", "--show-current"]:
+        return True
+    if operands == ["diff", "--stat"]:
+        return True
+    if operands == ["diff", "--name-only"]:
+        return True
+    if len(operands) == 4 and operands[:3] == ["log", "--oneline", "-n"]:
+        try:
+            count = int(operands[3])
+        except ValueError:
+            return False
+        return 1 <= count <= 100
+    return False
 
 
 def _looks_like_path(value: str) -> bool:

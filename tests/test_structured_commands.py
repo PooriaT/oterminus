@@ -38,6 +38,7 @@ from oterminus.structured_commands import (
         "wc",
         "sort",
         "uniq",
+        "git",
     ],
 )
 def test_supported_structured_families_are_curated(command_family: str) -> None:
@@ -209,6 +210,26 @@ def test_supported_structured_families_are_curated(command_family: str) -> None:
             ("uniq", "-c", "README.md"),
             "uniq -c README.md",
         ),
+        ("git", {"operation": "status_short"}, ("git", "status", "--short"), "git status --short"),
+        (
+            "git",
+            {"operation": "branch_current"},
+            ("git", "branch", "--show-current"),
+            "git branch --show-current",
+        ),
+        (
+            "git",
+            {"operation": "log_oneline", "count": 7},
+            ("git", "log", "--oneline", "-n", "7"),
+            "git log --oneline -n 7",
+        ),
+        ("git", {"operation": "diff_stat"}, ("git", "diff", "--stat"), "git diff --stat"),
+        (
+            "git",
+            {"operation": "diff_name_only"},
+            ("git", "diff", "--name-only"),
+            "git diff --name-only",
+        ),
     ],
 )
 def test_render_structured_command(
@@ -251,6 +272,16 @@ def test_render_structured_command(
             "tail -c32 README.md",
             "tail",
             {"paths": ["README.md"], "lines": None, "bytes": 32},
+        ),
+        (
+            "git status --short",
+            "git",
+            {"operation": "status_short", "count": 10},
+        ),
+        (
+            "git log --oneline -n 3",
+            "git",
+            {"operation": "log_oneline", "count": 3},
         ),
         (
             "grep -Finr -m2 TODO src",

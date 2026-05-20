@@ -371,6 +371,22 @@ class SortArguments(_StructuredArgumentsModel):
         return _validate_path(value)
 
 
+class GitArguments(_StructuredArgumentsModel):
+    operation: str = Field(min_length=1)
+    count: int = Field(default=10, ge=1, le=100)
+
+    @model_validator(mode="after")
+    def validate_shape(self) -> GitArguments:
+        allowed = {"status_short", "branch_current", "log_oneline", "diff_stat", "diff_name_only"}
+        if self.operation not in allowed:
+            raise ValueError(
+                "operation must be one of: status_short, branch_current, log_oneline, diff_stat, diff_name_only."
+            )
+        if self.operation != "log_oneline" and self.count != 10:
+            raise ValueError("count is only allowed when operation=log_oneline.")
+        return self
+
+
 class UniqArguments(_StructuredArgumentsModel):
     path: str = Field(min_length=1)
     count: bool = False
@@ -417,6 +433,7 @@ STRUCTURED_ARGUMENT_MODELS: dict[str, type[_StructuredArgumentsModel]] = {
     "wc": WcArguments,
     "sort": SortArguments,
     "uniq": UniqArguments,
+    "git": GitArguments,
 }
 
 
@@ -476,6 +493,7 @@ def parse_argv_as_structured(argv: Sequence[str]) -> tuple[str, dict[str, Any]] 
         "wc": _parse_wc_argv,
         "sort": _parse_sort_argv,
         "uniq": _parse_uniq_argv,
+        "git": _parse_git_argv,
     }.get(command_family)
     if parser is None:
         return None
@@ -734,6 +752,18 @@ def render_structured_command(
             argv.append("-u")
         argv.append(validated.path)
         return RenderedCommand(tuple(argv))
+
+    if command_family == "git":
+        if validated.operation == "status_short":
+            return RenderedCommand(("git", "status", "--short"))
+        if validated.operation == "branch_current":
+            return RenderedCommand(("git", "branch", "--show-current"))
+        if validated.operation == "log_oneline":
+            return RenderedCommand(("git", "log", "--oneline", "-n", str(validated.count)))
+        if validated.operation == "diff_stat":
+            return RenderedCommand(("git", "diff", "--stat"))
+        if validated.operation == "diff_name_only":
+            return RenderedCommand(("git", "diff", "--name-only"))
 
     raise StructuredCommandError(
         f"Structured proposals are not supported for command family '{command_family}'."
@@ -1351,6 +1381,24 @@ def _parse_sort_argv(operands: list[str]) -> dict[str, Any] | None:
         return None
     arguments["path"] = path
     return arguments
+
+
+def _parse_git_argv(operands: list[str]) -> dict[str, Any] | None:
+    if operands == ["status", "--short"]:
+        return {"operation": "status_short"}
+    if operands == ["branch", "--show-current"]:
+        return {"operation": "branch_current"}
+    if operands == ["diff", "--stat"]:
+        return {"operation": "diff_stat"}
+    if operands == ["diff", "--name-only"]:
+        return {"operation": "diff_name_only"}
+    if len(operands) == 4 and operands[:3] == ["log", "--oneline", "-n"]:
+        try:
+            count = int(operands[3])
+        except ValueError:
+            return None
+        return {"operation": "log_oneline", "count": count}
+    return None
 
 
 def _parse_uniq_argv(operands: list[str]) -> dict[str, Any] | None:

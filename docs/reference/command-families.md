@@ -44,6 +44,16 @@
 | `mv` | filesystem_write | all | write | structured | yes | `mv report.md docs/` | `move file`, `rename file` | — |
 | `touch` | filesystem_write | all | write | experimental_only | yes | `touch notes.txt` | `create empty file` | — |
 
+## `git_inspection`
+
+**Label:** Git inspection
+
+**Description:** Read-only inspection of local Git repository state.
+
+| Command | Category | Platforms | Risk | Maturity | Direct support | Examples | Natural-language aliases | Notes |
+|---|---|---|---|---|---|---|---|---|
+| `git` | git_inspection | all | safe | structured | yes | `git status --short` | `git status`, `inspect git repo` | Only read-only Git inspection operations are supported in curated mode. |
+
 ## `macos_desktop`
 
 **Label:** macOS desktop integration

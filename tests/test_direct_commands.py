@@ -82,3 +82,15 @@ def test_detect_direct_command_respects_disabled_packs() -> None:
 def test_detect_direct_command_respects_platform_support() -> None:
     assert detect_direct_command("open .", platform_id="linux") is None
     assert detect_direct_command("open .", platform_id="darwin") is not None
+
+
+def test_detect_direct_command_for_supported_git_inspection() -> None:
+    proposal = detect_direct_command("git status --short")
+
+    assert proposal is not None
+    assert proposal.mode == ProposalMode.STRUCTURED
+    assert proposal.command_family == "git"
+
+
+def test_detect_direct_command_rejects_unsupported_git_subcommand() -> None:
+    assert detect_direct_command("git add .") is None

@@ -160,6 +160,9 @@ def test_validator_accepts_open_on_darwin(monkeypatch) -> None:
         ("wc -l README.md", RiskLevel.SAFE),
         ("sort -ru README.md", RiskLevel.SAFE),
         ("uniq -c README.md", RiskLevel.SAFE),
+        ("git status --short", RiskLevel.SAFE),
+        ("git branch --show-current", RiskLevel.SAFE),
+        ("git log --oneline -n 5", RiskLevel.SAFE),
     ],
 )
 def test_risk_classification_for_next_wave_structured_families(
@@ -195,6 +198,10 @@ def test_risk_classification_for_next_wave_structured_families(
         "lsof -x",
         "wc -z README.md",
         "sort",
+        "git add .",
+        "git commit -m x",
+        "git reset --hard",
+        "git push",
     ],
 )
 def test_acceptance_rejects_invalid_next_wave_variants(command: str) -> None:
