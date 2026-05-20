@@ -72,6 +72,10 @@ def test_route_request_git_inspection_requests() -> None:
     assert route_request("show files changed in git diff").category == "git_inspection"
 
 
+def test_route_request_show_last_non_git_stays_filesystem_inspection() -> None:
+    assert route_request("show last 10 lines of README.md").category == "filesystem_inspect"
+
+
 def test_route_request_git_mutating_requests_stay_unsupported() -> None:
     assert route_request("commit my changes").category == "unsupported"
     assert route_request("push this branch").category == "unsupported"
