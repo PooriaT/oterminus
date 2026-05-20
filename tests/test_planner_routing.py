@@ -64,3 +64,17 @@ def test_planner_system_prompt_filters_platform_unsupported_commands() -> None:
     prompt = build_system_prompt(platform_id="linux")
     assert "`open`" not in prompt
     assert "macos_desktop" not in prompt
+
+
+def test_planner_system_prompt_includes_git_inspection_when_enabled() -> None:
+    prompt = build_system_prompt()
+
+    assert "git_inspection" in prompt
+    assert "status_short|branch_current|log_oneline|diff_stat|diff_name_only" in prompt
+
+
+def test_planner_system_prompt_excludes_git_inspection_when_disabled() -> None:
+    prompt = build_system_prompt(disabled_pack_ids=frozenset({"git"}))
+
+    assert "git_inspection" not in prompt
+    assert "`git`" not in prompt

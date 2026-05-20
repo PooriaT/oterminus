@@ -112,6 +112,7 @@ def test_default_fixture_suite_is_capability_split() -> None:
         "filesystem_mutation.json",
         "text_inspection.json",
         "process_inspection.json",
+        "git_inspection.json",
         "system_inspection.json",
         "macos_desktop.json",
         "unsafe_and_blocked.json",

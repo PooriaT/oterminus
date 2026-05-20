@@ -41,3 +41,9 @@ Command-pack enable/disable behavior is documented in the configuration referenc
 
 ## Platform-aware capability visibility
 Capability summaries are built from platform-filtered command families, so platform-specific capabilities (for example `macos_desktop`) are only advertised where supported.
+
+## Git capability scope
+
+The `git_inspection` capability is intentionally scoped to read-only inspection. Registry metadata defines examples, aliases, and warnings so discovery surfaces (`capabilities`, `commands`, `examples`, `help <capability>`) remain consistent without duplicate hardcoded lists.
+
+`git_inspection` does not permit arbitrary `git ...` execution in structured mode; only the approved operation enum is allowed.
