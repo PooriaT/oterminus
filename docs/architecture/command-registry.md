@@ -37,4 +37,5 @@ Registry metadata is reused across:
 See [command families reference](../reference/command-families.md).
 
 ## Command pack availability
-Set `OTERMINUS_DISABLED_COMMAND_PACKS` to a comma-separated list of pack IDs (e.g. `dangerous`, `process,macos`). Pack IDs are case-insensitive and validated. Disabled packs are removed from planner/completion context and commands are rejected by validator before execution. This is separate from capability IDs and does not change policy mode.
+For the canonical behavior and env var details, see
+[Command pack availability](../reference/config.md#command-pack-availability).

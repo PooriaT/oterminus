@@ -184,4 +184,6 @@ prefer one of: - a smaller curated subset, - an explicit experimental-only const
 explicit blocked entry with rationale.
 
 ## Command pack availability
-Set `OTERMINUS_DISABLED_COMMAND_PACKS` to a comma-separated list of pack IDs (e.g. `dangerous`, `process,macos`). Pack IDs are case-insensitive and validated. Disabled packs are removed from planner/completion context and commands are rejected by validator before execution. This is separate from capability IDs and does not change policy mode.
+Command-pack disabling is configured with `OTERMINUS_DISABLED_COMMAND_PACKS`. Keep the canonical
+rules in one place and refer to the config reference:
+[Command pack availability](reference/config.md#command-pack-availability).

@@ -35,4 +35,5 @@ discovery (`capabilities`, `commands`, `examples`, and `help <target>`). These d
 See [reference capability map](../reference/capability-map.md).
 
 ## Command pack availability
-Set `OTERMINUS_DISABLED_COMMAND_PACKS` to a comma-separated list of pack IDs (e.g. `dangerous`, `process,macos`). Pack IDs are case-insensitive and validated. Disabled packs are removed from planner/completion context and commands are rejected by validator before execution. This is separate from capability IDs and does not change policy mode.
+Command-pack enable/disable behavior is documented in the configuration reference:
+[Command pack availability](../reference/config.md#command-pack-availability).
