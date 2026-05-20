@@ -63,3 +63,17 @@ def test_route_capability_expansion_excludes_dangerous_families() -> None:
 
     assert route.category == "filesystem_mutate"
     assert "chown" not in route.suggested_families
+
+
+def test_route_request_git_inspection_requests() -> None:
+    assert route_request("show git status").category == "git_inspection"
+    assert route_request("what branch am I on").category == "git_inspection"
+    assert route_request("show last 5 commits").category == "git_inspection"
+    assert route_request("show files changed in git diff").category == "git_inspection"
+
+
+def test_route_request_git_mutating_requests_stay_unsupported() -> None:
+    assert route_request("commit my changes").category == "unsupported"
+    assert route_request("push this branch").category == "unsupported"
+    assert route_request("reset this repo").category == "unsupported"
+    assert route_request("clean untracked files").category == "unsupported"

@@ -161,3 +161,17 @@ def test_completion_excludes_platform_unsupported_commands() -> None:
 def test_help_completion_excludes_platform_unsupported_commands() -> None:
     candidates = _texts(build_repl_completions("help op", platform_id="linux"))
     assert "open" not in candidates
+
+
+def test_completion_includes_git_capability_and_command() -> None:
+    capability_candidates = _texts(build_repl_completions("git_"))
+    command_candidates = _texts(build_repl_completions("gi"))
+
+    assert "git_inspection" in capability_candidates
+    assert "git" in command_candidates
+
+
+def test_help_completion_includes_git_inspection_capability() -> None:
+    candidates = _texts(build_repl_completions("help git_"))
+
+    assert "git_inspection" in candidates

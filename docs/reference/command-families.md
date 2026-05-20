@@ -52,7 +52,7 @@
 
 | Command | Category | Platforms | Risk | Maturity | Direct support | Examples | Natural-language aliases | Notes |
 |---|---|---|---|---|---|---|---|---|
-| `git` | git_inspection | all | safe | structured | yes | `git status --short` | `git status`, `inspect git repo` | Only read-only Git inspection operations are supported in curated mode. |
+| `git` | git_inspection | all | safe | structured | yes | `git status --short`<br>`git branch --show-current`<br>`git log --oneline -n 5`<br>`git diff --stat`<br>`git diff --name-only` | `git status`, `short git status`, `what branch am i on`, `show current git branch`, `show recent git commits`, `show git diff summary`, `show changed files`, `inspect git repo` | Only read-only Git inspection operations are supported in curated mode. |
 
 ## `macos_desktop`
 

@@ -281,3 +281,21 @@ Some command families are platform-specific. For example, `open` is available by
 Execution output can be large for commands like `cat`, `grep`, `find`, `ps`, and `lsof`. OTerminus truncates each captured stream (stdout and stderr) to `OTERMINUS_MAX_OUTPUT_CHARS` (default `20000`) after command completion, and prints a clear truncation notice when this happens.
 
 Dry-run/explain paths are unchanged because they do not execute commands. Audit logs and persisted history do not store full stdout/stderr content.
+
+## Git inspection (read-only)
+
+OTerminus supports **read-only Git inspection** in curated mode. You can ask directly (for example `git status --short`) or in natural language (for example "show git status" or "show last 5 commits").
+
+Supported operations:
+- `git status --short`
+- `git branch --show-current`
+- `git log --oneline -n <count>`
+- `git diff --stat`
+- `git diff --name-only`
+
+Explicitly unsupported in curated mode:
+- Git mutation operations (`git add`, `git commit`, `git checkout`, `git switch`, `git restore`, `git reset`, `git clean`, `git merge`, `git rebase`, `git stash`)
+- Git network operations (`git push`, `git pull`, `git fetch`)
+- Arbitrary Git subcommands not represented by the structured Git inspection schema
+
+All requests still go through routing, planning, validation, and confirmation policy checks. OTerminus is not a replacement for Git automation workflows.

@@ -13,6 +13,7 @@ ROUTE_CATEGORIES = {
     "text_search",
     "metadata_inspect",
     "process_inspect",
+    "git_inspection",
     "unsupported",
 }
 
@@ -64,6 +65,25 @@ def route_request(user_input: str) -> RouteResult:
             reason="Request asks for file metadata or disk usage properties.",
             suggested_families=families,
             suggested_capabilities=_capabilities_for_category("metadata_inspect"),
+        )
+
+    if _has_any(text, _GIT_MUTATION_HINTS):
+        return RouteResult(
+            category="unsupported",
+            confidence=0.9,
+            reason="Request includes mutating or network Git action not supported in curated mode.",
+            suggested_families=(),
+            suggested_capabilities=(),
+        )
+
+    if _has_any(text, _GIT_INSPECTION_HINTS):
+        families = _families_for_category("git_inspection", text)
+        return RouteResult(
+            category="git_inspection",
+            confidence=0.93,
+            reason="Request asks for read-only Git repository inspection.",
+            suggested_families=families,
+            suggested_capabilities=_capabilities_for_category("git_inspection"),
         )
 
     if _has_any(text, _MUTATION_HINTS):
@@ -294,6 +314,7 @@ _ROUTE_CAPABILITIES: dict[str, tuple[str, ...]] = {
     "metadata_inspect": ("filesystem_inspection", "system_inspection"),
     "filesystem_mutate": ("filesystem_mutation",),
     "filesystem_inspect": ("filesystem_inspection", "text_inspection", "macos_desktop"),
+    "git_inspection": ("git_inspection",),
 }
 
 _ROUTE_SEED_HINTS: dict[str, tuple[str, ...]] = {
@@ -313,4 +334,50 @@ _ROUTE_SEED_HINTS: dict[str, tuple[str, ...]] = {
         "print working directory",
         "find files",
     ),
+    "git_inspection": (
+        "show git status",
+        "show current git branch",
+        "show recent git commits",
+        "show git diff summary",
+        "show changed file names",
+    ),
 }
+
+
+_GIT_INSPECTION_HINTS = (
+    "git status",
+    "short git status",
+    "what branch am i on",
+    "current git branch",
+    "recent git commits",
+    "last commits",
+    "show last",
+    "git log",
+    "git diff summary",
+    "changed file names",
+    "files changed in git diff",
+)
+
+_GIT_MUTATION_HINTS = (
+    "git add",
+    "git commit",
+    "commit my changes",
+    "git checkout",
+    "checkout ",
+    "git switch",
+    "git restore",
+    "git reset",
+    "reset this repo",
+    "reset hard",
+    "git clean",
+    "clean untracked files",
+    "git push",
+    "push this branch",
+    "push my branch",
+    "git pull",
+    "pull latest changes",
+    "git fetch",
+    "git merge",
+    "git rebase",
+    "git stash",
+)

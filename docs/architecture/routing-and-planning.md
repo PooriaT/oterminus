@@ -69,3 +69,16 @@ Planner errors include:
 - invalid structured argument payloads
 
 These become non-execution failures surfaced in CLI.
+
+## Git inspection routing and planning
+
+The deterministic router includes a `git_inspection` route category for clear read-only Git intent, such as status, current branch, recent commits, and diff summaries/file lists.
+
+Planner proposals for Git in normal structured mode use the `git` family with a constrained argument shape:
+- `{"operation": "status_short"}`
+- `{"operation": "branch_current"}`
+- `{"operation": "log_oneline", "count": <n>}`
+- `{"operation": "diff_stat"}`
+- `{"operation": "diff_name_only"}`
+
+Mutating/network Git requests are intentionally not routed to `git_inspection` and remain unsupported or blocked by existing safety policy paths.
