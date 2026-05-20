@@ -139,9 +139,18 @@ def render_unknown_help_target(target: str) -> str:
     )
 
 
-def discovery_help_targets() -> tuple[str, ...]:
+def discovery_help_targets(
+    *,
+    disabled_pack_ids: frozenset[str] | None = None,
+    platform_id: str | None = None,
+) -> tuple[str, ...]:
     return (
         "capabilities",
-        *tuple(c.capability_id for c in supported_capabilities()),
-        *supported_base_commands(),
+        *tuple(
+            c.capability_id
+            for c in supported_capabilities(
+                disabled_pack_ids=disabled_pack_ids, platform_id=platform_id
+            )
+        ),
+        *supported_base_commands(disabled_pack_ids=disabled_pack_ids, platform_id=platform_id),
     )

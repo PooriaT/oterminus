@@ -101,7 +101,12 @@ def build_repl_completions(
 
     suggestions: set[str] = set()
     if len(tokens) == 1 and tokens[0] == "help":
-        suggestions.update(discovery_help_targets())
+        suggestions.update(
+            discovery_help_targets(
+                disabled_pack_ids=disabled_pack_ids,
+                platform_id=platform_id,
+            )
+        )
 
     if is_first_token:
         suggestions.update(REPL_BUILTINS)
