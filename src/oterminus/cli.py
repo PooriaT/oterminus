@@ -126,9 +126,10 @@ def handle_request(
         if history_item is not None and persistent_store is not None:
             persistent_store.append(history_item)
 
-    policy_disabled_packs = getattr(validator.policy, "disabled_command_packs", frozenset())
     effective_disabled_pack_ids = (
-        disabled_pack_ids if disabled_pack_ids is not None else policy_disabled_packs
+        disabled_pack_ids
+        if disabled_pack_ids is not None
+        else getattr(validator.policy, "disabled_command_packs", frozenset())
     )
 
     proposal = detect_direct_command(request, disabled_pack_ids=effective_disabled_pack_ids)
