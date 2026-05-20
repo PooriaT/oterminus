@@ -8,8 +8,9 @@ from oterminus.models import ExecutionResult
 
 
 class Executor:
-    def __init__(self, timeout_seconds: int = 60):
+    def __init__(self, timeout_seconds: int = 60, max_output_chars: int = 20000):
         self.timeout_seconds = timeout_seconds
+        self.max_output_chars = max_output_chars
         self.previous_cwd: str | None = None
 
     def run(
@@ -34,11 +35,17 @@ class Executor:
             timeout=self.timeout_seconds,
             check=False,
         )
+        stdout, stdout_truncated = truncate_output(proc.stdout, self.max_output_chars)
+        stderr, stderr_truncated = truncate_output(proc.stderr, self.max_output_chars)
         return ExecutionResult(
             command=rendered_command,
             returncode=proc.returncode,
-            stdout=proc.stdout,
-            stderr=proc.stderr,
+            stdout=stdout,
+            stderr=stderr,
+            stdout_truncated=stdout_truncated,
+            stderr_truncated=stderr_truncated,
+            stdout_original_chars=len(proc.stdout),
+            stderr_original_chars=len(proc.stderr),
         )
 
     def _run_cd(self, args: list[str], rendered_command: str) -> ExecutionResult:
@@ -72,3 +79,9 @@ class Executor:
             stdout="\033[2J\033[H",
             stderr="",
         )
+
+
+def truncate_output(value: str, limit: int) -> tuple[str, bool]:
+    if len(value) <= limit:
+        return value, False
+    return value[:limit], True

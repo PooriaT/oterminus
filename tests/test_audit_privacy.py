@@ -69,3 +69,18 @@ def test_audit_logger_can_disable_redaction_when_explicitly_opted_out(tmp_path: 
     payload = json.loads(path.read_text(encoding="utf-8").strip())
     assert payload["user_input"] == "run --token abc123"
     assert payload["argv"][2] == "abc123"
+
+
+def test_audit_payload_does_not_include_stdout_or_stderr_content(tmp_path: Path) -> None:
+    path = tmp_path / "audit.jsonl"
+    logger = AuditLogger(path, redact=False)
+    event = AuditEvent.start("ls")
+    event.stdout_truncated = True
+    event.stdout_original_chars = 50000
+    event.stdout_visible_chars = 20000
+    logger.write(event)
+
+    payload = json.loads(path.read_text(encoding="utf-8").strip())
+    assert "stdout" not in payload
+    assert "stderr" not in payload
+    assert payload["stdout_truncated"] is True

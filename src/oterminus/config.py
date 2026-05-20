@@ -23,6 +23,7 @@ class AppConfig:
     history_path: Path = field(default_factory=lambda: Path.home() / ".oterminus" / "history.jsonl")
     history_limit: int = 100
     history_redact: bool = True
+    max_output_chars: int = 20000
 
 
 def get_user_config_path() -> Path:
@@ -86,6 +87,7 @@ def load_config() -> AppConfig:
         else Path.home() / ".oterminus" / "history.jsonl"
     )
     history_redact = _env_flag("OTERMINUS_HISTORY_REDACT", default=audit_redact)
+    max_output_chars = _positive_int_env("OTERMINUS_MAX_OUTPUT_CHARS", default=20000)
     disabled_command_packs = _parse_disabled_command_packs(
         os.getenv("OTERMINUS_DISABLED_COMMAND_PACKS", "")
     )
@@ -106,6 +108,7 @@ def load_config() -> AppConfig:
         history_path=history_path,
         history_limit=history_limit,
         history_redact=history_redact,
+        max_output_chars=max_output_chars,
     )
 
 
@@ -133,3 +136,14 @@ def _parse_disabled_command_packs(raw: str) -> frozenset[str]:
         )
         raise ValueError(msg)
     return values
+
+
+def _positive_int_env(name: str, *, default: int) -> int:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    try:
+        value = int(raw)
+    except ValueError:
+        return default
+    return value if value >= 1 else default

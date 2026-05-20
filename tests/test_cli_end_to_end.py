@@ -252,6 +252,33 @@ def test_one_shot_execute_mode_confirmation_runs_executor(monkeypatch, tmp_path:
     assert payload["execution_exit_code"] == 0
 
 
+def test_execute_mode_prints_truncation_notice_when_output_truncated(
+    monkeypatch, tmp_path: Path, capsys
+) -> None:
+    from oterminus.cli import main
+
+    config = _config(tmp_path)
+    config = AppConfig(**(config.__dict__ | {"max_output_chars": 4}))
+    _validator, executor = _install_main_dependencies(monkeypatch, config)
+    executor.max_output_chars = 4
+    executor.run.return_value.stdout = "abcd"
+    executor.run.return_value.stderr = ""
+    executor.run.return_value.stdout_truncated = True
+    executor.run.return_value.stderr_truncated = False
+    executor.run.return_value.stdout_original_chars = 10
+    executor.run.return_value.stderr_original_chars = 0
+    monkeypatch.setattr(
+        "oterminus.cli.ensure_startup_ready",
+        Mock(side_effect=AssertionError("direct command should not need Ollama")),
+    )
+    monkeypatch.setattr("builtins.input", Mock(return_value="y"))
+
+    code = main(["ls"])
+    assert code == 0
+    output = capsys.readouterr().out
+    assert "[oterminus] stdout truncated to 4 characters." in output
+
+
 def test_repl_documented_built_ins_are_handled_without_ollama_or_execution(
     monkeypatch, tmp_path: Path, capsys
 ) -> None:

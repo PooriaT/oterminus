@@ -20,6 +20,7 @@ The executor:
 
 - runs argv with `subprocess.run` (no shell=True)
 - captures stdout/stderr
+- truncates captured stdout/stderr to `OTERMINUS_MAX_OUTPUT_CHARS` (default `20000`) after subprocess completion
 - enforces timeout
 - returns structured execution result
 
@@ -39,3 +40,6 @@ CLI maps execution failures to user-visible statuses:
 
 Execution output is printed in a deterministic block (`--- execution output ---`) except for `clear`
 special handling.
+
+
+When truncation occurs, CLI output includes explicit notices for stdout/stderr truncation while preserving return code semantics. Dry-run/explain modes are unaffected because they do not execute commands.

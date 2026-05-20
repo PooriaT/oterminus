@@ -91,3 +91,25 @@ def test_load_config_rejects_unknown_disabled_command_pack(monkeypatch, tmp_path
 
     with pytest.raises(ValueError, match=r"Unknown value\(s\)"):
         load_config()
+
+
+def test_load_config_max_output_chars_defaults(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(tmp_path / "config.json"))
+    monkeypatch.delenv("OTERMINUS_MAX_OUTPUT_CHARS", raising=False)
+    config = load_config()
+    assert config.max_output_chars == 20000
+
+
+def test_load_config_max_output_chars_parses_valid_integer(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(tmp_path / "config.json"))
+    monkeypatch.setenv("OTERMINUS_MAX_OUTPUT_CHARS", "1234")
+    config = load_config()
+    assert config.max_output_chars == 1234
+
+
+def test_load_config_max_output_chars_invalid_values_fallback(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(tmp_path / "config.json"))
+    for raw in ("abc", "0", "-5"):
+        monkeypatch.setenv("OTERMINUS_MAX_OUTPUT_CHARS", raw)
+        config = load_config()
+        assert config.max_output_chars == 20000
