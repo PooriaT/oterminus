@@ -240,7 +240,7 @@ def command_examples_for_prompt(
 
 def capability_summary_for_prompt(
     *,
-    max_capabilities: int = 7,
+    max_capabilities: int = 8,
     max_commands_per_capability: int = 4,
     max_aliases_per_capability: int = 2,
     disabled_pack_ids: frozenset[str] | None = None,
@@ -337,10 +337,10 @@ def _is_supported_git_direct_operands(operands: list[str]) -> bool:
         return True
     if len(operands) == 4 and operands[:3] == ["log", "--oneline", "-n"]:
         try:
-            int(operands[3])
+            count = int(operands[3])
         except ValueError:
             return False
-        return True
+        return 1 <= count <= 100
     return False
 
 
