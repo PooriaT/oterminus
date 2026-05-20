@@ -1135,6 +1135,28 @@ def test_handle_request_direct_commands_skip_ambiguity_and_go_to_validator() -> 
     executor.run.assert_not_called()
 
 
+def test_handle_request_without_policy_disabled_pack_attribute_does_not_error() -> None:
+    from oterminus.cli import handle_request
+
+    planner = Mock()
+    validator = Mock()
+    validator.policy = type("PolicyStub", (), {})()
+    validator.validate.return_value = ValidationResult(
+        accepted=True,
+        risk_level=RiskLevel.SAFE,
+        rendered_command="ls",
+        argv=["ls"],
+    )
+    executor = Mock()
+
+    code = handle_request("ls", planner, validator, executor, run_mode=RunMode.DRY_RUN)
+
+    assert code == 0
+    validator.validate.assert_called_once()
+    planner.plan.assert_not_called()
+    executor.run.assert_not_called()
+
+
 def test_handle_request_specific_natural_language_permission_request_uses_planner(
     monkeypatch,
 ) -> None:
