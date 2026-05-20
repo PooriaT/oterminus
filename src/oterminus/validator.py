@@ -218,6 +218,14 @@ class Validator:
         ]
 
     def _validate_command_shape(self, spec: CommandSpec, arguments: list[str]) -> list[str]:
+        if spec.name == "git":
+            if _is_supported_git_inspection_shape(arguments):
+                return []
+            return [
+                "Only read-only Git inspection operations are supported: status --short, "
+                "branch --show-current, log --oneline -n <count>, diff --stat, diff --name-only."
+            ]
+
         reasons: list[str] = []
         operand_count = 0
         index = 0
@@ -435,3 +443,21 @@ def _dedupe_preserve_order(values: list[str]) -> list[str]:
         seen.add(value)
         deduped.append(value)
     return deduped
+
+
+def _is_supported_git_inspection_shape(arguments: list[str]) -> bool:
+    if arguments == ["status", "--short"]:
+        return True
+    if arguments == ["branch", "--show-current"]:
+        return True
+    if arguments == ["diff", "--stat"]:
+        return True
+    if arguments == ["diff", "--name-only"]:
+        return True
+    if len(arguments) == 4 and arguments[:3] == ["log", "--oneline", "-n"]:
+        try:
+            count = int(arguments[3])
+        except ValueError:
+            return False
+        return 1 <= count <= 100
+    return False

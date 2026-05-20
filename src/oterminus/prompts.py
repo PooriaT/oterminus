@@ -74,6 +74,10 @@ def _format_structured_shapes(structured_families: tuple[str, ...]) -> str:
             '{"path": "README.md", "count": true|false, '
             '"repeated_only": true|false, "unique_only": true|false}'
         ),
+        "git": (
+            '{"operation": "status_short|branch_current|log_oneline|diff_stat|diff_name_only", '
+            '"count": 10}'
+        ),
     }
     return "\n".join(f"- `{family}`: `{shapes[family]}`" for family in structured_families)
 

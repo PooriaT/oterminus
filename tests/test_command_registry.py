@@ -46,6 +46,7 @@ def test_existing_commands_remain_available() -> None:
     assert get_command_spec("find") is not None
     assert get_command_spec("open") is not None
     assert get_command_spec("ps") is not None
+    assert get_command_spec("git") is not None
 
 
 def test_supported_base_commands_includes_curated_entries() -> None:
@@ -57,6 +58,7 @@ def test_supported_base_commands_includes_curated_entries() -> None:
     assert "open" not in supported_base_commands(platform_id="linux")
     assert "open" in supported_base_commands(platform_id="darwin")
     assert "lsof" in commands
+    assert "git" in commands
 
 
 def test_registry_contains_core_command_metadata() -> None:
@@ -103,6 +105,8 @@ def test_registry_direct_detection_heuristics_match_current_behavior() -> None:
     assert looks_like_direct_invocation("whoami", ["extra"]) is False
     assert looks_like_direct_invocation("which", ["python3"]) is True
     assert looks_like_direct_invocation("find", ["all", ".py", "files"]) is False
+    assert looks_like_direct_invocation("git", ["status", "--short"]) is True
+    assert looks_like_direct_invocation("git", ["add", "."]) is False
 
 
 def test_capability_grouping_and_lookup() -> None:
@@ -117,6 +121,7 @@ def test_supported_capabilities_include_aliases_and_examples() -> None:
     capabilities = {cap.capability_id: cap for cap in supported_capabilities()}
 
     text_capability = capabilities["text_inspection"]
+    assert "git_inspection" in capabilities
     assert "grep" in text_capability.commands
     assert "search text" in text_capability.aliases
     grep = get_command_spec("grep")
