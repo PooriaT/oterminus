@@ -26,6 +26,12 @@ def _normalize_level(value: object) -> str:
     return str(value)
 
 
+def _platform_text(platforms: object) -> str:
+    if not platforms:
+        return "all"
+    return ", ".join(sorted(str(item) for item in platforms))
+
+
 def _render_capability_map() -> str:
     by_capability = defaultdict(list)
     for spec in COMMAND_REGISTRY.values():
@@ -36,8 +42,8 @@ def _render_capability_map() -> str:
         "",
         GENERATED_NOTE,
         "",
-        "| Capability ID | Label | Description | Commands | Risk levels present | Maturity levels present | Notes |",
-        "|---|---|---|---|---|---|---|",
+        "| Capability ID | Label | Description | Commands | Platforms | Risk levels present | Maturity levels present | Notes |",
+        "|---|---|---|---|---|---|---|---|",
     ]
 
     for capability_id in sorted(by_capability):
@@ -56,6 +62,7 @@ def _render_capability_map() -> str:
                     first.capability_label,
                     first.capability_description,
                     commands,
+                    _platform_text({p for spec in specs for p in (spec.supported_platforms or ())}),
                     risks,
                     maturities,
                     notes_text,
@@ -90,8 +97,8 @@ def _render_command_families() -> str:
                 "",
                 f"**Description:** {first.capability_description}",
                 "",
-                "| Command | Category | Risk | Maturity | Direct support | Examples | Natural-language aliases | Notes |",
-                "|---|---|---|---|---|---|---|---|",
+                "| Command | Category | Platforms | Risk | Maturity | Direct support | Examples | Natural-language aliases | Notes |",
+                "|---|---|---|---|---|---|---|---|---|",
             ]
         )
         for spec in specs:
@@ -110,6 +117,7 @@ def _render_command_families() -> str:
                     [
                         f"`{spec.name}`",
                         spec.category,
+                        _platform_text(spec.supported_platforms),
                         _normalize_level(spec.risk_level),
                         _normalize_level(spec.maturity_level),
                         "yes" if spec.direct_supported else "no",

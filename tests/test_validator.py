@@ -120,6 +120,21 @@ def test_reject_open_url_target() -> None:
     assert any("does not allow these operand targets" in reason for reason in result.reasons)
 
 
+def test_validator_rejects_platform_unsupported_command(monkeypatch) -> None:
+    monkeypatch.setattr("oterminus.commands.registry.sys.platform", "linux")
+    validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))
+    result = validator.validate(make_proposal("open ."))
+    assert result.accepted is False
+    assert any("unavailable on platform 'linux'" in reason for reason in result.reasons)
+
+
+def test_validator_accepts_open_on_darwin(monkeypatch) -> None:
+    monkeypatch.setattr("oterminus.commands.registry.sys.platform", "darwin")
+    validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))
+    result = validator.validate(make_proposal("open ."))
+    assert result.accepted is True
+
+
 @pytest.mark.parametrize(
     ("command", "expected_risk"),
     [
@@ -138,7 +153,6 @@ def test_reject_open_url_target() -> None:
         ("tail -c 64 README.md", RiskLevel.SAFE),
         ("grep -r TODO src", RiskLevel.SAFE),
         ("cat README.md", RiskLevel.SAFE),
-        ("open .", RiskLevel.SAFE),
         ("file README.md", RiskLevel.SAFE),
         ("ps -Af", RiskLevel.SAFE),
         ("pgrep -fl python", RiskLevel.SAFE),

@@ -91,6 +91,7 @@ def build_repl_completions(
     *,
     include_capability_hints: bool = False,
     disabled_pack_ids: frozenset[str] | None = None,
+    platform_id: str | None = None,
 ) -> list[CompletionCandidate]:
     working_dir = cwd or Path.cwd()
     word_start = _word_start_index(text_before_cursor)
@@ -104,11 +105,11 @@ def build_repl_completions(
 
     if is_first_token:
         suggestions.update(REPL_BUILTINS)
-        suggestions.update(supported_base_commands(disabled_pack_ids))
-        for capability in supported_capabilities(disabled_pack_ids):
+        suggestions.update(supported_base_commands(disabled_pack_ids, platform_id))
+        for capability in supported_capabilities(disabled_pack_ids, platform_id):
             suggestions.add(capability.capability_id)
         if include_capability_hints:
-            for capability in supported_capabilities(disabled_pack_ids):
+            for capability in supported_capabilities(disabled_pack_ids, platform_id):
                 suggestions.add(capability.capability_label)
                 suggestions.update(capability.aliases)
         suggestions.update(NL_TEMPLATES)
