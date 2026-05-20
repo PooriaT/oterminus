@@ -27,6 +27,12 @@ class AuditEvent:
     rejection_reasons: list[str] = field(default_factory=list)
     confirmation_result: str | None = None
     execution_exit_code: int | None = None
+    stdout_truncated: bool = False
+    stderr_truncated: bool = False
+    stdout_original_chars: int | None = None
+    stderr_original_chars: int | None = None
+    stdout_visible_chars: int | None = None
+    stderr_visible_chars: int | None = None
     rerun_source_history_id: int | None = None
     duration_ms: int | None = None
 

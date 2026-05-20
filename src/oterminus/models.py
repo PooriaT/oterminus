@@ -129,3 +129,7 @@ class ExecutionResult(BaseModel):
     returncode: int
     stdout: str
     stderr: str
+    stdout_truncated: bool = False
+    stderr_truncated: bool = False
+    stdout_original_chars: int | None = None
+    stderr_original_chars: int | None = None

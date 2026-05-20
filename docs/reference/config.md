@@ -8,6 +8,7 @@ file. The implementation in `src/oterminus/config.py` is the source of truth for
 | Setting | Environment variable | User config field | Default | Notes |
 | --- | --- | --- | --- | --- |
 | Execution timeout | `OTERMINUS_TIMEOUT_SECONDS` | Not supported | `60` | Parsed as an integer number of seconds and passed to the executor. |
+| Max execution output chars | `OTERMINUS_MAX_OUTPUT_CHARS` | Not supported | `20000` | Positive integer. Values `<1` or invalid values fall back to `20000`. Applied independently to stdout and stderr after command completion. |
 | Policy mode | `OTERMINUS_POLICY_MODE` | Not supported | `write` | Must be one of `safe`, `write`, or `dangerous`. |
 | Dangerous-operation gate | `OTERMINUS_ALLOW_DANGEROUS` | Not supported | `false` | Only the exact value `true` enables dangerous operations, and only when policy mode is `dangerous`. |
 | Allowed path roots | `OTERMINUS_ALLOWED_ROOTS` | Not supported | Empty list | Colon-separated roots. When set, path operands must resolve under one of these roots. |
@@ -26,6 +27,7 @@ file. The implementation in `src/oterminus/config.py` is the source of truth for
 Supported `OTERMINUS_*` variables are:
 
 - `OTERMINUS_TIMEOUT_SECONDS`
+- `OTERMINUS_MAX_OUTPUT_CHARS`
 - `OTERMINUS_POLICY_MODE`
 - `OTERMINUS_ALLOW_DANGEROUS`
 - `OTERMINUS_ALLOWED_ROOTS`

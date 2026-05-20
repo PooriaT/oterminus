@@ -275,3 +275,9 @@ format, validation rules, and behavior details, see
 
 ## Platform-specific commands
 Some command families are platform-specific. For example, `open` is available by default on macOS (`darwin`) only. On unsupported platforms, these commands are hidden from suggestions and planner hints, and rejected by validator before execution.
+
+## Output size guards
+
+Execution output can be large for commands like `cat`, `grep`, `find`, `ps`, and `lsof`. OTerminus truncates each captured stream (stdout and stderr) to `OTERMINUS_MAX_OUTPUT_CHARS` (default `20000`) after command completion, and prints a clear truncation notice when this happens.
+
+Dry-run/explain paths are unchanged because they do not execute commands. Audit logs and persisted history do not store full stdout/stderr content.

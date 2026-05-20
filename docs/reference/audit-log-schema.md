@@ -25,6 +25,12 @@ Audit logs are newline-delimited JSON objects (JSONL), one event per handled req
 - `confirmation_result` (nullable string; includes statuses such as `confirmed`, `cancelled`,
   `skipped_dry_run`, `skipped_explain`, `not_prompted_rejected`, and `blocked_ambiguous`)
 - `execution_exit_code` (nullable int)
+- `stdout_truncated` (bool)
+- `stderr_truncated` (bool)
+- `stdout_original_chars` (nullable int)
+- `stderr_original_chars` (nullable int)
+- `stdout_visible_chars` (nullable int)
+- `stderr_visible_chars` (nullable int)
 - `rerun_source_history_id` (nullable int)
 - `duration_ms` (nullable int)
 
@@ -50,7 +56,7 @@ validation/policy/confirmation rules still apply.
 ## Redaction
 
 When audit redaction is enabled, text and argv fields are passed through redaction helpers before
-writing.
+writing. Audit events intentionally do not include raw stdout/stderr command output.
 
 ## User-facing audit commands
 

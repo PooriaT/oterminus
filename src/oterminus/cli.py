@@ -324,8 +324,13 @@ def handle_request(
     print("\n--- execution output ---")
     if result.stdout:
         print(result.stdout, end="" if result.stdout.endswith("\n") else "\n")
+    max_output_chars = getattr(executor, "max_output_chars", 20000)
+    if bool(getattr(result, "stdout_truncated", False)):
+        print(f"[oterminus] stdout truncated to {max_output_chars} characters.")
     if result.stderr:
         print(result.stderr, end="" if result.stderr.endswith("\n") else "\n")
+    if bool(getattr(result, "stderr_truncated", False)):
+        print(f"[oterminus] stderr truncated to {max_output_chars} characters.")
     print(f"Exit code: {result.returncode}")
 
     LOGGER.info("exit_code=%s", result.returncode)
@@ -333,6 +338,18 @@ def handle_request(
         history_item.execution_status = "executed"
         history_item.exit_code = result.returncode
     event.execution_exit_code = result.returncode
+    event.stdout_truncated = bool(getattr(result, "stdout_truncated", False))
+    event.stderr_truncated = bool(getattr(result, "stderr_truncated", False))
+    stdout_original_chars = getattr(result, "stdout_original_chars", None)
+    stderr_original_chars = getattr(result, "stderr_original_chars", None)
+    event.stdout_original_chars = (
+        stdout_original_chars if isinstance(stdout_original_chars, int) else len(result.stdout)
+    )
+    event.stderr_original_chars = (
+        stderr_original_chars if isinstance(stderr_original_chars, int) else len(result.stderr)
+    )
+    event.stdout_visible_chars = len(result.stdout)
+    event.stderr_visible_chars = len(result.stderr)
     event.duration_ms = _duration_ms_since(started_at)
     _write_audit_event(audit_logger, event)
     _persist_if_needed()
@@ -592,7 +609,13 @@ def main(argv: list[str] | None = None) -> int:
 
     config = load_config()
     validator = Validator(config.policy)
-    executor = Executor(timeout_seconds=config.timeout_seconds)
+    try:
+        executor = Executor(
+            timeout_seconds=config.timeout_seconds,
+            max_output_chars=getattr(config, "max_output_chars", 20000),
+        )
+    except TypeError:
+        executor = Executor(timeout_seconds=config.timeout_seconds)
     audit_logger = (
         AuditLogger(config.audit_log_path, redact=config.audit_redact)
         if config.audit_enabled
