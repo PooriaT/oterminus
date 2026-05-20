@@ -129,7 +129,7 @@ def handle_request(
     effective_disabled_pack_ids = (
         disabled_pack_ids
         if disabled_pack_ids is not None
-        else validator.policy.disabled_command_packs
+        else getattr(validator.policy, "disabled_command_packs", frozenset())
     )
 
     proposal = detect_direct_command(request, disabled_pack_ids=effective_disabled_pack_ids)
@@ -357,9 +357,15 @@ def repl(
         for item in persistent_store.load():
             session_history.add_persisted(item)
 
+    effective_disabled_pack_ids = (
+        disabled_pack_ids
+        if disabled_pack_ids is not None
+        else getattr(validator.policy, "disabled_command_packs", frozenset())
+    )
+
     try:
         prompt_session, backend_name = create_prompt_session(
-            disabled_pack_ids=validator.policy.disabled_command_packs
+            disabled_pack_ids=effective_disabled_pack_ids
         )
     except TypeError:
         prompt_session, backend_name = create_prompt_session()
