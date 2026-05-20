@@ -182,10 +182,22 @@ The CLI flag is for one-shot requests only. Inside the REPL, use the built-in fo
 
 ## REPL session history and rerun safety
 
-REPL history is currently **in-memory and session-local only**. It is cleared when you exit the
-REPL process.
+REPL always keeps in-memory session history for the current process. Persistent history is optional
+and controlled by `OTERMINUS_HISTORY_ENABLED` (default `false`).
 
-- `history` shows all records from the current REPL session.
+- When `OTERMINUS_HISTORY_ENABLED=false`, history is session-local only and is cleared when you exit
+  the REPL.
+- When `OTERMINUS_HISTORY_ENABLED=true`, OTerminus also appends local JSONL records to
+  `OTERMINUS_HISTORY_PATH` (default `~/.oterminus/history.jsonl`).
+- `OTERMINUS_HISTORY_LIMIT` controls how many recent persisted records are loaded into the next REPL
+  session (default `100`; the env value must be a valid integer; loaded values are clamped to at least `1`).
+- `OTERMINUS_HISTORY_REDACT` controls redaction before persisted writes and defaults to the current
+  audit-redaction setting (`OTERMINUS_AUDIT_REDACT`) when unset.
+
+History commands:
+
+- `history` shows all loaded records for the current REPL session (session records plus any loaded
+  persisted records, when enabled).
 - `history <n>` shows the most recent `n` records.
 - `explain <history_id>` explains the recorded plan/validation result for that entry and **never
   executes**.
@@ -196,8 +208,8 @@ REPL process.
 `rerun` does not execute previously rendered command text directly, and cannot bypass policy gates
 for rejected, ambiguous, cancelled, dry-run, or explain-only outcomes.
 
-History output and audit events may include command text and local paths. Review carefully before
-sharing terminal screenshots or log snippets publicly.
+History output and persisted history files may include command text, local paths, and execution
+context. Review carefully before sharing terminal screenshots or history snippets publicly.
 
 `--dry-run` and `--explain` are mutually exclusive and apply to requests, not to the `doctor`
 diagnostics command. For example, `poetry run oterminus --dry-run doctor` and
@@ -254,9 +266,6 @@ still contain local paths and command context, so review before sharing publicly
 - Experimental mode is a constrained fallback and requires stronger confirmation.
 - Commands that fail validation or policy checks are never executed.
 
-## Persistent REPL history (optional)
-
-Set `OTERMINUS_HISTORY_ENABLED=true` to persist selected history records locally to JSONL (`OTERMINUS_HISTORY_PATH`, default `~/.oterminus/history.jsonl`). This is local-only, can be disabled at any time, and `rerun <id>` still re-plans/revalidates/reconfirms. Redaction follows `OTERMINUS_HISTORY_REDACT` (defaults to audit redaction behavior). Do not share history files publicly without review.
 
 ## Command pack availability
 You can disable specific command packs with `OTERMINUS_DISABLED_COMMAND_PACKS`. For the exact

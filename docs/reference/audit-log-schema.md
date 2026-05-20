@@ -81,4 +81,4 @@ When audit is disabled, tail and clear commands do not create a new log file.
 }
 ```
 
-Note: persistent REPL history uses a separate local JSONL file and is not an audit log replacement; reruns from persisted history still emit normal audit events.
+Note: persistent REPL history uses a separate local JSONL file (`OTERMINUS_HISTORY_PATH`) and is not an audit log replacement; reruns from persisted history still emit normal audit events.
