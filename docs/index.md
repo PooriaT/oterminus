@@ -42,10 +42,10 @@ contributor reference material.
 
 ## Sections
 
-- Product docs: [`docs/product/`](product/)
-- Architecture docs: [`docs/architecture/`](architecture/)
-- Reference docs: [`docs/reference/`](reference/)
-- ADRs: [`docs/adr/`](adr/)
+- Product docs: [`docs/product/`](product/what-is-oterminus.md)
+- Architecture docs: [`docs/architecture/`](architecture/overview.md)
+- Reference docs: [`docs/reference/`](reference/config.md)
+- ADRs: [`docs/adr/`](adr/0001-capability-first-not-shell-first.md)
 
 ## Build and preview docs locally
 
