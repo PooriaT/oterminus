@@ -190,7 +190,7 @@ and controlled by `OTERMINUS_HISTORY_ENABLED` (default `false`).
 - When `OTERMINUS_HISTORY_ENABLED=true`, OTerminus also appends local JSONL records to
   `OTERMINUS_HISTORY_PATH` (default `~/.oterminus/history.jsonl`).
 - `OTERMINUS_HISTORY_LIMIT` controls how many recent persisted records are loaded into the next REPL
-  session (default `100`; invalid values fall back to `100`; minimum effective value is `1`).
+  session (default `100`; the env value must be a valid integer; loaded values are clamped to at least `1`).
 - `OTERMINUS_HISTORY_REDACT` controls redaction before persisted writes and defaults to the current
   audit-redaction setting (`OTERMINUS_AUDIT_REDACT`) when unset.
 

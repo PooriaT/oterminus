@@ -18,7 +18,7 @@ file. The implementation in `src/oterminus/config.py` is the source of truth for
 | Audit redaction | `OTERMINUS_AUDIT_REDACT` | Not supported | `true` | Uses the same boolean parsing as `OTERMINUS_AUDIT_ENABLED`. |
 | Persistent history enabled | `OTERMINUS_HISTORY_ENABLED` | Not supported | `false` | Enables local JSONL history persistence for REPL entries. When false, history is session-only. |
 | Persistent history path | `OTERMINUS_HISTORY_PATH` | Not supported | `~/.oterminus/history.jsonl` | Local JSONL file used when persistent history is enabled. |
-| Persistent history limit | `OTERMINUS_HISTORY_LIMIT` | Not supported | `100` | Maximum number of persisted records loaded into each REPL session. Invalid values fall back to `100`; minimum effective value is `1`. |
+| Persistent history limit | `OTERMINUS_HISTORY_LIMIT` | Not supported | `100` | Maximum number of persisted records loaded into each REPL session. Must be a valid integer in the environment; loaded values are clamped to at least `1` by the history store. |
 | Persistent history redaction | `OTERMINUS_HISTORY_REDACT` | Not supported | Follows `OTERMINUS_AUDIT_REDACT` | Uses the same boolean parsing as `OTERMINUS_AUDIT_ENABLED`; controls redaction before writing history records. |
 
 ## Environment variables
