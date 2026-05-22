@@ -21,6 +21,7 @@ def test_generated_capability_map_includes_known_capabilities() -> None:
         "text_inspection",
         "process_inspection",
         "system_inspection",
+        "network_diagnostics",
         "macos_desktop",
         "destructive_operations",
     ):
@@ -29,7 +30,17 @@ def test_generated_capability_map_includes_known_capabilities() -> None:
 
 def test_generated_command_families_include_known_commands() -> None:
     content = module.generate_reference_docs()[module.COMMAND_FAMILIES_PATH]
-    for command_name in ("`ls`", "`grep`", "`ps`", "`clear`", "`open`", "`rm`", "`tar`"):
+    for command_name in (
+        "`ls`",
+        "`grep`",
+        "`ps`",
+        "`clear`",
+        "`open`",
+        "`rm`",
+        "`tar`",
+        "`ping`",
+        "`curl`",
+    ):
         assert command_name in content
 
 

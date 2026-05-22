@@ -9,6 +9,7 @@ The command registry is a merged dictionary of `CommandSpec` entries from modula
 - `commands/archive.py`
 - `commands/process.py`
 - `commands/system.py`
+- `commands/network.py`
 - `commands/macos.py`
 - `commands/dangerous.py`
 
@@ -36,9 +37,13 @@ Registry metadata is reused across:
 - validator allowlist + shape checks
 - REPL `help`, `commands`, `examples`
 
-`network_touching` defaults to `false`. Future network diagnostics command families must opt in
-explicitly so prompts, discovery, validation warnings, and generated reference docs can mark the
-external-host boundary without relying on command-name heuristics.
+`network_touching` defaults to `false`. Network diagnostics command families opt in explicitly so
+prompts, discovery, validation warnings, and generated reference docs can mark the external-host
+boundary without relying on command-name heuristics.
+
+The `network` pack exposes only the `network_diagnostics` capability: fixed-count ping, HTTP HEAD
+via `curl -I`, and basic `dig`/`nslookup`. The registry does not expose broad network tools or
+arbitrary curl flags; validator shape checks enforce the constrained forms.
 
 Some command families have operation-specific validation beyond the static `CommandSpec`. The
 archive pack is the current example: `tar -tf` and `unzip -l` remain safe read-only operations,

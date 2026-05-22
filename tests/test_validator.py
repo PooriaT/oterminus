@@ -164,6 +164,10 @@ def test_validator_accepts_open_on_darwin(monkeypatch) -> None:
         ("git status --short", RiskLevel.SAFE),
         ("git branch --show-current", RiskLevel.SAFE),
         ("git log --oneline -n 5", RiskLevel.SAFE),
+        ("ping -c 4 example.com", RiskLevel.SAFE),
+        ("curl -I https://example.com", RiskLevel.SAFE),
+        ("dig example.com", RiskLevel.SAFE),
+        ("nslookup example.com", RiskLevel.SAFE),
         ("tar -tf archive.tar", RiskLevel.SAFE),
         ("tar -xf archive.tar -C out", RiskLevel.WRITE),
         ("tar -czf backup.tar.gz src README.md", RiskLevel.WRITE),
@@ -209,6 +213,28 @@ def test_risk_classification_for_next_wave_structured_families(
         "git commit -m x",
         "git reset --hard",
         "git push",
+        "ping example.com",
+        "ping -f example.com",
+        "ping -c 11 example.com",
+        "ping -c 4 https://example.com",
+        "curl https://example.com",
+        "curl -X POST https://example.com",
+        "curl -X PUT https://example.com",
+        "curl -X DELETE https://example.com",
+        "curl -H 'Authorization: Bearer token' https://example.com",
+        "curl -H 'X-Test: 1' https://example.com",
+        "curl -u user:pass https://example.com",
+        "curl -b session=abc https://example.com",
+        "curl -d 'x=1' https://example.com",
+        "curl -o file https://example.com",
+        "curl -L -o file https://example.com",
+        "curl -I file:///tmp/data",
+        "dig +short example.com",
+        "dig https://example.com",
+        "nslookup -type=A example.com",
+        "nmap example.com",
+        "ssh host",
+        "wget https://example.com",
         "tar -xf archive.tar",
         "tar --extract -f archive.tar",
         "tar -xf archive.tar -C /",
@@ -271,6 +297,49 @@ def test_validator_warns_for_synthetic_network_touching_command(monkeypatch) -> 
         "Experimental mode stays outside deterministic structured rendering and uses stricter confirmation.",
         NETWORK_TOUCHING_WARNING,
     ]
+
+
+def test_validator_warns_for_structured_network_command() -> None:
+    validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))
+    proposal = Proposal(
+        action_type=ActionType.SHELL_COMMAND,
+        mode=ProposalMode.STRUCTURED,
+        command_family="curl",
+        arguments={"operation": "http_head", "url": "https://example.com"},
+        summary="show headers",
+        explanation="read-only HTTP HEAD request",
+        risk_level=RiskLevel.SAFE,
+        needs_confirmation=True,
+        notes=[],
+    )
+
+    result = validator.validate(proposal)
+
+    assert result.accepted is True
+    assert result.rendered_command == "curl -I https://example.com"
+    assert result.argv == ["curl", "-I", "https://example.com"]
+    assert NETWORK_TOUCHING_WARNING in result.warnings
+
+
+@pytest.mark.parametrize(
+    ("command", "expected_argv"),
+    [
+        ("ping -c 4 example.com", ["ping", "-c", "4", "example.com"]),
+        ("curl -I https://example.com", ["curl", "-I", "https://example.com"]),
+        ("dig example.com", ["dig", "example.com"]),
+        ("nslookup example.com", ["nslookup", "example.com"]),
+    ],
+)
+def test_validator_accepts_exact_safe_direct_network_forms(
+    command: str, expected_argv: list[str]
+) -> None:
+    validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))
+
+    result = validator.validate(make_proposal(command))
+
+    assert result.accepted is True
+    assert result.argv == expected_argv
+    assert NETWORK_TOUCHING_WARNING in result.warnings
 
 
 def test_allowed_roots_find_checks_only_search_roots() -> None:

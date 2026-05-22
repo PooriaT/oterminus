@@ -41,10 +41,21 @@ update an existing archive path. Experimental mode still goes through the same c
 These checks constrain command shape and policy boundaries; they do not inspect archive member paths
 for traversal or other malicious content.
 
+Network diagnostics are accepted only for constrained read-only forms:
+
+- `ping -c <count> <host>` with count from 1 to 10
+- `curl -I <http-or-https-url>`
+- `dig <domain>`
+- `nslookup <domain>`
+
+Validation rejects ping without a count, excessive ping counts, ping flood/unlimited forms, URLs as
+ping targets, non-HEAD curl behavior, POST/PUT/PATCH/DELETE, request bodies, arbitrary headers,
+authorization, cookies, downloads/output files, file URLs, arbitrary DNS lookup flags, unsupported
+network tools, shell operators, pipelines, and redirection.
+
 ## Network-touching warning boundary
 
-Network diagnostics are not enabled by this architecture boundary alone. When a future command spec
-sets `network_touching=True`, accepted previews include this warning:
+When a command spec sets `network_touching=True`, accepted previews include this warning:
 
 `This command contacts external hosts and may reveal your IP address, DNS query, target host, or network metadata.`
 

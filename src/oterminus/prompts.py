@@ -79,6 +79,10 @@ def _format_structured_shapes(structured_families: tuple[str, ...]) -> str:
             '{"operation": "status_short|branch_current|log_oneline|diff_stat|diff_name_only", '
             '"count": 10}'
         ),
+        "ping": '{"host": "example.com", "count": 4}',
+        "curl": '{"operation": "http_head", "url": "https://example.com"}',
+        "dig": '{"domain": "example.com"}',
+        "nslookup": '{"domain": "example.com"}',
         "tar": (
             '{"operation": "list|extract_tar|create_tar_gz", "archive_path": "archive.tar", '
             '"destination_path": "out" only for extract_tar, '
@@ -121,6 +125,15 @@ def build_system_prompt(
         "archive path and explicit source paths. Do not infer sources, use wildcards, add flags, "
         "or support encryption/passwords/split archives.\n"
         if {"tar", "unzip", "zip"}.issubset(enabled_families)
+        else ""
+    )
+    network_guidance = (
+        "- Network diagnostics contact external hosts and may reveal network metadata. Use only "
+        "structured `ping`, `curl` HTTP HEAD, `dig`, or `nslookup` for read-only diagnostics. "
+        "Do not propose POST/PUT/PATCH/DELETE, request bodies, arbitrary headers, authorization, "
+        "cookies, downloads, redirects that write files, scanning, SSH, or arbitrary network shell "
+        "commands.\n"
+        if {"ping", "curl", "dig", "nslookup"}.issubset(enabled_families)
         else ""
     )
 
@@ -185,6 +198,7 @@ Behavior guidance:
 - Prefer the most direct single command that satisfies the request.
 - Prefer safe read-only inspection commands when the request is ambiguous.
 {archive_guidance}\
+{network_guidance}\
 - Use the provided capability route (category + suggested families) to bias family selection before \
 detailed argument planning.
 - If route category is `unsupported`, you may still choose experimental mode when a conservative \

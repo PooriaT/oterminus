@@ -21,7 +21,7 @@ direct-command detection behavior
 
 ### What is a capability pack?
 A capability pack is a module-level tuple of command specs (for example `filesystem`, `text`,
-`archive`, `process`, `system`, `macos`, `dangerous`) that is merged into the global command registry.
+`archive`, `process`, `system`, `network`, `macos`, `dangerous`) that is merged into the global command registry.
 
 Capability packs group commands by workflow intent (for example filesystem inspection vs mutation),
 not by “all flags from man pages.”

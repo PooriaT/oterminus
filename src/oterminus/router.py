@@ -15,6 +15,7 @@ ROUTE_CATEGORIES = {
     "process_inspect",
     "git_inspection",
     "archive_operations",
+    "network_diagnostics",
     "unsupported",
 }
 
@@ -36,6 +37,25 @@ def route_request(user_input: str) -> RouteResult:
             confidence=0.0,
             reason="Empty request.",
             suggested_families=(),
+        )
+
+    if _has_any(text, _UNSUPPORTED_NETWORK_HINTS):
+        return RouteResult(
+            category="unsupported",
+            confidence=0.92,
+            reason="Request asks for network behavior outside constrained read-only diagnostics.",
+            suggested_families=(),
+            suggested_capabilities=(),
+        )
+
+    if _has_any(text, _NETWORK_DIAGNOSTIC_HINTS):
+        families = _families_for_category("network_diagnostics", text)
+        return RouteResult(
+            category="network_diagnostics",
+            confidence=0.9,
+            reason="Request asks for constrained read-only network diagnostics.",
+            suggested_families=families,
+            suggested_capabilities=_capabilities_for_category("network_diagnostics"),
         )
 
     if _has_any(text, _TEXT_SEARCH_HINTS):
@@ -413,6 +433,7 @@ _ROUTE_CAPABILITIES: dict[str, tuple[str, ...]] = {
     "filesystem_inspect": ("filesystem_inspection", "text_inspection", "macos_desktop"),
     "git_inspection": ("git_inspection",),
     "archive_operations": ("archive_inspection",),
+    "network_diagnostics": ("network_diagnostics",),
 }
 
 _ROUTE_SEED_HINTS: dict[str, tuple[str, ...]] = {
@@ -446,6 +467,13 @@ _ROUTE_SEED_HINTS: dict[str, tuple[str, ...]] = {
         "unzip archive into destination",
         "create tar gz archive",
         "create zip archive",
+    ),
+    "network_diagnostics": (
+        "ping host",
+        "check host responds",
+        "show HTTP headers",
+        "dns lookup",
+        "nslookup",
     ),
 }
 
@@ -488,4 +516,45 @@ _GIT_MUTATION_HINTS = (
     "git merge",
     "git rebase",
     "git stash",
+)
+
+_NETWORK_DIAGNOSTIC_HINTS = (
+    "ping",
+    "http headers",
+    "http head",
+    "head request",
+    "check if",
+    "responds",
+    "dns lookup",
+    "dns records",
+    "dig",
+    "nslookup",
+)
+
+_UNSUPPORTED_NETWORK_HINTS = (
+    "post to",
+    "post request",
+    "put to",
+    "put request",
+    "patch to",
+    "patch request",
+    "delete to",
+    "delete request",
+    "request body",
+    "authorization header",
+    "auth header",
+    "with my token",
+    "with token",
+    "cookie",
+    "download",
+    "upload",
+    "scan this host",
+    "scan host",
+    "nmap",
+    "traceroute",
+    "ssh",
+    "scp",
+    "netcat",
+    "nc ",
+    "wget",
 )

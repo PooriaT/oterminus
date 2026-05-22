@@ -35,6 +35,12 @@ can then surface that boundary consistently. This metadata does not grant permis
 network command; validation and policy remain authoritative, and user confirmation is still required
 before execution.
 
+The initial `network_diagnostics` capability is limited to `ping -c <count> <host>`,
+`curl -I <url>`, `dig <domain>`, and `nslookup <domain>`. It does not make OTerminus a general
+network automation tool: mutating HTTP methods, secret headers, cookies, downloads, scanning, SSH,
+SCP, nmap, wget, netcat, sudo network commands, arbitrary flags, and shell pipelines/redirection
+remain unsupported.
+
 ## Current capability domains
 
 - `filesystem_inspection`
@@ -42,6 +48,7 @@ before execution.
 - `text_inspection`
 - `process_inspection`
 - `system_inspection`
+- `network_diagnostics`
 - `macos_desktop`
 - `destructive_operations`
 
