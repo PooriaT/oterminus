@@ -95,6 +95,14 @@ def test_route_request_archive_extraction_requires_destination() -> None:
     assert "explicit destination" in missing_destination.reason
 
 
+def test_route_request_archive_extraction_named_backup_does_not_hit_creation_gate() -> None:
+    route = route_request("unpack backup.zip to out")
+
+    assert route.category == "archive_operations"
+    assert "unzip" in route.suggested_families
+    assert "archive_inspection" in route.suggested_capabilities
+
+
 def test_route_request_archive_creation_requires_explicit_output_and_source() -> None:
     route = route_request("create backup.tar.gz from src")
 

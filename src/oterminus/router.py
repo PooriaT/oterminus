@@ -234,6 +234,8 @@ def _route_archive_request(text: str) -> RouteResult | None:
     if not _has_any(text, _ARCHIVE_HINTS):
         return None
 
+    is_extraction_request = _has_any(text, _ARCHIVE_EXTRACTION_HINTS)
+
     if _matches_hint(text, "archive everything"):
         return RouteResult(
             category="unsupported",
@@ -244,7 +246,8 @@ def _route_archive_request(text: str) -> RouteResult | None:
         )
 
     if (
-        _has_any(text, _ARCHIVE_CREATION_HINTS) or text.startswith(("zip ", "tar "))
+        not is_extraction_request
+        and (_has_any(text, _ARCHIVE_CREATION_HINTS) or text.startswith(("zip ", "tar ")))
     ) and not _has_archive_creation_shape_hint(text):
         return RouteResult(
             category="unsupported",
@@ -254,7 +257,7 @@ def _route_archive_request(text: str) -> RouteResult | None:
             suggested_capabilities=(),
         )
 
-    if _has_any(text, _ARCHIVE_EXTRACTION_HINTS) and not _has_archive_destination_hint(text):
+    if is_extraction_request and not _has_archive_destination_hint(text):
         return RouteResult(
             category="unsupported",
             confidence=0.9,
@@ -263,7 +266,7 @@ def _route_archive_request(text: str) -> RouteResult | None:
             suggested_capabilities=(),
         )
 
-    families = _families_for_category("archive_operations", text)
+    families = _families_for_archive_route(text, is_extraction_request=is_extraction_request)
     return RouteResult(
         category="archive_operations",
         confidence=0.9,
@@ -271,6 +274,15 @@ def _route_archive_request(text: str) -> RouteResult | None:
         suggested_families=families,
         suggested_capabilities=_capabilities_for_category("archive_operations"),
     )
+
+
+def _families_for_archive_route(text: str, *, is_extraction_request: bool) -> tuple[str, ...]:
+    if is_extraction_request:
+        if re.search(r"\S+\.zip(?:\s|$)", text) is not None:
+            return ("unzip",)
+        if re.search(r"\S+\.(?:tar|tar\.gz|tgz)(?:\s|$)", text) is not None:
+            return ("tar",)
+    return _families_for_category("archive_operations", text)
 
 
 def _has_archive_destination_hint(text: str) -> bool:
