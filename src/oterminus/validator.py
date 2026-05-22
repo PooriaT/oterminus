@@ -226,6 +226,22 @@ class Validator:
                 "branch --show-current, log --oneline -n <count>, diff --stat, diff --name-only."
             ]
 
+        if spec.name == "tar":
+            if _is_supported_tar_inspection_shape(arguments):
+                return []
+            return [
+                "Only read-only tar archive inspection is supported: tar -tf <archive>. "
+                "Extraction, creation, compression flags, and arbitrary tar options are not supported."
+            ]
+
+        if spec.name == "unzip":
+            if _is_supported_unzip_inspection_shape(arguments):
+                return []
+            return [
+                "Only read-only zip archive inspection is supported: unzip -l <archive>. "
+                "Extraction, overwrite flags, and arbitrary unzip options are not supported."
+            ]
+
         reasons: list[str] = []
         operand_count = 0
         index = 0
@@ -461,3 +477,26 @@ def _is_supported_git_inspection_shape(arguments: list[str]) -> bool:
             return False
         return 1 <= count <= 100
     return False
+
+
+def _is_supported_tar_inspection_shape(arguments: list[str]) -> bool:
+    return len(arguments) == 2 and arguments[0] == "-tf" and _is_safe_archive_operand(arguments[1])
+
+
+def _is_supported_unzip_inspection_shape(arguments: list[str]) -> bool:
+    return len(arguments) == 2 and arguments[0] == "-l" and _is_safe_archive_operand(arguments[1])
+
+
+def _is_safe_archive_operand(value: str) -> bool:
+    if not value or value.startswith("-"):
+        return False
+    lowered = value.lower()
+    if "://" in lowered or lowered.startswith("mailto:"):
+        return False
+    blocked_fragments = ("$(", "`", "\n", "\r", "\x00")
+    if any(fragment in value for fragment in blocked_fragments):
+        return False
+    blocked_operator_fragments = ("&&", "||", ";", "|", "<", ">", "&")
+    if any(fragment in value for fragment in blocked_operator_fragments):
+        return False
+    return "*" not in value and "?" not in value

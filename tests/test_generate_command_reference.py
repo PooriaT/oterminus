@@ -14,6 +14,7 @@ def test_generated_capability_map_includes_known_capabilities() -> None:
     content = module.generate_reference_docs()[module.CAPABILITY_MAP_PATH]
     for capability_id in (
         "filesystem_inspection",
+        "archive_inspection",
         "text_inspection",
         "process_inspection",
         "system_inspection",
@@ -25,7 +26,7 @@ def test_generated_capability_map_includes_known_capabilities() -> None:
 
 def test_generated_command_families_include_known_commands() -> None:
     content = module.generate_reference_docs()[module.COMMAND_FAMILIES_PATH]
-    for command_name in ("`ls`", "`grep`", "`ps`", "`clear`", "`open`", "`rm`"):
+    for command_name in ("`ls`", "`grep`", "`ps`", "`clear`", "`open`", "`rm`", "`tar`"):
         assert command_name in content
 
 

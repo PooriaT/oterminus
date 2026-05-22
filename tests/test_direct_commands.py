@@ -79,6 +79,14 @@ def test_detect_direct_command_respects_disabled_packs() -> None:
     assert proposal is None
 
 
+def test_detect_direct_command_respects_disabled_archive_pack() -> None:
+    proposal = detect_direct_command(
+        "tar -tf archive.tar", disabled_pack_ids=frozenset({"archive"})
+    )
+
+    assert proposal is None
+
+
 def test_detect_direct_command_respects_platform_support() -> None:
     assert detect_direct_command("open .", platform_id="linux") is None
     assert detect_direct_command("open .", platform_id="darwin") is not None
@@ -94,3 +102,23 @@ def test_detect_direct_command_for_supported_git_inspection() -> None:
 
 def test_detect_direct_command_rejects_unsupported_git_subcommand() -> None:
     assert detect_direct_command("git add .") is None
+
+
+def test_detect_direct_command_for_supported_archive_inspection() -> None:
+    tar_proposal = detect_direct_command("tar -tf archive.tar")
+    unzip_proposal = detect_direct_command("unzip -l archive.zip")
+
+    assert tar_proposal is not None
+    assert tar_proposal.mode == ProposalMode.STRUCTURED
+    assert tar_proposal.command_family == "tar"
+    assert unzip_proposal is not None
+    assert unzip_proposal.mode == ProposalMode.STRUCTURED
+    assert unzip_proposal.command_family == "unzip"
+
+
+def test_detect_direct_command_rejects_unsupported_archive_forms() -> None:
+    assert detect_direct_command("tar -xf archive.tar") is None
+    assert detect_direct_command("unzip archive.zip") is None
+    assert detect_direct_command("tar -czf backup.tar.gz folder") is None
+    assert detect_direct_command("tar -tf '*.tar'") is None
+    assert detect_direct_command("unzip -l https://example.com/archive.zip") is None

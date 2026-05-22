@@ -73,6 +73,7 @@ Examples inside REPL:
 - `capabilities` / `commands` / `examples`
 - `help capabilities` / `help filesystem_inspection` / `help ls`
 - `show running processes`
+- `tar -tf archive.tar` / `unzip -l archive.zip`
 - `ls -lah`
 - `dry-run search TODO in src`
 - `explain show disk space`

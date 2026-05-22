@@ -78,6 +78,8 @@ def _format_structured_shapes(structured_families: tuple[str, ...]) -> str:
             '{"operation": "status_short|branch_current|log_oneline|diff_stat|diff_name_only", '
             '"count": 10}'
         ),
+        "tar": '{"operation": "list", "archive_path": "archive.tar"}',
+        "unzip": '{"operation": "list", "archive_path": "archive.zip"}',
     }
     return "\n".join(f"- `{family}`: `{shapes[family]}`" for family in structured_families)
 

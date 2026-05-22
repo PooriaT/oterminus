@@ -299,3 +299,22 @@ Explicitly unsupported in curated mode:
 - Arbitrary Git subcommands not represented by the structured Git inspection schema
 
 All requests still go through routing, planning, validation, and confirmation policy checks. OTerminus is not a replacement for Git automation workflows.
+
+## Archive inspection (read-only)
+
+Archive support currently starts with **read-only inspection**. OTerminus can list archive contents
+without extracting files or modifying the filesystem.
+
+Supported operations:
+- `tar -tf <archive>`
+- `unzip -l <archive>`
+
+Explicitly unsupported in this stage:
+- tar extraction (`tar -xf ...` or `tar --extract ...`)
+- unzip extraction (`unzip archive.zip`)
+- archive creation (`tar -czf ...`, `zip ...`)
+- overwrite behavior, compression flags, arbitrary tar/unzip options, wildcard archive selection,
+  recursive archive operations, and network archive URLs
+
+Archive commands still go through validation and confirmation before execution. Unsupported archive
+forms are rejected rather than treated as broad shell access.
