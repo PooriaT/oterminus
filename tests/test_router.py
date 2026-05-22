@@ -120,3 +120,36 @@ def test_route_request_archive_creation_accepts_to_connector() -> None:
 
     assert route.category == "archive_operations"
     assert "zip" in route.suggested_families
+
+
+def test_route_request_network_diagnostics() -> None:
+    assert route_request("ping example.com 4 times").category == "network_diagnostics"
+    assert route_request("check if example.com responds").category == "network_diagnostics"
+    assert (
+        route_request("show HTTP headers for https://example.com").category == "network_diagnostics"
+    )
+    assert route_request("get DNS records for example.com").category == "network_diagnostics"
+    assert route_request("look up example.com with nslookup").category == "network_diagnostics"
+
+    route = route_request("show HTTP headers for https://example.com")
+    assert "curl" in route.suggested_families
+    assert "network_diagnostics" in route.suggested_capabilities
+
+
+def test_route_request_check_if_stays_with_local_inspection_when_not_network_specific() -> None:
+    assert route_request("check if python is running").category == "process_inspect"
+    assert route_request("check if README.md contains TODO").category == "text_search"
+
+
+def test_route_request_unsupported_network_requests() -> None:
+    assert route_request("send a POST request").category == "unsupported"
+    assert route_request("download this URL").category == "unsupported"
+    assert route_request("scan this host").category == "unsupported"
+    assert route_request("ssh into this server").category == "unsupported"
+    assert route_request("call this API with my token").category == "unsupported"
+    assert route_request("upload this file").category == "unsupported"
+
+
+def test_route_request_ssh_path_mentions_stay_local() -> None:
+    assert route_request("list ~/.ssh directory").category == "filesystem_inspect"
+    assert route_request("ssh into this server").category == "unsupported"

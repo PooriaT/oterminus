@@ -175,3 +175,17 @@ def test_help_completion_includes_git_inspection_capability() -> None:
     candidates = _texts(build_repl_completions("help git_"))
 
     assert "git_inspection" in candidates
+
+
+def test_completion_includes_network_capability_and_commands() -> None:
+    capability_candidates = _texts(build_repl_completions("network_"))
+    command_candidates = _texts(build_repl_completions("pi"))
+
+    assert "network_diagnostics" in capability_candidates
+    assert "ping" in command_candidates
+
+
+def test_completion_excludes_disabled_network_pack_commands() -> None:
+    candidates = _texts(build_repl_completions("pi", disabled_pack_ids=frozenset({"network"})))
+
+    assert "ping" not in candidates

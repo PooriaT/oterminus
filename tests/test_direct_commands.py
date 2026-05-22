@@ -155,6 +155,45 @@ def test_detect_direct_command_for_supported_archive_creation() -> None:
     }
 
 
+def test_detect_direct_command_for_supported_network_diagnostics() -> None:
+    ping = detect_direct_command("ping -c 4 example.com")
+    curl = detect_direct_command("curl -I https://example.com")
+    dig = detect_direct_command("dig example.com")
+    nslookup = detect_direct_command("nslookup example.com")
+
+    assert ping is not None
+    assert ping.mode == ProposalMode.STRUCTURED
+    assert ping.command_family == "ping"
+    assert ping.arguments == {"host": "example.com", "count": 4}
+    assert curl is not None
+    assert curl.mode == ProposalMode.STRUCTURED
+    assert curl.command_family == "curl"
+    assert dig is not None
+    assert dig.mode == ProposalMode.STRUCTURED
+    assert dig.command_family == "dig"
+    assert nslookup is not None
+    assert nslookup.mode == ProposalMode.STRUCTURED
+    assert nslookup.command_family == "nslookup"
+
+
+def test_detect_direct_command_rejects_unsupported_network_forms() -> None:
+    assert detect_direct_command("ping example.com") is None
+    assert detect_direct_command("ping -f example.com") is None
+    assert detect_direct_command("curl -X POST https://example.com") is None
+    assert detect_direct_command("curl -d x=1 https://example.com") is None
+    assert detect_direct_command("curl -o out https://example.com") is None
+    assert detect_direct_command("dig +short example.com") is None
+    assert detect_direct_command("wget https://example.com") is None
+
+
+def test_detect_direct_command_respects_disabled_network_pack() -> None:
+    proposal = detect_direct_command(
+        "ping -c 4 example.com", disabled_pack_ids=frozenset({"network"})
+    )
+
+    assert proposal is None
+
+
 def test_detect_direct_command_routes_unsupported_archive_forms_to_validator() -> None:
     tar_proposal = detect_direct_command("tar -xf archive.tar")
     unzip_proposal = detect_direct_command("unzip archive.zip")
