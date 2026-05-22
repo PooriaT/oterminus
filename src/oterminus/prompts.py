@@ -78,6 +78,18 @@ def _format_structured_shapes(structured_families: tuple[str, ...]) -> str:
             '{"operation": "status_short|branch_current|log_oneline|diff_stat|diff_name_only", '
             '"count": 10}'
         ),
+        "tar": (
+            '{"operation": "list|extract_tar|create_tar_gz", "archive_path": "archive.tar", '
+            '"destination_path": "out" only for extract_tar, '
+            '"source_paths": ["src"] only for create_tar_gz}'
+        ),
+        "unzip": (
+            '{"operation": "list|extract_zip", "archive_path": "archive.zip", '
+            '"destination_path": "out" only for extract_zip}'
+        ),
+        "zip": (
+            '{"operation": "create_zip", "archive_path": "archive.zip", "source_paths": ["src"]}'
+        ),
     }
     return "\n".join(f"- `{family}`: `{shapes[family]}`" for family in structured_families)
 
@@ -98,6 +110,17 @@ def build_system_prompt(
     )
     capability_examples = command_examples_for_prompt(
         disabled_pack_ids=disabled_pack_ids, platform_id=platform_id
+    )
+    archive_guidance = (
+        "- For archive extraction, use structured `tar`/`unzip` only when the request includes an "
+        "explicit destination. Do not guess the destination and do not use overwrite or arbitrary "
+        "archive flags.\n"
+        "- For archive creation, use structured `tar` with operation `create_tar_gz` or structured "
+        "`zip` with operation `create_zip` only when the request includes both an explicit output "
+        "archive path and explicit source paths. Do not infer sources, use wildcards, add flags, "
+        "or support encryption/passwords/split archives.\n"
+        if {"tar", "unzip", "zip"}.issubset(enabled_families)
+        else ""
     )
 
     return f"""
@@ -158,6 +181,7 @@ Curated capability examples (compact):
 Behavior guidance:
 - Prefer the most direct single command that satisfies the request.
 - Prefer safe read-only inspection commands when the request is ambiguous.
+{archive_guidance}\
 - Use the provided capability route (category + suggested families) to bias family selection before \
 detailed argument planning.
 - If route category is `unsupported`, you may still choose experimental mode when a conservative \

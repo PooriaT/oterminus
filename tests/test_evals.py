@@ -108,6 +108,7 @@ def test_default_fixture_suite_is_capability_split() -> None:
     assert "golden_core.json" not in fixture_files
     assert {
         "direct_commands.json",
+        "archive_inspection.json",
         "filesystem_inspection.json",
         "filesystem_mutation.json",
         "text_inspection.json",

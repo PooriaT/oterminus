@@ -39,6 +39,9 @@ from oterminus.structured_commands import (
         "sort",
         "uniq",
         "git",
+        "tar",
+        "unzip",
+        "zip",
     ],
 )
 def test_supported_structured_families_are_curated(command_family: str) -> None:
@@ -230,6 +233,38 @@ def test_supported_structured_families_are_curated(command_family: str) -> None:
             ("git", "diff", "--name-only"),
             "git diff --name-only",
         ),
+        (
+            "tar",
+            {"operation": "list", "archive_path": "archive.tar"},
+            ("tar", "-tf", "archive.tar"),
+            "tar -tf archive.tar",
+        ),
+        (
+            "unzip",
+            {"operation": "list", "archive_path": "archive.zip"},
+            ("unzip", "-l", "archive.zip"),
+            "unzip -l archive.zip",
+        ),
+        (
+            "tar",
+            {
+                "operation": "create_tar_gz",
+                "archive_path": "backup.tar.gz",
+                "source_paths": ["src", "README.md"],
+            },
+            ("tar", "-czf", "backup.tar.gz", "src", "README.md"),
+            "tar -czf backup.tar.gz src README.md",
+        ),
+        (
+            "zip",
+            {
+                "operation": "create_zip",
+                "archive_path": "backup.zip",
+                "source_paths": ["src", "README.md"],
+            },
+            ("zip", "-r", "backup.zip", "src", "README.md"),
+            "zip -r backup.zip src README.md",
+        ),
     ],
 )
 def test_render_structured_command(
@@ -355,6 +390,34 @@ def test_render_structured_command(
             "uniq",
             {"path": "README.md", "count": True, "repeated_only": False, "unique_only": False},
         ),
+        (
+            "tar -tf archive.tar",
+            "tar",
+            {"operation": "list", "archive_path": "archive.tar"},
+        ),
+        (
+            "tar -czf backup.tar.gz src README.md",
+            "tar",
+            {
+                "operation": "create_tar_gz",
+                "archive_path": "backup.tar.gz",
+                "source_paths": ["src", "README.md"],
+            },
+        ),
+        (
+            "unzip -l backup.zip",
+            "unzip",
+            {"operation": "list", "archive_path": "backup.zip"},
+        ),
+        (
+            "zip -r backup.zip src README.md",
+            "zip",
+            {
+                "operation": "create_zip",
+                "archive_path": "backup.zip",
+                "source_paths": ["src", "README.md"],
+            },
+        ),
     ],
 )
 def test_parse_raw_command_as_structured(
@@ -373,6 +436,37 @@ def test_render_structured_command_rejects_invalid_arguments() -> None:
 def test_render_structured_command_rejects_open_url_target() -> None:
     with pytest.raises(StructuredCommandError):
         render_structured_command("open", {"path": "https://example.com", "reveal": False})
+
+
+def test_render_structured_command_rejects_missing_archive_path() -> None:
+    with pytest.raises(StructuredCommandError):
+        render_structured_command("tar", {"operation": "list"})
+
+
+def test_render_structured_archive_creation_rejects_missing_source_paths() -> None:
+    with pytest.raises(StructuredCommandError):
+        render_structured_command(
+            "tar", {"operation": "create_tar_gz", "archive_path": "backup.tar.gz"}
+        )
+
+
+def test_render_structured_archive_creation_rejects_empty_source_paths() -> None:
+    with pytest.raises(StructuredCommandError):
+        render_structured_command(
+            "zip",
+            {
+                "operation": "create_zip",
+                "archive_path": "backup.zip",
+                "source_paths": [],
+            },
+        )
+
+
+def test_render_structured_command_rejects_unsafe_archive_path() -> None:
+    with pytest.raises(StructuredCommandError):
+        render_structured_command(
+            "unzip", {"operation": "list", "archive_path": "backup.zip; rm -rf tmp"}
+        )
 
 
 def test_render_structured_command_rejects_conflicting_grep_flags() -> None:
@@ -404,6 +498,79 @@ def test_parse_raw_command_as_structured_returns_none_for_unsupported_stat_forma
     assert parse_raw_command_as_structured("stat -f '%z' README.md") is None
 
 
+def test_render_structured_tar_extraction_exact_argv() -> None:
+    rendered = render_structured_command(
+        "tar",
+        {
+            "operation": "extract_tar",
+            "archive_path": "archive.tar",
+            "destination_path": "out",
+        },
+    )
+
+    assert rendered.argv == ("tar", "-xf", "archive.tar", "-C", "out")
+    assert rendered.command == "tar -xf archive.tar -C out"
+
+
+def test_render_structured_zip_extraction_exact_argv() -> None:
+    rendered = render_structured_command(
+        "unzip",
+        {
+            "operation": "extract_zip",
+            "archive_path": "archive.zip",
+            "destination_path": "restore",
+        },
+    )
+
+    assert rendered.argv == ("unzip", "archive.zip", "-d", "restore")
+    assert rendered.command == "unzip archive.zip -d restore"
+
+
+def test_structured_archive_extraction_requires_destination() -> None:
+    with pytest.raises(StructuredCommandError):
+        render_structured_command(
+            "tar",
+            {"operation": "extract_tar", "archive_path": "archive.tar"},
+        )
+
+
+def test_structured_archive_extraction_rejects_root_destination() -> None:
+    with pytest.raises(StructuredCommandError):
+        render_structured_command(
+            "unzip",
+            {
+                "operation": "extract_zip",
+                "archive_path": "archive.zip",
+                "destination_path": "/",
+            },
+        )
+
+
+def test_structured_archive_extraction_rejects_shell_tokens_in_destination() -> None:
+    with pytest.raises(StructuredCommandError):
+        render_structured_command(
+            "tar",
+            {
+                "operation": "extract_tar",
+                "archive_path": "archive.tar",
+                "destination_path": "out; rm -rf /",
+            },
+        )
+
+
+@pytest.mark.parametrize("source_path", ["/", ".", "~", "*", "src/*.py", "src; rm -rf tmp"])
+def test_structured_archive_creation_rejects_unsafe_source_paths(source_path: str) -> None:
+    with pytest.raises(StructuredCommandError):
+        render_structured_command(
+            "zip",
+            {
+                "operation": "create_zip",
+                "archive_path": "backup.zip",
+                "source_paths": [source_path],
+            },
+        )
+
+
 @pytest.mark.parametrize(
     "command",
     [
@@ -427,10 +594,33 @@ def test_parse_raw_command_as_structured_returns_none_for_unsupported_stat_forma
         "lsof -x",
         "wc -z README.md",
         "sort",
+        "tar --extract -f archive.tar",
+        "unzip -o archive.zip",
+        "zip backup.zip file.txt",
+        "zip -e backup.zip file.txt",
     ],
 )
 def test_parse_raw_command_as_structured_rejects_invalid_variants(command: str) -> None:
     assert parse_raw_command_as_structured(command) is None
+
+
+def test_parse_raw_command_as_structured_accepts_guarded_archive_extraction() -> None:
+    assert parse_raw_command_as_structured("tar -xf archive.tar -C out") == (
+        "tar",
+        {
+            "operation": "extract_tar",
+            "archive_path": "archive.tar",
+            "destination_path": "out",
+        },
+    )
+    assert parse_raw_command_as_structured("unzip archive.zip -d restore") == (
+        "unzip",
+        {
+            "operation": "extract_zip",
+            "archive_path": "archive.zip",
+            "destination_path": "restore",
+        },
+    )
 
 
 def test_parse_raw_command_as_structured_raises_for_disallowed_open_url_target() -> None:

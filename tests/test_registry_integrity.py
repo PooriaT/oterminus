@@ -83,6 +83,7 @@ def test_supported_base_commands_is_stable_and_sorted() -> None:
 
 def test_supported_categories_match_expected_registry_values() -> None:
     assert supported_categories() == (
+        "archive_inspection",
         "destructive",
         "filesystem_write",
         "git_inspection",

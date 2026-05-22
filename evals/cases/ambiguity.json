@@ -30,20 +30,17 @@
     "user_input": "make ./run.sh executable",
     "planner_proposal": {
       "action_type": "shell_command",
-      "mode": "structured",
+      "mode": "experimental",
       "command_family": "chmod",
-      "arguments": {
-        "mode": "u+x",
-        "path": "./run.sh"
-      },
+      "command": "chmod u+x ./run.sh",
       "summary": "make script executable",
       "explanation": "use chmod to set executable bit",
       "risk_level": "write",
       "needs_confirmation": true,
-      "notes": []
+      "notes": ["symbolic chmod stays outside structured numeric chmod rendering"]
     },
     "expected_ambiguity_detected": false,
-    "expected_mode": "structured",
+    "expected_mode": "experimental",
     "expected_command_family": "chmod",
     "expected_risk_level": "write",
     "expected_acceptance": true,

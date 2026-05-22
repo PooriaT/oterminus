@@ -81,3 +81,42 @@ def test_route_request_git_mutating_requests_stay_unsupported() -> None:
     assert route_request("push this branch").category == "unsupported"
     assert route_request("reset this repo").category == "unsupported"
     assert route_request("clean untracked files").category == "unsupported"
+
+
+def test_route_request_archive_extraction_requires_destination() -> None:
+    route = route_request("extract archive.tar into ./out")
+
+    assert route.category == "archive_operations"
+    assert "tar" in route.suggested_families
+    assert "archive_inspection" in route.suggested_capabilities
+
+    missing_destination = route_request("extract archive.tar")
+    assert missing_destination.category == "unsupported"
+    assert "explicit destination" in missing_destination.reason
+
+
+def test_route_request_archive_extraction_named_backup_does_not_hit_creation_gate() -> None:
+    route = route_request("unpack backup.zip to out")
+
+    assert route.category == "archive_operations"
+    assert "unzip" in route.suggested_families
+    assert "archive_inspection" in route.suggested_capabilities
+
+
+def test_route_request_archive_creation_requires_explicit_output_and_source() -> None:
+    route = route_request("create backup.tar.gz from src")
+
+    assert route.category == "archive_operations"
+    assert "tar" in route.suggested_families
+    assert "archive_inspection" in route.suggested_capabilities
+
+    missing_scope = route_request("archive everything")
+    assert missing_scope.category == "unsupported"
+    assert "explicit output archive path or source path" in missing_scope.reason
+
+
+def test_route_request_archive_creation_accepts_to_connector() -> None:
+    route = route_request("zip docs to docs.zip")
+
+    assert route.category == "archive_operations"
+    assert "zip" in route.suggested_families

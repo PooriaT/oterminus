@@ -20,6 +20,26 @@ Validator enforces:
 - allowed-root path restrictions when configured
 - policy compatibility for computed risk level
 
+Archive extraction and creation are handled as operation-specific write risks even though archive
+listing stays safe. Validator accepts only the guarded extraction forms
+`tar -xf <archive> -C <destination>` and `unzip <archive> -d <destination>`, and only the guarded
+creation forms `tar -czf <archive_path> <source_paths...>` and
+`zip -r <archive_path> <source_paths...>`.
+
+For extraction, validation rejects missing destinations, `/`, broad system roots, shell operators,
+URLs, wildcard archive paths, overwrite flags, path-transforming tar options, and arbitrary archive
+flags. Accepted extraction previews include this warning:
+`Archive extraction can write or overwrite files in the destination.`
+
+For creation, validation rejects missing output archive paths, empty source lists, `/`, `.`, `..`,
+broad system and home roots, wildcard source paths, shell operators, URLs, encryption/password
+flags, split/archive-update/delete-source behavior, network archive destinations, and arbitrary
+tar/zip flags. Accepted creation previews warn that the underlying archive tool may overwrite or
+update an existing archive path. Experimental mode still goes through the same command-shape checks.
+
+These checks constrain command shape and policy boundaries; they do not inspect archive member paths
+for traversal or other malicious content.
+
 ## Policy model
 
 Policy config fields:

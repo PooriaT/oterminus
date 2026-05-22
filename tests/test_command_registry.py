@@ -27,6 +27,7 @@ def test_all_command_packs_are_loaded_into_registry() -> None:
 
 
 def test_duplicate_command_names_are_rejected() -> None:
+    filesystem_pack = next(pack for pack in COMMAND_PACKS if pack.pack_id == "filesystem")
     duplicate_ls = command(
         name="ls",
         category="inspection",
@@ -37,7 +38,7 @@ def test_duplicate_command_names_are_rejected() -> None:
     )
 
     with pytest.raises(ValueError, match="Duplicate command spec"):
-        merge_command_packs([COMMAND_PACKS[0], (duplicate_ls,)])
+        merge_command_packs([filesystem_pack, (duplicate_ls,)])
 
 
 def test_existing_commands_remain_available() -> None:
@@ -47,6 +48,8 @@ def test_existing_commands_remain_available() -> None:
     assert get_command_spec("open") is not None
     assert get_command_spec("ps") is not None
     assert get_command_spec("git") is not None
+    assert get_command_spec("tar") is not None
+    assert get_command_spec("unzip") is not None
 
 
 def test_supported_base_commands_includes_curated_entries() -> None:
@@ -59,6 +62,8 @@ def test_supported_base_commands_includes_curated_entries() -> None:
     assert "open" in supported_base_commands(platform_id="darwin")
     assert "lsof" in commands
     assert "git" in commands
+    assert "tar" in commands
+    assert "unzip" in commands
 
 
 def test_registry_contains_core_command_metadata() -> None:
@@ -75,6 +80,7 @@ def test_registry_exposes_supported_families_and_direct_commands() -> None:
     assert "search" in supported_categories()
     assert "system_inspection" in supported_categories()
     assert "process_inspection" in supported_categories()
+    assert "archive_inspection" in supported_categories()
     assert "find" in direct_supported_base_commands()
     assert "open" in direct_supported_base_commands(platform_id="darwin")
     assert "open" not in direct_supported_base_commands(platform_id="linux")
@@ -107,6 +113,12 @@ def test_registry_direct_detection_heuristics_match_current_behavior() -> None:
     assert looks_like_direct_invocation("find", ["all", ".py", "files"]) is False
     assert looks_like_direct_invocation("git", ["status", "--short"]) is True
     assert looks_like_direct_invocation("git", ["add", "."]) is False
+    assert looks_like_direct_invocation("tar", ["-tf", "archive.tar"]) is True
+    assert looks_like_direct_invocation("tar", ["-xf", "archive.tar", "-C", "out"]) is True
+    assert looks_like_direct_invocation("tar", ["-xf", "archive.tar"]) is False
+    assert looks_like_direct_invocation("unzip", ["-l", "archive.zip"]) is True
+    assert looks_like_direct_invocation("unzip", ["archive.zip", "-d", "restore"]) is True
+    assert looks_like_direct_invocation("unzip", ["archive.zip"]) is False
 
 
 def test_capability_grouping_and_lookup() -> None:
@@ -121,7 +133,10 @@ def test_supported_capabilities_include_aliases_and_examples() -> None:
     capabilities = {cap.capability_id: cap for cap in supported_capabilities()}
 
     text_capability = capabilities["text_inspection"]
+    archive_capability = capabilities["archive_inspection"]
     assert "git_inspection" in capabilities
+    assert "tar" in archive_capability.commands
+    assert "unzip" in archive_capability.commands
     assert "grep" in text_capability.commands
     assert "search text" in text_capability.aliases
     grep = get_command_spec("grep")

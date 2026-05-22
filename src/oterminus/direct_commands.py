@@ -28,7 +28,27 @@ def detect_direct_command(
         return None
 
     if not looks_like_direct_invocation(base, args[1:], disabled_pack_ids, platform_id):
-        return None
+        if base not in {"tar", "unzip", "zip"}:
+            return None
+        if _looks_like_natural_language_archive_request(args[1:]):
+            return None
+        return Proposal(
+            action_type=ActionType.SHELL_COMMAND,
+            mode=ProposalMode.EXPERIMENTAL,
+            command_family=base,
+            command=command,
+            summary=f"Run direct command: {spec.name}",
+            explanation=(
+                "Input already looks like an archive command, so it will be validated locally "
+                "against guarded archive constraints."
+            ),
+            needs_confirmation=True,
+            notes=[
+                "Detected as a direct shell command; skipped the LLM planner.",
+                *spec.notes,
+                "Unsupported archive forms are rejected by validation.",
+            ],
+        )
 
     notes = ["Detected as a direct shell command; skipped the LLM planner.", *spec.notes]
     try:
@@ -65,4 +85,11 @@ def detect_direct_command(
         ),
         needs_confirmation=True,
         notes=notes,
+    )
+
+
+def _looks_like_natural_language_archive_request(operands: list[str]) -> bool:
+    return any(
+        operand.lower() in {"into", "to", "in", "this", "everything", "files", "project"}
+        for operand in operands
     )

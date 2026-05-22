@@ -2,8 +2,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from collections.abc import Iterable, Sequence
+from pathlib import Path
 import sys
 
+from .archive import COMMAND_PACK as ARCHIVE_COMMANDS
 from .dangerous import COMMAND_PACK as DANGEROUS_COMMANDS
 from .filesystem import COMMAND_PACK as FILESYSTEM_COMMANDS
 from .git import COMMAND_PACK as GIT_COMMANDS
@@ -37,6 +39,12 @@ class CommandPack:
 
 
 COMMAND_PACKS: tuple[CommandPack, ...] = (
+    CommandPack(
+        "archive",
+        "Archive",
+        "Archive inspection and guarded extraction commands.",
+        ARCHIVE_COMMANDS,
+    ),
     CommandPack(
         "filesystem",
         "Filesystem",
@@ -211,7 +219,7 @@ def supported_capabilities(
 
 
 def command_examples_for_prompt(
-    max_examples: int = 8,
+    max_examples: int = 12,
     *,
     disabled_pack_ids: frozenset[str] | None = None,
     platform_id: str | None = None,
@@ -240,7 +248,7 @@ def command_examples_for_prompt(
 
 def capability_summary_for_prompt(
     *,
-    max_capabilities: int = 8,
+    max_capabilities: int = 12,
     max_commands_per_capability: int = 4,
     max_aliases_per_capability: int = 2,
     disabled_pack_ids: frozenset[str] | None = None,
@@ -323,6 +331,15 @@ def looks_like_direct_invocation(
     if base == "git":
         return _is_supported_git_direct_operands(operands)
 
+    if base == "tar":
+        return _is_supported_tar_direct_operands(operands)
+
+    if base == "unzip":
+        return _is_supported_unzip_direct_operands(operands)
+
+    if base == "zip":
+        return _is_supported_zip_direct_operands(operands)
+
     return len(operands) >= spec.min_operands
 
 
@@ -342,6 +359,105 @@ def _is_supported_git_direct_operands(operands: list[str]) -> bool:
             return False
         return 1 <= count <= 100
     return False
+
+
+def _is_supported_tar_direct_operands(operands: list[str]) -> bool:
+    return (
+        (len(operands) == 2 and operands[0] == "-tf" and _is_archive_path_operand(operands[1]))
+        or (
+            len(operands) == 4
+            and operands[0] == "-xf"
+            and _is_archive_path_operand(operands[1])
+            and operands[2] == "-C"
+            and _is_archive_destination_operand(operands[3])
+        )
+        or (
+            len(operands) >= 3
+            and operands[0] == "-czf"
+            and _is_archive_path_operand(operands[1])
+            and all(_is_archive_source_operand(operand) for operand in operands[2:])
+        )
+    )
+
+
+def _is_supported_unzip_direct_operands(operands: list[str]) -> bool:
+    return (
+        len(operands) == 2 and operands[0] == "-l" and _is_archive_path_operand(operands[1])
+    ) or (
+        len(operands) == 3
+        and _is_archive_path_operand(operands[0])
+        and operands[1] == "-d"
+        and _is_archive_destination_operand(operands[2])
+    )
+
+
+def _is_supported_zip_direct_operands(operands: list[str]) -> bool:
+    return (
+        len(operands) >= 3
+        and operands[0] == "-r"
+        and _is_archive_path_operand(operands[1])
+        and all(_is_archive_source_operand(operand) for operand in operands[2:])
+    )
+
+
+def _is_archive_path_operand(value: str) -> bool:
+    lowered = value.lower()
+    blocked_fragments = ("$(", "`", "\n", "\r", "\x00", "&&", "||", ";", "|", "<", ">", "&")
+    return (
+        bool(value)
+        and not value.startswith("-")
+        and "://" not in lowered
+        and not lowered.startswith("mailto:")
+        and not any(fragment in value for fragment in blocked_fragments)
+        and not any(fragment in value for fragment in ("*", "?", "[", "]", "{", "}"))
+    )
+
+
+def _is_archive_destination_operand(value: str) -> bool:
+    return _is_archive_path_operand(value) and value not in {
+        "/",
+        "/bin",
+        "/dev",
+        "/etc",
+        "/lib",
+        "/private",
+        "/sbin",
+        "/usr",
+        "/var",
+    }
+
+
+def _is_archive_source_operand(value: str) -> bool:
+    home_path = str(Path.home()).rstrip("/")
+    return (
+        _is_archive_path_operand(value)
+        and value
+        not in {
+            ".",
+            "..",
+            "/",
+            "~",
+            "$HOME",
+            "${HOME}",
+            "/bin",
+            "/dev",
+            "/etc",
+            "/home",
+            "/lib",
+            "/private",
+            "/root",
+            "/sbin",
+            "/Users",
+            "/usr",
+            "/var",
+        }
+        and not (
+            value.rstrip("/") == home_path
+            or value.startswith("~/")
+            or value.startswith("$HOME/")
+            or value.startswith("${HOME}/")
+        )
+    )
 
 
 def _looks_like_path(value: str) -> bool:

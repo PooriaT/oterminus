@@ -792,6 +792,105 @@ def test_handle_request_dry_run_direct_command_skips_planner_and_execution(capsy
     executor.run.assert_not_called()
 
 
+def test_handle_request_archive_extraction_dry_run_does_not_execute(capsys) -> None:
+    from oterminus.cli import handle_request
+    from oterminus.policies import PolicyConfig
+    from oterminus.validator import Validator
+
+    planner = Mock()
+    validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))
+    executor = Mock()
+
+    code = handle_request(
+        "tar -xf archive.tar -C out", planner, validator, executor, run_mode=RunMode.DRY_RUN
+    )
+
+    assert code == 0
+    output = capsys.readouterr().out
+    assert "Archive extraction can write or overwrite files" in output
+    assert "execution skipped" in output.lower()
+    planner.plan.assert_not_called()
+    executor.run.assert_not_called()
+
+
+def test_handle_request_archive_creation_dry_run_does_not_execute(capsys) -> None:
+    from oterminus.cli import handle_request
+    from oterminus.policies import PolicyConfig
+    from oterminus.validator import Validator
+
+    planner = Mock()
+    validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))
+    executor = Mock()
+
+    code = handle_request(
+        "zip -r backup.zip src README.md", planner, validator, executor, run_mode=RunMode.DRY_RUN
+    )
+
+    assert code == 0
+    output = capsys.readouterr().out
+    assert "Archive creation is write-risk" in output
+    assert "execution skipped" in output.lower()
+    planner.plan.assert_not_called()
+    executor.run.assert_not_called()
+
+
+def test_handle_request_archive_creation_explain_does_not_execute(capsys) -> None:
+    from oterminus.cli import handle_request
+    from oterminus.policies import PolicyConfig
+    from oterminus.validator import Validator
+
+    planner = Mock()
+    validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))
+    executor = Mock()
+
+    code = handle_request(
+        "tar -czf backup.tar.gz src", planner, validator, executor, run_mode=RunMode.EXPLAIN
+    )
+
+    assert code == 0
+    output = capsys.readouterr().out
+    assert "Archive creation is write-risk" in output
+    assert "Blocked by explain mode" in output
+    planner.plan.assert_not_called()
+    executor.run.assert_not_called()
+
+
+def test_handle_request_archive_extraction_requires_confirmation(monkeypatch, capsys) -> None:
+    from oterminus.cli import handle_request
+    from oterminus.policies import PolicyConfig
+    from oterminus.validator import Validator
+
+    planner = Mock()
+    validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))
+    executor = Mock()
+    monkeypatch.setattr("builtins.input", lambda _: "n")
+
+    code = handle_request("unzip archive.zip -d restore", planner, validator, executor)
+
+    assert code == 0
+    assert "Cancelled." in capsys.readouterr().out
+    planner.plan.assert_not_called()
+    executor.run.assert_not_called()
+
+
+def test_handle_request_archive_creation_requires_confirmation(monkeypatch, capsys) -> None:
+    from oterminus.cli import handle_request
+    from oterminus.policies import PolicyConfig
+    from oterminus.validator import Validator
+
+    planner = Mock()
+    validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))
+    executor = Mock()
+    monkeypatch.setattr("builtins.input", lambda _: "n")
+
+    code = handle_request("tar -czf backup.tar.gz src", planner, validator, executor)
+
+    assert code == 0
+    assert "Cancelled." in capsys.readouterr().out
+    planner.plan.assert_not_called()
+    executor.run.assert_not_called()
+
+
 def test_handle_request_explain_validation_failure_reports_policy_and_skips_executor(
     capsys,
 ) -> None:

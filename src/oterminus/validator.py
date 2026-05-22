@@ -151,6 +151,7 @@ class Validator:
             reasons.extend(self._platform_reasons(spec))
             reasons.extend(self._maturity_reasons(spec))
             reasons.extend(self._validate_command_shape(spec, args[1:]))
+            risk = self._risk_for_command_shape(spec, args[1:], default=risk)
 
         if (
             spec is not None
@@ -171,6 +172,15 @@ class Validator:
         if base == "env":
             warnings.append(
                 "Environment values may include secrets; only query specific variables and avoid sensitive names."
+            )
+
+        if base in {"tar", "unzip"} and _is_supported_archive_extraction_shape(base, args[1:]):
+            warnings.append("Archive extraction can write or overwrite files in the destination.")
+
+        if base in {"tar", "zip"} and _is_supported_archive_creation_shape(base, args[1:]):
+            warnings.append(
+                "Archive creation is write-risk and may overwrite an existing archive path "
+                "depending on the underlying archive tool."
             )
 
         if spec is not None and spec.forbidden_operand_prefixes:
@@ -226,6 +236,41 @@ class Validator:
                 "branch --show-current, log --oneline -n <count>, diff --stat, diff --name-only."
             ]
 
+        if spec.name == "tar":
+            if (
+                _is_supported_tar_inspection_shape(arguments)
+                or _is_supported_tar_extraction_shape(arguments)
+                or _is_supported_tar_creation_shape(arguments)
+            ):
+                return []
+            return [
+                "Only guarded tar archive operations are supported: tar -tf <archive>, "
+                "tar -xf <archive> -C <destination>, and tar -czf <archive> "
+                "<source_paths...>. Broad sources, wildcards, path transforms, extraction "
+                "without -C, and arbitrary tar options are not supported."
+            ]
+
+        if spec.name == "zip":
+            if _is_supported_zip_creation_shape(arguments):
+                return []
+            return [
+                "Only guarded zip archive creation is supported: zip -r <archive> "
+                "<source_paths...>. Broad sources, wildcards, encryption, passwords, split "
+                "archives, delete-after-compress behavior, and arbitrary zip options are not "
+                "supported."
+            ]
+
+        if spec.name == "unzip":
+            if _is_supported_unzip_inspection_shape(
+                arguments
+            ) or _is_supported_unzip_extraction_shape(arguments):
+                return []
+            return [
+                "Only guarded zip archive operations are supported: unzip -l <archive> and "
+                "unzip <archive> -d <destination>. Extraction without -d, overwrite flags, "
+                "and arbitrary unzip options are not supported."
+            ]
+
         reasons: list[str] = []
         operand_count = 0
         index = 0
@@ -260,6 +305,15 @@ class Validator:
             )
 
         return _dedupe_preserve_order(reasons)
+
+    def _risk_for_command_shape(
+        self, spec: CommandSpec, arguments: list[str], *, default: RiskLevel
+    ) -> RiskLevel:
+        if _looks_like_archive_extraction_shape(spec.name, arguments):
+            return RiskLevel.WRITE
+        if _looks_like_archive_creation_shape(spec.name, arguments):
+            return RiskLevel.WRITE
+        return default
 
     def _consume_flag(
         self, spec: CommandSpec, arguments: list[str], index: int
@@ -461,3 +515,145 @@ def _is_supported_git_inspection_shape(arguments: list[str]) -> bool:
             return False
         return 1 <= count <= 100
     return False
+
+
+def _is_supported_tar_inspection_shape(arguments: list[str]) -> bool:
+    return len(arguments) == 2 and arguments[0] == "-tf" and _is_safe_archive_operand(arguments[1])
+
+
+def _is_supported_unzip_inspection_shape(arguments: list[str]) -> bool:
+    return len(arguments) == 2 and arguments[0] == "-l" and _is_safe_archive_operand(arguments[1])
+
+
+def _is_supported_archive_extraction_shape(base: str, arguments: list[str]) -> bool:
+    if base == "tar":
+        return _is_supported_tar_extraction_shape(arguments)
+    if base == "unzip":
+        return _is_supported_unzip_extraction_shape(arguments)
+    return False
+
+
+def _is_supported_archive_creation_shape(base: str, arguments: list[str]) -> bool:
+    if base == "tar":
+        return _is_supported_tar_creation_shape(arguments)
+    if base == "zip":
+        return _is_supported_zip_creation_shape(arguments)
+    return False
+
+
+def _looks_like_archive_extraction_shape(base: str, arguments: list[str]) -> bool:
+    if _is_supported_archive_extraction_shape(base, arguments):
+        return True
+    if base == "tar":
+        return any(arg in {"-xf", "--extract", "-x"} for arg in arguments)
+    if base == "unzip":
+        return bool(arguments) and arguments[0] != "-l"
+    return False
+
+
+def _looks_like_archive_creation_shape(base: str, arguments: list[str]) -> bool:
+    if _is_supported_archive_creation_shape(base, arguments):
+        return True
+    if base == "tar":
+        return any(arg in {"-czf", "-cf", "-c", "--create"} for arg in arguments)
+    if base == "zip":
+        return bool(arguments)
+    return False
+
+
+def _is_supported_tar_extraction_shape(arguments: list[str]) -> bool:
+    return (
+        len(arguments) == 4
+        and arguments[0] == "-xf"
+        and _is_safe_archive_operand(arguments[1])
+        and arguments[2] == "-C"
+        and _is_safe_archive_destination(arguments[3])
+    )
+
+
+def _is_supported_tar_creation_shape(arguments: list[str]) -> bool:
+    return (
+        len(arguments) >= 3
+        and arguments[0] == "-czf"
+        and _is_safe_archive_operand(arguments[1])
+        and all(_is_safe_archive_source(operand) for operand in arguments[2:])
+    )
+
+
+def _is_supported_unzip_extraction_shape(arguments: list[str]) -> bool:
+    return (
+        len(arguments) == 3
+        and _is_safe_archive_operand(arguments[0])
+        and arguments[1] == "-d"
+        and _is_safe_archive_destination(arguments[2])
+    )
+
+
+def _is_supported_zip_creation_shape(arguments: list[str]) -> bool:
+    return (
+        len(arguments) >= 3
+        and arguments[0] == "-r"
+        and _is_safe_archive_operand(arguments[1])
+        and all(_is_safe_archive_source(operand) for operand in arguments[2:])
+    )
+
+
+def _is_safe_archive_operand(value: str) -> bool:
+    if not value or value.startswith("-"):
+        return False
+    lowered = value.lower()
+    if "://" in lowered or lowered.startswith("mailto:"):
+        return False
+    blocked_fragments = ("$(", "`", "\n", "\r", "\x00")
+    if any(fragment in value for fragment in blocked_fragments):
+        return False
+    blocked_operator_fragments = ("&&", "||", ";", "|", "<", ">", "&")
+    if any(fragment in value for fragment in blocked_operator_fragments):
+        return False
+    return not any(fragment in value for fragment in ("*", "?", "[", "]", "{", "}"))
+
+
+def _is_safe_archive_destination(value: str) -> bool:
+    if not _is_safe_archive_operand(value):
+        return False
+    return value not in {
+        "/",
+        "/bin",
+        "/dev",
+        "/etc",
+        "/lib",
+        "/private",
+        "/sbin",
+        "/usr",
+        "/var",
+    }
+
+
+def _is_safe_archive_source(value: str) -> bool:
+    if not _is_safe_archive_operand(value):
+        return False
+    if value in {
+        ".",
+        "..",
+        "/",
+        "~",
+        "$HOME",
+        "${HOME}",
+        "/bin",
+        "/dev",
+        "/etc",
+        "/home",
+        "/lib",
+        "/private",
+        "/root",
+        "/sbin",
+        "/Users",
+        "/usr",
+        "/var",
+    }:
+        return False
+    if value.rstrip("/") == str(Path.home()).rstrip("/"):
+        return False
+    return not (
+        value.startswith("~/") or value.startswith("$HOME/") or value.startswith("${HOME}/")
+    )
