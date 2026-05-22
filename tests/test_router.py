@@ -81,3 +81,15 @@ def test_route_request_git_mutating_requests_stay_unsupported() -> None:
     assert route_request("push this branch").category == "unsupported"
     assert route_request("reset this repo").category == "unsupported"
     assert route_request("clean untracked files").category == "unsupported"
+
+
+def test_route_request_archive_extraction_requires_destination() -> None:
+    route = route_request("extract archive.tar into ./out")
+
+    assert route.category == "archive_operations"
+    assert "tar" in route.suggested_families
+    assert "archive_inspection" in route.suggested_capabilities
+
+    missing_destination = route_request("extract archive.tar")
+    assert missing_destination.category == "unsupported"
+    assert "explicit destination" in missing_destination.reason

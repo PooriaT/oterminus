@@ -78,8 +78,14 @@ def _format_structured_shapes(structured_families: tuple[str, ...]) -> str:
             '{"operation": "status_short|branch_current|log_oneline|diff_stat|diff_name_only", '
             '"count": 10}'
         ),
-        "tar": '{"operation": "list", "archive_path": "archive.tar"}',
-        "unzip": '{"operation": "list", "archive_path": "archive.zip"}',
+        "tar": (
+            '{"operation": "list|extract_tar", "archive_path": "archive.tar", '
+            '"destination_path": "out" only for extract_tar}'
+        ),
+        "unzip": (
+            '{"operation": "list|extract_zip", "archive_path": "archive.zip", '
+            '"destination_path": "out" only for extract_zip}'
+        ),
     }
     return "\n".join(f"- `{family}`: `{shapes[family]}`" for family in structured_families)
 
@@ -100,6 +106,13 @@ def build_system_prompt(
     )
     capability_examples = command_examples_for_prompt(
         disabled_pack_ids=disabled_pack_ids, platform_id=platform_id
+    )
+    archive_guidance = (
+        "- For archive extraction, use structured `tar`/`unzip` only when the request includes an "
+        "explicit destination. Do not guess the destination and do not use overwrite or arbitrary "
+        "archive flags.\n"
+        if {"tar", "unzip"}.issubset(enabled_families)
+        else ""
     )
 
     return f"""
@@ -160,6 +173,7 @@ Curated capability examples (compact):
 Behavior guidance:
 - Prefer the most direct single command that satisfies the request.
 - Prefer safe read-only inspection commands when the request is ambiguous.
+{archive_guidance}\
 - Use the provided capability route (category + suggested families) to bias family selection before \
 detailed argument planning.
 - If route category is `unsupported`, you may still choose experimental mode when a conservative \

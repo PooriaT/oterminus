@@ -116,9 +116,52 @@ def test_detect_direct_command_for_supported_archive_inspection() -> None:
     assert unzip_proposal.command_family == "unzip"
 
 
-def test_detect_direct_command_rejects_unsupported_archive_forms() -> None:
-    assert detect_direct_command("tar -xf archive.tar") is None
-    assert detect_direct_command("unzip archive.zip") is None
-    assert detect_direct_command("tar -czf backup.tar.gz folder") is None
-    assert detect_direct_command("tar -tf '*.tar'") is None
-    assert detect_direct_command("unzip -l https://example.com/archive.zip") is None
+def test_detect_direct_command_for_supported_archive_extraction() -> None:
+    tar_proposal = detect_direct_command("tar -xf archive.tar -C out")
+    unzip_proposal = detect_direct_command("unzip archive.zip -d restore")
+
+    assert tar_proposal is not None
+    assert tar_proposal.mode == ProposalMode.STRUCTURED
+    assert tar_proposal.command_family == "tar"
+    assert tar_proposal.arguments == {
+        "operation": "extract_tar",
+        "archive_path": "archive.tar",
+        "destination_path": "out",
+    }
+    assert unzip_proposal is not None
+    assert unzip_proposal.mode == ProposalMode.STRUCTURED
+    assert unzip_proposal.command_family == "unzip"
+
+
+def test_detect_direct_command_routes_unsupported_archive_forms_to_validator() -> None:
+    tar_proposal = detect_direct_command("tar -xf archive.tar")
+    unzip_proposal = detect_direct_command("unzip archive.zip")
+
+    assert tar_proposal is not None
+    assert tar_proposal.mode == ProposalMode.EXPERIMENTAL
+    assert tar_proposal.command_family == "tar"
+    assert unzip_proposal is not None
+    assert unzip_proposal.mode == ProposalMode.EXPERIMENTAL
+    assert unzip_proposal.command_family == "unzip"
+
+
+def test_detect_direct_command_routes_archive_creation_to_validator() -> None:
+    proposal = detect_direct_command("tar -czf backup.tar.gz folder")
+
+    assert proposal is not None
+    assert proposal.mode == ProposalMode.EXPERIMENTAL
+    assert proposal.command_family == "tar"
+
+
+def test_detect_direct_command_rejects_unknown_archive_creation_command() -> None:
+    assert detect_direct_command("zip backup.zip file.txt") is None
+
+
+def test_detect_direct_command_routes_unsafe_archive_operands_to_validator() -> None:
+    assert detect_direct_command("tar -tf '*.tar'") is not None
+    assert detect_direct_command("unzip -l https://example.com/archive.zip") is not None
+    assert detect_direct_command("unzip -o archive.zip -d restore") is not None
+
+
+def test_detect_direct_command_allows_archive_natural_language_to_reach_planner() -> None:
+    assert detect_direct_command("unzip backup.zip into ./restore") is None

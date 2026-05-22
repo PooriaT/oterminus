@@ -300,21 +300,39 @@ Explicitly unsupported in curated mode:
 
 All requests still go through routing, planning, validation, and confirmation policy checks. OTerminus is not a replacement for Git automation workflows.
 
-## Archive inspection (read-only)
+## Archive inspection and guarded extraction
 
-Archive support currently starts with **read-only inspection**. OTerminus can list archive contents
-without extracting files or modifying the filesystem.
+Archive support includes read-only inspection and guarded extraction for local tar and zip files.
+Inspection is safe-risk. Extraction is write-risk because it can create files and may overwrite
+existing files in the destination depending on the underlying archive tool behavior.
 
-Supported operations:
+Supported inspection operations:
 - `tar -tf <archive>`
 - `unzip -l <archive>`
 
+Supported extraction operations:
+- `tar -xf <archive> -C <destination>`
+- `unzip <archive> -d <destination>`
+
+Extraction rules:
+- destination is required and must be explicit
+- extraction to `/` and broad system roots is rejected
+- configured `allowed_roots` policy is applied to archive and destination paths
+- preview and confirmation are required before execution
+- users should inspect archives before extracting them
+
 Explicitly unsupported in this stage:
-- tar extraction (`tar -xf ...` or `tar --extract ...`)
-- unzip extraction (`unzip archive.zip`)
 - archive creation (`tar -czf ...`, `zip ...`)
-- overwrite behavior, compression flags, arbitrary tar/unzip options, wildcard archive selection,
-  recursive archive operations, and network archive URLs
+- extraction without an explicit destination (`tar -xf archive.tar`, `unzip archive.zip`)
+- overwrite flags such as `unzip -o`
+- password-protected archives
+- compression flags, arbitrary tar/unzip options, path-transforming tar options, wildcard archive
+  selection, recursive archive operations, network archive URLs, and `sudo`
 
 Archive commands still go through validation and confirmation before execution. Unsupported archive
 forms are rejected rather than treated as broad shell access.
+
+OTerminus does not claim full protection from malicious archive contents in this PR. It validates
+the command shape, archive path, destination path, and policy boundaries, but it does not inspect
+archive member paths or block path traversal inside archive contents before calling `tar` or
+`unzip`.
