@@ -79,12 +79,16 @@ def _format_structured_shapes(structured_families: tuple[str, ...]) -> str:
             '"count": 10}'
         ),
         "tar": (
-            '{"operation": "list|extract_tar", "archive_path": "archive.tar", '
-            '"destination_path": "out" only for extract_tar}'
+            '{"operation": "list|extract_tar|create_tar_gz", "archive_path": "archive.tar", '
+            '"destination_path": "out" only for extract_tar, '
+            '"source_paths": ["src"] only for create_tar_gz}'
         ),
         "unzip": (
             '{"operation": "list|extract_zip", "archive_path": "archive.zip", '
             '"destination_path": "out" only for extract_zip}'
+        ),
+        "zip": (
+            '{"operation": "create_zip", "archive_path": "archive.zip", "source_paths": ["src"]}'
         ),
     }
     return "\n".join(f"- `{family}`: `{shapes[family]}`" for family in structured_families)
@@ -111,7 +115,11 @@ def build_system_prompt(
         "- For archive extraction, use structured `tar`/`unzip` only when the request includes an "
         "explicit destination. Do not guess the destination and do not use overwrite or arbitrary "
         "archive flags.\n"
-        if {"tar", "unzip"}.issubset(enabled_families)
+        "- For archive creation, use structured `tar` with operation `create_tar_gz` or structured "
+        "`zip` with operation `create_zip` only when the request includes both an explicit output "
+        "archive path and explicit source paths. Do not infer sources, use wildcards, add flags, "
+        "or support encryption/passwords/split archives.\n"
+        if {"tar", "unzip", "zip"}.issubset(enabled_families)
         else ""
     )
 

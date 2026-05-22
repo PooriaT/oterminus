@@ -93,3 +93,23 @@ def test_route_request_archive_extraction_requires_destination() -> None:
     missing_destination = route_request("extract archive.tar")
     assert missing_destination.category == "unsupported"
     assert "explicit destination" in missing_destination.reason
+
+
+def test_route_request_archive_extraction_named_backup_does_not_hit_creation_gate() -> None:
+    route = route_request("unpack backup.zip to out")
+
+    assert route.category == "archive_operations"
+    assert "unzip" in route.suggested_families
+    assert "archive_inspection" in route.suggested_capabilities
+
+
+def test_route_request_archive_creation_requires_explicit_output_and_source() -> None:
+    route = route_request("create backup.tar.gz from src")
+
+    assert route.category == "archive_operations"
+    assert "tar" in route.suggested_families
+    assert "archive_inspection" in route.suggested_capabilities
+
+    missing_scope = route_request("archive everything")
+    assert missing_scope.category == "unsupported"
+    assert "explicit output archive path or source path" in missing_scope.reason

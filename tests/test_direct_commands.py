@@ -133,6 +133,28 @@ def test_detect_direct_command_for_supported_archive_extraction() -> None:
     assert unzip_proposal.command_family == "unzip"
 
 
+def test_detect_direct_command_for_supported_archive_creation() -> None:
+    tar_proposal = detect_direct_command("tar -czf backup.tar.gz src README.md")
+    zip_proposal = detect_direct_command("zip -r backup.zip src README.md")
+
+    assert tar_proposal is not None
+    assert tar_proposal.mode == ProposalMode.STRUCTURED
+    assert tar_proposal.command_family == "tar"
+    assert tar_proposal.arguments == {
+        "operation": "create_tar_gz",
+        "archive_path": "backup.tar.gz",
+        "source_paths": ["src", "README.md"],
+    }
+    assert zip_proposal is not None
+    assert zip_proposal.mode == ProposalMode.STRUCTURED
+    assert zip_proposal.command_family == "zip"
+    assert zip_proposal.arguments == {
+        "operation": "create_zip",
+        "archive_path": "backup.zip",
+        "source_paths": ["src", "README.md"],
+    }
+
+
 def test_detect_direct_command_routes_unsupported_archive_forms_to_validator() -> None:
     tar_proposal = detect_direct_command("tar -xf archive.tar")
     unzip_proposal = detect_direct_command("unzip archive.zip")
@@ -146,22 +168,28 @@ def test_detect_direct_command_routes_unsupported_archive_forms_to_validator() -
 
 
 def test_detect_direct_command_routes_archive_creation_to_validator() -> None:
-    proposal = detect_direct_command("tar -czf backup.tar.gz folder")
+    proposal = detect_direct_command("tar -czf backup.tar.gz /")
 
     assert proposal is not None
     assert proposal.mode == ProposalMode.EXPERIMENTAL
     assert proposal.command_family == "tar"
 
 
-def test_detect_direct_command_rejects_unknown_archive_creation_command() -> None:
-    assert detect_direct_command("zip backup.zip file.txt") is None
+def test_detect_direct_command_routes_unsupported_zip_creation_to_validator() -> None:
+    proposal = detect_direct_command("zip backup.zip file.txt")
+
+    assert proposal is not None
+    assert proposal.mode == ProposalMode.EXPERIMENTAL
+    assert proposal.command_family == "zip"
 
 
 def test_detect_direct_command_routes_unsafe_archive_operands_to_validator() -> None:
     assert detect_direct_command("tar -tf '*.tar'") is not None
     assert detect_direct_command("unzip -l https://example.com/archive.zip") is not None
     assert detect_direct_command("unzip -o archive.zip -d restore") is not None
+    assert detect_direct_command("zip -e backup.zip file.txt") is not None
 
 
 def test_detect_direct_command_allows_archive_natural_language_to_reach_planner() -> None:
     assert detect_direct_command("unzip backup.zip into ./restore") is None
+    assert detect_direct_command("zip this") is None

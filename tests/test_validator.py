@@ -165,8 +165,10 @@ def test_validator_accepts_open_on_darwin(monkeypatch) -> None:
         ("git log --oneline -n 5", RiskLevel.SAFE),
         ("tar -tf archive.tar", RiskLevel.SAFE),
         ("tar -xf archive.tar -C out", RiskLevel.WRITE),
+        ("tar -czf backup.tar.gz src README.md", RiskLevel.WRITE),
         ("unzip -l archive.zip", RiskLevel.SAFE),
         ("unzip archive.zip -d restore", RiskLevel.WRITE),
+        ("zip -r backup.zip src README.md", RiskLevel.WRITE),
     ],
 )
 def test_risk_classification_for_next_wave_structured_families(
@@ -211,9 +213,16 @@ def test_risk_classification_for_next_wave_structured_families(
         "tar -xf archive.tar -C /",
         "tar --strip-components 1 -xf archive.tar -C out",
         "tar --transform s/a/b/ -xf archive.tar -C out",
+        "tar -czf backup.tar.gz /",
+        "tar -czf backup.tar.gz '*'",
+        "tar -cf backup.tar src",
         "unzip archive.zip",
         "unzip -o archive.zip",
         "zip backup.zip file.txt",
+        "zip -r backup.zip /",
+        "zip -r backup.zip ~",
+        "zip -e backup.zip file.txt",
+        "zip --password secret backup.zip file.txt",
     ],
 )
 def test_acceptance_rejects_invalid_next_wave_variants(command: str) -> None:
@@ -398,6 +407,60 @@ def test_validator_accepts_structured_archive_extraction_proposal() -> None:
     assert any("Archive extraction can write or overwrite files" in w for w in result.warnings)
 
 
+def test_validator_accepts_structured_tar_gz_creation_proposal() -> None:
+    validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))
+    proposal = Proposal(
+        action_type=ActionType.SHELL_COMMAND,
+        mode=ProposalMode.STRUCTURED,
+        command_family="tar",
+        arguments={
+            "operation": "create_tar_gz",
+            "archive_path": "backup.tar.gz",
+            "source_paths": ["src", "README.md"],
+        },
+        summary="create archive",
+        explanation="guarded archive creation",
+        risk_level=RiskLevel.WRITE,
+        needs_confirmation=True,
+        notes=[],
+    )
+
+    result = validator.validate(proposal)
+
+    assert result.accepted is True
+    assert result.risk_level == RiskLevel.WRITE
+    assert result.rendered_command == "tar -czf backup.tar.gz src README.md"
+    assert result.argv == ["tar", "-czf", "backup.tar.gz", "src", "README.md"]
+    assert any("Archive creation is write-risk" in w for w in result.warnings)
+
+
+def test_validator_accepts_structured_zip_creation_proposal() -> None:
+    validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))
+    proposal = Proposal(
+        action_type=ActionType.SHELL_COMMAND,
+        mode=ProposalMode.STRUCTURED,
+        command_family="zip",
+        arguments={
+            "operation": "create_zip",
+            "archive_path": "backup.zip",
+            "source_paths": ["src", "README.md"],
+        },
+        summary="create zip archive",
+        explanation="guarded archive creation",
+        risk_level=RiskLevel.WRITE,
+        needs_confirmation=True,
+        notes=[],
+    )
+
+    result = validator.validate(proposal)
+
+    assert result.accepted is True
+    assert result.risk_level == RiskLevel.WRITE
+    assert result.rendered_command == "zip -r backup.zip src README.md"
+    assert result.argv == ["zip", "-r", "backup.zip", "src", "README.md"]
+    assert any("Archive creation is write-risk" in w for w in result.warnings)
+
+
 def test_validator_accepts_direct_guarded_zip_extraction() -> None:
     validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))
     result = validator.validate(make_proposal("unzip archive.zip -d restore"))
@@ -410,6 +473,15 @@ def test_validator_accepts_direct_guarded_zip_extraction() -> None:
 def test_validator_rejects_archive_extraction_in_safe_policy() -> None:
     validator = Validator(PolicyConfig(mode=RiskLevel.SAFE, allow_dangerous=False))
     result = validator.validate(make_proposal("tar -xf archive.tar -C out"))
+
+    assert result.accepted is False
+    assert result.risk_level == RiskLevel.WRITE
+    assert any("Risk level 'write' blocked" in reason for reason in result.reasons)
+
+
+def test_validator_rejects_archive_creation_in_safe_policy() -> None:
+    validator = Validator(PolicyConfig(mode=RiskLevel.SAFE, allow_dangerous=False))
+    result = validator.validate(make_proposal("zip -r backup.zip src"))
 
     assert result.accepted is False
     assert result.risk_level == RiskLevel.WRITE
@@ -449,6 +521,25 @@ def test_validator_rejects_unsafe_direct_archive_extraction_forms() -> None:
         assert result.accepted is False, command
 
 
+def test_validator_rejects_unsafe_direct_archive_creation_forms() -> None:
+    validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))
+
+    for command in (
+        "tar -czf backup.tar.gz /",
+        "tar -czf backup.tar.gz '*'",
+        "zip -r backup.zip /",
+        "zip -r backup.zip ~",
+        "zip -e backup.zip file.txt",
+        "zip --password secret backup.zip file.txt",
+    ):
+        result = validator.validate(
+            make_proposal(
+                command, mode=ProposalMode.EXPERIMENTAL, command_family=command.split()[0]
+            )
+        )
+        assert result.accepted is False, command
+
+
 def test_validator_archive_allowed_roots_checks_archive_and_destination() -> None:
     validator = Validator(
         PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False, allowed_roots=["/allowed"])
@@ -461,6 +552,22 @@ def test_validator_archive_allowed_roots_checks_archive_and_destination() -> Non
     assert any("Paths outside allowed roots" in reason for reason in result.reasons)
 
     result = validator.validate(make_proposal("unzip /allowed/a.zip -d /etc/out"))
+    assert result.accepted is False
+    assert any("Paths outside allowed roots" in reason for reason in result.reasons)
+
+
+def test_validator_archive_creation_allowed_roots_checks_archive_and_sources() -> None:
+    validator = Validator(
+        PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False, allowed_roots=["/allowed"])
+    )
+
+    assert validator.validate(make_proposal("zip -r /allowed/a.zip /allowed/src")).accepted
+
+    result = validator.validate(make_proposal("zip -r /etc/a.zip /allowed/src"))
+    assert result.accepted is False
+    assert any("Paths outside allowed roots" in reason for reason in result.reasons)
+
+    result = validator.validate(make_proposal("tar -czf /allowed/a.tar.gz /etc/src"))
     assert result.accepted is False
     assert any("Paths outside allowed roots" in reason for reason in result.reasons)
 

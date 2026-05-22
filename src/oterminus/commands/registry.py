@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from collections.abc import Iterable, Sequence
+from pathlib import Path
 import sys
 
 from .archive import COMMAND_PACK as ARCHIVE_COMMANDS
@@ -336,6 +337,9 @@ def looks_like_direct_invocation(
     if base == "unzip":
         return _is_supported_unzip_direct_operands(operands)
 
+    if base == "zip":
+        return _is_supported_zip_direct_operands(operands)
+
     return len(operands) >= spec.min_operands
 
 
@@ -359,13 +363,20 @@ def _is_supported_git_direct_operands(operands: list[str]) -> bool:
 
 def _is_supported_tar_direct_operands(operands: list[str]) -> bool:
     return (
-        len(operands) == 2 and operands[0] == "-tf" and _is_archive_path_operand(operands[1])
-    ) or (
-        len(operands) == 4
-        and operands[0] == "-xf"
-        and _is_archive_path_operand(operands[1])
-        and operands[2] == "-C"
-        and _is_archive_destination_operand(operands[3])
+        (len(operands) == 2 and operands[0] == "-tf" and _is_archive_path_operand(operands[1]))
+        or (
+            len(operands) == 4
+            and operands[0] == "-xf"
+            and _is_archive_path_operand(operands[1])
+            and operands[2] == "-C"
+            and _is_archive_destination_operand(operands[3])
+        )
+        or (
+            len(operands) >= 3
+            and operands[0] == "-czf"
+            and _is_archive_path_operand(operands[1])
+            and all(_is_archive_source_operand(operand) for operand in operands[2:])
+        )
     )
 
 
@@ -380,6 +391,15 @@ def _is_supported_unzip_direct_operands(operands: list[str]) -> bool:
     )
 
 
+def _is_supported_zip_direct_operands(operands: list[str]) -> bool:
+    return (
+        len(operands) >= 3
+        and operands[0] == "-r"
+        and _is_archive_path_operand(operands[1])
+        and all(_is_archive_source_operand(operand) for operand in operands[2:])
+    )
+
+
 def _is_archive_path_operand(value: str) -> bool:
     lowered = value.lower()
     blocked_fragments = ("$(", "`", "\n", "\r", "\x00", "&&", "||", ";", "|", "<", ">", "&")
@@ -389,8 +409,7 @@ def _is_archive_path_operand(value: str) -> bool:
         and "://" not in lowered
         and not lowered.startswith("mailto:")
         and not any(fragment in value for fragment in blocked_fragments)
-        and "*" not in value
-        and "?" not in value
+        and not any(fragment in value for fragment in ("*", "?", "[", "]", "{", "}"))
     )
 
 
@@ -406,6 +425,39 @@ def _is_archive_destination_operand(value: str) -> bool:
         "/usr",
         "/var",
     }
+
+
+def _is_archive_source_operand(value: str) -> bool:
+    home_path = str(Path.home()).rstrip("/")
+    return (
+        _is_archive_path_operand(value)
+        and value
+        not in {
+            ".",
+            "..",
+            "/",
+            "~",
+            "$HOME",
+            "${HOME}",
+            "/bin",
+            "/dev",
+            "/etc",
+            "/home",
+            "/lib",
+            "/private",
+            "/root",
+            "/sbin",
+            "/Users",
+            "/usr",
+            "/var",
+        }
+        and not (
+            value.rstrip("/") == home_path
+            or value.startswith("~/")
+            or value.startswith("$HOME/")
+            or value.startswith("${HOME}/")
+        )
+    )
 
 
 def _looks_like_path(value: str) -> bool:

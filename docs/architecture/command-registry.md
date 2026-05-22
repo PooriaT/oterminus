@@ -37,8 +37,9 @@ Registry metadata is reused across:
 
 Some command families have operation-specific validation beyond the static `CommandSpec`. The
 archive pack is the current example: `tar -tf` and `unzip -l` remain safe read-only operations,
-while exact extraction forms are rendered and classified as write-risk by structured rendering and
-validation.
+while exact extraction forms and exact archive creation forms (`tar -czf ...`, `zip -r ...`) are
+rendered and classified as write-risk by structured rendering and validation. The registry exposes
+`zip` as a write-risk archive family because its supported surface is creation-only.
 
 See [command families reference](../reference/command-families.md).
 
