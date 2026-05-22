@@ -24,7 +24,6 @@ _AMBIGUOUS_PHRASES: tuple[str, ...] = (
     "extract this",
     "unpack archive",
     "open archive",
-    "restore backup",
 )
 
 _BROAD_MUTATION_VERBS: tuple[str, ...] = (
@@ -137,7 +136,12 @@ def _looks_like_archive_extraction_without_destination(text: str) -> bool:
         for hint in ("archive", "tar", "zip")
     )
     has_destination = any(fragment in text for fragment in (" into ", " to ", " in "))
+    has_destination = has_destination or _has_guarded_archive_destination_flag(text)
     return has_archive_action and has_archive_target and not has_destination
+
+
+def _has_guarded_archive_destination_flag(text: str) -> bool:
+    return re.search(r"(?<!\S)(?:-c|-d)(?!\S)\s+\S+", text, flags=re.IGNORECASE) is not None
 
 
 def _matches_hint(text: str, hint: str) -> bool:

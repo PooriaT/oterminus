@@ -59,3 +59,14 @@ def test_detect_ambiguity_guarded_archive_extraction_not_intercepted() -> None:
     result = detect_ambiguity("extract archive.tar into ./out")
 
     assert result.is_ambiguous is False
+
+
+def test_detect_ambiguity_scoped_restore_backup_not_intercepted() -> None:
+    result = detect_ambiguity("restore backup.zip into ./out")
+
+    assert result.is_ambiguous is False
+
+
+def test_detect_ambiguity_guarded_archive_cli_destination_flags_not_intercepted() -> None:
+    assert detect_ambiguity("please extract archive.tar -C out").is_ambiguous is False
+    assert detect_ambiguity("please unzip archive.zip -d restore").is_ambiguous is False
