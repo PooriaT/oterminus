@@ -77,9 +77,11 @@ def test_planner_system_prompt_includes_archive_inspection_when_enabled() -> Non
     prompt = build_system_prompt()
 
     assert "archive_inspection" in prompt
-    assert '"operation": "list|extract_tar"' in prompt
+    assert '"operation": "list|extract_tar|create_tar_gz"' in prompt
     assert '"operation": "list|extract_zip"' in prompt
+    assert '"operation": "create_zip"' in prompt
     assert "explicit destination" in prompt
+    assert "explicit output archive path and explicit source paths" in prompt
 
 
 def test_planner_system_prompt_excludes_archive_inspection_when_disabled() -> None:
@@ -88,6 +90,7 @@ def test_planner_system_prompt_excludes_archive_inspection_when_disabled() -> No
     assert "archive_inspection" not in prompt
     assert "`tar`" not in prompt
     assert "`unzip`" not in prompt
+    assert "`zip`" not in prompt
 
 
 def test_planner_system_prompt_excludes_git_inspection_when_disabled() -> None:

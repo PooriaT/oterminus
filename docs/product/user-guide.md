@@ -300,11 +300,11 @@ Explicitly unsupported in curated mode:
 
 All requests still go through routing, planning, validation, and confirmation policy checks. OTerminus is not a replacement for Git automation workflows.
 
-## Archive inspection and guarded extraction
+## Archive inspection, extraction, and creation
 
-Archive support includes read-only inspection and guarded extraction for local tar and zip files.
-Inspection is safe-risk. Extraction is write-risk because it can create files and may overwrite
-existing files in the destination depending on the underlying archive tool behavior.
+Archive support includes read-only inspection, guarded extraction, and guarded creation for local
+tar and zip files. Inspection is safe-risk. Extraction and creation are write-risk because they can
+create files and may overwrite existing files depending on the underlying archive tool behavior.
 
 Supported inspection operations:
 - `tar -tf <archive>`
@@ -314,6 +314,10 @@ Supported extraction operations:
 - `tar -xf <archive> -C <destination>`
 - `unzip <archive> -d <destination>`
 
+Supported creation operations:
+- `tar -czf <archive_path> <source_paths...>`
+- `zip -r <archive_path> <source_paths...>`
+
 Extraction rules:
 - destination is required and must be explicit
 - extraction to `/` and broad system roots is rejected
@@ -321,13 +325,22 @@ Extraction rules:
 - preview and confirmation are required before execution
 - users should inspect archives before extracting them
 
+Creation rules:
+- output archive path and every source path must be explicit
+- source path `/`, broad system roots, broad home-directory targets, `.`, `..`, and wildcards are
+  rejected
+- configured `allowed_roots` policy is applied to output archive paths and source paths
+- archive creation may overwrite or update an existing archive path depending on the underlying
+  `tar` or `zip` behavior
+- preview and confirmation are required before execution
+
 Explicitly unsupported in this stage:
-- archive creation (`tar -czf ...`, `zip ...`)
 - extraction without an explicit destination (`tar -xf archive.tar`, `unzip archive.zip`)
 - overwrite flags such as `unzip -o`
-- password-protected archives
-- compression flags, arbitrary tar/unzip options, path-transforming tar options, wildcard archive
-  selection, recursive archive operations, network archive URLs, and `sudo`
+- password-protected archives, encryption, split archives, append/update flags, deleting sources
+  after compression, arbitrary tar/zip/unzip options, path-transforming tar options, wildcard
+  source or archive selection, hidden automatic source discovery, recursive archive operations,
+  network archive URLs, and `sudo`
 
 Archive commands still go through validation and confirmation before execution. Unsupported archive
 forms are rejected rather than treated as broad shell access.

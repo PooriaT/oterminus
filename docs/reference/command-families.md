@@ -4,14 +4,15 @@
 
 ## `archive_inspection`
 
-**Label:** Archive inspection
+**Label:** Archive operations
 
-**Description:** Inspect archives and extract them only to explicit destinations.
+**Description:** Inspect archives, extract them only to explicit destinations, and create tar.gz/zip archives only from explicit source paths.
 
 | Command | Category | Platforms | Risk | Maturity | Direct support | Examples | Natural-language aliases | Notes |
 |---|---|---|---|---|---|---|---|---|
-| `tar` | archive_inspection | all | safe | structured | yes | `tar -tf archive.tar`<br>`tar -xf archive.tar -C out` | `list tar archive`, `inspect tar archive`, `show tar contents`, `list archive contents`, `extract tar archive`, `extract archive into destination` | Supports read-only tar archive listing and guarded extraction with an explicit destination.<br>Tar extraction is write-risk and can write or overwrite files in the destination.<br>Archive creation, compression flags, path transforms, extraction without -C, and arbitrary tar options are not supported. |
+| `tar` | archive_inspection | all | safe | structured | yes | `tar -tf archive.tar`<br>`tar -xf archive.tar -C out`<br>`tar -czf backup.tar.gz src` | `list tar archive`, `inspect tar archive`, `show tar contents`, `list archive contents`, `extract tar archive`, `extract archive into destination`, `create tar gz archive`, `create tar archive from explicit paths` | Supports read-only tar archive listing, guarded extraction with an explicit destination, and guarded tar.gz creation from explicit source paths.<br>Tar extraction is write-risk and can write or overwrite files in the destination.<br>Tar archive creation is write-risk and may overwrite an existing archive path depending on the underlying tar implementation.<br>Only tar -czf <archive_path> <source_paths...> is supported for tar.gz creation; broad roots, home roots, wildcards, path transforms, extraction without -C, and arbitrary tar options are not supported. |
 | `unzip` | archive_inspection | all | safe | structured | yes | `unzip -l archive.zip`<br>`unzip archive.zip -d out` | `list zip archive`, `inspect zip archive`, `show zip contents`, `show what is inside zip`, `extract zip archive`, `unzip archive into destination` | Supports read-only zip archive listing and guarded extraction with an explicit destination.<br>Zip extraction is write-risk and can write or overwrite files in the destination.<br>Extraction without -d, overwrite flags, password handling, and arbitrary unzip options are not supported. |
+| `zip` | archive_inspection | all | write | structured | yes | `zip -r backup.zip src` | `create zip archive`, `zip folder into archive`, `create zip archive from explicit paths` | Supports guarded zip archive creation from explicit source paths.<br>Zip archive creation is write-risk and may overwrite or update an existing archive path depending on the underlying zip implementation.<br>Only zip -r <archive_path> <source_paths...> is supported; broad roots, home roots, wildcards, encryption, passwords, split archives, append/update flags, deleting sources, network destinations, and arbitrary zip options are not supported. |
 
 ## `destructive_operations`
 

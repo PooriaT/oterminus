@@ -104,6 +104,13 @@ class Proposal(BaseModel):
             except StructuredCommandError as exc:
                 raise ValueError(str(exc)) from exc
             self.arguments = validated.model_dump()
+            if (
+                self.command_family in {"tar", "unzip"}
+                and self.arguments.get("destination_path") is None
+            ):
+                self.arguments.pop("destination_path", None)
+            if self.command_family == "tar" and self.arguments.get("source_paths") is None:
+                self.arguments.pop("source_paths", None)
 
         return self
 

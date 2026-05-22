@@ -28,7 +28,7 @@ def detect_direct_command(
         return None
 
     if not looks_like_direct_invocation(base, args[1:], disabled_pack_ids, platform_id):
-        if base not in {"tar", "unzip"}:
+        if base not in {"tar", "unzip", "zip"}:
             return None
         if _looks_like_natural_language_archive_request(args[1:]):
             return None
@@ -89,4 +89,7 @@ def detect_direct_command(
 
 
 def _looks_like_natural_language_archive_request(operands: list[str]) -> bool:
-    return any(operand.lower() in {"into", "to", "in"} for operand in operands)
+    return any(
+        operand.lower() in {"into", "to", "in", "this", "everything", "files", "project"}
+        for operand in operands
+    )

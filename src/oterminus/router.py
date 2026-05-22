@@ -234,6 +234,26 @@ def _route_archive_request(text: str) -> RouteResult | None:
     if not _has_any(text, _ARCHIVE_HINTS):
         return None
 
+    if _matches_hint(text, "archive everything"):
+        return RouteResult(
+            category="unsupported",
+            confidence=0.86,
+            reason="Archive creation request is missing an explicit output archive path or source path.",
+            suggested_families=(),
+            suggested_capabilities=(),
+        )
+
+    if (
+        _has_any(text, _ARCHIVE_CREATION_HINTS) or text.startswith(("zip ", "tar "))
+    ) and not _has_archive_creation_shape_hint(text):
+        return RouteResult(
+            category="unsupported",
+            confidence=0.84,
+            reason="Archive creation request is missing an explicit output archive path or source path.",
+            suggested_families=(),
+            suggested_capabilities=(),
+        )
+
     if _has_any(text, _ARCHIVE_EXTRACTION_HINTS) and not _has_archive_destination_hint(text):
         return RouteResult(
             category="unsupported",
@@ -260,6 +280,12 @@ def _has_archive_destination_hint(text: str) -> bool:
         or " -d " in text
         or _matches_hint(text, "destination")
     )
+
+
+def _has_archive_creation_shape_hint(text: str) -> bool:
+    has_archive_output = re.search(r"\S+\.(?:tar\.gz|tgz|zip)(?:\s|$)", text) is not None
+    has_source_connector = any(fragment in text for fragment in (" from ", " into "))
+    return has_archive_output and has_source_connector
 
 
 _TEXT_SEARCH_HINTS = (
@@ -353,6 +379,12 @@ _ARCHIVE_HINTS = (
     "unpack",
 )
 
+_ARCHIVE_CREATION_HINTS = (
+    "create",
+    "compress",
+    "backup",
+)
+
 _ARCHIVE_EXTRACTION_HINTS = (
     "extract",
     "unpack",
@@ -400,6 +432,8 @@ _ROUTE_SEED_HINTS: dict[str, tuple[str, ...]] = {
         "inspect archive",
         "extract archive into destination",
         "unzip archive into destination",
+        "create tar gz archive",
+        "create zip archive",
     ),
 }
 

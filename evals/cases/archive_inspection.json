@@ -145,22 +145,123 @@
     "expected_ambiguity_reason_contains": "missing an explicit destination"
   },
   {
-    "id": "archive-create-zip-not-supported",
-    "user_input": "create a zip archive",
+    "id": "archive-create-tar-gz-guarded",
+    "user_input": "create backup.tar.gz from src",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "tar",
+      "arguments": {
+        "operation": "create_tar_gz",
+        "archive_path": "backup.tar.gz",
+        "source_paths": ["src"]
+      },
+      "summary": "create tar.gz archive",
+      "explanation": "guarded archive creation from explicit source paths",
+      "risk_level": "write",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "structured",
+    "expected_command_family": "tar",
+    "expected_risk_level": "write",
+    "expected_acceptance": true,
+    "expected_rendered_command": "tar -czf backup.tar.gz src",
+    "expected_argv": ["tar", "-czf", "backup.tar.gz", "src"]
+  },
+  {
+    "id": "archive-create-zip-docs-guarded",
+    "user_input": "zip docs into docs.zip",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "zip",
+      "arguments": {
+        "operation": "create_zip",
+        "archive_path": "docs.zip",
+        "source_paths": ["docs"]
+      },
+      "summary": "create zip archive",
+      "explanation": "guarded archive creation from explicit source paths",
+      "risk_level": "write",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "structured",
+    "expected_command_family": "zip",
+    "expected_risk_level": "write",
+    "expected_acceptance": true,
+    "expected_rendered_command": "zip -r docs.zip docs",
+    "expected_argv": ["zip", "-r", "docs.zip", "docs"]
+  },
+  {
+    "id": "archive-create-zip-multiple-sources-guarded",
+    "user_input": "create backup.zip from README.md and docs",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "zip",
+      "arguments": {
+        "operation": "create_zip",
+        "archive_path": "backup.zip",
+        "source_paths": ["README.md", "docs"]
+      },
+      "summary": "create zip archive",
+      "explanation": "guarded archive creation from explicit source paths",
+      "risk_level": "write",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "structured",
+    "expected_command_family": "zip",
+    "expected_risk_level": "write",
+    "expected_acceptance": true,
+    "expected_rendered_command": "zip -r backup.zip README.md docs",
+    "expected_argv": ["zip", "-r", "backup.zip", "README.md", "docs"]
+  },
+  {
+    "id": "archive-create-everything-ambiguous",
+    "user_input": "archive everything",
+    "expected_ambiguity_detected": true,
+    "expected_ambiguity_reason_contains": "Matched ambiguous phrase"
+  },
+  {
+    "id": "archive-create-root-source-rejected",
+    "user_input": "zip / into root.zip",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "zip",
+      "arguments": {
+        "operation": "create_zip",
+        "archive_path": "root.zip",
+        "source_paths": ["/"]
+      },
+      "summary": "create zip archive",
+      "explanation": "guarded archive creation",
+      "risk_level": "write",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_planner_error_contains": "source_paths cannot include broad or unsafe roots"
+  },
+  {
+    "id": "archive-create-encrypted-zip-unsupported",
+    "user_input": "create encrypted zip",
     "planner_proposal": {
       "action_type": "shell_command",
       "mode": "experimental",
       "command_family": "zip",
-      "command": "zip backup.zip file.txt",
-      "summary": "create zip archive",
-      "explanation": "archive creation is not supported yet",
+      "command": "zip -e encrypted.zip file.txt",
+      "summary": "create encrypted zip archive",
+      "explanation": "zip encryption is unsupported in guarded archive creation",
       "risk_level": "write",
       "needs_confirmation": true,
-      "notes": ["unsupported archive creation"]
+      "notes": ["unsupported archive encryption"]
     },
     "expected_mode": "experimental",
     "expected_command_family": "zip",
-    "expected_risk_level": "dangerous",
+    "expected_risk_level": "write",
     "expected_acceptance": false
   }
 ]

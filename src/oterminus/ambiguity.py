@@ -24,6 +24,10 @@ _AMBIGUOUS_PHRASES: tuple[str, ...] = (
     "extract this",
     "unpack archive",
     "open archive",
+    "archive everything",
+    "backup this project",
+    "compress my files",
+    "zip this",
 )
 
 _BROAD_MUTATION_VERBS: tuple[str, ...] = (

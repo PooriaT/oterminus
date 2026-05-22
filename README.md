@@ -75,6 +75,7 @@ Examples inside REPL:
 - `show running processes`
 - `tar -tf archive.tar` / `unzip -l archive.zip`
 - `tar -xf archive.tar -C restored` / `unzip archive.zip -d restored`
+- `tar -czf backup.tar.gz src` / `zip -r docs.zip docs`
 - `ls -lah`
 - `dry-run search TODO in src`
 - `explain show disk space`

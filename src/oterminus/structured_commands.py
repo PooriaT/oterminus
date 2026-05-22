@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import shlex
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Sequence
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
@@ -56,6 +57,50 @@ def _validate_archive_destination_path(value: str) -> str:
     if value in {"/bin", "/dev", "/etc", "/lib", "/private", "/sbin", "/usr", "/var"}:
         raise ValueError("destination_path cannot be a system root.")
     return value
+
+
+def _validate_archive_source_path(value: str) -> str:
+    value = _validate_path(value, allow_url_targets=False)
+    blocked_fragments = ("$(", "`", "\n", "\r", "\x00")
+    if any(fragment in value for fragment in blocked_fragments):
+        raise ValueError("source_paths cannot contain command substitution or control characters.")
+    blocked_operator_fragments = ("&&", "||", ";", "|", "<", ">", "&")
+    if any(fragment in value for fragment in blocked_operator_fragments):
+        raise ValueError("source_paths cannot contain shell operators.")
+    blocked_wildcard_fragments = ("*", "?", "[", "]", "{", "}")
+    if any(fragment in value for fragment in blocked_wildcard_fragments):
+        raise ValueError("source_paths cannot contain wildcard characters.")
+    if value in {
+        ".",
+        "..",
+        "/",
+        "~",
+        "$HOME",
+        "${HOME}",
+        "/bin",
+        "/dev",
+        "/etc",
+        "/home",
+        "/lib",
+        "/private",
+        "/root",
+        "/sbin",
+        "/Users",
+        "/usr",
+        "/var",
+    }:
+        raise ValueError("source_paths cannot include broad or unsafe roots.")
+    if value.rstrip("/") == str(Path.home()).rstrip("/"):
+        raise ValueError("source_paths cannot include broad home directory targets.")
+    if value.startswith("~/") or value.startswith("$HOME/") or value.startswith("${HOME}/"):
+        raise ValueError("source_paths cannot include broad home directory targets.")
+    return value
+
+
+def _validate_archive_source_paths(values: list[str] | None) -> list[str] | None:
+    if values is None:
+        return values
+    return [_validate_archive_source_path(value) for value in values]
 
 
 def _validate_paths(values: list[str], *, allow_url_targets: bool = False) -> list[str]:
@@ -421,6 +466,7 @@ class TarArguments(_StructuredArgumentsModel):
     operation: str = Field(min_length=1)
     archive_path: str = Field(min_length=1)
     destination_path: str | None = Field(default=None, min_length=1)
+    source_paths: list[str] | None = Field(default=None, min_length=1)
 
     @field_validator("archive_path")
     @classmethod
@@ -434,17 +480,32 @@ class TarArguments(_StructuredArgumentsModel):
             return value
         return _validate_archive_destination_path(value)
 
+    @field_validator("source_paths")
+    @classmethod
+    def validate_source_paths(cls, value: list[str] | None) -> list[str] | None:
+        return _validate_archive_source_paths(value)
+
     @model_validator(mode="after")
     def validate_shape(self) -> TarArguments:
         if self.operation == "list":
             if self.destination_path is not None:
                 raise ValueError("destination_path is only allowed when operation=extract_tar.")
+            if self.source_paths is not None:
+                raise ValueError("source_paths is only allowed when operation=create_tar_gz.")
             return self
         if self.operation == "extract_tar":
             if self.destination_path is None:
                 raise ValueError("destination_path is required when operation=extract_tar.")
+            if self.source_paths is not None:
+                raise ValueError("source_paths is only allowed when operation=create_tar_gz.")
             return self
-        raise ValueError("operation must be one of: list, extract_tar.")
+        if self.operation == "create_tar_gz":
+            if self.destination_path is not None:
+                raise ValueError("destination_path is not allowed when operation=create_tar_gz.")
+            if self.source_paths is None:
+                raise ValueError("source_paths is required when operation=create_tar_gz.")
+            return self
+        raise ValueError("operation must be one of: list, extract_tar, create_tar_gz.")
         return self
 
 
@@ -477,6 +538,30 @@ class UnzipArguments(_StructuredArgumentsModel):
             return self
         raise ValueError("operation must be one of: list, extract_zip.")
         return self
+
+
+class ZipArguments(_StructuredArgumentsModel):
+    operation: str = Field(min_length=1)
+    archive_path: str = Field(min_length=1)
+    source_paths: list[str] = Field(min_length=1)
+
+    @field_validator("archive_path")
+    @classmethod
+    def validate_archive_path(cls, value: str) -> str:
+        return _validate_archive_path(value)
+
+    @field_validator("source_paths")
+    @classmethod
+    def validate_source_paths(cls, value: list[str]) -> list[str]:
+        validated = _validate_archive_source_paths(value)
+        assert validated is not None
+        return validated
+
+    @model_validator(mode="after")
+    def validate_shape(self) -> ZipArguments:
+        if self.operation == "create_zip":
+            return self
+        raise ValueError("operation must be one of: create_zip.")
 
 
 class UniqArguments(_StructuredArgumentsModel):
@@ -528,6 +613,7 @@ STRUCTURED_ARGUMENT_MODELS: dict[str, type[_StructuredArgumentsModel]] = {
     "git": GitArguments,
     "tar": TarArguments,
     "unzip": UnzipArguments,
+    "zip": ZipArguments,
 }
 
 
@@ -590,6 +676,7 @@ def parse_argv_as_structured(argv: Sequence[str]) -> tuple[str, dict[str, Any]] 
         "git": _parse_git_argv,
         "tar": _parse_tar_argv,
         "unzip": _parse_unzip_argv,
+        "zip": _parse_zip_argv,
     }.get(command_family)
     if parser is None:
         return None
@@ -602,6 +689,8 @@ def parse_argv_as_structured(argv: Sequence[str]) -> tuple[str, dict[str, Any]] 
     dumped = validated.model_dump()
     if command_family in {"tar", "unzip"} and dumped.get("destination_path") is None:
         dumped.pop("destination_path", None)
+    if command_family == "tar" and dumped.get("source_paths") is None:
+        dumped.pop("source_paths", None)
     return command_family, dumped
 
 
@@ -871,6 +960,10 @@ def render_structured_command(
             return RenderedCommand(
                 ("tar", "-xf", validated.archive_path, "-C", validated.destination_path)
             )
+        if validated.operation == "create_tar_gz":
+            return RenderedCommand(
+                tuple(["tar", "-czf", validated.archive_path, *validated.source_paths])
+            )
 
     if command_family == "unzip":
         if validated.operation == "list":
@@ -878,6 +971,12 @@ def render_structured_command(
         if validated.operation == "extract_zip":
             return RenderedCommand(
                 ("unzip", validated.archive_path, "-d", validated.destination_path)
+            )
+
+    if command_family == "zip":
+        if validated.operation == "create_zip":
+            return RenderedCommand(
+                tuple(["zip", "-r", validated.archive_path, *validated.source_paths])
             )
 
     raise StructuredCommandError(
@@ -1525,6 +1624,12 @@ def _parse_tar_argv(operands: list[str]) -> dict[str, Any] | None:
             "archive_path": operands[1],
             "destination_path": operands[3],
         }
+    if len(operands) >= 3 and operands[0] == "-czf":
+        return {
+            "operation": "create_tar_gz",
+            "archive_path": operands[1],
+            "source_paths": operands[2:],
+        }
     return None
 
 
@@ -1536,6 +1641,16 @@ def _parse_unzip_argv(operands: list[str]) -> dict[str, Any] | None:
             "operation": "extract_zip",
             "archive_path": operands[0],
             "destination_path": operands[2],
+        }
+    return None
+
+
+def _parse_zip_argv(operands: list[str]) -> dict[str, Any] | None:
+    if len(operands) >= 3 and operands[0] == "-r":
+        return {
+            "operation": "create_zip",
+            "archive_path": operands[1],
+            "source_paths": operands[2:],
         }
     return None
 
