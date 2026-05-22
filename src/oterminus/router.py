@@ -296,7 +296,7 @@ def _has_archive_destination_hint(text: str) -> bool:
 
 def _has_archive_creation_shape_hint(text: str) -> bool:
     has_archive_output = re.search(r"\S+\.(?:tar\.gz|tgz|zip)(?:\s|$)", text) is not None
-    has_source_connector = any(fragment in text for fragment in (" from ", " into "))
+    has_source_connector = any(fragment in text for fragment in (" from ", " into ", " to "))
     return has_archive_output and has_source_connector
 
 

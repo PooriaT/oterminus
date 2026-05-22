@@ -113,3 +113,10 @@ def test_route_request_archive_creation_requires_explicit_output_and_source() ->
     missing_scope = route_request("archive everything")
     assert missing_scope.category == "unsupported"
     assert "explicit output archive path or source path" in missing_scope.reason
+
+
+def test_route_request_archive_creation_accepts_to_connector() -> None:
+    route = route_request("zip docs to docs.zip")
+
+    assert route.category == "archive_operations"
+    assert "zip" in route.suggested_families

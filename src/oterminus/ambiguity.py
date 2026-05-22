@@ -22,8 +22,6 @@ _AMBIGUOUS_PHRASES: tuple[str, ...] = (
     "repair permissions",
     "make this project work",
     "extract this",
-    "unpack archive",
-    "open archive",
     "archive everything",
     "backup this project",
     "compress my files",

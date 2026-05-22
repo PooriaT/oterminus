@@ -61,6 +61,12 @@ def test_detect_ambiguity_guarded_archive_extraction_not_intercepted() -> None:
     assert result.is_ambiguous is False
 
 
+def test_detect_ambiguity_guarded_unpack_archive_not_intercepted_by_phrase() -> None:
+    result = detect_ambiguity("unpack archive.zip into ./out")
+
+    assert result.is_ambiguous is False
+
+
 def test_detect_ambiguity_scoped_restore_backup_not_intercepted() -> None:
     result = detect_ambiguity("restore backup.zip into ./out")
 
