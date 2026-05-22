@@ -26,6 +26,7 @@ Route categories:
 - `text_search`
 - `metadata_inspect`
 - `process_inspect`
+- `network_diagnostics`
 - `unsupported`
 
 Router also suggests likely command families/capabilities from registry metadata.
@@ -47,6 +48,11 @@ planner. Planner calls Ollama with:
 
 Planner parses model JSON into a strict `Proposal` schema. The model is asked to emit only
 `structured` or `experimental` proposals and never executes commands itself.
+
+Capability summaries include network-boundary metadata when any enabled command family is marked
+`network_touching`. The planner prompt instructs the model to preserve that warning in proposal
+notes, but the prompt is not a safety authority. Validator metadata, policy checks, preview,
+confirmation, and executor boundaries remain the enforced path.
 
 ## Structured-first normalization
 
@@ -82,3 +88,21 @@ Planner proposals for Git in normal structured mode use the `git` family with a 
 - `{"operation": "diff_name_only"}`
 
 Mutating/network Git requests are intentionally not routed to `git_inspection` and remain unsupported or blocked by existing safety policy paths.
+
+## Network diagnostics routing and planning
+
+The deterministic router includes a `network_diagnostics` route category for clear read-only
+network inspection intent, such as pinging a host a fixed number of times, showing HTTP headers for
+an HTTP(S) URL, or looking up DNS records with `dig`/`nslookup`.
+
+Planner proposals use structured families:
+
+- `ping`: `{"host": "example.com", "count": 4}`
+- `curl`: `{"operation": "http_head", "url": "https://example.com"}`
+- `dig`: `{"domain": "example.com"}`
+- `nslookup`: `{"domain": "example.com"}`
+
+Network diagnostics contact external hosts. The planner prompt says only these read-only operations
+are supported and disallows mutating HTTP methods, request bodies, arbitrary or secret-bearing
+headers, cookies, downloads, scanning, SSH/SCP, nmap, wget, netcat, sudo network commands, and shell
+pipelines/redirection. Validator checks remain authoritative.

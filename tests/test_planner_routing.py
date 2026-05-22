@@ -84,6 +84,17 @@ def test_planner_system_prompt_includes_archive_inspection_when_enabled() -> Non
     assert "explicit output archive path and explicit source paths" in prompt
 
 
+def test_planner_system_prompt_includes_network_diagnostics_when_enabled() -> None:
+    prompt = build_system_prompt()
+
+    assert "network_diagnostics" in prompt
+    assert '"host": "example.com", "count": 4' in prompt
+    assert '"operation": "http_head", "url": "https://example.com"' in prompt
+    assert "Network diagnostics contact external hosts" in prompt
+    assert "POST/PUT/PATCH/DELETE" in prompt
+    assert "authorization" in prompt
+
+
 def test_planner_system_prompt_excludes_archive_inspection_when_disabled() -> None:
     prompt = build_system_prompt(disabled_pack_ids=frozenset({"archive"}))
 
@@ -98,3 +109,11 @@ def test_planner_system_prompt_excludes_git_inspection_when_disabled() -> None:
 
     assert "git_inspection" not in prompt
     assert "`git`" not in prompt
+
+
+def test_planner_system_prompt_excludes_network_diagnostics_when_disabled() -> None:
+    prompt = build_system_prompt(disabled_pack_ids=frozenset({"network"}))
+
+    assert "network_diagnostics" not in prompt
+    assert "`ping`" not in prompt
+    assert "`curl`" not in prompt

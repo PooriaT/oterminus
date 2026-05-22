@@ -7,6 +7,7 @@ from pathlib import Path
 from oterminus.commands import (
     CommandSpec,
     MaturityLevel,
+    NETWORK_TOUCHING_WARNING,
     PathOperandMode,
     command_supported_platforms,
     current_platform_id,
@@ -18,6 +19,9 @@ from oterminus.models import Proposal, ProposalMode, RiskLevel, ValidationResult
 from oterminus.policies import PolicyConfig, is_risk_allowed
 from oterminus.structured_commands import (
     StructuredCommandError,
+    is_valid_http_head_url,
+    is_valid_network_domain,
+    is_valid_network_host,
     parse_raw_command_as_structured,
     render_structured_command,
 )
@@ -152,6 +156,8 @@ class Validator:
             reasons.extend(self._maturity_reasons(spec))
             reasons.extend(self._validate_command_shape(spec, args[1:]))
             risk = self._risk_for_command_shape(spec, args[1:], default=risk)
+            if spec.network_touching and NETWORK_TOUCHING_WARNING not in warnings:
+                warnings.append(NETWORK_TOUCHING_WARNING)
 
         if (
             spec is not None
@@ -269,6 +275,31 @@ class Validator:
                 "Only guarded zip archive operations are supported: unzip -l <archive> and "
                 "unzip <archive> -d <destination>. Extraction without -d, overwrite flags, "
                 "and arbitrary unzip options are not supported."
+            ]
+
+        if spec.name == "ping":
+            if _is_supported_ping_shape(arguments):
+                return []
+            return [
+                "Only ping with a fixed count is supported: ping -c <count> <host>, "
+                "where count is between 1 and 10 and host is a hostname, domain, IPv4, or IPv6 address."
+            ]
+
+        if spec.name == "curl":
+            if _is_supported_curl_head_shape(arguments):
+                return []
+            return [
+                "Only HTTP HEAD requests are supported for curl: curl -I <http-or-https-url>. "
+                "POST/PUT/PATCH/DELETE, request bodies, arbitrary headers, authorization, cookies, "
+                "downloads, file URLs, and arbitrary curl flags are not supported."
+            ]
+
+        if spec.name in {"dig", "nslookup"}:
+            if _is_supported_dns_lookup_shape(arguments):
+                return []
+            return [
+                f"Only basic DNS lookup is supported for {spec.name}: {spec.name} <domain>. "
+                "Arbitrary flags, shell operators, and non-domain targets are not supported."
             ]
 
         reasons: list[str] = []
@@ -515,6 +546,24 @@ def _is_supported_git_inspection_shape(arguments: list[str]) -> bool:
             return False
         return 1 <= count <= 100
     return False
+
+
+def _is_supported_ping_shape(arguments: list[str]) -> bool:
+    if len(arguments) != 3 or arguments[0] != "-c":
+        return False
+    try:
+        count = int(arguments[1])
+    except ValueError:
+        return False
+    return 1 <= count <= 10 and is_valid_network_host(arguments[2])
+
+
+def _is_supported_curl_head_shape(arguments: list[str]) -> bool:
+    return len(arguments) == 2 and arguments[0] == "-I" and is_valid_http_head_url(arguments[1])
+
+
+def _is_supported_dns_lookup_shape(arguments: list[str]) -> bool:
+    return len(arguments) == 1 and is_valid_network_domain(arguments[0])
 
 
 def _is_supported_tar_inspection_shape(arguments: list[str]) -> bool:

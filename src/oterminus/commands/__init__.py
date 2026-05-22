@@ -24,7 +24,14 @@ from .registry import (
     supported_capabilities,
     supported_categories,
 )
-from .types import CommandSpec, DirectDetectionMode, MaturityLevel, PathOperandMode, command
+from .types import (
+    NETWORK_TOUCHING_WARNING,
+    CommandSpec,
+    DirectDetectionMode,
+    MaturityLevel,
+    PathOperandMode,
+    command,
+)
 
 __all__ = [
     "CapabilitySummary",
@@ -34,6 +41,7 @@ __all__ = [
     "CommandSpec",
     "DirectDetectionMode",
     "MaturityLevel",
+    "NETWORK_TOUCHING_WARNING",
     "PathOperandMode",
     "command",
     "capability_summary_for_prompt",

@@ -21,7 +21,7 @@ direct-command detection behavior
 
 ### What is a capability pack?
 A capability pack is a module-level tuple of command specs (for example `filesystem`, `text`,
-`archive`, `process`, `system`, `macos`, `dangerous`) that is merged into the global command registry.
+`archive`, `process`, `system`, `network`, `macos`, `dangerous`) that is merged into the global command registry.
 
 Capability packs group commands by workflow intent (for example filesystem inspection vs mutation),
 not by “all flags from man pages.”
@@ -35,6 +35,8 @@ not by “all flags from man pages.”
    design.
 4. **Small allowlists beat broad compatibility.** Keep flags/operands intentionally minimal.
 5. **Safety metadata is mandatory.** Every command must have explicit risk and maturity policy.
+6. **Network access is explicit.** Commands that contact external hosts must be marked
+   `network_touching=True` and reviewed as crossing the local-first boundary.
 
 ## Step-by-step: add a new command family
 
@@ -100,14 +102,32 @@ If command accepts paths, set or validate path behavior deliberately:
 
 Never assume path handling is implicit. Make it explicit in spec + tests.
 
-## 7) Add/extend structured support when maturity is `structured`
+## 7) Mark and constrain network-touching commands
+Network diagnostics are useful, but they are not local-only operations. A read-only network command
+can still reveal IP address, DNS query, target host, or other network metadata.
+
+When adding any command that contacts external hosts:
+
+- set `network_touching=True` in `CommandSpec`
+- keep the initial surface read-only and narrowly scoped
+- validate hosts and URLs conservatively; reject ambiguous, broad, or shell-expanded targets
+- do not allow POST, PUT, DELETE, or other remote-state-changing methods
+- do not allow arbitrary headers, bearer tokens, cookies, API keys, or other secret-bearing inputs
+- do not add network commands through `experimental_only` as a shortcut around structured design
+- add tests and eval cases for accepted safe requests and rejected unsafe requests
+- update user docs and reference docs so the network boundary is visible
+
+The validator remains authoritative. Network metadata provides warning and discovery context; it
+does not bypass command-shape validation, policy checks, preview, confirmation, or audit behavior.
+
+## 8) Add/extend structured support when maturity is `structured`
 When a command is part of structured mode: - add argument schema validation in
 `structured_commands.py` - add deterministic rendering logic - ensure ambiguous or unsafe forms are
 rejected
 
 A command marked `structured` should have an end-to-end deterministic path.
 
-## 8) Add validator and direct-command tests
+## 9) Add validator and direct-command tests
 At minimum, add tests for:
 
 - registry metadata (`capability_id`, flags, risk/maturity)
@@ -115,12 +135,13 @@ At minimum, add tests for:
 - validator rejection for invalid flags/shape
 - dangerous-flag behavior and risk escalation (if applicable)
 - allowed-roots path checks (if paths involved)
+- network-touching metadata and warnings (if the command contacts external hosts)
 - direct-command detection behavior (`direct_supported`, heuristics)
 
 Prefer focused tests in: - `tests/test_command_registry.py` - `tests/test_validator.py` -
 `tests/test_direct_commands.py` - `tests/test_structured_commands.py` (for structured renderers)
 
-## 9) Add eval fixtures
+## 10) Add eval fixtures
 Update regression eval fixtures under `evals/cases/`.
 
 Include representative cases for: - expected mode (`structured` vs `experimental`) - command family
@@ -128,8 +149,11 @@ routing - expected risk level - acceptance/rejection behavior - rendered command
 deterministic
 
 Add both “happy path” and “should fail” fixtures for new family behavior.
+For network-touching families, include safe read-only diagnostics and rejected requests for mutating
+methods, unsafe headers/secrets, unsupported URL forms, shell operators, and unsupported broad
+targets.
 
-## 10) Update autocomplete and docs
+## 11) Update autocomplete and docs
 If your change introduces a new command/capability visible to users:
 
 - verify completion behavior still works for first-token suggestions and capability hints
@@ -166,6 +190,7 @@ Before merging, confirm all of the following:
 - [ ] Risk level is explicitly justified.
 - [ ] Allowed flags are minimal and intentional.
 - [ ] Dangerous flags are marked when applicable.
+- [ ] Network-touching commands set `network_touching=True`.
 - [ ] Path handling is explicit if paths are accepted.
 - [ ] Structured renderer exists if command is part of structured mode.
 - [ ] Validator tests exist.
@@ -174,6 +199,7 @@ Before merging, confirm all of the following:
 - [ ] README/docs are updated.
 - [ ] Command does not require `sudo` or broad system mutation unless explicitly blocked or
   dangerous.
+- [ ] Network commands do not mutate remote state or accept secret-bearing headers.
 
 ## Practical scope reminder
 

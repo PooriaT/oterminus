@@ -90,6 +90,7 @@ def test_supported_categories_match_expected_registry_values() -> None:
         "inspection",
         "macos_integration",
         "navigation",
+        "network_inspection",
         "permissions",
         "privileged",
         "process_inspection",

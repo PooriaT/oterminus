@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import ipaddress
+import re
 import shlex
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Sequence
+from urllib.parse import urlsplit
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 
@@ -105,6 +108,83 @@ def _validate_archive_source_paths(values: list[str] | None) -> list[str] | None
 
 def _validate_paths(values: list[str], *, allow_url_targets: bool = False) -> list[str]:
     return [_validate_path(value, allow_url_targets=allow_url_targets) for value in values]
+
+
+_BLOCKED_ARGUMENT_FRAGMENTS = ("$(", "`", "\n", "\r", "\x00")
+_BLOCKED_SHELL_OPERATOR_FRAGMENTS = ("&&", "||", ";", "|", "<", ">")
+_HOSTNAME_LABEL_RE = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$")
+
+
+def _has_blocked_network_fragment(value: str) -> bool:
+    return any(fragment in value for fragment in _BLOCKED_ARGUMENT_FRAGMENTS) or any(
+        fragment in value for fragment in _BLOCKED_SHELL_OPERATOR_FRAGMENTS
+    )
+
+
+def _is_valid_hostname(value: str) -> bool:
+    if not value or len(value) > 253:
+        return False
+    if value.endswith("."):
+        value = value[:-1]
+    labels = value.split(".")
+    return all(_HOSTNAME_LABEL_RE.fullmatch(label) is not None for label in labels)
+
+
+def is_valid_network_host(value: str) -> bool:
+    if not value or value.startswith("-") or _has_blocked_network_fragment(value):
+        return False
+    if any(char.isspace() for char in value):
+        return False
+    if "://" in value or "/" in value:
+        return False
+    try:
+        ipaddress.ip_address(value)
+    except ValueError:
+        return _is_valid_hostname(value)
+    return True
+
+
+def is_valid_network_domain(value: str) -> bool:
+    if not value or value.startswith("-") or _has_blocked_network_fragment(value):
+        return False
+    if any(char.isspace() for char in value):
+        return False
+    if "://" in value or "/" in value or ":" in value:
+        return False
+    return _is_valid_hostname(value)
+
+
+def is_valid_http_head_url(value: str) -> bool:
+    if not value or _has_blocked_network_fragment(value):
+        return False
+    if any(char.isspace() for char in value):
+        return False
+    parsed = urlsplit(value)
+    if parsed.scheme not in {"http", "https"}:
+        return False
+    if not parsed.netloc or not parsed.hostname:
+        return False
+    if parsed.username or parsed.password:
+        return False
+    return is_valid_network_host(parsed.hostname)
+
+
+def _validate_network_host(value: str) -> str:
+    if not is_valid_network_host(value):
+        raise ValueError("host must be a hostname, domain, IPv4 address, or IPv6 address.")
+    return value
+
+
+def _validate_network_domain(value: str) -> str:
+    if not is_valid_network_domain(value):
+        raise ValueError("domain must be a conservative hostname or domain.")
+    return value
+
+
+def _validate_http_head_url(value: str) -> str:
+    if not is_valid_http_head_url(value):
+        raise ValueError("url must be an http:// or https:// URL without credentials.")
+    return value
 
 
 class LsArguments(_StructuredArgumentsModel):
@@ -462,6 +542,50 @@ class GitArguments(_StructuredArgumentsModel):
         return self
 
 
+class PingArguments(_StructuredArgumentsModel):
+    host: str = Field(min_length=1)
+    count: int = Field(default=4, ge=1, le=10)
+
+    @field_validator("host")
+    @classmethod
+    def validate_host(cls, value: str) -> str:
+        return _validate_network_host(value)
+
+
+class CurlArguments(_StructuredArgumentsModel):
+    operation: str = Field(default="http_head")
+    url: str = Field(min_length=1)
+
+    @field_validator("url")
+    @classmethod
+    def validate_url(cls, value: str) -> str:
+        return _validate_http_head_url(value)
+
+    @model_validator(mode="after")
+    def validate_shape(self) -> CurlArguments:
+        if self.operation != "http_head":
+            raise ValueError("operation must be http_head.")
+        return self
+
+
+class DigArguments(_StructuredArgumentsModel):
+    domain: str = Field(min_length=1)
+
+    @field_validator("domain")
+    @classmethod
+    def validate_domain(cls, value: str) -> str:
+        return _validate_network_domain(value)
+
+
+class NslookupArguments(_StructuredArgumentsModel):
+    domain: str = Field(min_length=1)
+
+    @field_validator("domain")
+    @classmethod
+    def validate_domain(cls, value: str) -> str:
+        return _validate_network_domain(value)
+
+
 class TarArguments(_StructuredArgumentsModel):
     operation: str = Field(min_length=1)
     archive_path: str = Field(min_length=1)
@@ -611,6 +735,10 @@ STRUCTURED_ARGUMENT_MODELS: dict[str, type[_StructuredArgumentsModel]] = {
     "sort": SortArguments,
     "uniq": UniqArguments,
     "git": GitArguments,
+    "ping": PingArguments,
+    "curl": CurlArguments,
+    "dig": DigArguments,
+    "nslookup": NslookupArguments,
     "tar": TarArguments,
     "unzip": UnzipArguments,
     "zip": ZipArguments,
@@ -674,6 +802,10 @@ def parse_argv_as_structured(argv: Sequence[str]) -> tuple[str, dict[str, Any]] 
         "sort": _parse_sort_argv,
         "uniq": _parse_uniq_argv,
         "git": _parse_git_argv,
+        "ping": _parse_ping_argv,
+        "curl": _parse_curl_argv,
+        "dig": _parse_dig_argv,
+        "nslookup": _parse_nslookup_argv,
         "tar": _parse_tar_argv,
         "unzip": _parse_unzip_argv,
         "zip": _parse_zip_argv,
@@ -952,6 +1084,19 @@ def render_structured_command(
             return RenderedCommand(("git", "diff", "--stat"))
         if validated.operation == "diff_name_only":
             return RenderedCommand(("git", "diff", "--name-only"))
+
+    if command_family == "ping":
+        return RenderedCommand(("ping", "-c", str(validated.count), validated.host))
+
+    if command_family == "curl":
+        if validated.operation == "http_head":
+            return RenderedCommand(("curl", "-I", validated.url))
+
+    if command_family == "dig":
+        return RenderedCommand(("dig", validated.domain))
+
+    if command_family == "nslookup":
+        return RenderedCommand(("nslookup", validated.domain))
 
     if command_family == "tar":
         if validated.operation == "list":
@@ -1613,6 +1758,34 @@ def _parse_git_argv(operands: list[str]) -> dict[str, Any] | None:
             return None
         return {"operation": "log_oneline", "count": count}
     return None
+
+
+def _parse_ping_argv(operands: list[str]) -> dict[str, Any] | None:
+    if len(operands) != 3 or operands[0] != "-c":
+        return None
+    try:
+        count = int(operands[1])
+    except ValueError:
+        return None
+    return {"count": count, "host": operands[2]}
+
+
+def _parse_curl_argv(operands: list[str]) -> dict[str, Any] | None:
+    if len(operands) != 2 or operands[0] != "-I":
+        return None
+    return {"operation": "http_head", "url": operands[1]}
+
+
+def _parse_dig_argv(operands: list[str]) -> dict[str, Any] | None:
+    if len(operands) != 1:
+        return None
+    return {"domain": operands[0]}
+
+
+def _parse_nslookup_argv(operands: list[str]) -> dict[str, Any] | None:
+    if len(operands) != 1:
+        return None
+    return {"domain": operands[0]}
 
 
 def _parse_tar_argv(operands: list[str]) -> dict[str, Any] | None:

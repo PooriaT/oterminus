@@ -10,6 +10,7 @@ from .dangerous import COMMAND_PACK as DANGEROUS_COMMANDS
 from .filesystem import COMMAND_PACK as FILESYSTEM_COMMANDS
 from .git import COMMAND_PACK as GIT_COMMANDS
 from .macos import COMMAND_PACK as MACOS_COMMANDS
+from .network import COMMAND_PACK as NETWORK_COMMANDS
 from .process import COMMAND_PACK as PROCESS_COMMANDS
 from .system import COMMAND_PACK as SYSTEM_COMMANDS
 from .text import COMMAND_PACK as TEXT_COMMANDS
@@ -24,6 +25,7 @@ class CapabilitySummary:
     maturity_levels: tuple[str, ...]
     commands: tuple[str, ...]
     aliases: tuple[str, ...]
+    network_touching: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -53,6 +55,12 @@ COMMAND_PACKS: tuple[CommandPack, ...] = (
     ),
     CommandPack("text", "Text", "Text and content inspection commands.", TEXT_COMMANDS),
     CommandPack("git", "Git", "Read-only local Git repository inspection commands.", GIT_COMMANDS),
+    CommandPack(
+        "network",
+        "Network",
+        "Constrained read-only network diagnostics.",
+        NETWORK_COMMANDS,
+    ),
     CommandPack("process", "Process", "Process inspection commands.", PROCESS_COMMANDS),
     CommandPack("system", "System", "System information commands.", SYSTEM_COMMANDS),
     CommandPack(
@@ -205,6 +213,7 @@ def supported_capabilities(
         aliases = sorted({alias for spec in specs for alias in spec.natural_language_aliases})
         maturity_levels = sorted({spec.maturity_level.value for spec in specs})
         commands = tuple(sorted(spec.name for spec in specs))
+        network_touching = any(spec.network_touching for spec in specs)
         summaries.append(
             CapabilitySummary(
                 capability_id=capability_id,
@@ -213,6 +222,7 @@ def supported_capabilities(
                 maturity_levels=tuple(maturity_levels),
                 commands=commands,
                 aliases=tuple(aliases),
+                network_touching=network_touching,
             )
         )
     return tuple(summaries)
@@ -264,7 +274,8 @@ def capability_summary_for_prompt(
         )
         lines.append(
             f"- {capability.capability_id}: {capability.capability_description} "
-            f"(commands: {command_sample}; aliases: {alias_sample})"
+            f"(commands: {command_sample}; aliases: {alias_sample}"
+            f"{'; network-touching' if capability.network_touching else ''})"
         )
     return "\n".join(lines)
 
@@ -340,6 +351,15 @@ def looks_like_direct_invocation(
     if base == "zip":
         return _is_supported_zip_direct_operands(operands)
 
+    if base == "ping":
+        return _is_supported_ping_direct_operands(operands)
+
+    if base == "curl":
+        return _is_supported_curl_direct_operands(operands)
+
+    if base in {"dig", "nslookup"}:
+        return _is_supported_dns_lookup_direct_operands(operands)
+
     return len(operands) >= spec.min_operands
 
 
@@ -359,6 +379,28 @@ def _is_supported_git_direct_operands(operands: list[str]) -> bool:
             return False
         return 1 <= count <= 100
     return False
+
+
+def _is_supported_ping_direct_operands(operands: list[str]) -> bool:
+    if len(operands) != 3 or operands[0] != "-c":
+        return False
+    try:
+        count = int(operands[1])
+    except ValueError:
+        return False
+    return 1 <= count <= 10 and not operands[2].startswith("-")
+
+
+def _is_supported_curl_direct_operands(operands: list[str]) -> bool:
+    return (
+        len(operands) == 2
+        and operands[0] == "-I"
+        and operands[1].startswith(("http://", "https://"))
+    )
+
+
+def _is_supported_dns_lookup_direct_operands(operands: list[str]) -> bool:
+    return len(operands) == 1 and not operands[0].startswith("-")
 
 
 def _is_supported_tar_direct_operands(operands: list[str]) -> bool:

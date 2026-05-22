@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from oterminus.commands import (
+    NETWORK_TOUCHING_WARNING,
     capability_summary_for_prompt,
     command_examples_for_prompt,
     supported_base_commands,
@@ -78,6 +79,10 @@ def _format_structured_shapes(structured_families: tuple[str, ...]) -> str:
             '{"operation": "status_short|branch_current|log_oneline|diff_stat|diff_name_only", '
             '"count": 10}'
         ),
+        "ping": '{"host": "example.com", "count": 4}',
+        "curl": '{"operation": "http_head", "url": "https://example.com"}',
+        "dig": '{"domain": "example.com"}',
+        "nslookup": '{"domain": "example.com"}',
         "tar": (
             '{"operation": "list|extract_tar|create_tar_gz", "archive_path": "archive.tar", '
             '"destination_path": "out" only for extract_tar, '
@@ -122,6 +127,15 @@ def build_system_prompt(
         if {"tar", "unzip", "zip"}.issubset(enabled_families)
         else ""
     )
+    network_guidance = (
+        "- Network diagnostics contact external hosts and may reveal network metadata. Use only "
+        "structured `ping`, `curl` HTTP HEAD, `dig`, or `nslookup` for read-only diagnostics. "
+        "Do not propose POST/PUT/PATCH/DELETE, request bodies, arbitrary headers, authorization, "
+        "cookies, downloads, redirects that write files, scanning, SSH, or arbitrary network shell "
+        "commands.\n"
+        if {"ping", "curl", "dig", "nslookup"}.issubset(enabled_families)
+        else ""
+    )
 
     return f"""
 You are `oterminus-planner`, a local terminal planning model.
@@ -154,6 +168,8 @@ explicitly asks for that later.
 - Stay within the curated local command families: {allowlisted_families}.
 - Treat command families as members of curated capabilities:
 {capability_summaries}
+- If a capability summary is marked network-touching, treat it as leaving the local-machine-only \
+boundary and include this warning in `notes`: {NETWORK_TOUCHING_WARNING}
 - Never include shell chaining, pipelines, redirection, subshells, or command substitution.
 - Avoid unrelated conversation, tutorials, or policy commentary.
 
@@ -182,6 +198,7 @@ Behavior guidance:
 - Prefer the most direct single command that satisfies the request.
 - Prefer safe read-only inspection commands when the request is ambiguous.
 {archive_guidance}\
+{network_guidance}\
 - Use the provided capability route (category + suggested families) to bias family selection before \
 detailed argument planning.
 - If route category is `unsupported`, you may still choose experimental mode when a conservative \

@@ -73,6 +73,9 @@ Examples inside REPL:
 - `capabilities` / `commands` / `examples`
 - `help capabilities` / `help filesystem_inspection` / `help ls`
 - `show running processes`
+- `ping example.com 4 times`
+- `show HTTP headers for https://example.com`
+- `look up DNS for example.com`
 - `tar -tf archive.tar` / `unzip -l archive.zip`
 - `tar -xf archive.tar -C restored` / `unzip archive.zip -d restored`
 - `tar -czf backup.tar.gz src` / `zip -r docs.zip docs`
@@ -105,6 +108,13 @@ OTerminus supports two first-class proposal modes:
 See [structured rendering](docs/architecture/structured-rendering.md), [routing and
 planning](docs/architecture/routing-and-planning.md), and the [request
 lifecycle](docs/architecture/request-lifecycle.md) for details.
+
+## Network diagnostics
+
+The `network_diagnostics` capability supports only fixed-count ping, HTTP HEAD (`curl -I`), `dig`,
+and `nslookup`. These commands contact external hosts, show a network metadata warning in preview,
+and still require confirmation. OTerminus does not support POST/PUT/DELETE requests, secret headers,
+downloads, scanning, SSH, or arbitrary network automation.
 
 ## Documentation
 

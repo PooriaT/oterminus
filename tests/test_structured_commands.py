@@ -39,6 +39,10 @@ from oterminus.structured_commands import (
         "sort",
         "uniq",
         "git",
+        "ping",
+        "curl",
+        "dig",
+        "nslookup",
         "tar",
         "unzip",
         "zip",
@@ -234,6 +238,31 @@ def test_supported_structured_families_are_curated(command_family: str) -> None:
             "git diff --name-only",
         ),
         (
+            "ping",
+            {"host": "example.com", "count": 4},
+            ("ping", "-c", "4", "example.com"),
+            "ping -c 4 example.com",
+        ),
+        (
+            "ping",
+            {"host": "2001:db8::1"},
+            ("ping", "-c", "4", "2001:db8::1"),
+            "ping -c 4 2001:db8::1",
+        ),
+        (
+            "curl",
+            {"operation": "http_head", "url": "https://example.com"},
+            ("curl", "-I", "https://example.com"),
+            "curl -I https://example.com",
+        ),
+        ("dig", {"domain": "example.com"}, ("dig", "example.com"), "dig example.com"),
+        (
+            "nslookup",
+            {"domain": "example.com"},
+            ("nslookup", "example.com"),
+            "nslookup example.com",
+        ),
+        (
             "tar",
             {"operation": "list", "archive_path": "archive.tar"},
             ("tar", "-tf", "archive.tar"),
@@ -318,6 +347,14 @@ def test_render_structured_command(
             "git",
             {"operation": "log_oneline", "count": 3},
         ),
+        ("ping -c 4 example.com", "ping", {"host": "example.com", "count": 4}),
+        (
+            "curl -I https://example.com",
+            "curl",
+            {"operation": "http_head", "url": "https://example.com"},
+        ),
+        ("dig example.com", "dig", {"domain": "example.com"}),
+        ("nslookup example.com", "nslookup", {"domain": "example.com"}),
         (
             "grep -Finr -m2 TODO src",
             "grep",
@@ -467,6 +504,27 @@ def test_render_structured_command_rejects_unsafe_archive_path() -> None:
         render_structured_command(
             "unzip", {"operation": "list", "archive_path": "backup.zip; rm -rf tmp"}
         )
+
+
+@pytest.mark.parametrize(
+    ("command_family", "arguments"),
+    [
+        ("ping", {"host": "https://example.com", "count": 4}),
+        ("ping", {"host": "example.com;rm", "count": 4}),
+        ("ping", {"host": "example.com", "count": 11}),
+        ("curl", {"operation": "http_head", "url": "file:///tmp/data"}),
+        ("curl", {"operation": "http_head", "url": "https://user:token@example.com"}),
+        ("curl", {"operation": "post", "url": "https://example.com"}),
+        ("dig", {"domain": "https://example.com"}),
+        ("dig", {"domain": "example.com/path"}),
+        ("nslookup", {"domain": "example.com;rm"}),
+    ],
+)
+def test_render_structured_network_rejects_invalid_arguments(
+    command_family: str, arguments: dict[str, object]
+) -> None:
+    with pytest.raises(StructuredCommandError):
+        render_structured_command(command_family, arguments)
 
 
 def test_render_structured_command_rejects_conflicting_grep_flags() -> None:

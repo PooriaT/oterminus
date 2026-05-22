@@ -79,11 +79,16 @@ the REPL, execute a request, or invoke the Ollama planner.
 
 ### Direct commands
 
-You can enter supported command families directly (for example `ls -la`, `cd src`, `pwd`).
+You can enter supported command families directly (for example `ls -la`, `cd src`, `pwd`, or
+`ping -c 4 example.com`).
 
 Direct commands skip LLM planning when local direct-command detection succeeds. They still pass
 through validator + policy gates and show a preview before any execution. In normal execute mode,
 they still require confirmation.
+
+Network direct commands are detected only for exact constrained forms: `ping -c <count> <host>`,
+`curl -I <http-or-https-url>`, `dig <domain>`, and `nslookup <domain>`. Broad network commands
+cannot bypass validation through the direct-command path.
 
 ### Natural-language requests
 
@@ -92,6 +97,8 @@ You can ask for tasks like:
 - “show disk usage for this folder”
 - “search TODO in Python files”
 - “find processes matching python”
+- “show HTTP headers for https://example.com”
+- “look up DNS for example.com”
 
 These requests first pass through ambiguity detection. If the request is specific enough, it goes
 through capability routing and planning before validation.
@@ -266,6 +273,24 @@ still contain local paths and command context, so review before sharing publicly
 - Experimental mode is a constrained fallback and requires stronger confirmation.
 - Commands that fail validation or policy checks are never executed.
 
+## Network diagnostics
+
+OTerminus is local-first by default. The `network_diagnostics` capability is intentionally small and
+read-only, but it still contacts external hosts and may reveal your IP address, DNS query, target
+host, or other network metadata. Preview/help text shows the network warning, and execution still
+requires confirmation.
+
+Supported operations:
+
+- `ping -c <count> <host>` with count from 1 to 10
+- `curl -I <http-or-https-url>` for HTTP HEAD only
+- `dig <domain>`
+- `nslookup <domain>`
+
+Unsupported operations include POST/PUT/PATCH/DELETE, request bodies, arbitrary headers,
+authorization headers, cookies, downloads, scanning, traceroute, SSH/SCP, netcat, nmap, wget,
+network commands through sudo, arbitrary network shell commands, and shell pipelines/redirection.
+OTerminus is still not a general network automation tool.
 
 ## Command pack availability
 You can disable specific command packs with `OTERMINUS_DISABLED_COMMAND_PACKS`. For the exact

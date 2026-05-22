@@ -52,6 +52,20 @@ Examples:
 
 Representative families: `clear`, `whoami`, `uname`, `which`, `env`, `df`.
 
+## Network diagnostics
+
+Examples:
+
+- ping a host with a fixed count
+- show HTTP headers for an HTTP(S) URL
+- look up DNS records
+
+Representative families: `ping`, `curl`, `dig`, `nslookup`.
+
+These commands contact external hosts and may reveal network metadata. Mutating HTTP methods,
+secret headers, cookies, downloads, scanning, SSH/SCP, nmap, wget, netcat, sudo network commands,
+and arbitrary network automation are unsupported.
+
 ## macOS desktop integration
 
 Example:

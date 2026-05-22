@@ -1,6 +1,11 @@
 from __future__ import annotations
 
-from oterminus.commands import get_command_spec, supported_base_commands, supported_capabilities
+from oterminus.commands import (
+    NETWORK_TOUCHING_WARNING,
+    get_command_spec,
+    supported_base_commands,
+    supported_capabilities,
+)
 
 
 def render_help() -> str:
@@ -17,7 +22,8 @@ def render_help() -> str:
 def render_capabilities() -> str:
     lines = ["Supported capabilities:"]
     for capability in supported_capabilities():
-        lines.append(f"- {capability.capability_id}: {capability.capability_description}")
+        suffix = " [network-touching]" if capability.network_touching else ""
+        lines.append(f"- {capability.capability_id}: {capability.capability_description}{suffix}")
     return "\n".join(lines)
 
 
@@ -25,7 +31,10 @@ def render_commands() -> str:
     lines = ["Supported command families by capability:"]
     for capability in supported_capabilities():
         lines.append(f"{capability.capability_id}:")
-        lines.extend(f"  - {command_name}" for command_name in capability.commands)
+        for command_name in capability.commands:
+            spec = get_command_spec(command_name)
+            suffix = " (network-touching)" if spec is not None and spec.network_touching else ""
+            lines.append(f"  - {command_name}{suffix}")
     return "\n".join(lines)
 
 
@@ -90,6 +99,7 @@ def render_capability_help(capability_id: str) -> str:
         f"Label: {capability.capability_label}",
         f"Description: {capability.capability_description}",
         f"Maturity in registry: {', '.join(capability.maturity_levels)}",
+        f"Network-touching: {'yes' if capability.network_touching else 'no'}",
         "Supported command families:",
     ]
     lines.extend(f"- {command_name}" for command_name in capability.commands)
@@ -106,6 +116,10 @@ def render_capability_help(capability_id: str) -> str:
     if notes:
         lines.append("Notes / warnings:")
         lines.extend(f"- {note}" for note in sorted(notes))
+    if capability.network_touching and NETWORK_TOUCHING_WARNING not in notes:
+        if not notes:
+            lines.append("Notes / warnings:")
+        lines.append(f"- {NETWORK_TOUCHING_WARNING}")
     return "\n".join(lines)
 
 
@@ -121,6 +135,7 @@ def render_command_help(command_family: str) -> str:
         f"Risk level: {spec.risk_level.value}",
         f"Maturity: {spec.maturity_level.value}",
         f"Direct support: {'yes' if spec.direct_supported else 'no'}",
+        f"Network-touching: {'yes' if spec.network_touching else 'no'}",
     ]
     if spec.examples:
         lines.append("Examples:")
@@ -128,6 +143,10 @@ def render_command_help(command_family: str) -> str:
     if spec.notes:
         lines.append("Notes / warnings:")
         lines.extend(f"- {note}" for note in spec.notes)
+    if spec.network_touching and NETWORK_TOUCHING_WARNING not in spec.notes:
+        if not spec.notes:
+            lines.append("Notes / warnings:")
+        lines.append(f"- {NETWORK_TOUCHING_WARNING}")
     return "\n".join(lines)
 
 

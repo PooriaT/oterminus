@@ -16,6 +16,7 @@ Validator enforces:
 - flag and operand constraints per command spec
 - command-family/base-command consistency
 - dangerous flag/target warnings and risk escalation
+- network-touching command warnings when registry metadata marks the command
 - forbidden operand prefixes (for example URL targets for `open`)
 - allowed-root path restrictions when configured
 - policy compatibility for computed risk level
@@ -39,6 +40,29 @@ update an existing archive path. Experimental mode still goes through the same c
 
 These checks constrain command shape and policy boundaries; they do not inspect archive member paths
 for traversal or other malicious content.
+
+Network diagnostics are accepted only for constrained read-only forms:
+
+- `ping -c <count> <host>` with count from 1 to 10
+- `curl -I <http-or-https-url>`
+- `dig <domain>`
+- `nslookup <domain>`
+
+Validation rejects ping without a count, excessive ping counts, ping flood/unlimited forms, URLs as
+ping targets, non-HEAD curl behavior, POST/PUT/PATCH/DELETE, request bodies, arbitrary headers,
+authorization, cookies, downloads/output files, file URLs, arbitrary DNS lookup flags, unsupported
+network tools, shell operators, pipelines, and redirection.
+
+## Network-touching warning boundary
+
+When a command spec sets `network_touching=True`, accepted previews include this warning:
+
+`This command contacts external hosts and may reveal your IP address, DNS query, target host, or network metadata.`
+
+The warning is informational and does not weaken existing checks. The command must still be in the
+curated registry, pass command-shape validation, pass risk policy, and receive user confirmation
+before execution. Experimental mode remains subject to the same network metadata and must not be
+used as a shortcut to add broad network command access.
 
 ## Policy model
 
