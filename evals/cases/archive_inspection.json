@@ -63,23 +63,86 @@
     "expected_argv": ["unzip", "-l", "archive.zip"]
   },
   {
-    "id": "archive-extract-tar-not-inspection",
-    "user_input": "extract archive.tar",
+    "id": "archive-extract-tar-guarded",
+    "user_input": "extract archive.tar into ./out",
     "planner_proposal": {
       "action_type": "shell_command",
-      "mode": "experimental",
+      "mode": "structured",
       "command_family": "tar",
-      "command": "tar -xf archive.tar",
+      "arguments": {
+        "operation": "extract_tar",
+        "archive_path": "archive.tar",
+        "destination_path": "./out"
+      },
       "summary": "extract tar archive",
-      "explanation": "archive extraction is not supported yet",
+      "explanation": "guarded archive extraction to an explicit destination",
       "risk_level": "write",
       "needs_confirmation": true,
-      "notes": ["unsupported archive extraction"]
+      "notes": []
     },
-    "expected_mode": "experimental",
+    "expected_mode": "structured",
     "expected_command_family": "tar",
-    "expected_risk_level": "safe",
-    "expected_acceptance": false
+    "expected_risk_level": "write",
+    "expected_acceptance": true,
+    "expected_rendered_command": "tar -xf archive.tar -C ./out",
+    "expected_argv": ["tar", "-xf", "archive.tar", "-C", "./out"]
+  },
+  {
+    "id": "archive-extract-zip-guarded",
+    "user_input": "unzip backup.zip into ./restore",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "unzip",
+      "arguments": {
+        "operation": "extract_zip",
+        "archive_path": "backup.zip",
+        "destination_path": "./restore"
+      },
+      "summary": "extract zip archive",
+      "explanation": "guarded archive extraction to an explicit destination",
+      "risk_level": "write",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "structured",
+    "expected_command_family": "unzip",
+    "expected_risk_level": "write",
+    "expected_acceptance": true,
+    "expected_rendered_command": "unzip backup.zip -d ./restore",
+    "expected_argv": ["unzip", "backup.zip", "-d", "./restore"]
+  },
+  {
+    "id": "archive-extract-tar-missing-destination",
+    "user_input": "extract archive.tar",
+    "expected_ambiguity_detected": true,
+    "expected_ambiguity_reason_contains": "missing an explicit destination"
+  },
+  {
+    "id": "archive-extract-zip-root-destination-rejected",
+    "user_input": "unzip backup.zip into /",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "unzip",
+      "arguments": {
+        "operation": "extract_zip",
+        "archive_path": "backup.zip",
+        "destination_path": "/"
+      },
+      "summary": "extract zip archive",
+      "explanation": "guarded archive extraction",
+      "risk_level": "write",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_planner_error_contains": "destination_path cannot be '/'"
+  },
+  {
+    "id": "archive-extract-overwrite-everything-rejected",
+    "user_input": "extract archive.tar and overwrite everything",
+    "expected_ambiguity_detected": true,
+    "expected_ambiguity_reason_contains": "missing an explicit destination"
   },
   {
     "id": "archive-create-zip-not-supported",

@@ -41,6 +41,23 @@ def _validate_archive_path(value: str) -> str:
     return value
 
 
+def _validate_archive_destination_path(value: str) -> str:
+    value = _validate_path(value, allow_url_targets=False)
+    blocked_fragments = ("$(", "`", "\n", "\r", "\x00")
+    if any(fragment in value for fragment in blocked_fragments):
+        raise ValueError(
+            "destination_path cannot contain command substitution or control characters."
+        )
+    blocked_operator_fragments = ("&&", "||", ";", "|", "<", ">", "&")
+    if any(fragment in value for fragment in blocked_operator_fragments):
+        raise ValueError("destination_path cannot contain shell operators.")
+    if value == "/":
+        raise ValueError("destination_path cannot be '/'.")
+    if value in {"/bin", "/dev", "/etc", "/lib", "/private", "/sbin", "/usr", "/var"}:
+        raise ValueError("destination_path cannot be a system root.")
+    return value
+
+
 def _validate_paths(values: list[str], *, allow_url_targets: bool = False) -> list[str]:
     return [_validate_path(value, allow_url_targets=allow_url_targets) for value in values]
 
@@ -403,32 +420,62 @@ class GitArguments(_StructuredArgumentsModel):
 class TarArguments(_StructuredArgumentsModel):
     operation: str = Field(min_length=1)
     archive_path: str = Field(min_length=1)
+    destination_path: str | None = Field(default=None, min_length=1)
 
     @field_validator("archive_path")
     @classmethod
     def validate_archive_path(cls, value: str) -> str:
         return _validate_archive_path(value)
 
+    @field_validator("destination_path")
+    @classmethod
+    def validate_destination_path(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        return _validate_archive_destination_path(value)
+
     @model_validator(mode="after")
     def validate_shape(self) -> TarArguments:
-        if self.operation != "list":
-            raise ValueError("operation must be list.")
+        if self.operation == "list":
+            if self.destination_path is not None:
+                raise ValueError("destination_path is only allowed when operation=extract_tar.")
+            return self
+        if self.operation == "extract_tar":
+            if self.destination_path is None:
+                raise ValueError("destination_path is required when operation=extract_tar.")
+            return self
+        raise ValueError("operation must be one of: list, extract_tar.")
         return self
 
 
 class UnzipArguments(_StructuredArgumentsModel):
     operation: str = Field(min_length=1)
     archive_path: str = Field(min_length=1)
+    destination_path: str | None = Field(default=None, min_length=1)
 
     @field_validator("archive_path")
     @classmethod
     def validate_archive_path(cls, value: str) -> str:
         return _validate_archive_path(value)
 
+    @field_validator("destination_path")
+    @classmethod
+    def validate_destination_path(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        return _validate_archive_destination_path(value)
+
     @model_validator(mode="after")
     def validate_shape(self) -> UnzipArguments:
-        if self.operation != "list":
-            raise ValueError("operation must be list.")
+        if self.operation == "list":
+            if self.destination_path is not None:
+                raise ValueError("destination_path is only allowed when operation=extract_zip.")
+            return self
+        if self.operation == "extract_zip":
+            if self.destination_path is None:
+                raise ValueError("destination_path is required when operation=extract_zip.")
+            return self
+        raise ValueError("operation must be one of: list, extract_zip.")
         return self
 
 
@@ -552,7 +599,10 @@ def parse_argv_as_structured(argv: Sequence[str]) -> tuple[str, dict[str, Any]] 
         return None
 
     validated = validate_structured_arguments(command_family, arguments)
-    return command_family, validated.model_dump()
+    dumped = validated.model_dump()
+    if command_family in {"tar", "unzip"} and dumped.get("destination_path") is None:
+        dumped.pop("destination_path", None)
+    return command_family, dumped
 
 
 def validate_structured_arguments(
@@ -817,10 +867,18 @@ def render_structured_command(
     if command_family == "tar":
         if validated.operation == "list":
             return RenderedCommand(("tar", "-tf", validated.archive_path))
+        if validated.operation == "extract_tar":
+            return RenderedCommand(
+                ("tar", "-xf", validated.archive_path, "-C", validated.destination_path)
+            )
 
     if command_family == "unzip":
         if validated.operation == "list":
             return RenderedCommand(("unzip", "-l", validated.archive_path))
+        if validated.operation == "extract_zip":
+            return RenderedCommand(
+                ("unzip", validated.archive_path, "-d", validated.destination_path)
+            )
 
     raise StructuredCommandError(
         f"Structured proposals are not supported for command family '{command_family}'."
@@ -1461,12 +1519,24 @@ def _parse_git_argv(operands: list[str]) -> dict[str, Any] | None:
 def _parse_tar_argv(operands: list[str]) -> dict[str, Any] | None:
     if len(operands) == 2 and operands[0] == "-tf":
         return {"operation": "list", "archive_path": operands[1]}
+    if len(operands) == 4 and operands[0] == "-xf" and operands[2] == "-C":
+        return {
+            "operation": "extract_tar",
+            "archive_path": operands[1],
+            "destination_path": operands[3],
+        }
     return None
 
 
 def _parse_unzip_argv(operands: list[str]) -> dict[str, Any] | None:
     if len(operands) == 2 and operands[0] == "-l":
         return {"operation": "list", "archive_path": operands[1]}
+    if len(operands) == 3 and operands[1] == "-d":
+        return {
+            "operation": "extract_zip",
+            "archive_path": operands[0],
+            "destination_path": operands[2],
+        }
     return None
 
 

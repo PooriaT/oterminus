@@ -114,8 +114,10 @@ def test_registry_direct_detection_heuristics_match_current_behavior() -> None:
     assert looks_like_direct_invocation("git", ["status", "--short"]) is True
     assert looks_like_direct_invocation("git", ["add", "."]) is False
     assert looks_like_direct_invocation("tar", ["-tf", "archive.tar"]) is True
+    assert looks_like_direct_invocation("tar", ["-xf", "archive.tar", "-C", "out"]) is True
     assert looks_like_direct_invocation("tar", ["-xf", "archive.tar"]) is False
     assert looks_like_direct_invocation("unzip", ["-l", "archive.zip"]) is True
+    assert looks_like_direct_invocation("unzip", ["archive.zip", "-d", "restore"]) is True
     assert looks_like_direct_invocation("unzip", ["archive.zip"]) is False
 
 

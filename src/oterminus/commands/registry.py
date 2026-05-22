@@ -41,7 +41,7 @@ COMMAND_PACKS: tuple[CommandPack, ...] = (
     CommandPack(
         "archive",
         "Archive",
-        "Read-only archive inspection commands.",
+        "Archive inspection and guarded extraction commands.",
         ARCHIVE_COMMANDS,
     ),
     CommandPack(
@@ -358,11 +358,26 @@ def _is_supported_git_direct_operands(operands: list[str]) -> bool:
 
 
 def _is_supported_tar_direct_operands(operands: list[str]) -> bool:
-    return len(operands) == 2 and operands[0] == "-tf" and _is_archive_path_operand(operands[1])
+    return (
+        len(operands) == 2 and operands[0] == "-tf" and _is_archive_path_operand(operands[1])
+    ) or (
+        len(operands) == 4
+        and operands[0] == "-xf"
+        and _is_archive_path_operand(operands[1])
+        and operands[2] == "-C"
+        and _is_archive_destination_operand(operands[3])
+    )
 
 
 def _is_supported_unzip_direct_operands(operands: list[str]) -> bool:
-    return len(operands) == 2 and operands[0] == "-l" and _is_archive_path_operand(operands[1])
+    return (
+        len(operands) == 2 and operands[0] == "-l" and _is_archive_path_operand(operands[1])
+    ) or (
+        len(operands) == 3
+        and _is_archive_path_operand(operands[0])
+        and operands[1] == "-d"
+        and _is_archive_destination_operand(operands[2])
+    )
 
 
 def _is_archive_path_operand(value: str) -> bool:
@@ -377,6 +392,20 @@ def _is_archive_path_operand(value: str) -> bool:
         and "*" not in value
         and "?" not in value
     )
+
+
+def _is_archive_destination_operand(value: str) -> bool:
+    return _is_archive_path_operand(value) and value not in {
+        "/",
+        "/bin",
+        "/dev",
+        "/etc",
+        "/lib",
+        "/private",
+        "/sbin",
+        "/usr",
+        "/var",
+    }
 
 
 def _looks_like_path(value: str) -> bool:

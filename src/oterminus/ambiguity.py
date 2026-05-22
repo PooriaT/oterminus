@@ -21,6 +21,10 @@ _AMBIGUOUS_PHRASES: tuple[str, ...] = (
     "organize this directory",
     "repair permissions",
     "make this project work",
+    "extract this",
+    "unpack archive",
+    "open archive",
+    "restore backup",
 )
 
 _BROAD_MUTATION_VERBS: tuple[str, ...] = (
@@ -80,6 +84,14 @@ def detect_ambiguity(user_input: str) -> AmbiguityResult:
             ),
         )
 
+    if _looks_like_archive_extraction_without_destination(text):
+        return AmbiguityResult(
+            is_ambiguous=True,
+            reason="Archive extraction request is missing an explicit destination.",
+            suggested_safe_options=("list archive contents", "inspect archive before extracting"),
+            follow_up_questions=("Which explicit destination directory should receive the files?",),
+        )
+
     if _looks_broad_destructive_request(text):
         return AmbiguityResult(
             is_ambiguous=True,
@@ -114,6 +126,18 @@ def _looks_broad_destructive_request(text: str) -> bool:
         for token in tokens
     )
     return has_broad_verb and has_vague_target and not has_explicit_scope
+
+
+def _looks_like_archive_extraction_without_destination(text: str) -> bool:
+    has_archive_action = any(
+        _matches_hint(text, hint) for hint in ("extract", "unpack", "unzip", "restore")
+    )
+    has_archive_target = any(
+        _matches_hint(text, hint) or re.search(rf"\S+\.{hint}(?:\s|$)", text) is not None
+        for hint in ("archive", "tar", "zip")
+    )
+    has_destination = any(fragment in text for fragment in (" into ", " to ", " in "))
+    return has_archive_action and has_archive_target and not has_destination
 
 
 def _matches_hint(text: str, hint: str) -> bool:

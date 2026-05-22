@@ -440,6 +440,66 @@ def test_parse_raw_command_as_structured_returns_none_for_unsupported_stat_forma
     assert parse_raw_command_as_structured("stat -f '%z' README.md") is None
 
 
+def test_render_structured_tar_extraction_exact_argv() -> None:
+    rendered = render_structured_command(
+        "tar",
+        {
+            "operation": "extract_tar",
+            "archive_path": "archive.tar",
+            "destination_path": "out",
+        },
+    )
+
+    assert rendered.argv == ("tar", "-xf", "archive.tar", "-C", "out")
+    assert rendered.command == "tar -xf archive.tar -C out"
+
+
+def test_render_structured_zip_extraction_exact_argv() -> None:
+    rendered = render_structured_command(
+        "unzip",
+        {
+            "operation": "extract_zip",
+            "archive_path": "archive.zip",
+            "destination_path": "restore",
+        },
+    )
+
+    assert rendered.argv == ("unzip", "archive.zip", "-d", "restore")
+    assert rendered.command == "unzip archive.zip -d restore"
+
+
+def test_structured_archive_extraction_requires_destination() -> None:
+    with pytest.raises(StructuredCommandError):
+        render_structured_command(
+            "tar",
+            {"operation": "extract_tar", "archive_path": "archive.tar"},
+        )
+
+
+def test_structured_archive_extraction_rejects_root_destination() -> None:
+    with pytest.raises(StructuredCommandError):
+        render_structured_command(
+            "unzip",
+            {
+                "operation": "extract_zip",
+                "archive_path": "archive.zip",
+                "destination_path": "/",
+            },
+        )
+
+
+def test_structured_archive_extraction_rejects_shell_tokens_in_destination() -> None:
+    with pytest.raises(StructuredCommandError):
+        render_structured_command(
+            "tar",
+            {
+                "operation": "extract_tar",
+                "archive_path": "archive.tar",
+                "destination_path": "out; rm -rf /",
+            },
+        )
+
+
 @pytest.mark.parametrize(
     "command",
     [
@@ -463,15 +523,32 @@ def test_parse_raw_command_as_structured_returns_none_for_unsupported_stat_forma
         "lsof -x",
         "wc -z README.md",
         "sort",
-        "tar -xf archive.tar",
         "tar --extract -f archive.tar",
         "tar -czf backup.tar.gz folder",
-        "unzip archive.zip",
         "unzip -o archive.zip",
     ],
 )
 def test_parse_raw_command_as_structured_rejects_invalid_variants(command: str) -> None:
     assert parse_raw_command_as_structured(command) is None
+
+
+def test_parse_raw_command_as_structured_accepts_guarded_archive_extraction() -> None:
+    assert parse_raw_command_as_structured("tar -xf archive.tar -C out") == (
+        "tar",
+        {
+            "operation": "extract_tar",
+            "archive_path": "archive.tar",
+            "destination_path": "out",
+        },
+    )
+    assert parse_raw_command_as_structured("unzip archive.zip -d restore") == (
+        "unzip",
+        {
+            "operation": "extract_zip",
+            "archive_path": "archive.zip",
+            "destination_path": "restore",
+        },
+    )
 
 
 def test_parse_raw_command_as_structured_raises_for_disallowed_open_url_target() -> None:

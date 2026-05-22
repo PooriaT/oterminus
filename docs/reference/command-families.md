@@ -6,12 +6,12 @@
 
 **Label:** Archive inspection
 
-**Description:** Inspect archive contents without extracting or modifying files.
+**Description:** Inspect archives and extract them only to explicit destinations.
 
 | Command | Category | Platforms | Risk | Maturity | Direct support | Examples | Natural-language aliases | Notes |
 |---|---|---|---|---|---|---|---|---|
-| `tar` | archive_inspection | all | safe | structured | yes | `tar -tf archive.tar` | `list tar archive`, `inspect tar archive`, `show tar contents`, `list archive contents` | Only read-only tar archive listing is supported in curated mode; extraction and creation are not supported. |
-| `unzip` | archive_inspection | all | safe | structured | yes | `unzip -l archive.zip` | `list zip archive`, `inspect zip archive`, `show zip contents`, `show what is inside zip` | Only read-only zip archive listing is supported in curated mode; extraction and creation are not supported. |
+| `tar` | archive_inspection | all | safe | structured | yes | `tar -tf archive.tar`<br>`tar -xf archive.tar -C out` | `list tar archive`, `inspect tar archive`, `show tar contents`, `list archive contents`, `extract tar archive`, `extract archive into destination` | Supports read-only tar archive listing and guarded extraction with an explicit destination.<br>Tar extraction is write-risk and can write or overwrite files in the destination.<br>Archive creation, compression flags, path transforms, extraction without -C, and arbitrary tar options are not supported. |
+| `unzip` | archive_inspection | all | safe | structured | yes | `unzip -l archive.zip`<br>`unzip archive.zip -d out` | `list zip archive`, `inspect zip archive`, `show zip contents`, `show what is inside zip`, `extract zip archive`, `unzip archive into destination` | Supports read-only zip archive listing and guarded extraction with an explicit destination.<br>Zip extraction is write-risk and can write or overwrite files in the destination.<br>Extraction without -d, overwrite flags, password handling, and arbitrary unzip options are not supported. |
 
 ## `destructive_operations`
 

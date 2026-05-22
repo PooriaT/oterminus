@@ -14,6 +14,7 @@ ROUTE_CATEGORIES = {
     "metadata_inspect",
     "process_inspect",
     "git_inspection",
+    "archive_operations",
     "unsupported",
 }
 
@@ -85,6 +86,10 @@ def route_request(user_input: str) -> RouteResult:
             suggested_families=families,
             suggested_capabilities=_capabilities_for_category("git_inspection"),
         )
+
+    archive_route = _route_archive_request(text)
+    if archive_route is not None:
+        return archive_route
 
     if _has_any(text, _MUTATION_HINTS):
         families = _families_for_category("filesystem_mutate", text)
@@ -225,6 +230,38 @@ def _fallback_family_priority(family: str) -> tuple[int, int, str]:
     return (risk_rank, maturity_rank, family)
 
 
+def _route_archive_request(text: str) -> RouteResult | None:
+    if not _has_any(text, _ARCHIVE_HINTS):
+        return None
+
+    if _has_any(text, _ARCHIVE_EXTRACTION_HINTS) and not _has_archive_destination_hint(text):
+        return RouteResult(
+            category="unsupported",
+            confidence=0.9,
+            reason="Archive extraction request does not include an explicit destination.",
+            suggested_families=(),
+            suggested_capabilities=(),
+        )
+
+    families = _families_for_category("archive_operations", text)
+    return RouteResult(
+        category="archive_operations",
+        confidence=0.9,
+        reason="Request references a supported archive inspection or guarded extraction operation.",
+        suggested_families=families,
+        suggested_capabilities=_capabilities_for_category("archive_operations"),
+    )
+
+
+def _has_archive_destination_hint(text: str) -> bool:
+    return (
+        any(fragment in text for fragment in (" into ", " to ", " in "))
+        or " -c " in text
+        or " -d " in text
+        or _matches_hint(text, "destination")
+    )
+
+
 _TEXT_SEARCH_HINTS = (
     "grep",
     "search",
@@ -307,6 +344,22 @@ _INSPECTION_HINTS = (
     "tree",
 )
 
+_ARCHIVE_HINTS = (
+    "archive",
+    "tar",
+    "zip",
+    "unzip",
+    "extract",
+    "unpack",
+)
+
+_ARCHIVE_EXTRACTION_HINTS = (
+    "extract",
+    "unpack",
+    "unzip",
+    "restore",
+)
+
 
 _ROUTE_CAPABILITIES: dict[str, tuple[str, ...]] = {
     "text_search": ("text_inspection", "filesystem_inspection"),
@@ -315,6 +368,7 @@ _ROUTE_CAPABILITIES: dict[str, tuple[str, ...]] = {
     "filesystem_mutate": ("filesystem_mutation",),
     "filesystem_inspect": ("filesystem_inspection", "text_inspection", "macos_desktop"),
     "git_inspection": ("git_inspection",),
+    "archive_operations": ("archive_inspection",),
 }
 
 _ROUTE_SEED_HINTS: dict[str, tuple[str, ...]] = {
@@ -340,6 +394,12 @@ _ROUTE_SEED_HINTS: dict[str, tuple[str, ...]] = {
         "show recent git commits",
         "show git diff summary",
         "show changed file names",
+    ),
+    "archive_operations": (
+        "list archive contents",
+        "inspect archive",
+        "extract archive into destination",
+        "unzip archive into destination",
     ),
 }
 

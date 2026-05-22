@@ -35,6 +35,11 @@ Registry metadata is reused across:
 - validator allowlist + shape checks
 - REPL `help`, `commands`, `examples`
 
+Some command families have operation-specific validation beyond the static `CommandSpec`. The
+archive pack is the current example: `tar -tf` and `unzip -l` remain safe read-only operations,
+while exact extraction forms are rendered and classified as write-risk by structured rendering and
+validation.
+
 See [command families reference](../reference/command-families.md).
 
 ## Command pack availability
