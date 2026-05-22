@@ -48,6 +48,11 @@ planner. Planner calls Ollama with:
 Planner parses model JSON into a strict `Proposal` schema. The model is asked to emit only
 `structured` or `experimental` proposals and never executes commands itself.
 
+Capability summaries include network-boundary metadata when any future enabled command family is
+marked `network_touching`. The planner prompt instructs the model to preserve that warning in
+proposal notes, but the prompt is not a safety authority. Validator metadata, policy checks,
+preview, confirmation, and executor boundaries remain the enforced path.
+
 ## Structured-first normalization
 
 Planner prefers structured mode when possible:

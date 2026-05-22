@@ -23,6 +23,7 @@ Registry merge rejects duplicate command names and empty capability IDs.
 - flag model (`allowed_flags`, `flags_with_values`, path-valued/leading flags)
 - operand constraints (`min_operands`, `max_operands`)
 - path safety metadata (`forbidden_operand_prefixes`, path operand mode)
+- network boundary metadata (`network_touching`)
 - examples/aliases/notes
 
 ## Why registry centralization matters
@@ -34,6 +35,10 @@ Registry metadata is reused across:
 - planner prompt capability summaries
 - validator allowlist + shape checks
 - REPL `help`, `commands`, `examples`
+
+`network_touching` defaults to `false`. Future network diagnostics command families must opt in
+explicitly so prompts, discovery, validation warnings, and generated reference docs can mark the
+external-host boundary without relying on command-name heuristics.
 
 Some command families have operation-specific validation beyond the static `CommandSpec`. The
 archive pack is the current example: `tar -tf` and `unzip -l` remain safe read-only operations,

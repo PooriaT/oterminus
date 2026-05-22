@@ -52,3 +52,4 @@ nav:
       - Capability-First, Not Shell-First: adr/0001-capability-first-not-shell-first.md
       - Structured-First Planning: adr/0002-structured-first-planning.md
       - Router Before Planner: adr/0003-router-before-planner.md
+      - Network Diagnostics Boundary: adr/0004-network-diagnostics-boundary.md

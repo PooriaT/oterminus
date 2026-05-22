@@ -6,6 +6,11 @@ from typing import Iterable
 
 from oterminus.models import RiskLevel
 
+NETWORK_TOUCHING_WARNING = (
+    "This command contacts external hosts and may reveal your IP address, DNS query, "
+    "target host, or network metadata."
+)
+
 
 class DirectDetectionMode(str, Enum):
     MIN_OPERANDS = "min_operands"
@@ -55,6 +60,7 @@ class CommandSpec:
     natural_language_aliases: tuple[str, ...] = ()
     notes: tuple[str, ...] = ()
     supported_platforms: frozenset[str] | None = None
+    network_touching: bool = False
 
 
 def _frozenset(values: Iterable[str] = ()) -> frozenset[str]:
@@ -88,6 +94,7 @@ def command(
     natural_language_aliases: Iterable[str] = (),
     notes: Iterable[str] = (),
     supported_platforms: Iterable[str] | None = None,
+    network_touching: bool = False,
 ) -> CommandSpec:
     return CommandSpec(
         name=name,
@@ -117,4 +124,5 @@ def command(
         supported_platforms=(
             _frozenset(supported_platforms) if supported_platforms is not None else None
         ),
+        network_touching=network_touching,
     )

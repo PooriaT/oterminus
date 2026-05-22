@@ -266,6 +266,15 @@ still contain local paths and command context, so review before sharing publicly
 - Experimental mode is a constrained fallback and requires stronger confirmation.
 - Commands that fail validation or policy checks are never executed.
 
+## Network boundary
+
+OTerminus is local-first by default. Future network diagnostics commands must be explicitly marked
+as network-touching before they are exposed. That marker lets previews, help text, planner context,
+and generated references warn that the command contacts external hosts and may reveal IP address,
+DNS query, target host, or network metadata.
+
+This PR does not add executable network diagnostics commands. Network commands, when added, must
+still pass validation and policy checks and require user confirmation before execution.
 
 ## Command pack availability
 You can disable specific command packs with `OTERMINUS_DISABLED_COMMAND_PACKS`. For the exact

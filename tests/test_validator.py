@@ -1,5 +1,6 @@
 import pytest
 
+from oterminus.commands import COMMAND_REGISTRY, NETWORK_TOUCHING_WARNING, command as command_spec
 from oterminus.models import ActionType, Proposal, ProposalMode, RiskLevel
 from oterminus.policies import PolicyConfig
 from oterminus.structured_commands import StructuredCommandError, parse_raw_command_as_structured
@@ -246,6 +247,30 @@ def test_validator_warns_about_environment_secrets_for_env_lookup() -> None:
 
     assert result.accepted is True
     assert any("Environment values may include secrets" in warning for warning in result.warnings)
+
+
+def test_validator_warns_for_synthetic_network_touching_command(monkeypatch) -> None:
+    spec = command_spec(
+        name="netcheck",
+        category="network_inspection",
+        capability_id="synthetic_network",
+        capability_label="Synthetic network",
+        capability_description="Synthetic read-only network diagnostics.",
+        risk_level=RiskLevel.SAFE,
+        min_operands=1,
+        max_operands=1,
+        network_touching=True,
+    )
+    monkeypatch.setitem(COMMAND_REGISTRY, "netcheck", spec)
+    validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))
+
+    result = validator.validate(make_proposal("netcheck example.test"))
+
+    assert result.accepted is True
+    assert result.warnings == [
+        "Experimental mode stays outside deterministic structured rendering and uses stricter confirmation.",
+        NETWORK_TOUCHING_WARNING,
+    ]
 
 
 def test_allowed_roots_find_checks_only_search_roots() -> None:
