@@ -125,6 +125,7 @@ def test_route_request_archive_creation_accepts_to_connector() -> None:
 def test_route_request_network_diagnostics() -> None:
     assert route_request("ping example.com 4 times").category == "network_diagnostics"
     assert route_request("check if example.com responds").category == "network_diagnostics"
+    assert route_request("check if https://example.com responds").category == "network_diagnostics"
     assert (
         route_request("show HTTP headers for https://example.com").category == "network_diagnostics"
     )
@@ -138,7 +139,11 @@ def test_route_request_network_diagnostics() -> None:
 
 def test_route_request_check_if_stays_with_local_inspection_when_not_network_specific() -> None:
     assert route_request("check if python is running").category == "process_inspect"
+    assert route_request("check if python responds").category != "network_diagnostics"
+    assert route_request("check if python process responds").category == "process_inspect"
     assert route_request("check if README.md contains TODO").category == "text_search"
+    assert route_request("grep download README.md").category == "text_search"
+    assert route_request("find files in download directory").category == "filesystem_inspect"
 
 
 def test_route_request_unsupported_network_requests() -> None:

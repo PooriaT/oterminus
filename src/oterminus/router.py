@@ -48,7 +48,7 @@ def route_request(user_input: str) -> RouteResult:
             suggested_capabilities=(),
         )
 
-    if _has_any(text, _NETWORK_DIAGNOSTIC_HINTS):
+    if _has_any(text, _NETWORK_DIAGNOSTIC_HINTS) or _has_network_responds_shape(text):
         families = _families_for_category("network_diagnostics", text)
         return RouteResult(
             category="network_diagnostics",
@@ -320,6 +320,13 @@ def _has_archive_creation_shape_hint(text: str) -> bool:
     return has_archive_output and has_source_connector
 
 
+def _has_network_responds_shape(text: str) -> bool:
+    if not _matches_hint(text, "responds"):
+        return False
+
+    return re.search(r"(?:https?://|www\.|\b[a-z0-9-]+\.[a-z]{2,}\b)", text) is not None
+
+
 _TEXT_SEARCH_HINTS = (
     "grep",
     "search",
@@ -393,6 +400,7 @@ _INSPECTION_HINTS = (
     "display",
     "what files",
     "which files",
+    "find files",
     "where am i",
     "current directory",
     "print working directory",
@@ -523,7 +531,6 @@ _NETWORK_DIAGNOSTIC_HINTS = (
     "http headers",
     "http head",
     "head request",
-    "responds",
     "dns lookup",
     "dns records",
     "dig",
@@ -545,7 +552,12 @@ _UNSUPPORTED_NETWORK_HINTS = (
     "with my token",
     "with token",
     "cookie",
-    "download",
+    "download this url",
+    "download url",
+    "download http",
+    "download https",
+    "download from http",
+    "download from https",
     "upload",
     "scan this host",
     "scan host",
