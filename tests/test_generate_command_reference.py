@@ -3,6 +3,9 @@ from __future__ import annotations
 from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
 
+from oterminus.commands import NETWORK_TOUCHING_WARNING, command
+from oterminus.models import RiskLevel
+
 MODULE_PATH = Path(__file__).resolve().parents[1] / "scripts" / "generate_command_reference.py"
 SPEC = spec_from_file_location("generate_command_reference", MODULE_PATH)
 assert SPEC and SPEC.loader
@@ -28,6 +31,36 @@ def test_generated_command_families_include_known_commands() -> None:
     content = module.generate_reference_docs()[module.COMMAND_FAMILIES_PATH]
     for command_name in ("`ls`", "`grep`", "`ps`", "`clear`", "`open`", "`rm`", "`tar`"):
         assert command_name in content
+
+
+def test_generated_reference_can_show_network_touching_metadata(monkeypatch) -> None:
+    spec = command(
+        name="netcheck",
+        category="network_inspection",
+        capability_id="synthetic_network",
+        capability_label="Synthetic network",
+        capability_description="Synthetic read-only network diagnostics.",
+        risk_level=RiskLevel.SAFE,
+        examples=("netcheck example.test",),
+        network_touching=True,
+    )
+    monkeypatch.setattr(module, "COMMAND_REGISTRY", {**module.COMMAND_REGISTRY, "netcheck": spec})
+
+    docs = module.generate_reference_docs()
+    capability_map = docs[module.CAPABILITY_MAP_PATH]
+    command_families = docs[module.COMMAND_FAMILIES_PATH]
+
+    assert (
+        "| Capability ID | Label | Description | Commands | Platforms | Risk levels present | Maturity levels present | Network | Notes |"
+        in capability_map
+    )
+    assert "| synthetic_network | Synthetic network |" in capability_map
+    assert (
+        "| `netcheck` | network_inspection | all | safe | structured | yes | yes |"
+        in command_families
+    )
+    assert NETWORK_TOUCHING_WARNING in capability_map
+    assert NETWORK_TOUCHING_WARNING in command_families
 
 
 def test_output_is_deterministic() -> None:

@@ -24,6 +24,7 @@ class CapabilitySummary:
     maturity_levels: tuple[str, ...]
     commands: tuple[str, ...]
     aliases: tuple[str, ...]
+    network_touching: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -205,6 +206,7 @@ def supported_capabilities(
         aliases = sorted({alias for spec in specs for alias in spec.natural_language_aliases})
         maturity_levels = sorted({spec.maturity_level.value for spec in specs})
         commands = tuple(sorted(spec.name for spec in specs))
+        network_touching = any(spec.network_touching for spec in specs)
         summaries.append(
             CapabilitySummary(
                 capability_id=capability_id,
@@ -213,6 +215,7 @@ def supported_capabilities(
                 maturity_levels=tuple(maturity_levels),
                 commands=commands,
                 aliases=tuple(aliases),
+                network_touching=network_touching,
             )
         )
     return tuple(summaries)
@@ -264,7 +267,8 @@ def capability_summary_for_prompt(
         )
         lines.append(
             f"- {capability.capability_id}: {capability.capability_description} "
-            f"(commands: {command_sample}; aliases: {alias_sample})"
+            f"(commands: {command_sample}; aliases: {alias_sample}"
+            f"{'; network-touching' if capability.network_touching else ''})"
         )
     return "\n".join(lines)
 

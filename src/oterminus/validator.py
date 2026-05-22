@@ -7,6 +7,7 @@ from pathlib import Path
 from oterminus.commands import (
     CommandSpec,
     MaturityLevel,
+    NETWORK_TOUCHING_WARNING,
     PathOperandMode,
     command_supported_platforms,
     current_platform_id,
@@ -152,6 +153,8 @@ class Validator:
             reasons.extend(self._maturity_reasons(spec))
             reasons.extend(self._validate_command_shape(spec, args[1:]))
             risk = self._risk_for_command_shape(spec, args[1:], default=risk)
+            if spec.network_touching and NETWORK_TOUCHING_WARNING not in warnings:
+                warnings.append(NETWORK_TOUCHING_WARNING)
 
         if (
             spec is not None

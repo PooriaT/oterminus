@@ -17,10 +17,23 @@ Each command spec includes:
 - `capability_id`
 - `capability_label`
 - `capability_description`
+- `network_touching` for commands that contact external hosts
 - command examples and natural-language aliases
 
 Capability summaries are derived from merged registry metadata and reused for prompts and REPL
 discovery (`capabilities`, `commands`, `examples`, and `help <target>`). These discovery commands are local and deterministic; they do not invoke planner, validator, policy, executor, or Ollama.
+
+## Network boundary
+
+OTerminus is local-first by default. A command that contacts external hosts crosses that boundary
+even when the command is read-only, because it can reveal the user's IP address, DNS query, target
+host, or other network metadata.
+
+Network-touching command families must set `network_touching=True` in their `CommandSpec`.
+Capability summaries, planner context, generated reference docs, validation warnings, and REPL help
+can then surface that boundary consistently. This metadata does not grant permission to execute a
+network command; validation and policy remain authoritative, and user confirmation is still required
+before execution.
 
 ## Current capability domains
 

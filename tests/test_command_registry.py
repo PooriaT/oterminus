@@ -2,6 +2,9 @@ import pytest
 
 from oterminus.commands import (
     COMMAND_PACKS,
+    COMMAND_REGISTRY,
+    NETWORK_TOUCHING_WARNING,
+    MaturityLevel,
     capability_summary_for_prompt,
     command,
     command_examples_for_prompt,
@@ -74,6 +77,35 @@ def test_registry_contains_core_command_metadata() -> None:
     assert spec.capability_id == "filesystem_inspection"
     assert spec.risk_level == RiskLevel.SAFE
     assert spec.direct_supported is True
+    assert spec.network_touching is False
+
+
+def test_command_spec_network_touching_defaults_false() -> None:
+    spec = command(
+        name="localcheck",
+        category="inspection",
+        capability_id="synthetic_local",
+        capability_label="Synthetic local",
+        capability_description="Synthetic local command.",
+        risk_level=RiskLevel.SAFE,
+    )
+
+    assert spec.network_touching is False
+
+
+def test_command_spec_can_mark_network_touching() -> None:
+    spec = command(
+        name="netcheck",
+        category="network_inspection",
+        capability_id="synthetic_network",
+        capability_label="Synthetic network",
+        capability_description="Synthetic network command.",
+        risk_level=RiskLevel.SAFE,
+        maturity_level=MaturityLevel.DIRECT_ONLY,
+        network_touching=True,
+    )
+
+    assert spec.network_touching is True
 
 
 def test_registry_exposes_supported_families_and_direct_commands() -> None:
@@ -151,6 +183,10 @@ def test_all_commands_define_capability_id() -> None:
         assert spec.capability_id
 
 
+def test_existing_commands_are_not_network_touching() -> None:
+    assert all(not spec.network_touching for spec in COMMAND_REGISTRY.values())
+
+
 def test_prompt_examples_output_remains_compact() -> None:
     output = command_examples_for_prompt(max_examples=4)
 
@@ -163,6 +199,26 @@ def test_capability_summary_for_prompt_remains_compact() -> None:
 
     assert len(summary.splitlines()) == 3
     assert len(summary) < 600
+
+
+def test_capability_summary_for_prompt_can_mark_network_touching(monkeypatch) -> None:
+    spec = command(
+        name="netcheck",
+        category="network_inspection",
+        capability_id="synthetic_network",
+        capability_label="Synthetic network",
+        capability_description="Synthetic read-only network diagnostics.",
+        risk_level=RiskLevel.SAFE,
+        network_touching=True,
+        natural_language_aliases=("network diagnostic",),
+    )
+    monkeypatch.setitem(COMMAND_REGISTRY, "netcheck", spec)
+
+    summary = capability_summary_for_prompt(max_capabilities=20)
+
+    assert "synthetic_network" in summary
+    assert "network-touching" in summary
+    assert NETWORK_TOUCHING_WARNING not in summary
 
 
 def test_platform_normalization() -> None:

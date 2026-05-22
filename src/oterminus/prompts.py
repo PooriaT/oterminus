@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from oterminus.commands import (
+    NETWORK_TOUCHING_WARNING,
     capability_summary_for_prompt,
     command_examples_for_prompt,
     supported_base_commands,
@@ -154,6 +155,8 @@ explicitly asks for that later.
 - Stay within the curated local command families: {allowlisted_families}.
 - Treat command families as members of curated capabilities:
 {capability_summaries}
+- If a capability summary is marked network-touching, treat it as leaving the local-machine-only \
+boundary and include this warning in `notes`: {NETWORK_TOUCHING_WARNING}
 - Never include shell chaining, pipelines, redirection, subshells, or command substitution.
 - Avoid unrelated conversation, tutorials, or policy commentary.
 

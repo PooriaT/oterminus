@@ -8,7 +8,7 @@ import sys
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "src"))
 
-from oterminus.commands import COMMAND_PACKS, COMMAND_REGISTRY
+from oterminus.commands import COMMAND_PACKS, COMMAND_REGISTRY, NETWORK_TOUCHING_WARNING
 
 DOCS_REFERENCE = REPO_ROOT / "docs" / "reference"
 CAPABILITY_MAP_PATH = DOCS_REFERENCE / "capability-map.md"
@@ -32,18 +32,39 @@ def _platform_text(platforms: object) -> str:
     return ", ".join(sorted(str(item) for item in platforms))
 
 
+def _notes_for_spec(spec: object) -> tuple[str, ...]:
+    notes = tuple(getattr(spec, "notes", ()))
+    if getattr(spec, "network_touching", False) and NETWORK_TOUCHING_WARNING not in notes:
+        return (*notes, NETWORK_TOUCHING_WARNING)
+    return notes
+
+
 def _render_capability_map() -> str:
     by_capability = defaultdict(list)
     for spec in COMMAND_REGISTRY.values():
         by_capability[spec.capability_id].append(spec)
+
+    has_network_touching = any(spec.network_touching for spec in COMMAND_REGISTRY.values())
+    headers = [
+        "Capability ID",
+        "Label",
+        "Description",
+        "Commands",
+        "Platforms",
+        "Risk levels present",
+        "Maturity levels present",
+    ]
+    if has_network_touching:
+        headers.append("Network")
+    headers.append("Notes")
 
     lines = [
         "# Capability Map",
         "",
         GENERATED_NOTE,
         "",
-        "| Capability ID | Label | Description | Commands | Platforms | Risk levels present | Maturity levels present | Notes |",
-        "|---|---|---|---|---|---|---|---|",
+        "| " + " | ".join(headers) + " |",
+        "|" + "|".join("---" for _ in headers) + "|",
     ]
 
     for capability_id in sorted(by_capability):
@@ -52,24 +73,21 @@ def _render_capability_map() -> str:
         commands = ", ".join(f"`{spec.name}`" for spec in specs)
         risks = ", ".join(sorted({_normalize_level(spec.risk_level) for spec in specs}))
         maturities = ", ".join(sorted({_normalize_level(spec.maturity_level) for spec in specs}))
-        notes = sorted({note for spec in specs for note in spec.notes})
+        notes = sorted({note for spec in specs for note in _notes_for_spec(spec)})
         notes_text = "<br>".join(notes) if notes else "—"
-        lines.append(
-            "| "
-            + " | ".join(
-                [
-                    capability_id,
-                    first.capability_label,
-                    first.capability_description,
-                    commands,
-                    _platform_text({p for spec in specs for p in (spec.supported_platforms or ())}),
-                    risks,
-                    maturities,
-                    notes_text,
-                ]
-            )
-            + " |"
-        )
+        row = [
+            capability_id,
+            first.capability_label,
+            first.capability_description,
+            commands,
+            _platform_text({p for spec in specs for p in (spec.supported_platforms or ())}),
+            risks,
+            maturities,
+        ]
+        if has_network_touching:
+            row.append("yes" if any(spec.network_touching for spec in specs) else "no")
+        row.append(notes_text)
+        lines.append("| " + " | ".join(row) + " |")
 
     return "\n".join(lines) + "\n"
 
@@ -79,6 +97,7 @@ def _render_command_families() -> str:
     for spec in COMMAND_REGISTRY.values():
         by_capability[spec.capability_id].append(spec)
 
+    has_network_touching = any(spec.network_touching for spec in COMMAND_REGISTRY.values())
     lines = [
         "# Command Families Reference",
         "",
@@ -97,8 +116,23 @@ def _render_command_families() -> str:
                 "",
                 f"**Description:** {first.capability_description}",
                 "",
-                "| Command | Category | Platforms | Risk | Maturity | Direct support | Examples | Natural-language aliases | Notes |",
-                "|---|---|---|---|---|---|---|---|---|",
+            ]
+        )
+        headers = [
+            "Command",
+            "Category",
+            "Platforms",
+            "Risk",
+            "Maturity",
+            "Direct support",
+        ]
+        if has_network_touching:
+            headers.append("Network")
+        headers.extend(["Examples", "Natural-language aliases", "Notes"])
+        lines.extend(
+            [
+                "| " + " | ".join(headers) + " |",
+                "|" + "|".join("---" for _ in headers) + "|",
             ]
         )
         for spec in specs:
@@ -110,24 +144,20 @@ def _render_command_families() -> str:
                 if spec.natural_language_aliases
                 else "—"
             )
-            notes = "<br>".join(spec.notes) if spec.notes else "—"
-            lines.append(
-                "| "
-                + " | ".join(
-                    [
-                        f"`{spec.name}`",
-                        spec.category,
-                        _platform_text(spec.supported_platforms),
-                        _normalize_level(spec.risk_level),
-                        _normalize_level(spec.maturity_level),
-                        "yes" if spec.direct_supported else "no",
-                        examples,
-                        aliases,
-                        notes,
-                    ]
-                )
-                + " |"
-            )
+            spec_notes = _notes_for_spec(spec)
+            notes = "<br>".join(spec_notes) if spec_notes else "—"
+            row = [
+                f"`{spec.name}`",
+                spec.category,
+                _platform_text(spec.supported_platforms),
+                _normalize_level(spec.risk_level),
+                _normalize_level(spec.maturity_level),
+                "yes" if spec.direct_supported else "no",
+            ]
+            if has_network_touching:
+                row.append("yes" if spec.network_touching else "no")
+            row.extend([examples, aliases, notes])
+            lines.append("| " + " | ".join(row) + " |")
         lines.append("")
 
     return "\n".join(lines)
