@@ -136,6 +136,11 @@ def test_route_request_network_diagnostics() -> None:
     assert "network_diagnostics" in route.suggested_capabilities
 
 
+def test_route_request_check_if_stays_with_local_inspection_when_not_network_specific() -> None:
+    assert route_request("check if python is running").category == "process_inspect"
+    assert route_request("check if README.md contains TODO").category == "text_search"
+
+
 def test_route_request_unsupported_network_requests() -> None:
     assert route_request("send a POST request").category == "unsupported"
     assert route_request("download this URL").category == "unsupported"
@@ -143,3 +148,8 @@ def test_route_request_unsupported_network_requests() -> None:
     assert route_request("ssh into this server").category == "unsupported"
     assert route_request("call this API with my token").category == "unsupported"
     assert route_request("upload this file").category == "unsupported"
+
+
+def test_route_request_ssh_path_mentions_stay_local() -> None:
+    assert route_request("list ~/.ssh directory").category == "filesystem_inspect"
+    assert route_request("ssh into this server").category == "unsupported"
