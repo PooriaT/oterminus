@@ -163,6 +163,8 @@ def test_validator_accepts_open_on_darwin(monkeypatch) -> None:
         ("git status --short", RiskLevel.SAFE),
         ("git branch --show-current", RiskLevel.SAFE),
         ("git log --oneline -n 5", RiskLevel.SAFE),
+        ("tar -tf archive.tar", RiskLevel.SAFE),
+        ("unzip -l archive.zip", RiskLevel.SAFE),
     ],
 )
 def test_risk_classification_for_next_wave_structured_families(
@@ -202,6 +204,11 @@ def test_risk_classification_for_next_wave_structured_families(
         "git commit -m x",
         "git reset --hard",
         "git push",
+        "tar -xf archive.tar",
+        "tar --extract -f archive.tar",
+        "unzip archive.zip",
+        "unzip -o archive.zip",
+        "zip backup.zip file.txt",
     ],
 )
 def test_acceptance_rejects_invalid_next_wave_variants(command: str) -> None:
@@ -337,6 +344,42 @@ def test_structured_only_proposal_is_previewable_but_not_executable() -> None:
     assert result.argv == ["grep", "-i", "-n", "-r", "-m", "2", "TODO", "src"]
 
 
+def test_validator_accepts_structured_archive_inspection_proposal() -> None:
+    validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))
+    proposal = Proposal(
+        action_type=ActionType.SHELL_COMMAND,
+        mode=ProposalMode.STRUCTURED,
+        command_family="tar",
+        arguments={"operation": "list", "archive_path": "archive.tar"},
+        summary="list archive",
+        explanation="read-only archive inspection",
+        risk_level=RiskLevel.SAFE,
+        needs_confirmation=True,
+        notes=[],
+    )
+
+    result = validator.validate(proposal)
+
+    assert result.accepted is True
+    assert result.risk_level == RiskLevel.SAFE
+    assert result.rendered_command == "tar -tf archive.tar"
+    assert result.argv == ["tar", "-tf", "archive.tar"]
+
+
+def test_validator_rejects_unsafe_direct_archive_path() -> None:
+    validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))
+    result = validator.validate(
+        make_proposal(
+            "unzip -l https://example.com/archive.zip",
+            mode=ProposalMode.EXPERIMENTAL,
+            command_family="unzip",
+        )
+    )
+
+    assert result.accepted is False
+    assert any("Only read-only zip archive inspection" in reason for reason in result.reasons)
+
+
 def test_reject_unknown_command_family() -> None:
     proposal = Proposal(
         action_type=ActionType.SHELL_COMMAND,
@@ -460,3 +503,11 @@ def test_validator_accepts_command_when_pack_enabled() -> None:
     result = validator.validate(make_proposal("ps -Af"))
 
     assert result.accepted is True
+
+
+def test_validator_rejects_archive_command_from_disabled_pack() -> None:
+    validator = Validator(PolicyConfig(disabled_command_packs=frozenset({"archive"})))
+    result = validator.validate(make_proposal("tar -tf archive.tar"))
+
+    assert result.accepted is False
+    assert any("command pack 'archive' is disabled" in reason for reason in result.reasons)

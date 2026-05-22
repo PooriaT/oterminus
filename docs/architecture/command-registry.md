@@ -6,6 +6,7 @@ The command registry is a merged dictionary of `CommandSpec` entries from modula
 
 - `commands/filesystem.py`
 - `commands/text.py`
+- `commands/archive.py`
 - `commands/process.py`
 - `commands/system.py`
 - `commands/macos.py`

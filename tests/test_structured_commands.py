@@ -39,6 +39,8 @@ from oterminus.structured_commands import (
         "sort",
         "uniq",
         "git",
+        "tar",
+        "unzip",
     ],
 )
 def test_supported_structured_families_are_curated(command_family: str) -> None:
@@ -230,6 +232,18 @@ def test_supported_structured_families_are_curated(command_family: str) -> None:
             ("git", "diff", "--name-only"),
             "git diff --name-only",
         ),
+        (
+            "tar",
+            {"operation": "list", "archive_path": "archive.tar"},
+            ("tar", "-tf", "archive.tar"),
+            "tar -tf archive.tar",
+        ),
+        (
+            "unzip",
+            {"operation": "list", "archive_path": "archive.zip"},
+            ("unzip", "-l", "archive.zip"),
+            "unzip -l archive.zip",
+        ),
     ],
 )
 def test_render_structured_command(
@@ -355,6 +369,16 @@ def test_render_structured_command(
             "uniq",
             {"path": "README.md", "count": True, "repeated_only": False, "unique_only": False},
         ),
+        (
+            "tar -tf archive.tar",
+            "tar",
+            {"operation": "list", "archive_path": "archive.tar"},
+        ),
+        (
+            "unzip -l backup.zip",
+            "unzip",
+            {"operation": "list", "archive_path": "backup.zip"},
+        ),
     ],
 )
 def test_parse_raw_command_as_structured(
@@ -373,6 +397,18 @@ def test_render_structured_command_rejects_invalid_arguments() -> None:
 def test_render_structured_command_rejects_open_url_target() -> None:
     with pytest.raises(StructuredCommandError):
         render_structured_command("open", {"path": "https://example.com", "reveal": False})
+
+
+def test_render_structured_command_rejects_missing_archive_path() -> None:
+    with pytest.raises(StructuredCommandError):
+        render_structured_command("tar", {"operation": "list"})
+
+
+def test_render_structured_command_rejects_unsafe_archive_path() -> None:
+    with pytest.raises(StructuredCommandError):
+        render_structured_command(
+            "unzip", {"operation": "list", "archive_path": "backup.zip; rm -rf tmp"}
+        )
 
 
 def test_render_structured_command_rejects_conflicting_grep_flags() -> None:
@@ -427,6 +463,11 @@ def test_parse_raw_command_as_structured_returns_none_for_unsupported_stat_forma
         "lsof -x",
         "wc -z README.md",
         "sort",
+        "tar -xf archive.tar",
+        "tar --extract -f archive.tar",
+        "tar -czf backup.tar.gz folder",
+        "unzip archive.zip",
+        "unzip -o archive.zip",
     ],
 )
 def test_parse_raw_command_as_structured_rejects_invalid_variants(command: str) -> None:

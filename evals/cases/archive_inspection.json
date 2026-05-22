@@ -1,0 +1,103 @@
+[
+  {
+    "id": "archive-list-tar-structured",
+    "user_input": "list the contents of archive.tar",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "tar",
+      "arguments": {"operation": "list", "archive_path": "archive.tar"},
+      "summary": "list tar archive contents",
+      "explanation": "read-only archive inspection",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "structured",
+    "expected_command_family": "tar",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "tar -tf archive.tar",
+    "expected_argv": ["tar", "-tf", "archive.tar"]
+  },
+  {
+    "id": "archive-list-zip-structured",
+    "user_input": "show what is inside backup.zip",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "unzip",
+      "arguments": {"operation": "list", "archive_path": "backup.zip"},
+      "summary": "list zip archive contents",
+      "explanation": "read-only archive inspection",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "structured",
+    "expected_command_family": "unzip",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "unzip -l backup.zip",
+    "expected_argv": ["unzip", "-l", "backup.zip"]
+  },
+  {
+    "id": "archive-inspect-this-zip-structured",
+    "user_input": "inspect this zip file",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "unzip",
+      "arguments": {"operation": "list", "archive_path": "archive.zip"},
+      "summary": "list zip archive contents",
+      "explanation": "read-only archive inspection",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "structured",
+    "expected_command_family": "unzip",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "unzip -l archive.zip",
+    "expected_argv": ["unzip", "-l", "archive.zip"]
+  },
+  {
+    "id": "archive-extract-tar-not-inspection",
+    "user_input": "extract archive.tar",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "experimental",
+      "command_family": "tar",
+      "command": "tar -xf archive.tar",
+      "summary": "extract tar archive",
+      "explanation": "archive extraction is not supported yet",
+      "risk_level": "write",
+      "needs_confirmation": true,
+      "notes": ["unsupported archive extraction"]
+    },
+    "expected_mode": "experimental",
+    "expected_command_family": "tar",
+    "expected_risk_level": "safe",
+    "expected_acceptance": false
+  },
+  {
+    "id": "archive-create-zip-not-supported",
+    "user_input": "create a zip archive",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "experimental",
+      "command_family": "zip",
+      "command": "zip backup.zip file.txt",
+      "summary": "create zip archive",
+      "explanation": "archive creation is not supported yet",
+      "risk_level": "write",
+      "needs_confirmation": true,
+      "notes": ["unsupported archive creation"]
+    },
+    "expected_mode": "experimental",
+    "expected_command_family": "zip",
+    "expected_risk_level": "dangerous",
+    "expected_acceptance": false
+  }
+]

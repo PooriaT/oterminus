@@ -28,6 +28,19 @@ def _validate_path(value: str, *, allow_url_targets: bool = False) -> str:
     return value
 
 
+def _validate_archive_path(value: str) -> str:
+    value = _validate_path(value, allow_url_targets=False)
+    blocked_fragments = ("$(", "`", "\n", "\r", "\x00")
+    if any(fragment in value for fragment in blocked_fragments):
+        raise ValueError("archive_path cannot contain command substitution or control characters.")
+    blocked_operator_fragments = ("&&", "||", ";", "|", "<", ">", "&")
+    if any(fragment in value for fragment in blocked_operator_fragments):
+        raise ValueError("archive_path cannot contain shell operators.")
+    if "*" in value or "?" in value:
+        raise ValueError("archive_path cannot contain wildcard characters.")
+    return value
+
+
 def _validate_paths(values: list[str], *, allow_url_targets: bool = False) -> list[str]:
     return [_validate_path(value, allow_url_targets=allow_url_targets) for value in values]
 
@@ -387,6 +400,38 @@ class GitArguments(_StructuredArgumentsModel):
         return self
 
 
+class TarArguments(_StructuredArgumentsModel):
+    operation: str = Field(min_length=1)
+    archive_path: str = Field(min_length=1)
+
+    @field_validator("archive_path")
+    @classmethod
+    def validate_archive_path(cls, value: str) -> str:
+        return _validate_archive_path(value)
+
+    @model_validator(mode="after")
+    def validate_shape(self) -> TarArguments:
+        if self.operation != "list":
+            raise ValueError("operation must be list.")
+        return self
+
+
+class UnzipArguments(_StructuredArgumentsModel):
+    operation: str = Field(min_length=1)
+    archive_path: str = Field(min_length=1)
+
+    @field_validator("archive_path")
+    @classmethod
+    def validate_archive_path(cls, value: str) -> str:
+        return _validate_archive_path(value)
+
+    @model_validator(mode="after")
+    def validate_shape(self) -> UnzipArguments:
+        if self.operation != "list":
+            raise ValueError("operation must be list.")
+        return self
+
+
 class UniqArguments(_StructuredArgumentsModel):
     path: str = Field(min_length=1)
     count: bool = False
@@ -434,6 +479,8 @@ STRUCTURED_ARGUMENT_MODELS: dict[str, type[_StructuredArgumentsModel]] = {
     "sort": SortArguments,
     "uniq": UniqArguments,
     "git": GitArguments,
+    "tar": TarArguments,
+    "unzip": UnzipArguments,
 }
 
 
@@ -494,6 +541,8 @@ def parse_argv_as_structured(argv: Sequence[str]) -> tuple[str, dict[str, Any]] 
         "sort": _parse_sort_argv,
         "uniq": _parse_uniq_argv,
         "git": _parse_git_argv,
+        "tar": _parse_tar_argv,
+        "unzip": _parse_unzip_argv,
     }.get(command_family)
     if parser is None:
         return None
@@ -764,6 +813,14 @@ def render_structured_command(
             return RenderedCommand(("git", "diff", "--stat"))
         if validated.operation == "diff_name_only":
             return RenderedCommand(("git", "diff", "--name-only"))
+
+    if command_family == "tar":
+        if validated.operation == "list":
+            return RenderedCommand(("tar", "-tf", validated.archive_path))
+
+    if command_family == "unzip":
+        if validated.operation == "list":
+            return RenderedCommand(("unzip", "-l", validated.archive_path))
 
     raise StructuredCommandError(
         f"Structured proposals are not supported for command family '{command_family}'."
@@ -1398,6 +1455,18 @@ def _parse_git_argv(operands: list[str]) -> dict[str, Any] | None:
         except ValueError:
             return None
         return {"operation": "log_oneline", "count": count}
+    return None
+
+
+def _parse_tar_argv(operands: list[str]) -> dict[str, Any] | None:
+    if len(operands) == 2 and operands[0] == "-tf":
+        return {"operation": "list", "archive_path": operands[1]}
+    return None
+
+
+def _parse_unzip_argv(operands: list[str]) -> dict[str, Any] | None:
+    if len(operands) == 2 and operands[0] == "-l":
+        return {"operation": "list", "archive_path": operands[1]}
     return None
 
 

@@ -4,6 +4,7 @@
 
 | Capability ID | Label | Description | Commands | Platforms | Risk levels present | Maturity levels present | Notes |
 |---|---|---|---|---|---|---|---|
+| archive_inspection | Archive inspection | Inspect archive contents without extracting or modifying files. | `tar`, `unzip` | all | safe | structured | Only read-only tar archive listing is supported in curated mode; extraction and creation are not supported.<br>Only read-only zip archive listing is supported in curated mode; extraction and creation are not supported. |
 | destructive_operations | Destructive operations | High-risk operations that can remove data or escalate privileges. | `rm`, `sudo` | all | dangerous | blocked, experimental_only | — |
 | filesystem_inspection | Filesystem inspection | Inspect local files, folders, and metadata safely. | `cd`, `du`, `file`, `find`, `ls`, `pwd`, `stat` | all | safe | direct_only, structured | Changes the oterminus working directory for the current REPL session. |
 | filesystem_mutation | Filesystem mutation | Create, copy, move, or modify files and directory state. | `chmod`, `chown`, `cp`, `mkdir`, `mv`, `touch` | all | dangerous, write | experimental_only, structured | — |
