@@ -755,7 +755,6 @@ STRUCTURED_ARGUMENT_MODELS: dict[str, type[_StructuredArgumentsModel]] = {
     "tar": TarArguments,
     "unzip": UnzipArguments,
     "zip": ZipArguments,
-    "project_health": ProjectHealthArguments,
 }
 
 
