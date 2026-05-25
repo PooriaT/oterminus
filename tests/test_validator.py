@@ -259,6 +259,25 @@ def test_acceptance_rejects_invalid_next_wave_variants(command: str) -> None:
     assert result.accepted is False
 
 
+def test_validator_accepts_structured_project_health_command() -> None:
+    validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))
+    proposal = Proposal(
+        action_type=ActionType.SHELL_COMMAND,
+        mode=ProposalMode.STRUCTURED,
+        command_family="project_health",
+        arguments={"operation": "format_check"},
+        summary="test",
+        explanation="test",
+        risk_level=RiskLevel.WRITE,
+        needs_confirmation=True,
+        notes=[],
+    )
+    result = validator.validate(proposal)
+    assert result.accepted is True
+    assert result.argv == ["poetry", "run", "ruff", "format", "--check", "."]
+    assert any("may execute project code" in warning for warning in result.warnings)
+
+
 def test_validator_rejects_env_with_more_than_one_operand() -> None:
     validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))
     result = validator.validate(make_proposal("env PATH HOME"))
@@ -765,6 +784,16 @@ def test_reject_experimental_when_structured_rendering_is_available() -> None:
         "Experimental mode is not allowed when deterministic structured rendering is available."
         in reason
         for reason in result.reasons
+    )
+
+
+def test_reject_experimental_project_health_pseudo_command() -> None:
+    validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))
+    result = validator.validate(make_proposal("project_health", mode=ProposalMode.EXPERIMENTAL))
+
+    assert result.accepted is False
+    assert any(
+        "project_health is only valid in structured mode" in reason for reason in result.reasons
     )
 
 

@@ -12,6 +12,7 @@ from .git import COMMAND_PACK as GIT_COMMANDS
 from .macos import COMMAND_PACK as MACOS_COMMANDS
 from .network import COMMAND_PACK as NETWORK_COMMANDS
 from .process import COMMAND_PACK as PROCESS_COMMANDS
+from .project import COMMAND_PACK as PROJECT_COMMANDS
 from .system import COMMAND_PACK as SYSTEM_COMMANDS
 from .text import COMMAND_PACK as TEXT_COMMANDS
 from .types import CommandSpec, DirectDetectionMode
@@ -62,6 +63,12 @@ COMMAND_PACKS: tuple[CommandPack, ...] = (
         NETWORK_COMMANDS,
     ),
     CommandPack("process", "Process", "Process inspection commands.", PROCESS_COMMANDS),
+    CommandPack(
+        "project",
+        "Project",
+        "Planned project health workflow capability metadata (not executable yet).",
+        PROJECT_COMMANDS,
+    ),
     CommandPack("system", "System", "System information commands.", SYSTEM_COMMANDS),
     CommandPack(
         "macos",

@@ -688,6 +688,19 @@ class ZipArguments(_StructuredArgumentsModel):
         raise ValueError("operation must be one of: create_zip.")
 
 
+class ProjectHealthArguments(_StructuredArgumentsModel):
+    operation: str = Field(min_length=1)
+
+    @field_validator("operation")
+    @classmethod
+    def validate_operation(cls, value: str) -> str:
+        allowed = {"run_tests", "lint_check", "format_check", "build_docs", "run_evals"}
+        if value not in allowed:
+            supported = ", ".join(sorted(allowed))
+            raise ValueError(f"operation must be one of: {supported}.")
+        return value
+
+
 class UniqArguments(_StructuredArgumentsModel):
     path: str = Field(min_length=1)
     count: bool = False
@@ -742,6 +755,7 @@ STRUCTURED_ARGUMENT_MODELS: dict[str, type[_StructuredArgumentsModel]] = {
     "tar": TarArguments,
     "unzip": UnzipArguments,
     "zip": ZipArguments,
+    "project_health": ProjectHealthArguments,
 }
 
 
@@ -1123,6 +1137,18 @@ def render_structured_command(
             return RenderedCommand(
                 tuple(["zip", "-r", validated.archive_path, *validated.source_paths])
             )
+
+    if command_family == "project_health":
+        if validated.operation == "run_tests":
+            return RenderedCommand(("poetry", "run", "pytest"))
+        if validated.operation == "lint_check":
+            return RenderedCommand(("poetry", "run", "ruff", "check", "."))
+        if validated.operation == "format_check":
+            return RenderedCommand(("poetry", "run", "ruff", "format", "--check", "."))
+        if validated.operation == "build_docs":
+            return RenderedCommand(("poetry", "run", "mkdocs", "build", "--strict"))
+        if validated.operation == "run_evals":
+            return RenderedCommand(("poetry", "run", "oterminus-evals"))
 
     raise StructuredCommandError(
         f"Structured proposals are not supported for command family '{command_family}'."

@@ -57,6 +57,7 @@ def test_existing_commands_remain_available() -> None:
     assert get_command_spec("curl") is not None
     assert get_command_spec("dig") is not None
     assert get_command_spec("nslookup") is not None
+    assert get_command_spec("project_health") is not None
 
 
 def test_supported_base_commands_includes_curated_entries() -> None:
@@ -127,6 +128,7 @@ def test_registry_exposes_supported_families_and_direct_commands() -> None:
     assert "open" not in direct_supported_base_commands(platform_id="linux")
     assert "ps" in direct_supported_base_commands()
     assert "macos_integration" in supported_categories()
+    assert "developer_workflow" in supported_categories()
 
 
 def test_registry_tracks_new_family_constraints() -> None:
@@ -256,3 +258,21 @@ def test_platform_normalization() -> None:
     assert normalize_platform_id("linux") == "linux"
     assert normalize_platform_id("linux2") == "linux"
     assert normalize_platform_id("win32") == "windows"
+
+
+def test_project_health_capability_metadata() -> None:
+    spec = get_command_spec("project_health")
+
+    assert spec is not None
+    assert spec.capability_id == "project_health"
+    assert spec.risk_level == RiskLevel.WRITE
+    assert spec.direct_supported is False
+    assert "execute local project code" in " ".join(spec.notes).lower()
+
+
+def test_project_pack_can_be_disabled() -> None:
+    commands = supported_base_commands(disabled_pack_ids=frozenset({"project"}))
+    capabilities = {cap.capability_id for cap in supported_capabilities(frozenset({"project"}))}
+
+    assert "project_health" not in commands
+    assert "project_health" not in capabilities

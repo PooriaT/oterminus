@@ -46,6 +46,7 @@ from oterminus.structured_commands import (
         "tar",
         "unzip",
         "zip",
+        "project_health",
     ],
 )
 def test_supported_structured_families_are_curated(command_family: str) -> None:
@@ -689,3 +690,25 @@ def test_parse_raw_command_as_structured_raises_for_disallowed_open_url_target()
 def test_parse_raw_command_as_structured_raises_for_conflicting_uniq_flags() -> None:
     with pytest.raises(StructuredCommandError):
         parse_raw_command_as_structured("uniq -du README.md")
+
+
+@pytest.mark.parametrize(
+    ("operation", "expected"),
+    [
+        ("run_tests", ("poetry", "run", "pytest")),
+        ("lint_check", ("poetry", "run", "ruff", "check", ".")),
+        ("format_check", ("poetry", "run", "ruff", "format", "--check", ".")),
+        ("build_docs", ("poetry", "run", "mkdocs", "build", "--strict")),
+        ("run_evals", ("poetry", "run", "oterminus-evals")),
+    ],
+)
+def test_project_health_renders_curated_operations_exactly(
+    operation: str, expected: tuple[str, ...]
+) -> None:
+    rendered = render_structured_command("project_health", {"operation": operation})
+    assert rendered.argv == expected
+
+
+def test_project_health_schema_rejects_unsupported_operations() -> None:
+    with pytest.raises(StructuredCommandError, match="operation must be one of"):
+        render_structured_command("project_health", {"operation": "poetry_run_anything"})

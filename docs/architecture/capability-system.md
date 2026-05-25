@@ -67,3 +67,22 @@ Capability summaries are built from platform-filtered command families, so platf
 The `git_inspection` capability is intentionally scoped to read-only inspection. Registry metadata defines examples, aliases, and warnings so discovery surfaces (`capabilities`, `commands`, `examples`, `help <capability>`) remain consistent without duplicate hardcoded lists.
 
 `git_inspection` does not permit arbitrary `git ...` execution in structured mode; only the approved operation enum is allowed.
+
+## Capability: `project_health`
+
+`project_health` is a curated developer-workflow capability for common repository health checks:
+`run_tests`, `lint_check`, `format_check`, `build_docs`, and `run_evals`.
+
+It is executable via deterministic structured rendering with a strict, closed operation set:
+- `run_tests` -> `poetry run pytest`
+- `lint_check` -> `poetry run ruff check .`
+- `format_check` -> `poetry run ruff format --check .`
+- `build_docs` -> `poetry run mkdocs build --strict`
+- `run_evals` -> `poetry run oterminus-evals`
+
+Safety boundary:
+- always preview and require explicit confirmation
+- reject arbitrary `poetry run ...` commands
+- reject dependency install/update commands
+- reject write-format (`poetry run ruff format .`)
+- reject shell chaining/pipes/redirection/substitution

@@ -23,6 +23,26 @@ def detect_direct_command(
         return None
 
     base = args[0]
+    project_health_arguments = _parse_project_health_direct(args)
+    if project_health_arguments is not None:
+        spec = get_enabled_command_spec("project_health", disabled_pack_ids, platform_id)
+        if spec is None:
+            return None
+        return Proposal(
+            action_type=ActionType.SHELL_COMMAND,
+            mode=ProposalMode.STRUCTURED,
+            command_family="project_health",
+            arguments=project_health_arguments,
+            command=command,
+            summary="Run direct command: project_health",
+            explanation=(
+                "Input already matches a curated project health command, so it will be validated "
+                "locally and rendered deterministically."
+            ),
+            needs_confirmation=True,
+            notes=["Detected as a direct shell command; skipped the LLM planner.", *spec.notes],
+        )
+
     spec = get_enabled_command_spec(base, disabled_pack_ids, platform_id)
     if spec is None or not spec.direct_supported:
         return None
@@ -93,3 +113,17 @@ def _looks_like_natural_language_archive_request(operands: list[str]) -> bool:
         operand.lower() in {"into", "to", "in", "this", "everything", "files", "project"}
         for operand in operands
     )
+
+
+def _parse_project_health_direct(args: list[str]) -> dict[str, str] | None:
+    mapping = {
+        ("poetry", "run", "pytest"): "run_tests",
+        ("poetry", "run", "ruff", "check", "."): "lint_check",
+        ("poetry", "run", "ruff", "format", "--check", "."): "format_check",
+        ("poetry", "run", "mkdocs", "build", "--strict"): "build_docs",
+        ("poetry", "run", "oterminus-evals"): "run_evals",
+    }
+    operation = mapping.get(tuple(args))
+    if operation is None:
+        return None
+    return {"operation": operation}
