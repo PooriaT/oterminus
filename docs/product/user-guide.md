@@ -391,9 +391,17 @@ If `OTERMINUS_EXPLAIN_FAILURES=true`, OTerminus may print a concise explanation 
 For exact environment variables, see [Configuration reference](../reference/config.md#failure-explanations-opt-in).
 
 
-## Planned: project health capability
+## Project health capability
 
-The `project_health` capability provides curated executable checks (`run_tests`, `lint_check`, `format_check`, `build_docs`, `run_evals`) through deterministic structured rendering. It always requires preview and explicit confirmation because these commands may execute local project code.
+The `project_health` capability provides curated executable checks (`run_tests`, `lint_check`,
+`format_check`, `build_docs`, `run_evals`) through deterministic structured rendering.
 
-When execution support is enabled, these operations will still require explicit preview and
-confirmation because they may execute local project code.
+Supported natural-language requests include: run tests, check linting, check formatting, build
+docs, and run evals.
+
+Unsupported requests include dependency/package management (`poetry add`, `poetry install`,
+`poetry update`, `pip install`, `npm install`, `brew install`), write-formatting (`ruff format .`),
+deploy/publish operations, and arbitrary `poetry run ...` commands.
+
+These operations may execute local project code and tooling, so preview and explicit confirmation
+are always required. This capability is not arbitrary shell support.

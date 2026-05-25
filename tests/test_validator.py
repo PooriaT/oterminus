@@ -826,3 +826,45 @@ def test_validator_rejects_archive_command_from_disabled_pack() -> None:
 
     assert result.accepted is False
     assert any("command pack 'archive' is disabled" in reason for reason in result.reasons)
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "poetry add pytest",
+        "poetry update",
+        "poetry install",
+        "pip install -U ruff",
+        "npm install",
+        "brew install mkdocs",
+        "poetry run ruff format .",
+        "poetry run pytest tests/test_validator.py",
+        "poetry run mkdocs gh-deploy",
+        "poetry run twine upload dist/*",
+    ],
+)
+def test_validator_rejects_unsupported_project_tooling_commands(command: str) -> None:
+    validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))
+    result = validator.validate(make_proposal(command))
+
+    assert result.accepted is False
+
+
+def test_validator_rejects_structured_project_health_when_project_pack_disabled() -> None:
+    validator = Validator(PolicyConfig(disabled_command_packs=frozenset({"project"})))
+    proposal = Proposal(
+        action_type=ActionType.SHELL_COMMAND,
+        mode=ProposalMode.STRUCTURED,
+        command_family="project_health",
+        arguments={"operation": "run_tests"},
+        summary="test",
+        explanation="test",
+        risk_level=RiskLevel.WRITE,
+        needs_confirmation=True,
+        notes=[],
+    )
+
+    result = validator.validate(proposal)
+
+    assert result.accepted is False
+    assert any("command pack 'project' is disabled" in reason for reason in result.reasons)

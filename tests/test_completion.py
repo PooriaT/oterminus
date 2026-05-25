@@ -189,3 +189,10 @@ def test_completion_excludes_disabled_network_pack_commands() -> None:
     candidates = _texts(build_repl_completions("pi", disabled_pack_ids=frozenset({"network"})))
 
     assert "ping" not in candidates
+
+
+def test_completion_includes_project_health_capability_and_help_target() -> None:
+    capability_candidates = _texts(build_repl_completions("project_"))
+    help_candidates = _texts(build_repl_completions("help project_"))
+    assert "project_health" in capability_candidates
+    assert "project_health" in help_candidates
