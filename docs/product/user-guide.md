@@ -297,6 +297,10 @@ You can disable specific command packs with `OTERMINUS_DISABLED_COMMAND_PACKS`. 
 format, validation rules, and behavior details, see
 [Command pack availability](../reference/config.md#command-pack-availability).
 
+You can also choose a profile preset with `OTERMINUS_COMMAND_PROFILE`:
+`beginner`, `safe`, `developer`, or `power`. Profiles are convenience presets for disabled packs
+only; policy mode, validation, and confirmation remain authoritative.
+
 
 ## Platform-specific commands
 Some command families are platform-specific. For example, `open` is available by default on macOS (`darwin`) only. On unsupported platforms, these commands are hidden from suggestions and planner hints, and rejected by validator before execution.

@@ -10,6 +10,15 @@ from oterminus.models import RiskLevel
 from oterminus.commands import available_pack_ids
 from oterminus.policies import PolicyConfig
 
+_COMMAND_PROFILE_DISABLED_PACKS: dict[str, frozenset[str]] = {
+    "beginner": frozenset(
+        {"archive", "dangerous", "git", "macos", "network", "process", "project"}
+    ),
+    "safe": frozenset({"dangerous", "network", "project"}),
+    "developer": frozenset({"dangerous", "network"}),
+    "power": frozenset({"dangerous"}),
+}
+
 
 @dataclass(frozen=True)
 class AppConfig:
@@ -94,9 +103,12 @@ def load_config() -> AppConfig:
     failure_explanation_max_chars = _positive_int_env(
         "OTERMINUS_FAILURE_EXPLANATION_MAX_CHARS", default=4000
     )
+    command_profile = _parse_command_profile(os.getenv("OTERMINUS_COMMAND_PROFILE"))
+    profile_disabled_command_packs = _disabled_packs_for_profile(command_profile)
     disabled_command_packs = _parse_disabled_command_packs(
         os.getenv("OTERMINUS_DISABLED_COMMAND_PACKS", "")
     )
+    disabled_command_packs = profile_disabled_command_packs | disabled_command_packs
 
     return AppConfig(
         timeout_seconds=timeout_seconds,
@@ -144,6 +156,29 @@ def _parse_disabled_command_packs(raw: str) -> frozenset[str]:
         )
         raise ValueError(msg)
     return values
+
+
+def _parse_command_profile(raw: str | None) -> str | None:
+    if raw is None:
+        return None
+    normalized = raw.strip().lower()
+    if not normalized:
+        return None
+    if normalized not in _COMMAND_PROFILE_DISABLED_PACKS:
+        msg = (
+            "Unknown value for OTERMINUS_COMMAND_PROFILE: "
+            + normalized
+            + ". Supported profiles: "
+            + ", ".join(sorted(_COMMAND_PROFILE_DISABLED_PACKS))
+        )
+        raise ValueError(msg)
+    return normalized
+
+
+def _disabled_packs_for_profile(profile: str | None) -> frozenset[str]:
+    if profile is None:
+        return frozenset()
+    return _COMMAND_PROFILE_DISABLED_PACKS[profile]
 
 
 def _positive_int_env(name: str, *, default: int) -> int:
