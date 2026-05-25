@@ -516,12 +516,17 @@ _ROUTE_SEED_HINTS: dict[str, tuple[str, ...]] = {
 
 _PROJECT_HEALTH_HINTS = (
     "run tests",
+    "check tests",
     "test suite",
     "check linting",
+    "run ruff check",
     "check ruff",
     "check formatting",
+    "run format check",
     "formatting is okay",
     "build docs",
+    "check docs build",
+    "run mkdocs build",
     "documentation build",
     "run evals",
     "oterminus evals",
@@ -532,11 +537,20 @@ _PROJECT_HEALTH_UNSAFE_HINTS = (
     "format the code",
     "install dependencies",
     "update dependencies",
+    "add a package",
     "poetry add",
     "poetry update",
+    "poetry install",
+    "pip install",
+    "npm install",
+    "brew install",
+    "arbitrary poetry command",
+    "run this arbitrary poetry command",
     "deploy docs",
     "publish docs",
+    "publish package",
     "clean the repo",
+    "clean the project",
 )
 
 

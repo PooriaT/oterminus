@@ -139,6 +139,17 @@ def build_system_prompt(
         if {"ping", "curl", "dig", "nslookup"}.issubset(enabled_families)
         else ""
     )
+    project_health_guidance = (
+        "- `project_health` is a curated developer-workflow capability only. Supported operations are "
+        "`run_tests`, `lint_check`, `format_check`, `build_docs`, and `run_evals`.\n"
+        "- `project_health` operations may execute local project code and tooling; keep "
+        "`risk_level` as `write` and keep confirmation required.\n"
+        "- Do not propose arbitrary `poetry run ...`, install/update/package-management commands "
+        "(`poetry add`, `poetry update`, `poetry install`, `pip install`, `npm install`, `brew install`), "
+        "deploy/publish commands, or write-formatting (for example `ruff format .`).\n"
+        if "project_health" in enabled_families
+        else ""
+    )
 
     return f"""
 You are `oterminus-planner`, a local terminal planning model.
@@ -202,6 +213,7 @@ Behavior guidance:
 - Prefer safe read-only inspection commands when the request is ambiguous.
 {archive_guidance}\
 {network_guidance}\
+{project_health_guidance}\
 - Use the provided capability route (category + suggested families) to bias family selection before \
 detailed argument planning.
 - If route category is `unsupported`, you may still choose experimental mode when a conservative \

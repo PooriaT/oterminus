@@ -89,6 +89,17 @@ Planner proposals for Git in normal structured mode use the `git` family with a 
 
 Mutating/network Git requests are intentionally not routed to `git_inspection` and remain unsupported or blocked by existing safety policy paths.
 
+## Project health routing and planning
+
+The router includes a `project_health` category for clear curated health intents such as running
+tests, lint checks, format checks, docs builds, and evals.
+
+Planner proposals for this route use structured `project_health` with a single closed enum
+argument: `{"operation": "run_tests|lint_check|format_check|build_docs|run_evals"}`.
+
+Requests for install/update/deploy/publish/arbitrary poetry commands, or write-formatting, are not
+treated as safe project-health execution and remain unsupported/rejected by existing safety paths.
+
 ## Network diagnostics routing and planning
 
 The deterministic router includes a `network_diagnostics` route category for clear read-only
