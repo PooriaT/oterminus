@@ -66,7 +66,7 @@ COMMAND_PACKS: tuple[CommandPack, ...] = (
     CommandPack(
         "project",
         "Project",
-        "Planned project health workflow capability metadata (not executable yet).",
+        "Curated project health workflow capability.",
         PROJECT_COMMANDS,
     ),
     CommandPack("system", "System", "System information commands.", SYSTEM_COMMANDS),

@@ -30,3 +30,10 @@ def test_network_diagnostics_help_exposes_warning_and_supported_commands() -> No
     assert "- nslookup" in output
     assert "- ping" in output
     assert NETWORK_TOUCHING_WARNING in output
+
+
+def test_project_health_help_exposes_supported_operations_and_warning() -> None:
+    output = render_capability_help("project_health")
+    assert "Capability: project_health" in output
+    assert "may execute local project code or tooling" in output
+    assert "run_tests, lint_check, format_check, build_docs, run_evals" in output
