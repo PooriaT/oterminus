@@ -137,6 +137,31 @@ class Validator:
 
         base = args[0]
         spec = get_command_spec(base)
+        if proposal.mode == ProposalMode.STRUCTURED and proposal.command_family == "project_health":
+            expected = {
+                ("poetry", "run", "pytest"),
+                ("poetry", "run", "ruff", "check", "."),
+                ("poetry", "run", "ruff", "format", "--check", "."),
+                ("poetry", "run", "mkdocs", "build", "--strict"),
+                ("poetry", "run", "oterminus-evals"),
+            }
+            if tuple(args) not in expected:
+                reasons.append("project_health rendered an unsupported command shape.")
+            warnings.append("This command runs local project tooling and may execute project code.")
+            risk = RiskLevel.WRITE
+            if not is_risk_allowed(risk, self.policy):
+                reasons.append(
+                    f"Risk level '{risk.value}' blocked by policy mode '{self.policy.mode.value}'"
+                )
+            return ValidationResult(
+                accepted=len(reasons) == 0,
+                risk_level=risk,
+                reasons=reasons,
+                warnings=warnings,
+                rendered_command=command,
+                argv=args,
+            )
+
         if proposal.command_family is not None and proposal.command_family != base:
             reasons.append(
                 f"Command base '{base}' does not match command_family '{proposal.command_family}'."

@@ -232,3 +232,16 @@ def test_detect_direct_command_routes_unsafe_archive_operands_to_validator() -> 
 def test_detect_direct_command_allows_archive_natural_language_to_reach_planner() -> None:
     assert detect_direct_command("unzip backup.zip into ./restore") is None
     assert detect_direct_command("zip this") is None
+
+
+def test_detect_direct_command_accepts_exact_project_health_forms() -> None:
+    proposal = detect_direct_command("poetry run pytest")
+    assert proposal is not None
+    assert proposal.mode == ProposalMode.STRUCTURED
+    assert proposal.command_family == "project_health"
+    assert proposal.arguments == {"operation": "run_tests"}
+
+
+def test_detect_direct_command_rejects_non_exact_project_health_forms() -> None:
+    assert detect_direct_command("poetry run pytest tests/test_validator.py") is None
+    assert detect_direct_command("poetry run ruff format .") is None

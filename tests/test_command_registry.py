@@ -260,7 +260,7 @@ def test_platform_normalization() -> None:
     assert normalize_platform_id("win32") == "windows"
 
 
-def test_project_health_capability_metadata_is_model_only() -> None:
+def test_project_health_capability_metadata() -> None:
     spec = get_command_spec("project_health")
 
     assert spec is not None

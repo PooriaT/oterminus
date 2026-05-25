@@ -755,6 +755,7 @@ STRUCTURED_ARGUMENT_MODELS: dict[str, type[_StructuredArgumentsModel]] = {
     "tar": TarArguments,
     "unzip": UnzipArguments,
     "zip": ZipArguments,
+    "project_health": ProjectHealthArguments,
 }
 
 
@@ -1136,6 +1137,18 @@ def render_structured_command(
             return RenderedCommand(
                 tuple(["zip", "-r", validated.archive_path, *validated.source_paths])
             )
+
+    if command_family == "project_health":
+        if validated.operation == "run_tests":
+            return RenderedCommand(("poetry", "run", "pytest"))
+        if validated.operation == "lint_check":
+            return RenderedCommand(("poetry", "run", "ruff", "check", "."))
+        if validated.operation == "format_check":
+            return RenderedCommand(("poetry", "run", "ruff", "format", "--check", "."))
+        if validated.operation == "build_docs":
+            return RenderedCommand(("poetry", "run", "mkdocs", "build", "--strict"))
+        if validated.operation == "run_evals":
+            return RenderedCommand(("poetry", "run", "oterminus-evals"))
 
     raise StructuredCommandError(
         f"Structured proposals are not supported for command family '{command_family}'."

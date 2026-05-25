@@ -119,4 +119,5 @@ def test_default_fixture_suite_is_capability_split() -> None:
         "unsafe_and_blocked.json",
         "ambiguity.json",
         "planner_normalization.json",
+        "project_health.json",
     }.issubset(set(fixture_files))

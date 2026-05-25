@@ -16,6 +16,7 @@ ROUTE_CATEGORIES = {
     "git_inspection",
     "archive_operations",
     "network_diagnostics",
+    "project_health",
     "unsupported",
 }
 
@@ -95,6 +96,25 @@ def route_request(user_input: str) -> RouteResult:
             reason="Request includes mutating or network Git action not supported in curated mode.",
             suggested_families=(),
             suggested_capabilities=(),
+        )
+
+    if _has_any(text, _PROJECT_HEALTH_UNSAFE_HINTS):
+        return RouteResult(
+            category="unsupported",
+            confidence=0.9,
+            reason="Request asks for unsupported project-health mutation or dependency management.",
+            suggested_families=(),
+            suggested_capabilities=(),
+        )
+
+    if _has_any(text, _PROJECT_HEALTH_HINTS):
+        families = _families_for_category("project_health", text)
+        return RouteResult(
+            category="project_health",
+            confidence=0.92,
+            reason="Request asks for curated project health checks.",
+            suggested_families=families,
+            suggested_capabilities=_capabilities_for_category("project_health"),
         )
 
     if _has_any(text, _GIT_INSPECTION_HINTS):
@@ -442,6 +462,7 @@ _ROUTE_CAPABILITIES: dict[str, tuple[str, ...]] = {
     "git_inspection": ("git_inspection",),
     "archive_operations": ("archive_inspection",),
     "network_diagnostics": ("network_diagnostics",),
+    "project_health": ("project_health",),
 }
 
 _ROUTE_SEED_HINTS: dict[str, tuple[str, ...]] = {
@@ -483,7 +504,40 @@ _ROUTE_SEED_HINTS: dict[str, tuple[str, ...]] = {
         "dns lookup",
         "nslookup",
     ),
+    "project_health": (
+        "run tests",
+        "run test suite",
+        "check linting",
+        "check formatting",
+        "build docs",
+        "run evals",
+    ),
 }
+
+_PROJECT_HEALTH_HINTS = (
+    "run tests",
+    "test suite",
+    "check linting",
+    "check ruff",
+    "check formatting",
+    "formatting is okay",
+    "build docs",
+    "documentation build",
+    "run evals",
+    "oterminus evals",
+)
+
+_PROJECT_HEALTH_UNSAFE_HINTS = (
+    "fix formatting",
+    "format the code",
+    "install dependencies",
+    "update dependencies",
+    "poetry add",
+    "poetry update",
+    "deploy docs",
+    "publish docs",
+    "clean the repo",
+)
 
 
 _GIT_INSPECTION_HINTS = (

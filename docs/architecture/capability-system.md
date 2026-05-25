@@ -68,15 +68,21 @@ The `git_inspection` capability is intentionally scoped to read-only inspection.
 
 `git_inspection` does not permit arbitrary `git ...` execution in structured mode; only the approved operation enum is allowed.
 
-## Planned capability: `project_health` (model-only in PR #114)
+## Capability: `project_health`
 
 `project_health` is a curated developer-workflow capability for common repository health checks:
 `run_tests`, `lint_check`, `format_check`, `build_docs`, and `run_evals`.
 
-In this PR it is intentionally **model-only** (`experimental_only` metadata and no renderer):
-- it defines boundary/safety metadata and structured argument shape scaffolding,
-- it does **not** provide executable rendering yet,
-- it does **not** permit arbitrary `poetry run ...` or arbitrary shell fragments.
+It is executable via deterministic structured rendering with a strict, closed operation set:
+- `run_tests` -> `poetry run pytest`
+- `lint_check` -> `poetry run ruff check .`
+- `format_check` -> `poetry run ruff format --check .`
+- `build_docs` -> `poetry run mkdocs build --strict`
+- `run_evals` -> `poetry run oterminus-evals`
 
-This boundary exists because these workflows can execute local project code and must remain explicit,
-curated, previewed, and confirmation-gated when execution lands in PR 2.
+Safety boundary:
+- always preview and require explicit confirmation
+- reject arbitrary `poetry run ...` commands
+- reject dependency install/update commands
+- reject write-format (`poetry run ruff format .`)
+- reject shell chaining/pipes/redirection/substitution
