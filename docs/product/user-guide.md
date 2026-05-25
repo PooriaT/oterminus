@@ -375,10 +375,14 @@ the command shape, archive path, destination path, and policy boundaries, but it
 archive member paths or block path traversal inside archive contents before calling `tar` or
 `unzip`.
 
-
 ## Failure explanations (opt-in)
 
-- `OTERMINUS_EXPLAIN_FAILURES` (default `false`): when enabled, OTerminus can generate a post-execution failure explanation for non-zero exit codes only.
-- `OTERMINUS_FAILURE_EXPLANATION_MAX_CHARS` (default `4000`): bounds redacted stderr/stdout snippets sent to the explainer and written to audit metadata.
-- Suggested next actions are **never auto-executed**; they are displayed as dry-run/copy-only guidance.
-- Output snippets are redacted and truncated; avoid sharing logs that may still contain sensitive paths or context.
+If `OTERMINUS_EXPLAIN_FAILURES=true`, OTerminus may print a concise explanation after a confirmed command exits non-zero.
+
+- Runs only after command execution (not in dry-run/explain modes).
+- Never auto-executes suggested next actions.
+- Suggestions are guidance only (`dry-run`/`copy-only`).
+- Context sent to explanation is redacted and truncated.
+
+For exact environment variables, see [Configuration reference](../reference/config.md#failure-explanations-opt-in).
+

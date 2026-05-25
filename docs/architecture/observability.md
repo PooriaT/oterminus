@@ -51,10 +51,8 @@ Persisted history records may include request text, rendered command text, local
 
 `OTERMINUS_HISTORY_REDACT` can redact obvious secret-looking values before write, but redaction is best-effort and does not guarantee removal of all sensitive context. Review history content before copying, pasting, or publishing it.
 
-
 ## Failure explanations (opt-in)
 
-- `OTERMINUS_EXPLAIN_FAILURES` (default `false`): when enabled, OTerminus can generate a post-execution failure explanation for non-zero exit codes only.
-- `OTERMINUS_FAILURE_EXPLANATION_MAX_CHARS` (default `4000`): bounds redacted stderr/stdout snippets sent to the explainer and written to audit metadata.
-- Suggested next actions are **never auto-executed**; they are displayed as dry-run/copy-only guidance.
-- Output snippets are redacted and truncated; avoid sharing logs that may still contain sensitive paths or context.
+When enabled, audit captures only bounded metadata for failure explanation outcomes (not full stdout/stderr).
+See [Audit log schema](../reference/audit-log-schema.md) and [Configuration reference](../reference/config.md#failure-explanations-opt-in).
+
