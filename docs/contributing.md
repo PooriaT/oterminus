@@ -94,6 +94,7 @@ Run the checks that match your change before opening a PR:
 poetry run ruff format .
 poetry run ruff format --check .
 poetry run ruff check .
+poetry run pytest
 poetry run pytest --cov=src/oterminus --cov-report=term-missing
 poetry run python scripts/check_docs_links.py
 poetry run mkdocs build --strict
