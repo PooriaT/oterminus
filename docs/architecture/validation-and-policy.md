@@ -94,9 +94,14 @@ If validation fails:
 Experimental mode does not bypass validation or policy. It exists only as a constrained fallback
 when structured rendering is unavailable or unsuitable.
 
-## Project health risk boundary (planned)
+## Project health risk boundary
 
 Project-health checks are common developer workflows, but they are not passive inspection:
-pytest/evals/docs/tooling may execute repository code. The capability boundary therefore stays curated
-and non-arbitrary (no generic `poetry run ...`) and requires preview + explicit confirmation once
-execution support is implemented.
+pytest/evals/docs/tooling may execute repository code. Validation accepts project-health only through
+structured rendering of the curated operations (`run_tests`, `lint_check`, `format_check`,
+`build_docs`, `run_evals`) into exact command argv forms.
+
+Validation rejects arbitrary project tooling commands (for example unsupported `poetry run ...`,
+package installation/update commands, and publish/deploy commands). Accepted project-health proposals
+carry a warning that local project code/tooling may execute and remain write-risk with explicit
+preview + confirmation requirements.

@@ -25,7 +25,7 @@ COMMAND_PACK: tuple[CommandSpec, ...] = (
         category="developer_workflow",
         **PROJECT_HEALTH,
         risk_level=RiskLevel.WRITE,
-        maturity_level=MaturityLevel.EXPERIMENTAL_ONLY,
+        maturity_level=MaturityLevel.STRUCTURED,
         direct_supported=False,
         min_operands=0,
         max_operands=0,

@@ -109,7 +109,7 @@
 
 | Command | Category | Platforms | Risk | Maturity | Direct support | Network | Examples | Natural-language aliases | Notes |
 |---|---|---|---|---|---|---|---|---|---|
-| `project_health` | developer_workflow | all | write | experimental_only | no | no | `project_health run_tests`<br>`project_health lint_check`<br>`project_health format_check`<br>`project_health build_docs`<br>`project_health run_evals` | `run project tests`, `check project formatting`, `run project lint`, `build project docs`, `run project evals` | Project health operations may execute local project code or tooling (for example via test suites, docs builds, and eval workflows).<br>Always preview and require explicit user confirmation before execution.<br>Only curated operations are in scope: run_tests, lint_check, format_check, build_docs, run_evals.<br>Arbitrary 'poetry run ...' and arbitrary shell execution are not supported. |
+| `project_health` | developer_workflow | all | write | structured | no | no | `project_health run_tests`<br>`project_health lint_check`<br>`project_health format_check`<br>`project_health build_docs`<br>`project_health run_evals` | `run project tests`, `check project formatting`, `run project lint`, `build project docs`, `run project evals` | Project health operations may execute local project code or tooling (for example via test suites, docs builds, and eval workflows).<br>Always preview and require explicit user confirmation before execution.<br>Only curated operations are in scope: run_tests, lint_check, format_check, build_docs, run_evals.<br>Arbitrary 'poetry run ...' and arbitrary shell execution are not supported. |
 
 ## `system_inspection`
 

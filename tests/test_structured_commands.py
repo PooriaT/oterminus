@@ -712,3 +712,15 @@ def test_project_health_renders_curated_operations_exactly(
 def test_project_health_schema_rejects_unsupported_operations() -> None:
     with pytest.raises(StructuredCommandError, match="operation must be one of"):
         render_structured_command("project_health", {"operation": "poetry_run_anything"})
+
+
+def test_project_health_schema_rejects_missing_operation() -> None:
+    with pytest.raises(StructuredCommandError, match="Field required"):
+        render_structured_command("project_health", {})
+
+
+def test_project_health_schema_rejects_extra_arguments() -> None:
+    with pytest.raises(StructuredCommandError, match="Extra inputs are not permitted"):
+        render_structured_command(
+            "project_health", {"operation": "run_tests", "raw_command": "poetry run pytest"}
+        )
