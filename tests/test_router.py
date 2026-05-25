@@ -9,6 +9,7 @@ def test_route_request_common_buckets() -> None:
     assert route_request("list all files in this directory").category == "filesystem_inspect"
     assert route_request("show running python processes").category == "process_inspect"
     assert route_request("show disk space").category == "metadata_inspect"
+    assert route_request("run the test suite").category == "project_health"
 
 
 def test_route_request_ambiguous_prefers_safe_inspection() -> None:
@@ -23,6 +24,7 @@ def test_route_request_ambiguous_prefers_safe_inspection() -> None:
 def test_route_request_unsupported_cases() -> None:
     assert route_request("write me a poem about oceans").category == "unsupported"
     assert route_request("   ").category == "unsupported"
+    assert route_request("fix formatting").category == "unsupported"
 
 
 def test_route_request_does_not_treat_embedded_ps_as_process_hint() -> None:

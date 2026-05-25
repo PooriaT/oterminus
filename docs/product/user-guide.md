@@ -389,9 +389,7 @@ For exact environment variables, see [Configuration reference](../reference/conf
 
 ## Planned: project health capability
 
-A planned `project_health` capability models common checks (`run_tests`, `lint_check`, `format_check`,
-`build_docs`, `run_evals`) as curated structured operations. In the current release it is model-only
-and not executable yet.
+The `project_health` capability provides curated executable checks (`run_tests`, `lint_check`, `format_check`, `build_docs`, `run_evals`) through deterministic structured rendering. It always requires preview and explicit confirmation because these commands may execute local project code.
 
 When execution support is enabled, these operations will still require explicit preview and
 confirmation because they may execute local project code.

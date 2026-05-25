@@ -46,6 +46,7 @@ from oterminus.structured_commands import (
         "tar",
         "unzip",
         "zip",
+        "project_health",
     ],
 )
 def test_supported_structured_families_are_curated(command_family: str) -> None:
@@ -691,11 +692,23 @@ def test_parse_raw_command_as_structured_raises_for_conflicting_uniq_flags() -> 
         parse_raw_command_as_structured("uniq -du README.md")
 
 
-def test_project_health_schema_accepts_curated_operation_but_renderer_is_not_implemented() -> None:
-    with pytest.raises(StructuredCommandError, match="Structured proposals are not supported"):
-        render_structured_command("project_health", {"operation": "run_tests"})
+@pytest.mark.parametrize(
+    ("operation", "expected"),
+    [
+        ("run_tests", ("poetry", "run", "pytest")),
+        ("lint_check", ("poetry", "run", "ruff", "check", ".")),
+        ("format_check", ("poetry", "run", "ruff", "format", "--check", ".")),
+        ("build_docs", ("poetry", "run", "mkdocs", "build", "--strict")),
+        ("run_evals", ("poetry", "run", "oterminus-evals")),
+    ],
+)
+def test_project_health_renders_curated_operations_exactly(
+    operation: str, expected: tuple[str, ...]
+) -> None:
+    rendered = render_structured_command("project_health", {"operation": operation})
+    assert rendered.argv == expected
 
 
-def test_project_health_schema_does_not_validate_operations_before_renderer() -> None:
-    with pytest.raises(StructuredCommandError, match="Structured proposals are not supported"):
+def test_project_health_schema_rejects_unsupported_operations() -> None:
+    with pytest.raises(StructuredCommandError, match="operation must be one of"):
         render_structured_command("project_health", {"operation": "poetry_run_anything"})

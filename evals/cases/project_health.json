@@ -1,0 +1,63 @@
+[
+  {
+    "id": "project-health-run-tests",
+    "user_input": "run tests",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "project_health",
+      "arguments": {"operation": "run_tests"},
+      "summary": "run tests",
+      "explanation": "Run curated project test suite.",
+      "risk_level": "write",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "structured",
+    "expected_command_family": "project_health",
+    "expected_risk_level": "write",
+    "expected_acceptance": true,
+    "expected_rendered_command": "poetry run pytest",
+    "expected_argv": ["poetry", "run", "pytest"]
+  },
+  {
+    "id": "project-health-format-check",
+    "user_input": "check formatting",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "project_health",
+      "arguments": {"operation": "format_check"},
+      "summary": "check formatting",
+      "explanation": "Run ruff format in check mode.",
+      "risk_level": "write",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "structured",
+    "expected_command_family": "project_health",
+    "expected_risk_level": "write",
+    "expected_acceptance": true,
+    "expected_rendered_command": "poetry run ruff format --check .",
+    "expected_argv": ["poetry", "run", "ruff", "format", "--check", "."]
+  },
+  {
+    "id": "project-health-reject-format-write",
+    "user_input": "format the code",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "experimental",
+      "command_family": "poetry",
+      "command": "poetry run ruff format .",
+      "summary": "format code",
+      "explanation": "Unsupported write formatting variant.",
+      "risk_level": "write",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "experimental",
+    "expected_command_family": "poetry",
+    "expected_risk_level": "dangerous",
+    "expected_acceptance": false
+  }
+]
