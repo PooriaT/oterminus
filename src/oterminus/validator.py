@@ -136,6 +136,19 @@ class Validator:
             )
 
         base = args[0]
+        if proposal.mode != ProposalMode.STRUCTURED and base == "project_health":
+            reasons.append(
+                "project_health is only valid in structured mode and must render a curated tooling command."
+            )
+            return ValidationResult(
+                accepted=False,
+                risk_level=RiskLevel.DANGEROUS,
+                reasons=reasons,
+                warnings=warnings,
+                rendered_command=command,
+                argv=args,
+            )
+
         spec = get_command_spec(base)
         if proposal.mode == ProposalMode.STRUCTURED and proposal.command_family == "project_health":
             expected = {
