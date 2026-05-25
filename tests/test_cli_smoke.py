@@ -1745,7 +1745,9 @@ def test_repl_passes_persistent_store_to_handle_request(monkeypatch) -> None:
     assert captured["persistent_store"] is store
 
 
-def test_main_explain_failures_does_not_require_startup_before_request_handling(monkeypatch) -> None:
+def test_main_explain_failures_does_not_require_startup_before_request_handling(
+    monkeypatch,
+) -> None:
     from oterminus.cli import main
 
     config = Mock()

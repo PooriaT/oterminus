@@ -336,7 +336,9 @@ def handle_request(
         print(f"[oterminus] stderr truncated to {max_output_chars} characters.")
     print(f"Exit code: {result.returncode}")
 
-    if result.returncode != 0 and (failure_explainer is not None or failure_explainer_factory is not None):
+    if result.returncode != 0 and (
+        failure_explainer is not None or failure_explainer_factory is not None
+    ):
         event.failure_explanation_requested = True
         try:
             active_failure_explainer = failure_explainer
@@ -705,6 +707,7 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         explain_failures_enabled = getattr(config, "explain_failures", False) is True
         if explain_failures_enabled:
+
             def get_failure_explainer() -> FailureExplainer:
                 nonlocal failure_explainer
                 if failure_explainer is not None:
