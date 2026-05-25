@@ -83,6 +83,60 @@ def test_load_config_disabled_command_packs(monkeypatch, tmp_path: Path) -> None
     assert config.policy.disabled_command_packs == frozenset({"dangerous", "process"})
 
 
+def test_load_config_command_profile_unset_preserves_existing_behavior(
+    monkeypatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(tmp_path / "config.json"))
+    monkeypatch.delenv("OTERMINUS_COMMAND_PROFILE", raising=False)
+    monkeypatch.delenv("OTERMINUS_DISABLED_COMMAND_PACKS", raising=False)
+
+    config = load_config()
+
+    assert config.policy.disabled_command_packs == frozenset()
+
+
+def test_load_config_command_profiles(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(tmp_path / "config.json"))
+    expected = {
+        "beginner": frozenset(
+            {"archive", "dangerous", "git", "macos", "network", "process", "project"}
+        ),
+        "safe": frozenset({"dangerous", "network", "project"}),
+        "developer": frozenset({"dangerous", "network"}),
+        "power": frozenset({"dangerous"}),
+    }
+
+    for profile, expected_disabled in expected.items():
+        monkeypatch.setenv("OTERMINUS_COMMAND_PROFILE", profile.upper())
+        monkeypatch.delenv("OTERMINUS_DISABLED_COMMAND_PACKS", raising=False)
+        config = load_config()
+        assert config.policy.disabled_command_packs == expected_disabled
+
+
+def test_load_config_rejects_unknown_command_profile(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(tmp_path / "config.json"))
+    monkeypatch.setenv("OTERMINUS_COMMAND_PROFILE", "devv")
+
+    import pytest
+
+    with pytest.raises(ValueError, match=r"OTERMINUS_COMMAND_PROFILE"):
+        load_config()
+
+
+def test_load_config_combines_profile_and_explicit_disabled_command_packs(
+    monkeypatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(tmp_path / "config.json"))
+    monkeypatch.setenv("OTERMINUS_COMMAND_PROFILE", "developer")
+    monkeypatch.setenv("OTERMINUS_DISABLED_COMMAND_PACKS", "macos, process")
+
+    config = load_config()
+
+    assert config.policy.disabled_command_packs == frozenset(
+        {"dangerous", "network", "macos", "process"}
+    )
+
+
 def test_load_config_rejects_unknown_disabled_command_pack(monkeypatch, tmp_path: Path) -> None:
     monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(tmp_path / "config.json"))
     monkeypatch.setenv("OTERMINUS_DISABLED_COMMAND_PACKS", "notapack")

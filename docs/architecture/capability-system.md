@@ -57,6 +57,8 @@ See [reference capability map](../reference/capability-map.md).
 ## Command pack availability
 Command-pack enable/disable behavior is documented in the configuration reference:
 [Command pack availability](../reference/config.md#command-pack-availability).
+Profile presets (`beginner`, `safe`, `developer`, `power`) only change pack availability; they do
+not replace policy mode and they do not bypass validation or confirmation.
 
 
 ## Platform-aware capability visibility

@@ -21,6 +21,7 @@ file. The implementation in `src/oterminus/config.py` is the source of truth for
 | Persistent history path | `OTERMINUS_HISTORY_PATH` | Not supported | `~/.oterminus/history.jsonl` | Local JSONL file used when persistent history is enabled. |
 | Persistent history limit | `OTERMINUS_HISTORY_LIMIT` | Not supported | `100` | Maximum number of persisted records loaded into each REPL session. Must be a valid integer in the environment; loaded values are clamped to at least `1` by the history store. |
 | Persistent history redaction | `OTERMINUS_HISTORY_REDACT` | Not supported | Follows `OTERMINUS_AUDIT_REDACT` | Uses the same boolean parsing as `OTERMINUS_AUDIT_ENABLED`; controls redaction before writing history records. |
+| Command-pack profile preset | `OTERMINUS_COMMAND_PROFILE` | Not supported | Unset | Optional preset for command-pack availability (`beginner`, `safe`, `developer`, `power`). Unset preserves existing behavior. |
 
 ## Environment variables
 
@@ -39,6 +40,7 @@ Supported `OTERMINUS_*` variables are:
 - `OTERMINUS_HISTORY_PATH`
 - `OTERMINUS_HISTORY_LIMIT`
 - `OTERMINUS_HISTORY_REDACT`
+- `OTERMINUS_COMMAND_PROFILE`
 
 `OTERMINUS_MODEL` is not currently implemented. Set the persisted `model` field in the user config
 file, or let first-run setup write it after you choose from installed Ollama models.
@@ -107,7 +109,53 @@ export OTERMINUS_HISTORY_REDACT=true
 ```
 
 ## Command pack availability
-Set `OTERMINUS_DISABLED_COMMAND_PACKS` to a comma-separated list of pack IDs (e.g. `dangerous`, `process,macos`). Pack IDs are case-insensitive and validated. Disabled packs are removed from planner/completion context and commands are rejected by validator before execution. This is separate from capability IDs and does not change policy mode.
+Command-pack controls are config-only availability presets and filters. They **do not** bypass validator, policy mode, or confirmation.
+
+### `OTERMINUS_COMMAND_PROFILE` (preset)
+Set `OTERMINUS_COMMAND_PROFILE` to one of:
+
+- `beginner`
+- `safe`
+- `developer`
+- `power`
+
+When unset, OTerminus keeps its prior behavior (no profile-based pack disablement).
+
+Profile semantics are defined by disabled pack IDs:
+
+- `beginner`: disables `archive`, `dangerous`, `git`, `macos`, `network`, `process`, `project`
+- `safe`: disables `dangerous`, `network`, `project`
+- `developer`: disables `dangerous`, `network`
+- `power`: disables `dangerous`
+
+### `OTERMINUS_DISABLED_COMMAND_PACKS` (explicit disable list)
+Set `OTERMINUS_DISABLED_COMMAND_PACKS` to a comma-separated list of pack IDs (for example, `dangerous` or `process,macos`). Pack IDs are case-insensitive and validated.
+
+Precedence rule:
+
+1. Resolve profile disabled packs (if `OTERMINUS_COMMAND_PROFILE` is set).
+2. Apply `OTERMINUS_DISABLED_COMMAND_PACKS` as additional disabled packs.
+
+This means explicit disabled packs always disable additional packs and never re-enable profile-disabled packs.
+
+All disabled packs are removed from planner/completion context and commands are rejected by validator before execution. This is separate from capability IDs and does not change policy mode.
+
+### Examples
+
+```bash
+# Restrictive starter preset.
+export OTERMINUS_COMMAND_PROFILE=beginner
+
+# Practical developer preset.
+export OTERMINUS_COMMAND_PROFILE=developer
+
+# Broad non-dangerous preset.
+export OTERMINUS_COMMAND_PROFILE=power
+
+# Start from developer preset, then additionally disable network + macos packs.
+export OTERMINUS_COMMAND_PROFILE=developer
+export OTERMINUS_DISABLED_COMMAND_PACKS=network,macos
+```
 
 
 ## Failure explanations (opt-in)
