@@ -93,3 +93,10 @@ If validation fails:
 
 Experimental mode does not bypass validation or policy. It exists only as a constrained fallback
 when structured rendering is unavailable or unsuitable.
+
+## Project health risk boundary (planned)
+
+Project-health checks are common developer workflows, but they are not passive inspection:
+pytest/evals/docs/tooling may execute repository code. The capability boundary therefore stays curated
+and non-arbitrary (no generic `poetry run ...`) and requires preview + explicit confirmation once
+execution support is implemented.

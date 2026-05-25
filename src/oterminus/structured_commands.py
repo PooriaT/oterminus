@@ -688,6 +688,19 @@ class ZipArguments(_StructuredArgumentsModel):
         raise ValueError("operation must be one of: create_zip.")
 
 
+class ProjectHealthArguments(_StructuredArgumentsModel):
+    operation: str = Field(min_length=1)
+
+    @field_validator("operation")
+    @classmethod
+    def validate_operation(cls, value: str) -> str:
+        allowed = {"run_tests", "lint_check", "format_check", "build_docs", "run_evals"}
+        if value not in allowed:
+            supported = ", ".join(sorted(allowed))
+            raise ValueError(f"operation must be one of: {supported}.")
+        return value
+
+
 class UniqArguments(_StructuredArgumentsModel):
     path: str = Field(min_length=1)
     count: bool = False

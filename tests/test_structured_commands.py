@@ -689,3 +689,13 @@ def test_parse_raw_command_as_structured_raises_for_disallowed_open_url_target()
 def test_parse_raw_command_as_structured_raises_for_conflicting_uniq_flags() -> None:
     with pytest.raises(StructuredCommandError):
         parse_raw_command_as_structured("uniq -du README.md")
+
+
+def test_project_health_schema_accepts_curated_operation_but_renderer_is_not_implemented() -> None:
+    with pytest.raises(StructuredCommandError, match="Structured proposals are not supported"):
+        render_structured_command("project_health", {"operation": "run_tests"})
+
+
+def test_project_health_schema_does_not_validate_operations_before_renderer() -> None:
+    with pytest.raises(StructuredCommandError, match="Structured proposals are not supported"):
+        render_structured_command("project_health", {"operation": "poetry_run_anything"})

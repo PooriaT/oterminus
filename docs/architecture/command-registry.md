@@ -60,3 +60,11 @@ For the canonical behavior and env var details, see
 
 ## Platform-aware availability
 Command specs can declare `supported_platforms` (normalized ids: `darwin`, `linux`, `windows`). Unsupported commands are filtered from prompt/autocomplete registry views, but validation remains authoritative and rejects unsupported commands before execution.
+
+## Planned project-health pack
+
+The `project` pack adds `project_health` metadata only (PR #114). It is intentionally non-executable
+in this phase (maturity `experimental_only`, `direct_supported=false`).
+
+The pack documents a strict operation enum (`run_tests`, `lint_check`, `format_check`, `build_docs`,
+`run_evals`) and explicit risk notes that project tooling may execute local code.
