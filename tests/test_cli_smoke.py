@@ -1743,3 +1743,88 @@ def test_repl_passes_persistent_store_to_handle_request(monkeypatch) -> None:
 
     assert code == 0
     assert captured["persistent_store"] is store
+
+
+def test_main_explain_failures_does_not_require_startup_before_request_handling(monkeypatch) -> None:
+    from oterminus.cli import main
+
+    config = Mock()
+    config.policy = Mock()
+    config.timeout_seconds = 30
+    config.audit_log_path = Path("/tmp/oterminus-audit.jsonl")
+    config.audit_enabled = False
+    config.audit_redact = True
+    config.explain_failures = True
+    config.failure_explanation_max_chars = 4000
+
+    monkeypatch.setattr("oterminus.cli.configure_logging", lambda verbose: None)
+    monkeypatch.setattr("oterminus.cli.load_config", lambda: config)
+    monkeypatch.setattr(
+        "oterminus.cli.ensure_startup_ready",
+        Mock(side_effect=AssertionError("startup should not be called eagerly")),
+    )
+    monkeypatch.setattr("oterminus.cli.Validator", lambda policy: Mock())
+    monkeypatch.setattr("oterminus.cli.Executor", lambda timeout_seconds: Mock())
+
+    def fake_handle_request(*_args, **kwargs) -> int:
+        assert kwargs.get("failure_explainer_factory") is not None
+        return 0
+
+    monkeypatch.setattr("oterminus.cli.handle_request", fake_handle_request)
+
+    code = main(["pwd"])
+    assert code == 0
+
+
+def test_repl_propagates_failure_explainer_to_requests(monkeypatch) -> None:
+    from oterminus.cli import repl
+
+    captured: list[dict[str, object]] = []
+    monkeypatch.setattr("oterminus.cli.create_prompt_session", lambda: (None, "plain_input"))
+    answers = iter(["pwd", "exit"])
+    monkeypatch.setattr("builtins.input", lambda _: next(answers))
+
+    explainer = Mock()
+
+    def fake_handle_request(*_args, **kwargs) -> int:
+        captured.append(kwargs)
+        return 0
+
+    monkeypatch.setattr("oterminus.cli.handle_request", fake_handle_request)
+
+    code = repl(Mock(), Mock(), Mock(), failure_explainer=explainer)
+
+    assert code == 0
+    assert captured[0].get("failure_explainer") is explainer
+
+
+def test_handle_repl_history_rerun_propagates_failure_explainer(monkeypatch) -> None:
+    from oterminus.cli import handle_repl_history_command
+    from oterminus.history import SessionHistory
+
+    history = SessionHistory()
+    item = history.start("pwd")
+    item.persisted_id = 42
+
+    captured: dict[str, object] = {}
+
+    def fake_handle_request(*_args, **kwargs) -> int:
+        captured.update(kwargs)
+        return 0
+
+    monkeypatch.setattr("oterminus.cli.handle_request", fake_handle_request)
+
+    explainer = Mock()
+    out = handle_repl_history_command(
+        "rerun 1",
+        session_history=history,
+        planner_factory=Mock(),
+        validator=Mock(),
+        executor=Mock(),
+        audit_logger=None,
+        debug_trace=False,
+        failure_explainer=explainer,
+    )
+
+    assert out == ""
+    assert captured.get("failure_explainer") is explainer

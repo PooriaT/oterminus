@@ -117,6 +117,7 @@ def handle_request(
     persistent_store: PersistentHistoryStore | None = None,
     disabled_pack_ids: frozenset[str] | None = None,
     failure_explainer: FailureExplainer | None = None,
+    failure_explainer_factory: Callable[[], FailureExplainer] | None = None,
 ) -> int:
     started_at = datetime.now(tz=timezone.utc)
     event = AuditEvent.start(user_input=request)
@@ -335,19 +336,23 @@ def handle_request(
         print(f"[oterminus] stderr truncated to {max_output_chars} characters.")
     print(f"Exit code: {result.returncode}")
 
-    if result.returncode != 0 and failure_explainer is not None:
+    if result.returncode != 0 and (failure_explainer is not None or failure_explainer_factory is not None):
         event.failure_explanation_requested = True
         try:
-            explanation = failure_explainer.explain(
-                command=command,
-                exit_code=result.returncode,
-                stdout=result.stdout,
-                stderr=result.stderr,
-            )
-            event.failure_explanation_generated = True
-            event.failure_suggested_next_action = explanation.suggested_next_action
-            event.failure_stderr_summary = explanation.stderr_summary
-            print(render_failure_explanation(explanation))
+            active_failure_explainer = failure_explainer
+            if active_failure_explainer is None and failure_explainer_factory is not None:
+                active_failure_explainer = failure_explainer_factory()
+            if active_failure_explainer is not None:
+                explanation = active_failure_explainer.explain(
+                    command=command,
+                    exit_code=result.returncode,
+                    stdout=result.stdout,
+                    stderr=result.stderr,
+                )
+                event.failure_explanation_generated = True
+                event.failure_suggested_next_action = explanation.suggested_next_action
+                event.failure_stderr_summary = explanation.stderr_summary
+                print(render_failure_explanation(explanation))
         except Exception as exc:  # noqa: BLE001
             event.failure_explanation_error = str(exc)
 
@@ -386,6 +391,7 @@ def repl(
     persistent_store: PersistentHistoryStore | None = None,
     disabled_pack_ids: frozenset[str] | None = None,
     failure_explainer: FailureExplainer | None = None,
+    failure_explainer_factory: Callable[[], FailureExplainer] | None = None,
 ) -> int:
     print("oterminus REPL. Type 'help' for guidance, 'exit' or 'quit' to leave.")
     session_history = SessionHistory()
@@ -441,6 +447,8 @@ def repl(
             audit_logger=audit_logger,
             debug_trace=debug_trace,
             persistent_store=persistent_store,
+            failure_explainer=failure_explainer,
+            failure_explainer_factory=failure_explainer_factory,
         )
         if history_response is not None:
             if isinstance(history_response, str):
@@ -470,6 +478,8 @@ def repl(
             session_history=session_history,
             persistent_store=persistent_store,
             disabled_pack_ids=disabled_pack_ids,
+            failure_explainer=failure_explainer,
+            failure_explainer_factory=failure_explainer_factory,
         )
 
 
@@ -542,6 +552,8 @@ def handle_repl_history_command(
     audit_logger: AuditLogger | None,
     debug_trace: bool,
     persistent_store: PersistentHistoryStore | None = None,
+    failure_explainer: FailureExplainer | None = None,
+    failure_explainer_factory: Callable[[], FailureExplainer] | None = None,
 ) -> str | None:
     lowered = request.lower().strip()
     if lowered == "history":
@@ -588,6 +600,8 @@ def handle_repl_history_command(
                 history_item.persisted_id if history_item.source == "persisted" else history_id
             ),
             persistent_store=persistent_store,
+            failure_explainer=failure_explainer,
+            failure_explainer_factory=failure_explainer_factory,
         )
         return ""
     return None
@@ -643,6 +657,7 @@ def main(argv: list[str] | None = None) -> int:
     planner: Planner | None = None
     model_name: str | None = None
     failure_explainer: FailureExplainer | None = None
+    failure_explainer_factory: Callable[[], FailureExplainer] | None = None
     raw_history_path = getattr(config, "history_path", Path.home() / ".oterminus" / "history.jsonl")
     if isinstance(raw_history_path, Path):
         history_path = raw_history_path
@@ -690,10 +705,17 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         explain_failures_enabled = getattr(config, "explain_failures", False) is True
         if explain_failures_enabled:
-            failure_explainer = FailureExplainer(
-                OllamaPlannerClient(model=ensure_planner_ready()),
-                max_chars=getattr(config, "failure_explanation_max_chars", 4000),
-            )
+            def get_failure_explainer() -> FailureExplainer:
+                nonlocal failure_explainer
+                if failure_explainer is not None:
+                    return failure_explainer
+                failure_explainer = FailureExplainer(
+                    OllamaPlannerClient(model=ensure_planner_ready()),
+                    max_chars=getattr(config, "failure_explanation_max_chars", 4000),
+                )
+                return failure_explainer
+
+            failure_explainer_factory = get_failure_explainer
         return handle_request(
             request,
             get_planner,
@@ -705,6 +727,7 @@ def main(argv: list[str] | None = None) -> int:
             persistent_store=persistent_store,
             disabled_pack_ids=validator.policy.disabled_command_packs,
             failure_explainer=failure_explainer,
+            failure_explainer_factory=failure_explainer_factory,
         )
     return repl(
         get_planner,
@@ -716,6 +739,8 @@ def main(argv: list[str] | None = None) -> int:
         default_run_mode=run_mode,
         persistent_store=persistent_store,
         disabled_pack_ids=validator.policy.disabled_command_packs,
+        failure_explainer=failure_explainer,
+        failure_explainer_factory=failure_explainer_factory,
     )
 
 
