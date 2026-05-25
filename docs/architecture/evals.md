@@ -52,7 +52,7 @@ poetry run oterminus-evals
 poetry run oterminus-evals --fixtures-dir evals/cases
 ```
 
-A non-zero exit code indicates at least one failing case.
+A non-zero exit code indicates at least one failing case. The eval command is CI-safe and does not require a running Ollama service, local model download, or network access.
 
 ## When to add eval cases
 
