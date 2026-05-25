@@ -50,3 +50,9 @@ Persistent REPL history is separate from audit logging and is disabled by defaul
 Persisted history records may include request text, rendered command text, local paths, routing/proposal metadata, risk and validation status, execution status, and rerun lineage IDs. They do not store command stdout/stderr.
 
 `OTERMINUS_HISTORY_REDACT` can redact obvious secret-looking values before write, but redaction is best-effort and does not guarantee removal of all sensitive context. Review history content before copying, pasting, or publishing it.
+
+## Failure explanations (opt-in)
+
+When enabled, audit captures only bounded metadata for failure explanation outcomes (not full stdout/stderr).
+See [Audit log schema](../reference/audit-log-schema.md) and [Configuration reference](../reference/config.md#failure-explanations-opt-in).
+

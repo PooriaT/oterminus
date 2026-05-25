@@ -374,3 +374,15 @@ OTerminus does not claim full protection from malicious archive contents in this
 the command shape, archive path, destination path, and policy boundaries, but it does not inspect
 archive member paths or block path traversal inside archive contents before calling `tar` or
 `unzip`.
+
+## Failure explanations (opt-in)
+
+If `OTERMINUS_EXPLAIN_FAILURES=true`, OTerminus may print a concise explanation after a confirmed command exits non-zero.
+
+- Runs only after command execution (not in dry-run/explain modes).
+- Never auto-executes suggested next actions.
+- Suggestions are guidance only (`dry-run`/`copy-only`).
+- Context sent to explanation is redacted and truncated.
+
+For exact environment variables, see [Configuration reference](../reference/config.md#failure-explanations-opt-in).
+

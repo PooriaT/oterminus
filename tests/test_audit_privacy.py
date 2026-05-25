@@ -84,3 +84,19 @@ def test_audit_payload_does_not_include_stdout_or_stderr_content(tmp_path: Path)
     assert "stdout" not in payload
     assert "stderr" not in payload
     assert payload["stdout_truncated"] is True
+
+
+def test_audit_logger_redacts_failure_explanation_fields(tmp_path: Path) -> None:
+    path = tmp_path / "audit.jsonl"
+    logger = AuditLogger(path)
+    event = AuditEvent.start("run")
+    event.failure_explanation_requested = True
+    event.failure_explanation_generated = True
+    event.failure_suggested_next_action = "curl --token abc123"
+    event.failure_stderr_summary = "password=hunter2"
+    logger.write(event)
+
+    payload = json.loads(path.read_text(encoding="utf-8").strip())
+    assert payload["failure_explanation_requested"] is True
+    assert "abc123" not in payload["failure_suggested_next_action"]
+    assert "hunter2" not in payload["failure_stderr_summary"]

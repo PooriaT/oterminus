@@ -43,3 +43,9 @@ special handling.
 
 
 When truncation occurs, CLI output includes explicit notices for stdout/stderr truncation while preserving return code semantics. Dry-run/explain modes are unaffected because they do not execute commands.
+
+## Failure explanations (opt-in)
+
+Execution can optionally include a post-failure explanation after a non-zero exit.
+See [Configuration reference](../reference/config.md#failure-explanations-opt-in) for settings and [User guide](../product/user-guide.md#failure-explanations-opt-in) for behavior and safety notes.
+

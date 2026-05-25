@@ -88,3 +88,15 @@ When audit is disabled, tail and clear commands do not create a new log file.
 ```
 
 Note: persistent REPL history uses a separate local JSONL file (`OTERMINUS_HISTORY_PATH`) and is not an audit log replacement; reruns from persisted history still emit normal audit events.
+
+## Failure explanations (opt-in)
+
+When enabled, audit events may include:
+- `failure_explanation_requested`
+- `failure_explanation_generated`
+- `failure_explanation_error`
+- `failure_suggested_next_action` (redacted/bounded)
+- `failure_stderr_summary` (redacted/bounded)
+
+See [Configuration reference](config.md#failure-explanations-opt-in) for enablement and limits.
+

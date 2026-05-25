@@ -35,6 +35,11 @@ class AuditEvent:
     stderr_visible_chars: int | None = None
     rerun_source_history_id: int | None = None
     duration_ms: int | None = None
+    failure_explanation_requested: bool = False
+    failure_explanation_generated: bool = False
+    failure_explanation_error: str | None = None
+    failure_suggested_next_action: str | None = None
+    failure_stderr_summary: str | None = None
 
     @classmethod
     def start(cls, user_input: str) -> AuditEvent:
@@ -71,7 +76,14 @@ class AuditLogger:
 
     def _redacted_payload(self, payload: dict[str, Any]) -> dict[str, Any]:
         cloned = dict(payload)
-        for field_name in ("user_input", "rendered_command", "ambiguity_reason"):
+        for field_name in (
+            "user_input",
+            "rendered_command",
+            "ambiguity_reason",
+            "failure_explanation_error",
+            "failure_suggested_next_action",
+            "failure_stderr_summary",
+        ):
             value = cloned.get(field_name)
             if isinstance(value, str):
                 cloned[field_name] = redact_text(value)
