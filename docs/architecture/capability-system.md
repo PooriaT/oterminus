@@ -67,3 +67,16 @@ Capability summaries are built from platform-filtered command families, so platf
 The `git_inspection` capability is intentionally scoped to read-only inspection. Registry metadata defines examples, aliases, and warnings so discovery surfaces (`capabilities`, `commands`, `examples`, `help <capability>`) remain consistent without duplicate hardcoded lists.
 
 `git_inspection` does not permit arbitrary `git ...` execution in structured mode; only the approved operation enum is allowed.
+
+## Planned capability: `project_health` (model-only in PR #114)
+
+`project_health` is a curated developer-workflow capability for common repository health checks:
+`run_tests`, `lint_check`, `format_check`, `build_docs`, and `run_evals`.
+
+In this PR it is intentionally **model-only** (`experimental_only` metadata and no renderer):
+- it defines boundary/safety metadata and structured argument shape scaffolding,
+- it does **not** provide executable rendering yet,
+- it does **not** permit arbitrary `poetry run ...` or arbitrary shell fragments.
+
+This boundary exists because these workflows can execute local project code and must remain explicit,
+curated, previewed, and confirmation-gated when execution lands in PR 2.

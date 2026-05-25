@@ -85,6 +85,7 @@ def test_supported_categories_match_expected_registry_values() -> None:
     assert supported_categories() == (
         "archive_inspection",
         "destructive",
+        "developer_workflow",
         "filesystem_write",
         "git_inspection",
         "inspection",

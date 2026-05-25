@@ -95,6 +95,9 @@ def _format_structured_shapes(structured_families: tuple[str, ...]) -> str:
         "zip": (
             '{"operation": "create_zip", "archive_path": "archive.zip", "source_paths": ["src"]}'
         ),
+        "project_health": (
+            '{"operation": "run_tests|lint_check|format_check|build_docs|run_evals"}'
+        ),
     }
     return "\n".join(f"- `{family}`: `{shapes[family]}`" for family in structured_families)
 

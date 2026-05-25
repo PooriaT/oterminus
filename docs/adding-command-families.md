@@ -217,3 +217,9 @@ rules in one place and refer to the config reference:
 
 ## Declare platform support
 When adding platform-specific commands, set `supported_platforms` on the command spec (or pack) using normalized ids (`darwin`, `linux`, `windows`). Keep validator enforcement intact: unsupported platform commands must be rejected before execution.
+
+## Additional guidance for project-workflow capabilities
+
+If a family can execute local project code through standard tooling (tests, docs, evals), treat it as
+write-risk metadata at minimum, document this explicitly in `notes`, and keep operation choices
+enumerated/curated. Do not introduce a generic shell escape hatch such as arbitrary `poetry run ...`.

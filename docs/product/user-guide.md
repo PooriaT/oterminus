@@ -386,3 +386,12 @@ If `OTERMINUS_EXPLAIN_FAILURES=true`, OTerminus may print a concise explanation 
 
 For exact environment variables, see [Configuration reference](../reference/config.md#failure-explanations-opt-in).
 
+
+## Planned: project health capability
+
+A planned `project_health` capability models common checks (`run_tests`, `lint_check`, `format_check`,
+`build_docs`, `run_evals`) as curated structured operations. In the current release it is model-only
+and not executable yet.
+
+When execution support is enabled, these operations will still require explicit preview and
+confirmation because they may execute local project code.
