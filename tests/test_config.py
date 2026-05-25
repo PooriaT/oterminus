@@ -113,3 +113,21 @@ def test_load_config_max_output_chars_invalid_values_fallback(monkeypatch, tmp_p
         monkeypatch.setenv("OTERMINUS_MAX_OUTPUT_CHARS", raw)
         config = load_config()
         assert config.max_output_chars == 20000
+
+
+def test_load_config_failure_explanation_defaults(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(tmp_path / "config.json"))
+    monkeypatch.delenv("OTERMINUS_EXPLAIN_FAILURES", raising=False)
+    monkeypatch.delenv("OTERMINUS_FAILURE_EXPLANATION_MAX_CHARS", raising=False)
+    config = load_config()
+    assert config.explain_failures is False
+    assert config.failure_explanation_max_chars == 4000
+
+
+def test_load_config_failure_explanation_overrides(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(tmp_path / "config.json"))
+    monkeypatch.setenv("OTERMINUS_EXPLAIN_FAILURES", "true")
+    monkeypatch.setenv("OTERMINUS_FAILURE_EXPLANATION_MAX_CHARS", "123")
+    config = load_config()
+    assert config.explain_failures is True
+    assert config.failure_explanation_max_chars == 123

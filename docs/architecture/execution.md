@@ -43,3 +43,11 @@ special handling.
 
 
 When truncation occurs, CLI output includes explicit notices for stdout/stderr truncation while preserving return code semantics. Dry-run/explain modes are unaffected because they do not execute commands.
+
+
+## Failure explanations (opt-in)
+
+- `OTERMINUS_EXPLAIN_FAILURES` (default `false`): when enabled, OTerminus can generate a post-execution failure explanation for non-zero exit codes only.
+- `OTERMINUS_FAILURE_EXPLANATION_MAX_CHARS` (default `4000`): bounds redacted stderr/stdout snippets sent to the explainer and written to audit metadata.
+- Suggested next actions are **never auto-executed**; they are displayed as dry-run/copy-only guidance.
+- Output snippets are redacted and truncated; avoid sharing logs that may still contain sensitive paths or context.

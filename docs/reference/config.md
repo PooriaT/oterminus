@@ -108,3 +108,11 @@ export OTERMINUS_HISTORY_REDACT=true
 
 ## Command pack availability
 Set `OTERMINUS_DISABLED_COMMAND_PACKS` to a comma-separated list of pack IDs (e.g. `dangerous`, `process,macos`). Pack IDs are case-insensitive and validated. Disabled packs are removed from planner/completion context and commands are rejected by validator before execution. This is separate from capability IDs and does not change policy mode.
+
+
+## Failure explanations (opt-in)
+
+- `OTERMINUS_EXPLAIN_FAILURES` (default `false`): when enabled, OTerminus can generate a post-execution failure explanation for non-zero exit codes only.
+- `OTERMINUS_FAILURE_EXPLANATION_MAX_CHARS` (default `4000`): bounds redacted stderr/stdout snippets sent to the explainer and written to audit metadata.
+- Suggested next actions are **never auto-executed**; they are displayed as dry-run/copy-only guidance.
+- Output snippets are redacted and truncated; avoid sharing logs that may still contain sensitive paths or context.

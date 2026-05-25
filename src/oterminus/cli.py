@@ -30,12 +30,13 @@ from oterminus.direct_commands import detect_direct_command
 from oterminus.history import PersistentHistoryStore, SessionHistory
 from oterminus.doctor import print_report, run_doctor
 from oterminus.executor import Executor
+from oterminus.failure_explainer import FailureExplainer
 from oterminus.logging_utils import configure_logging
 from oterminus.ollama_client import OllamaClientError, OllamaPlannerClient
 from oterminus.planner import Planner, PlannerError
 from oterminus.setup import SetupError, ensure_startup_ready
 from oterminus.policies import ConfirmationLevel, confirmation_level
-from oterminus.renderer import render_preview
+from oterminus.renderer import render_failure_explanation, render_preview
 from oterminus.router import route_request
 from oterminus.validator import Validator
 
@@ -115,6 +116,7 @@ def handle_request(
     rerun_source_history_id: int | None = None,
     persistent_store: PersistentHistoryStore | None = None,
     disabled_pack_ids: frozenset[str] | None = None,
+    failure_explainer: FailureExplainer | None = None,
 ) -> int:
     started_at = datetime.now(tz=timezone.utc)
     event = AuditEvent.start(user_input=request)
@@ -333,6 +335,22 @@ def handle_request(
         print(f"[oterminus] stderr truncated to {max_output_chars} characters.")
     print(f"Exit code: {result.returncode}")
 
+    if result.returncode != 0 and failure_explainer is not None:
+        event.failure_explanation_requested = True
+        try:
+            explanation = failure_explainer.explain(
+                command=command,
+                exit_code=result.returncode,
+                stdout=result.stdout,
+                stderr=result.stderr,
+            )
+            event.failure_explanation_generated = True
+            event.failure_suggested_next_action = explanation.suggested_next_action
+            event.failure_stderr_summary = explanation.stderr_summary
+            print(render_failure_explanation(explanation))
+        except Exception as exc:  # noqa: BLE001
+            event.failure_explanation_error = str(exc)
+
     LOGGER.info("exit_code=%s", result.returncode)
     if history_item is not None:
         history_item.execution_status = "executed"
@@ -367,6 +385,7 @@ def repl(
     default_run_mode: RunMode = RunMode.EXECUTE,
     persistent_store: PersistentHistoryStore | None = None,
     disabled_pack_ids: frozenset[str] | None = None,
+    failure_explainer: FailureExplainer | None = None,
 ) -> int:
     print("oterminus REPL. Type 'help' for guidance, 'exit' or 'quit' to leave.")
     session_history = SessionHistory()
@@ -623,6 +642,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     planner: Planner | None = None
     model_name: str | None = None
+    failure_explainer: FailureExplainer | None = None
     raw_history_path = getattr(config, "history_path", Path.home() / ".oterminus" / "history.jsonl")
     if isinstance(raw_history_path, Path):
         history_path = raw_history_path
@@ -668,6 +688,12 @@ def main(argv: list[str] | None = None) -> int:
         if audit_response is not None:
             print(audit_response)
             return 0
+        explain_failures_enabled = getattr(config, "explain_failures", False) is True
+        if explain_failures_enabled:
+            failure_explainer = FailureExplainer(
+                OllamaPlannerClient(model=ensure_planner_ready()),
+                max_chars=getattr(config, "failure_explanation_max_chars", 4000),
+            )
         return handle_request(
             request,
             get_planner,
@@ -678,6 +704,7 @@ def main(argv: list[str] | None = None) -> int:
             run_mode=run_mode,
             persistent_store=persistent_store,
             disabled_pack_ids=validator.policy.disabled_command_packs,
+            failure_explainer=failure_explainer,
         )
     return repl(
         get_planner,

@@ -24,6 +24,8 @@ class AppConfig:
     history_limit: int = 100
     history_redact: bool = True
     max_output_chars: int = 20000
+    explain_failures: bool = False
+    failure_explanation_max_chars: int = 4000
 
 
 def get_user_config_path() -> Path:
@@ -88,6 +90,10 @@ def load_config() -> AppConfig:
     )
     history_redact = _env_flag("OTERMINUS_HISTORY_REDACT", default=audit_redact)
     max_output_chars = _positive_int_env("OTERMINUS_MAX_OUTPUT_CHARS", default=20000)
+    explain_failures = _env_flag("OTERMINUS_EXPLAIN_FAILURES", default=False)
+    failure_explanation_max_chars = _positive_int_env(
+        "OTERMINUS_FAILURE_EXPLANATION_MAX_CHARS", default=4000
+    )
     disabled_command_packs = _parse_disabled_command_packs(
         os.getenv("OTERMINUS_DISABLED_COMMAND_PACKS", "")
     )
@@ -109,6 +115,8 @@ def load_config() -> AppConfig:
         history_limit=history_limit,
         history_redact=history_redact,
         max_output_chars=max_output_chars,
+        explain_failures=explain_failures,
+        failure_explanation_max_chars=failure_explanation_max_chars,
     )
 
 

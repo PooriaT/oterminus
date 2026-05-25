@@ -108,3 +108,21 @@ def _display_notes(notes: list[str], *, include_debug: bool) -> list[str]:
     if include_debug:
         return notes
     return [note for note in notes if not note.startswith(_DIRECT_DEBUG_NOTE_PREFIXES)]
+
+
+def render_failure_explanation(explanation) -> str:
+    lines = [
+        "\n--- failure explanation ---",
+        f"Command: {explanation.command}",
+        f"Exit code: {explanation.exit_code}",
+        f"Likely cause: {explanation.likely_cause}",
+        f"stderr summary: {explanation.stderr_summary}",
+        "",
+    ]
+    if explanation.suggested_next_action and explanation.suggested_next_action_mode.value != "none":
+        lines.append("Safe next inspection:")
+        lines.append(explanation.suggested_next_action)
+    else:
+        lines.append("No safe next action suggestion available.")
+    lines.append("No next action was executed.")
+    return "\n".join(lines)

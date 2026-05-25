@@ -140,3 +140,19 @@ class ExecutionResult(BaseModel):
     stderr_truncated: bool = False
     stdout_original_chars: int | None = None
     stderr_original_chars: int | None = None
+
+
+class SuggestedNextActionMode(str, Enum):
+    DRY_RUN = "dry-run"
+    COPY_ONLY = "copy-only"
+    NONE = "none"
+
+
+class FailureExplanation(BaseModel):
+    command: str
+    exit_code: int
+    stderr_summary: str
+    likely_cause: str
+    suggested_next_action: str | None = None
+    suggested_next_action_mode: SuggestedNextActionMode = SuggestedNextActionMode.NONE
+    notes: list[str] = Field(default_factory=list)

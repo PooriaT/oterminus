@@ -88,3 +88,11 @@ When audit is disabled, tail and clear commands do not create a new log file.
 ```
 
 Note: persistent REPL history uses a separate local JSONL file (`OTERMINUS_HISTORY_PATH`) and is not an audit log replacement; reruns from persisted history still emit normal audit events.
+
+
+## Failure explanations (opt-in)
+
+- `OTERMINUS_EXPLAIN_FAILURES` (default `false`): when enabled, OTerminus can generate a post-execution failure explanation for non-zero exit codes only.
+- `OTERMINUS_FAILURE_EXPLANATION_MAX_CHARS` (default `4000`): bounds redacted stderr/stdout snippets sent to the explainer and written to audit metadata.
+- Suggested next actions are **never auto-executed**; they are displayed as dry-run/copy-only guidance.
+- Output snippets are redacted and truncated; avoid sharing logs that may still contain sensitive paths or context.

@@ -50,3 +50,11 @@ Persistent REPL history is separate from audit logging and is disabled by defaul
 Persisted history records may include request text, rendered command text, local paths, routing/proposal metadata, risk and validation status, execution status, and rerun lineage IDs. They do not store command stdout/stderr.
 
 `OTERMINUS_HISTORY_REDACT` can redact obvious secret-looking values before write, but redaction is best-effort and does not guarantee removal of all sensitive context. Review history content before copying, pasting, or publishing it.
+
+
+## Failure explanations (opt-in)
+
+- `OTERMINUS_EXPLAIN_FAILURES` (default `false`): when enabled, OTerminus can generate a post-execution failure explanation for non-zero exit codes only.
+- `OTERMINUS_FAILURE_EXPLANATION_MAX_CHARS` (default `4000`): bounds redacted stderr/stdout snippets sent to the explainer and written to audit metadata.
+- Suggested next actions are **never auto-executed**; they are displayed as dry-run/copy-only guidance.
+- Output snippets are redacted and truncated; avoid sharing logs that may still contain sensitive paths or context.
