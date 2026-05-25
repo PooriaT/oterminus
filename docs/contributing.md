@@ -61,7 +61,7 @@ command-family behavior changes:
 poetry run oterminus-evals
 ```
 
-These local test and eval commands should not require an Ollama service.
+These local test and eval commands should not require an Ollama service. CI uses the same deterministic fixture path, so no Ollama service/model/network call is required for the regression gate.
 
 ## Documentation rules
 
@@ -81,6 +81,7 @@ Validate docs before review:
 ```bash
 poetry run mkdocs build --strict
 poetry run python scripts/check_docs_links.py
+poetry run python scripts/generate_command_reference.py --check
 ```
 
 The docs workflow runs the strict build on pull requests and pushes to `main`, but deploys only
