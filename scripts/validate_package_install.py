@@ -23,6 +23,12 @@ def run(
     return proc
 
 
+def script_path(bin_dir: Path, name: str) -> Path:
+    if sys.platform == "win32":
+        return bin_dir / f"{name}.exe"
+    return bin_dir / name
+
+
 def main() -> int:
     run(["poetry", "build"])
 
@@ -43,9 +49,12 @@ def main() -> int:
         run([str(py), "-m", "pip", "install", "--upgrade", "pip"])
         run([str(pip), "install", str(wheel)])
         run([str(py), "-c", "import oterminus"])
-        run([str(bin_dir / "oterminus"), "--help"])
-        run([str(bin_dir / "oterminus"), "doctor"], check=False)
-        run([str(bin_dir / "oterminus-evals")])
+        oterminus = script_path(bin_dir, "oterminus")
+        oterminus_evals = script_path(bin_dir, "oterminus-evals")
+
+        run([str(oterminus), "--help"])
+        run([str(oterminus), "doctor"], check=False)
+        run([str(oterminus_evals)])
 
     return 0
 
