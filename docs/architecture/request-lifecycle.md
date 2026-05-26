@@ -140,3 +140,8 @@ same request lifecycle described above, including ambiguity handling, planning/d
 validation/policy, preview, and explicit execute confirmation.
 
 - After routing, OTerminus attempts a deterministic local planner for a small set of unambiguous requests. If it matches, Ollama is skipped and the same validation/preview/confirmation flow continues.
+
+
+### Timing observability
+
+When audit logging is enabled, lifecycle stages record approximate local latencies in `timings_ms` using `time.perf_counter()` (milliseconds). These metrics are for debugging and contributor observability; they do not include command stdout/stderr content.

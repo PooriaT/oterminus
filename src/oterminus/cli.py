@@ -5,6 +5,7 @@ import logging
 import subprocess
 import sys
 import json
+import time
 from pathlib import Path
 from datetime import datetime, timezone
 from collections.abc import Callable
@@ -124,6 +125,8 @@ def handle_request(
     failure_explainer_factory: Callable[[], FailureExplainer] | None = None,
 ) -> int:
     started_at = datetime.now(tz=timezone.utc)
+    request_started = time.perf_counter()
+    timings_ms: dict[str, int] = {}
     event = AuditEvent.start(user_input=request)
     event.rerun_source_history_id = rerun_source_history_id
     LOGGER.info("request=%s", request)
@@ -133,13 +136,43 @@ def handle_request(
         if history_item is not None and persistent_store is not None:
             persistent_store.append(history_item)
 
+    def _finalize_event() -> None:
+        timings_ms["total_duration_ms"] = _duration_ms_from_counter(request_started)
+        event.timings_ms = dict(timings_ms)
+
+    def _trace_timings_if_enabled() -> None:
+        if not debug_trace:
+            return
+        parts: list[str] = []
+        key_map = [
+            ("direct", "direct_command_detection_ms"),
+            ("ambiguity", "ambiguity_detection_ms"),
+            ("route", "routing_ms"),
+            ("local_planner", "local_planner_ms"),
+            ("planner", "planner_ms"),
+            ("validation", "validation_ms"),
+            ("execution", "execution_ms"),
+            ("total", "total_duration_ms"),
+        ]
+        for label, key in key_map:
+            value = timings_ms.get(key)
+            if value is None:
+                if label == "planner" and event.planner_skipped:
+                    parts.append(f"{label}=skipped")
+                continue
+            parts.append(f"{label}={value}ms")
+        if parts:
+            print("[trace] timings " + " ".join(parts))
+
     effective_disabled_pack_ids = (
         disabled_pack_ids
         if disabled_pack_ids is not None
         else getattr(validator.policy, "disabled_command_packs", frozenset())
     )
 
+    direct_detection_started = time.perf_counter()
     proposal = detect_direct_command(request, disabled_pack_ids=effective_disabled_pack_ids)
+    timings_ms["direct_command_detection_ms"] = _duration_ms_from_counter(direct_detection_started)
     is_direct_command = proposal is not None
     event.direct_command_detected = is_direct_command
     event.planner_invoked = False
@@ -150,7 +183,9 @@ def handle_request(
         history_item.execution_status = "planning"
     try:
         if proposal is None:
+            ambiguity_started = time.perf_counter()
             ambiguity = detect_ambiguity(request)
+            timings_ms["ambiguity_detection_ms"] = _duration_ms_from_counter(ambiguity_started)
             event.ambiguity_detected = ambiguity.is_ambiguous
             event.ambiguity_reason = ambiguity.reason if ambiguity.is_ambiguous else None
             event.ambiguity_safe_options = (
@@ -167,21 +202,27 @@ def handle_request(
                     history_item.execution_status = "blocked_ambiguous"
                 event.confirmation_result = "blocked_ambiguous"
                 event.duration_ms = _duration_ms_since(started_at)
+                _finalize_event()
+                _trace_timings_if_enabled()
                 _write_audit_event(audit_logger, event)
                 _persist_if_needed()
                 return 0
+            route_started = time.perf_counter()
             route = route_request(request)
+            timings_ms["routing_ms"] = _duration_ms_from_counter(route_started)
             event.routed_category = route.category
             if history_item is not None:
                 history_item.routed_category = route.category
             if debug_trace:
                 print(f"[trace] route category={route.category} confidence={route.confidence:.2f}")
 
+            local_planner_started = time.perf_counter()
             local_match = plan_locally(
                 request,
                 route,
                 disabled_pack_ids=effective_disabled_pack_ids,
             )
+            timings_ms["local_planner_ms"] = _duration_ms_from_counter(local_planner_started)
             if local_match is not None:
                 proposal = local_match.proposal
                 event.planner_invoked = False
@@ -198,7 +239,9 @@ def handle_request(
                 event.planner_invoked = True
                 event.planner_skipped = False
                 event.planner_skip_reason = None
+                planner_started = time.perf_counter()
                 proposal = planner.plan(request)
+                timings_ms["planner_ms"] = _duration_ms_from_counter(planner_started)
         elif debug_trace:
             print("[trace] fast_path=direct_command planner=skipped")
     except (PlannerError, OllamaClientError, SetupError) as exc:
@@ -207,6 +250,8 @@ def handle_request(
             history_item.execution_status = "planner_error"
         event.confirmation_result = "planner_error"
         event.duration_ms = _duration_ms_since(started_at)
+        _finalize_event()
+        _trace_timings_if_enabled()
         _write_audit_event(audit_logger, event)
         _persist_if_needed()
         return 2
@@ -220,7 +265,9 @@ def handle_request(
     if debug_trace:
         print(f"[trace] proposal mode={proposal.mode.value} family={proposal.command_family}")
 
+    validation_started = time.perf_counter()
     validation = validator.validate(proposal)
+    timings_ms["validation_ms"] = _duration_ms_from_counter(validation_started)
     event.validation_accepted = validation.accepted
     event.warnings = list(validation.warnings)
     event.rejection_reasons = list(validation.reasons)
@@ -258,6 +305,8 @@ def handle_request(
             history_item.execution_status = "rejected"
         event.confirmation_result = "not_prompted_rejected"
         event.duration_ms = _duration_ms_since(started_at)
+        _finalize_event()
+        _trace_timings_if_enabled()
         _write_audit_event(audit_logger, event)
         _persist_if_needed()
         return 3
@@ -269,6 +318,8 @@ def handle_request(
             history_item.execution_status = "skipped_dry_run"
         event.confirmation_result = "skipped_dry_run"
         event.duration_ms = _duration_ms_since(started_at)
+        _finalize_event()
+        _trace_timings_if_enabled()
         _write_audit_event(audit_logger, event)
         _persist_if_needed()
         return 0
@@ -284,6 +335,8 @@ def handle_request(
             history_item.execution_status = "skipped_explain"
         event.confirmation_result = "skipped_explain"
         event.duration_ms = _duration_ms_since(started_at)
+        _finalize_event()
+        _trace_timings_if_enabled()
         _write_audit_event(audit_logger, event)
         _persist_if_needed()
         return 0
@@ -299,6 +352,8 @@ def handle_request(
         if history_item is not None:
             history_item.execution_status = "cancelled"
         event.duration_ms = _duration_ms_since(started_at)
+        _finalize_event()
+        _trace_timings_if_enabled()
         _write_audit_event(audit_logger, event)
         _persist_if_needed()
         return 0
@@ -308,12 +363,16 @@ def handle_request(
         if history_item is not None:
             history_item.execution_status = "not_executable"
         event.duration_ms = _duration_ms_since(started_at)
+        _finalize_event()
+        _trace_timings_if_enabled()
         _write_audit_event(audit_logger, event)
         _persist_if_needed()
         return 3
 
     try:
+        execution_started = time.perf_counter()
         result = executor.run(validation.argv, display_command=command)
+        timings_ms["execution_ms"] = _duration_ms_from_counter(execution_started)
     except subprocess.TimeoutExpired:
         print(f"Execution timed out after {executor.timeout_seconds}s.")
         if history_item is not None:
@@ -321,6 +380,8 @@ def handle_request(
             history_item.exit_code = 124
         event.execution_exit_code = 124
         event.duration_ms = _duration_ms_since(started_at)
+        _finalize_event()
+        _trace_timings_if_enabled()
         _write_audit_event(audit_logger, event)
         return 124
     except (OSError, subprocess.SubprocessError) as exc:
@@ -330,6 +391,8 @@ def handle_request(
             history_item.exit_code = 1
         event.execution_exit_code = 1
         event.duration_ms = _duration_ms_since(started_at)
+        _finalize_event()
+        _trace_timings_if_enabled()
         _write_audit_event(audit_logger, event)
         return 1
     except KeyboardInterrupt:
@@ -339,6 +402,8 @@ def handle_request(
             history_item.exit_code = 130
         event.execution_exit_code = 130
         event.duration_ms = _duration_ms_since(started_at)
+        _finalize_event()
+        _trace_timings_if_enabled()
         _write_audit_event(audit_logger, event)
         return 130
 
@@ -353,6 +418,8 @@ def handle_request(
             history_item.exit_code = result.returncode
         event.execution_exit_code = result.returncode
         event.duration_ms = _duration_ms_since(started_at)
+        _finalize_event()
+        _trace_timings_if_enabled()
         _write_audit_event(audit_logger, event)
         return result.returncode
 
@@ -408,6 +475,8 @@ def handle_request(
     event.stdout_visible_chars = len(result.stdout)
     event.stderr_visible_chars = len(result.stderr)
     event.duration_ms = _duration_ms_since(started_at)
+    _finalize_event()
+    _trace_timings_if_enabled()
     _write_audit_event(audit_logger, event)
     _persist_if_needed()
     return result.returncode
@@ -781,6 +850,10 @@ def main(argv: list[str] | None = None) -> int:
 
 def _duration_ms_since(started_at: datetime) -> int:
     return int((datetime.now(tz=timezone.utc) - started_at).total_seconds() * 1000)
+
+
+def _duration_ms_from_counter(started_at: float) -> int:
+    return int((time.perf_counter() - started_at) * 1000)
 
 
 def _truncate(value: str, width: int) -> str:

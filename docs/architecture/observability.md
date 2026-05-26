@@ -13,6 +13,7 @@ When enabled, each request lifecycle writes one JSON line with fields covering:
 - validation outcome and reasons/warnings
 - confirmation result or lifecycle stop status
 - execution exit code and timing
+- stage-level latency metrics (`timings_ms`) to show where time was spent and whether planner was skipped
 - execution output truncation metadata (flags and character counts), without storing raw stdout/stderr
 - rerun lineage (`rerun_source_history_id`) when a request is triggered via `rerun <history_id>`
 

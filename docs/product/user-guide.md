@@ -188,7 +188,7 @@ The CLI flag is for one-shot requests only. Inside the REPL, use the built-in fo
 `explain <request>` or `explain <history_id>` instead.
 
 When you run with `--verbose`, trace output includes fast-path diagnostics (`fast_path=direct_command`
-or `fast_path=ambiguity_blocked`) and planner invocation status (`planner=invoked`).
+or `fast_path=ambiguity_blocked`), planner invocation status (`planner=invoked`), and a concise timing summary (for example: `[trace] timings direct=1ms route=1ms planner=skipped ... total=4ms`).
 
 ## REPL session history and rerun safety
 

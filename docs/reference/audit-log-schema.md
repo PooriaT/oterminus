@@ -36,6 +36,7 @@ Audit logs are newline-delimited JSON objects (JSONL), one event per handled req
 - `stderr_visible_chars` (nullable int)
 - `rerun_source_history_id` (nullable int)
 - `duration_ms` (nullable int)
+- `timings_ms` (object mapping stage names to non-negative integer milliseconds)
 
 ## Ambiguity outcomes
 
@@ -64,6 +65,10 @@ When a non-ambiguous natural-language request uses the planner:
 
 Planner, validator, confirmation, and executor fields remain unset because the request stops before
 those stages.
+
+`timings_ms` stores local, approximate stage durations (perf-counter based) for observability, such as
+`direct_command_detection_ms`, `ambiguity_detection_ms`, `routing_ms`, `local_planner_ms`, `planner_ms`,
+`validation_ms`, `execution_ms`, and `total_duration_ms`. Skipped stages are omitted.
 
 ## Rerun lineage
 
