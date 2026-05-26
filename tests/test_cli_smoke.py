@@ -1142,6 +1142,10 @@ def test_handle_request_writes_structured_audit_log(monkeypatch, tmp_path: Path)
     assert payload["planner_skipped"] is False
     assert payload["planner_skip_reason"] is None
     assert payload["duration_ms"] >= 0
+    assert payload["timings_ms"]["direct_command_detection_ms"] >= 0
+    assert payload["timings_ms"]["validation_ms"] >= 0
+    assert payload["timings_ms"]["execution_ms"] >= 0
+    assert payload["timings_ms"]["total_duration_ms"] >= 0
 
 
 def test_handle_request_dry_run_writes_audit_without_execution(tmp_path: Path) -> None:
@@ -1183,6 +1187,7 @@ def test_handle_request_dry_run_writes_audit_without_execution(tmp_path: Path) -
     payload = json.loads(audit_path.read_text(encoding="utf-8").strip())
     assert payload["confirmation_result"] == "skipped_dry_run"
     assert payload["execution_exit_code"] is None
+    assert "execution_ms" not in payload["timings_ms"]
 
 
 def test_handle_request_ambiguous_writes_audit_without_executor(tmp_path: Path) -> None:
@@ -1217,6 +1222,8 @@ def test_handle_request_ambiguous_writes_audit_without_executor(tmp_path: Path) 
     assert payload["planner_invoked"] is False
     assert payload["planner_skipped"] is True
     assert payload["planner_skip_reason"] == "ambiguity_blocked"
+    assert "routing_ms" not in payload["timings_ms"]
+    assert "planner_ms" not in payload["timings_ms"]
     validator.validate.assert_not_called()
     executor.run.assert_not_called()
 
@@ -1435,6 +1442,8 @@ def test_main_ambiguous_request_does_not_require_startup_or_planner(
     assert payload["planner_invoked"] is False
     assert payload["planner_skipped"] is True
     assert payload["planner_skip_reason"] == "ambiguity_blocked"
+    assert "routing_ms" not in payload["timings_ms"]
+    assert "planner_ms" not in payload["timings_ms"]
     validator.validate.assert_not_called()
     executor.run.assert_not_called()
 
@@ -1909,3 +1918,68 @@ def test_handle_repl_history_rerun_propagates_failure_explainer(monkeypatch) -> 
 
     assert out == ""
     assert captured.get("failure_explainer") is explainer
+
+
+def test_handle_request_verbose_prints_timings_trace(monkeypatch, capsys) -> None:
+    from oterminus.cli import handle_request
+
+    planner = Mock()
+    planner.plan.return_value = Proposal(
+        action_type=ActionType.SHELL_COMMAND,
+        mode=ProposalMode.STRUCTURED,
+        command_family="pwd",
+        arguments={},
+        summary="pwd",
+        explanation="desc",
+        risk_level=RiskLevel.SAFE,
+        needs_confirmation=True,
+        notes=[],
+    )
+    validator = Mock()
+    validator.validate.return_value = ValidationResult(
+        accepted=True,
+        risk_level=RiskLevel.SAFE,
+        rendered_command="pwd",
+        argv=["pwd"],
+    )
+    executor = Mock()
+    executor.run.return_value.returncode = 0
+    executor.run.return_value.stdout = ""
+    executor.run.return_value.stderr = ""
+    monkeypatch.setattr("builtins.input", lambda _: "y")
+
+    code = handle_request("show current directory", planner, validator, executor, debug_trace=True)
+    assert code == 0
+    output = capsys.readouterr().out
+    assert "[trace] timings" in output
+
+
+def test_handle_request_normal_output_hides_timings_trace(monkeypatch, capsys) -> None:
+    from oterminus.cli import handle_request
+
+    planner = Mock()
+    planner.plan.return_value = Proposal(
+        action_type=ActionType.SHELL_COMMAND,
+        mode=ProposalMode.STRUCTURED,
+        command_family="pwd",
+        arguments={},
+        summary="pwd",
+        explanation="desc",
+        risk_level=RiskLevel.SAFE,
+        needs_confirmation=True,
+        notes=[],
+    )
+    validator = Mock()
+    validator.validate.return_value = ValidationResult(
+        accepted=True,
+        risk_level=RiskLevel.SAFE,
+        rendered_command="pwd",
+        argv=["pwd"],
+    )
+    executor = Mock()
+    monkeypatch.setattr("builtins.input", lambda _: "n")
+
+    code = handle_request("show current directory", planner, validator, executor, debug_trace=False)
+    assert code == 0
+    output = capsys.readouterr().out
+    assert "[trace] timings" not in output

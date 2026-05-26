@@ -38,6 +38,7 @@ class AuditEvent:
     stderr_visible_chars: int | None = None
     rerun_source_history_id: int | None = None
     duration_ms: int | None = None
+    timings_ms: dict[str, int] = field(default_factory=dict)
     failure_explanation_requested: bool = False
     failure_explanation_generated: bool = False
     failure_explanation_error: str | None = None
