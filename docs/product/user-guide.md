@@ -28,6 +28,18 @@ selection is saved in `~/.oterminus/config.json` (or `OTERMINUS_CONFIG_PATH` if 
 - Later runs: saved model is reused.
 - If saved model is missing: OTerminus warns and asks for a new selection.
 
+## Installed-wheel smoke check
+
+After building and installing a local wheel in a clean environment, run:
+
+```bash
+oterminus --help
+oterminus doctor
+oterminus-evals
+```
+
+`doctor` is diagnostics-only and safe for packaging validation even when Ollama is not configured yet.
+
 ## Running OTerminus
 
 OTerminus has three user-facing CLI entry points:

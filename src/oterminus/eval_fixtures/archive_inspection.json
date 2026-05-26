@@ -1,0 +1,267 @@
+[
+  {
+    "id": "archive-list-tar-structured",
+    "user_input": "list the contents of archive.tar",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "tar",
+      "arguments": {"operation": "list", "archive_path": "archive.tar"},
+      "summary": "list tar archive contents",
+      "explanation": "read-only archive inspection",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "structured",
+    "expected_command_family": "tar",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "tar -tf archive.tar",
+    "expected_argv": ["tar", "-tf", "archive.tar"]
+  },
+  {
+    "id": "archive-list-zip-structured",
+    "user_input": "show what is inside backup.zip",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "unzip",
+      "arguments": {"operation": "list", "archive_path": "backup.zip"},
+      "summary": "list zip archive contents",
+      "explanation": "read-only archive inspection",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "structured",
+    "expected_command_family": "unzip",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "unzip -l backup.zip",
+    "expected_argv": ["unzip", "-l", "backup.zip"]
+  },
+  {
+    "id": "archive-inspect-this-zip-structured",
+    "user_input": "inspect this zip file",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "unzip",
+      "arguments": {"operation": "list", "archive_path": "archive.zip"},
+      "summary": "list zip archive contents",
+      "explanation": "read-only archive inspection",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "structured",
+    "expected_command_family": "unzip",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "unzip -l archive.zip",
+    "expected_argv": ["unzip", "-l", "archive.zip"]
+  },
+  {
+    "id": "archive-extract-tar-guarded",
+    "user_input": "extract archive.tar into ./out",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "tar",
+      "arguments": {
+        "operation": "extract_tar",
+        "archive_path": "archive.tar",
+        "destination_path": "./out"
+      },
+      "summary": "extract tar archive",
+      "explanation": "guarded archive extraction to an explicit destination",
+      "risk_level": "write",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "structured",
+    "expected_command_family": "tar",
+    "expected_risk_level": "write",
+    "expected_acceptance": true,
+    "expected_rendered_command": "tar -xf archive.tar -C ./out",
+    "expected_argv": ["tar", "-xf", "archive.tar", "-C", "./out"]
+  },
+  {
+    "id": "archive-extract-zip-guarded",
+    "user_input": "unzip backup.zip into ./restore",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "unzip",
+      "arguments": {
+        "operation": "extract_zip",
+        "archive_path": "backup.zip",
+        "destination_path": "./restore"
+      },
+      "summary": "extract zip archive",
+      "explanation": "guarded archive extraction to an explicit destination",
+      "risk_level": "write",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "structured",
+    "expected_command_family": "unzip",
+    "expected_risk_level": "write",
+    "expected_acceptance": true,
+    "expected_rendered_command": "unzip backup.zip -d ./restore",
+    "expected_argv": ["unzip", "backup.zip", "-d", "./restore"]
+  },
+  {
+    "id": "archive-extract-tar-missing-destination",
+    "user_input": "extract archive.tar",
+    "expected_ambiguity_detected": true,
+    "expected_ambiguity_reason_contains": "missing an explicit destination"
+  },
+  {
+    "id": "archive-extract-zip-root-destination-rejected",
+    "user_input": "unzip backup.zip into /",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "unzip",
+      "arguments": {
+        "operation": "extract_zip",
+        "archive_path": "backup.zip",
+        "destination_path": "/"
+      },
+      "summary": "extract zip archive",
+      "explanation": "guarded archive extraction",
+      "risk_level": "write",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_planner_error_contains": "destination_path cannot be '/'"
+  },
+  {
+    "id": "archive-extract-overwrite-everything-rejected",
+    "user_input": "extract archive.tar and overwrite everything",
+    "expected_ambiguity_detected": true,
+    "expected_ambiguity_reason_contains": "missing an explicit destination"
+  },
+  {
+    "id": "archive-create-tar-gz-guarded",
+    "user_input": "create backup.tar.gz from src",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "tar",
+      "arguments": {
+        "operation": "create_tar_gz",
+        "archive_path": "backup.tar.gz",
+        "source_paths": ["src"]
+      },
+      "summary": "create tar.gz archive",
+      "explanation": "guarded archive creation from explicit source paths",
+      "risk_level": "write",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "structured",
+    "expected_command_family": "tar",
+    "expected_risk_level": "write",
+    "expected_acceptance": true,
+    "expected_rendered_command": "tar -czf backup.tar.gz src",
+    "expected_argv": ["tar", "-czf", "backup.tar.gz", "src"]
+  },
+  {
+    "id": "archive-create-zip-docs-guarded",
+    "user_input": "zip docs into docs.zip",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "zip",
+      "arguments": {
+        "operation": "create_zip",
+        "archive_path": "docs.zip",
+        "source_paths": ["docs"]
+      },
+      "summary": "create zip archive",
+      "explanation": "guarded archive creation from explicit source paths",
+      "risk_level": "write",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "structured",
+    "expected_command_family": "zip",
+    "expected_risk_level": "write",
+    "expected_acceptance": true,
+    "expected_rendered_command": "zip -r docs.zip docs",
+    "expected_argv": ["zip", "-r", "docs.zip", "docs"]
+  },
+  {
+    "id": "archive-create-zip-multiple-sources-guarded",
+    "user_input": "create backup.zip from README.md and docs",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "zip",
+      "arguments": {
+        "operation": "create_zip",
+        "archive_path": "backup.zip",
+        "source_paths": ["README.md", "docs"]
+      },
+      "summary": "create zip archive",
+      "explanation": "guarded archive creation from explicit source paths",
+      "risk_level": "write",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "structured",
+    "expected_command_family": "zip",
+    "expected_risk_level": "write",
+    "expected_acceptance": true,
+    "expected_rendered_command": "zip -r backup.zip README.md docs",
+    "expected_argv": ["zip", "-r", "backup.zip", "README.md", "docs"]
+  },
+  {
+    "id": "archive-create-everything-ambiguous",
+    "user_input": "archive everything",
+    "expected_ambiguity_detected": true,
+    "expected_ambiguity_reason_contains": "Matched ambiguous phrase"
+  },
+  {
+    "id": "archive-create-root-source-rejected",
+    "user_input": "zip / into root.zip",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "zip",
+      "arguments": {
+        "operation": "create_zip",
+        "archive_path": "root.zip",
+        "source_paths": ["/"]
+      },
+      "summary": "create zip archive",
+      "explanation": "guarded archive creation",
+      "risk_level": "write",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_planner_error_contains": "source_paths cannot include broad or unsafe roots"
+  },
+  {
+    "id": "archive-create-encrypted-zip-unsupported",
+    "user_input": "create encrypted zip",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "experimental",
+      "command_family": "zip",
+      "command": "zip -e encrypted.zip file.txt",
+      "summary": "create encrypted zip archive",
+      "explanation": "zip encryption is unsupported in guarded archive creation",
+      "risk_level": "write",
+      "needs_confirmation": true,
+      "notes": ["unsupported archive encryption"]
+    },
+    "expected_mode": "experimental",
+    "expected_command_family": "zip",
+    "expected_risk_level": "write",
+    "expected_acceptance": false
+  }
+]

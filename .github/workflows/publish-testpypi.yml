@@ -1,0 +1,96 @@
+name: Publish to TestPyPI
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: publish-testpypi-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-distributions:
+    name: Build distributions
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: latest
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+          installer-parallel: true
+
+      - name: Cache Poetry dependencies and virtualenv
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pypoetry
+            .venv
+          key: ${{ runner.os }}-py3.13-poetry-${{ hashFiles('poetry.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-py3.13-poetry-
+
+      - name: Install dependencies
+        run: poetry install --with dev,docs
+
+      - name: Run tests
+        run: poetry run pytest
+
+      - name: Run lint checks
+        run: poetry run ruff check .
+
+      - name: Verify formatting
+        run: poetry run ruff format --check .
+
+      - name: Build docs (strict)
+        run: poetry run mkdocs build --strict
+
+      - name: Run deterministic evals
+        run: poetry run oterminus-evals
+
+      - name: Build distributions
+        run: poetry build
+
+      - name: Assert dist artifacts exist
+        run: |
+          test -d dist
+          test -n "$(find dist -maxdepth 1 -type f \( -name '*.whl' -o -name '*.tar.gz' \))"
+
+      - name: Upload dist artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-dist
+          path: dist/
+          if-no-files-found: error
+
+  publish-testpypi:
+    name: Publish artifacts to TestPyPI
+    needs:
+      - build-distributions
+    runs-on: ubuntu-latest
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/p/oterminus
+    permissions:
+      id-token: write
+
+    steps:
+      - name: Download dist artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: python-dist
+          path: dist/
+
+      - name: Publish to TestPyPI via Trusted Publishing (OIDC)
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/

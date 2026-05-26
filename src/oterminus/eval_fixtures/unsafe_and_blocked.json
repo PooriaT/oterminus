@@ -1,0 +1,154 @@
+[
+  {
+    "id": "direct-chained-blocked",
+    "user_input": "ls && pwd",
+    "expected_mode": "experimental",
+    "expected_command_family": "ls",
+    "expected_risk_level": "safe",
+    "expected_acceptance": false,
+    "expected_rendered_command": "ls && pwd",
+    "expected_argv": [
+      "ls",
+      "&&",
+      "pwd"
+    ]
+  },
+  {
+    "id": "direct-background-blocked",
+    "user_input": "sleep 1 &",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "experimental",
+      "command_family": "sleep",
+      "command": "sleep 1 &",
+      "summary": "sleep",
+      "explanation": "run sleep",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "experimental",
+    "expected_command_family": "sleep",
+    "expected_risk_level": "dangerous",
+    "expected_acceptance": false,
+    "expected_rendered_command": "sleep 1 &",
+    "expected_argv": [
+      "sleep",
+      "1",
+      "&"
+    ]
+  },
+  {
+    "id": "direct-rm-dangerous-policy-block",
+    "user_input": "rm -rf tmp",
+    "expected_mode": "experimental",
+    "expected_command_family": "rm",
+    "expected_risk_level": "dangerous",
+    "expected_acceptance": false,
+    "expected_rendered_command": "rm -rf tmp",
+    "expected_argv": [
+      "rm",
+      "-rf",
+      "tmp"
+    ]
+  },
+  {
+    "id": "direct-sudo-dangerous-policy-block",
+    "user_input": "sudo ls",
+    "expected_mode": "experimental",
+    "expected_command_family": "sudo",
+    "expected_risk_level": "dangerous",
+    "expected_acceptance": false,
+    "expected_rendered_command": "sudo ls",
+    "expected_argv": [
+      "sudo",
+      "ls"
+    ],
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "experimental",
+      "command_family": "sudo",
+      "command": "sudo ls",
+      "summary": "run privileged list command",
+      "explanation": "blocked privileged command fixture",
+      "risk_level": "dangerous",
+      "needs_confirmation": true,
+      "notes": []
+    }
+  },
+  {
+    "id": "planner-policy-block-dangerous-chown",
+    "user_input": "change owner recursively",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "experimental",
+      "command_family": "chown",
+      "command": "chown root file.txt",
+      "summary": "chown",
+      "explanation": "owner change",
+      "risk_level": "dangerous",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "experimental",
+    "expected_command_family": "chown",
+    "expected_risk_level": "dangerous",
+    "expected_acceptance": false,
+    "expected_rendered_command": "chown root file.txt",
+    "expected_argv": [
+      "chown",
+      "root",
+      "file.txt"
+    ]
+  },
+  {
+    "id": "planner-experimental-with-pipeline-blocked",
+    "user_input": "list files then count",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "experimental",
+      "command_family": "ls",
+      "command": "ls | wc -l",
+      "summary": "count files",
+      "explanation": "uses pipeline",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "experimental",
+    "expected_command_family": "ls",
+    "expected_risk_level": "safe",
+    "expected_acceptance": false,
+    "expected_rendered_command": "ls | wc -l",
+    "expected_argv": [
+      "ls",
+      "|",
+      "wc",
+      "-l"
+    ]
+  },
+  {
+    "id": "planner-unknown-family-rejected",
+    "user_input": "run a python script",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "experimental",
+      "command_family": "python",
+      "command": "python app.py",
+      "summary": "run python",
+      "explanation": "execute script",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "experimental",
+    "expected_command_family": "python",
+    "expected_risk_level": "dangerous",
+    "expected_acceptance": false,
+    "expected_rendered_command": "python app.py",
+    "expected_argv": [
+      "python",
+      "app.py"
+    ]
+  }
+]
