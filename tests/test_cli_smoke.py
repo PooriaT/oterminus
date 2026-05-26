@@ -1221,6 +1221,30 @@ def test_handle_request_ambiguous_writes_audit_without_executor(tmp_path: Path) 
     executor.run.assert_not_called()
 
 
+def test_handle_request_planner_error_marks_planner_invoked_in_audit(tmp_path: Path) -> None:
+    from oterminus.audit import AuditLogger
+    from oterminus.cli import handle_request
+    from oterminus.planner import PlannerError
+
+    planner = Mock()
+    planner.plan.side_effect = PlannerError("failed")
+
+    code = handle_request(
+        "show files in this directory",
+        planner,
+        Mock(),
+        Mock(),
+        audit_logger=AuditLogger(tmp_path / "audit.jsonl"),
+    )
+
+    assert code == 2
+    payload = json.loads((tmp_path / "audit.jsonl").read_text(encoding="utf-8").strip())
+    assert payload["confirmation_result"] == "planner_error"
+    assert payload["planner_invoked"] is True
+    assert payload["planner_skipped"] is False
+    assert payload["planner_skip_reason"] is None
+
+
 def test_handle_request_ambiguous_lifecycle_blocks_before_confirmation(monkeypatch, capsys) -> None:
     from oterminus.cli import handle_request
 

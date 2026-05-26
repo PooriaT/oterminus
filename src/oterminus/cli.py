@@ -176,10 +176,10 @@ def handle_request(
                 print(f"[trace] route category={route.category} confidence={route.confidence:.2f}")
                 print("[trace] planner=invoked")
             planner = planner_factory if hasattr(planner_factory, "plan") else planner_factory()
-            proposal = planner.plan(request)
             event.planner_invoked = True
             event.planner_skipped = False
             event.planner_skip_reason = None
+            proposal = planner.plan(request)
         elif debug_trace:
             print("[trace] fast_path=direct_command planner=skipped")
     except (PlannerError, OllamaClientError, SetupError) as exc:
