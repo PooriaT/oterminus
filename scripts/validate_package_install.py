@@ -30,7 +30,7 @@ def script_path(bin_dir: Path, name: str) -> Path:
 
 
 def main() -> int:
-    run(["poetry", "build"])
+    run(["poetry", "build", "--clean"])
 
     wheels = sorted(DIST_DIR.glob("oterminus-*.whl"))
     if not wheels:
