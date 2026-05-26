@@ -2,75 +2,119 @@
 
 OTerminus packaging and publication is intentionally staged:
 
-1. local package build/install validation (completed in PR #141)
-2. **TestPyPI validation publish** (this workflow)
-3. production PyPI publish (separate, later PR/issue)
+1. local package build/install validation (PR #141)
+2. TestPyPI validation publish (PR #142)
+3. production PyPI publish (this workflow)
 
-This page documents step 2 only.
+## Workflow map
 
-## TestPyPI workflow scope
+- **TestPyPI:** `.github/workflows/publish-testpypi.yml` (manual `workflow_dispatch`)
+- **Production PyPI:** `.github/workflows/publish-pypi.yml` (tag push `v*` only)
 
-The TestPyPI workflow exists to validate package publication and install behavior without publishing to
-production PyPI.
+Production publishing is intentionally gated by release tags and a protected GitHub environment.
 
-- Workflow file: `.github/workflows/publish-testpypi.yml`
-- Trigger: manual (`workflow_dispatch`) only
-- Target index: `https://test.pypi.org/legacy/`
+## Production workflow scope
+
+The production workflow is designed to publish only intentional releases:
+
+- Workflow file: `.github/workflows/publish-pypi.yml`
+- Trigger: `push` tags matching `v*`
+- No `pull_request` trigger
+- No normal branch push trigger
 - Auth model: GitHub Actions OIDC Trusted Publishing (no API token secret)
-- GitHub environment: `testpypi`
+- GitHub environment: `pypi`
 
-TestPyPI publishing is validation-only. Production PyPI publication is intentionally handled later in a
-separate issue/PR.
+The workflow has separate jobs to build once and publish exact artifacts:
 
-## One-time Trusted Publisher setup (TestPyPI)
+1. `build-distributions`
+   - validates tag/version consistency (`vX.Y.Z` tag must match `tool.poetry.version`)
+   - builds with `poetry build`
+   - uploads `dist/` artifacts
+2. `publish-pypi`
+   - downloads the same artifacts
+   - publishes with `pypa/gh-action-pypi-publish@release/v1`
 
-TestPyPI and PyPI are separate services with separate accounts. Sign in to TestPyPI and configure a
-pending Trusted Publisher for OTerminus:
+## One-time Trusted Publisher setup
+
+### TestPyPI pending publisher
+
+Create or confirm the TestPyPI pending trusted publisher:
 
 - **Project/package name:** `oterminus`
 - **Owner:** `PooriaT`
 - **Repository:** `oterminus`
-- **Workflow name/path:** `.github/workflows/publish-testpypi.yml`
+- **Workflow filename:** `publish-testpypi.yml`
 - **Environment name:** `testpypi`
 
-Also create a GitHub repository Environment named `testpypi` (Settings → Environments). This workflow
-uses that environment for deployment context and OIDC trust matching.
+### PyPI pending publisher
 
-Do **not** add long-lived `PYPI_*` or `TEST_PYPI_*` API token secrets for this workflow when Trusted
-Publishing is available.
+Create a production PyPI pending trusted publisher:
 
-## Run a TestPyPI publish
+- **Project/package name:** `oterminus`
+- **Owner:** `PooriaT`
+- **Repository:** `oterminus`
+- **Workflow filename:** `publish-pypi.yml`
+- **Environment name:** `pypi`
 
-1. Open GitHub Actions for this repository.
-2. Select **Publish to TestPyPI**.
-3. Click **Run workflow** on your target branch/tag.
-4. Confirm the `build-distributions` job passes and `publish-testpypi` succeeds.
+### GitHub environment protection
 
-The workflow builds distributions with `poetry build`, uploads artifacts, then publishes the same built
-artifacts to TestPyPI.
+In GitHub repository Settings → Environments:
 
-## Verify on TestPyPI
+1. create environment `pypi`
+2. require manual approval before deployment
+3. optionally restrict allowed branches/tags to release patterns
 
-After a successful run:
+Do **not** add long-lived `PYPI_API_TOKEN` secrets when Trusted Publishing is available.
 
-1. Open package page: `https://test.pypi.org/p/oterminus`
-2. Confirm expected version/files (`.whl` and `.tar.gz`) are present.
+## Release checklist (production)
 
-## Install test from TestPyPI
+1. Confirm latest TestPyPI publish/install validation succeeded.
+2. Update version in `pyproject.toml`.
+3. Update changelog or release notes (if changelog is in use).
+4. Run local release checks:
 
-Use a clean virtual environment and install from TestPyPI:
+   ```bash
+   poetry run pytest
+   poetry run ruff check .
+   poetry run ruff format --check .
+   poetry run mkdocs build --strict
+   poetry run oterminus-evals
+   poetry build
+   ```
 
-```bash
-python -m pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ oterminus
-```
+5. Merge the release PR to `main`.
+6. Create and push release tag:
 
-`--extra-index-url https://pypi.org/simple/` is often required because TestPyPI may not host every
-transitive runtime dependency needed by `oterminus`.
+   ```bash
+   git tag vX.Y.Z
+   git push origin vX.Y.Z
+   ```
 
-## Safety guarantees in this stage
+7. Approve the `pypi` environment deployment in GitHub Actions.
+8. Verify package page on PyPI: `https://pypi.org/p/oterminus`
+9. Verify install in a clean environment:
 
-- No `pull_request` trigger.
-- No production PyPI target.
-- No API token secret requirement.
-- No version mutation or auto-release from every push.
-- Build must succeed and `dist/` artifacts must exist before publish.
+   ```bash
+   python -m pip install oterminus
+   oterminus --help
+   oterminus doctor
+   ```
+
+## TestPyPI workflow scope (validation stage)
+
+The TestPyPI workflow remains validation-only:
+
+- Workflow file: `.github/workflows/publish-testpypi.yml`
+- Trigger: manual (`workflow_dispatch`) only
+- Target index: `https://test.pypi.org/legacy/`
+- Auth model: GitHub Actions OIDC Trusted Publishing
+- GitHub environment: `testpypi`
+
+## Safety guarantees
+
+- No production publish from pull requests.
+- No production publish from ordinary branch pushes.
+- Production releases require intentional `v*` tag creation.
+- Production deployment requires `pypi` environment protection.
+- Build and publish are separate; publish uses exact built artifacts.
+- Version/tag mismatch fails before publish.

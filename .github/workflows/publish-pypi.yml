@@ -1,0 +1,97 @@
+name: Publish to PyPI
+
+on:
+  push:
+    tags:
+      - "v*"
+
+concurrency:
+  group: publish-pypi-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-distributions:
+    name: Build distributions
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Validate tag matches pyproject version
+        env:
+          GIT_TAG: ${{ github.ref_name }}
+        run: |
+          python - <<'PY'
+          import os
+          import pathlib
+          import re
+          import sys
+
+          import tomllib
+
+          tag = os.environ["GIT_TAG"]
+          if not re.fullmatch(r"v\d+\.\d+\.\d+(?:[a-zA-Z0-9._-]+)?", tag):
+              sys.exit(f"Release tag '{tag}' must start with 'v' and include a version.")
+
+          version_from_tag = tag[1:]
+          pyproject = tomllib.loads(pathlib.Path("pyproject.toml").read_text(encoding="utf-8"))
+          package_version = pyproject["tool"]["poetry"]["version"]
+
+          if version_from_tag != package_version:
+              sys.exit(
+                  "Tag/version mismatch: "
+                  f"tag={version_from_tag} pyproject.toml={package_version}"
+              )
+
+          print(f"Tag {tag} matches pyproject.toml version {package_version}.")
+          PY
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: latest
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+          installer-parallel: true
+
+      - name: Build distributions
+        run: poetry build
+
+      - name: Assert dist artifacts exist
+        run: |
+          test -d dist
+          test -n "$(find dist -maxdepth 1 -type f \( -name '*.whl' -o -name '*.tar.gz' \))"
+
+      - name: Upload dist artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-dist
+          path: dist/
+          if-no-files-found: error
+
+  publish-pypi:
+    name: Publish artifacts to PyPI
+    needs:
+      - build-distributions
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/oterminus
+    permissions:
+      id-token: write
+
+    steps:
+      - name: Download dist artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: python-dist
+          path: dist/
+
+      - name: Publish to PyPI via Trusted Publishing (OIDC)
+        uses: pypa/gh-action-pypi-publish@release/v1

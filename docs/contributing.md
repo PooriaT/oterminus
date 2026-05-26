@@ -123,7 +123,7 @@ Notes:
 
 - `oterminus doctor` may report Ollama readiness issues in clean environments; this does not block packaging validation.
 - `oterminus-evals` uses packaged fixture data from `src/oterminus/eval_fixtures/` so it works after wheel install.
-- Publishing to TestPyPI is documented in `docs/release.md` and uses GitHub OIDC Trusted Publishing. Production PyPI publication remains a separate later issue/PR.
+- Publishing to TestPyPI and production PyPI is documented in `docs/release.md` and uses GitHub OIDC Trusted Publishing with protected deployment environments.
 
 ## Pull request template and checklist
 
