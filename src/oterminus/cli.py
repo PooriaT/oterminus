@@ -41,6 +41,8 @@ from oterminus.router import route_request
 from oterminus.validator import Validator
 
 LOGGER = logging.getLogger("oterminus")
+PLANNER_SKIP_DIRECT_COMMAND = "direct_command"
+PLANNER_SKIP_AMBIGUITY_BLOCKED = "ambiguity_blocked"
 
 
 class RunMode(str, Enum):
@@ -138,6 +140,9 @@ def handle_request(
     proposal = detect_direct_command(request, disabled_pack_ids=effective_disabled_pack_ids)
     is_direct_command = proposal is not None
     event.direct_command_detected = is_direct_command
+    event.planner_invoked = False
+    event.planner_skipped = is_direct_command
+    event.planner_skip_reason = PLANNER_SKIP_DIRECT_COMMAND if is_direct_command else None
     if history_item is not None:
         history_item.direct_command_detected = is_direct_command
         history_item.execution_status = "planning"
@@ -150,6 +155,11 @@ def handle_request(
                 list(ambiguity.suggested_safe_options) if ambiguity.is_ambiguous else []
             )
             if ambiguity.is_ambiguous:
+                event.planner_invoked = False
+                event.planner_skipped = True
+                event.planner_skip_reason = PLANNER_SKIP_AMBIGUITY_BLOCKED
+                if debug_trace:
+                    print("[trace] fast_path=ambiguity_blocked planner=skipped")
                 print(render_ambiguity_response(ambiguity))
                 if history_item is not None:
                     history_item.execution_status = "blocked_ambiguous"
@@ -164,11 +174,14 @@ def handle_request(
                 history_item.routed_category = route.category
             if debug_trace:
                 print(f"[trace] route category={route.category} confidence={route.confidence:.2f}")
+                print("[trace] planner=invoked")
             planner = planner_factory if hasattr(planner_factory, "plan") else planner_factory()
             proposal = planner.plan(request)
+            event.planner_invoked = True
+            event.planner_skipped = False
+            event.planner_skip_reason = None
         elif debug_trace:
-            print("[trace] Detected as direct shell command.")
-            print("[trace] Skipped Ollama planner.")
+            print("[trace] fast_path=direct_command planner=skipped")
     except (PlannerError, OllamaClientError, SetupError) as exc:
         print(f"Planning failed: {exc}")
         if history_item is not None:

@@ -68,7 +68,8 @@ read-only inspection alternatives.
 Ambiguous requests stop before planner setup, planner calls, validation, confirmation prompts, and
 execution. Nothing is executed, including in dry-run or explain mode. Their audit events use
 `confirmation_result: "blocked_ambiguous"` and include the ambiguity reason plus suggested safe
-options.
+options. They also record planner skip diagnostics with `planner_invoked: false`,
+`planner_skipped: true`, and `planner_skip_reason: "ambiguity_blocked"`.
 
 ### 4) Capability router
 

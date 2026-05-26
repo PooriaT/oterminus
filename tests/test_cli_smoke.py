@@ -970,8 +970,7 @@ def test_handle_request_direct_command_verbose_shows_trace(monkeypatch, capsys) 
 
     assert code == 0
     output = capsys.readouterr().out
-    assert "[trace] Detected as direct shell command." in output
-    assert "[trace] Skipped Ollama planner." in output
+    assert "[trace] fast_path=direct_command planner=skipped" in output
     assert "[trace] Validation accepted." in output
 
 
@@ -1029,6 +1028,53 @@ def test_handle_request_ambiguous_request_is_intercepted(capsys) -> None:
     planner.plan.assert_not_called()
     validator.validate.assert_not_called()
     executor.run.assert_not_called()
+
+
+def test_handle_request_ambiguous_verbose_shows_fast_path_trace(capsys) -> None:
+    from oterminus.cli import handle_request
+
+    code = handle_request("delete unnecessary files", Mock(), Mock(), Mock(), debug_trace=True)
+
+    assert code == 0
+    output = capsys.readouterr().out
+    assert "[trace] fast_path=ambiguity_blocked planner=skipped" in output
+
+
+def test_handle_request_natural_language_verbose_shows_planner_invoked(monkeypatch, capsys) -> None:
+    from oterminus.cli import handle_request
+
+    planner = Mock()
+    planner.plan.return_value = Proposal(
+        action_type=ActionType.SHELL_COMMAND,
+        mode=ProposalMode.STRUCTURED,
+        command_family="find",
+        arguments={"path": ".", "name": "*.py"},
+        summary="list files",
+        explanation="desc",
+        risk_level=RiskLevel.SAFE,
+        needs_confirmation=True,
+        notes=[],
+    )
+    validator = Mock()
+    validator.validate.return_value = ValidationResult(
+        accepted=True,
+        risk_level=RiskLevel.SAFE,
+        rendered_command="find . -name '*.py'",
+        argv=["find", ".", "-name", "*.py"],
+    )
+    executor = Mock()
+    executor.run.return_value.returncode = 0
+    executor.run.return_value.stdout = ""
+    executor.run.return_value.stderr = ""
+    monkeypatch.setattr("builtins.input", lambda _: "y")
+
+    code = handle_request(
+        "show files in this directory", planner, validator, executor, debug_trace=True
+    )
+
+    assert code == 0
+    output = capsys.readouterr().out
+    assert "[trace] planner=invoked" in output
 
 
 def test_ask_confirmation_requires_experimental_phrase(monkeypatch) -> None:
@@ -1092,6 +1138,9 @@ def test_handle_request_writes_structured_audit_log(monkeypatch, tmp_path: Path)
     assert payload["confirmation_result"] == "confirmed"
     assert payload["execution_exit_code"] == 0
     assert payload["argv"] == ["find", ".", "-name", "*.py"]
+    assert payload["planner_invoked"] is True
+    assert payload["planner_skipped"] is False
+    assert payload["planner_skip_reason"] is None
     assert payload["duration_ms"] >= 0
 
 
@@ -1165,6 +1214,9 @@ def test_handle_request_ambiguous_writes_audit_without_executor(tmp_path: Path) 
         "show project files",
     ]
     assert payload["confirmation_result"] == "blocked_ambiguous"
+    assert payload["planner_invoked"] is False
+    assert payload["planner_skipped"] is True
+    assert payload["planner_skip_reason"] == "ambiguity_blocked"
     validator.validate.assert_not_called()
     executor.run.assert_not_called()
 
@@ -1356,6 +1408,9 @@ def test_main_ambiguous_request_does_not_require_startup_or_planner(
     payload = json.loads(config.audit_log_path.read_text(encoding="utf-8").strip())
     assert payload["ambiguity_detected"] is True
     assert payload["confirmation_result"] == "blocked_ambiguous"
+    assert payload["planner_invoked"] is False
+    assert payload["planner_skipped"] is True
+    assert payload["planner_skip_reason"] == "ambiguity_blocked"
     validator.validate.assert_not_called()
     executor.run.assert_not_called()
 

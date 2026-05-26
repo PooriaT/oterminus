@@ -187,6 +187,9 @@ natural-language requests stop before planning.
 The CLI flag is for one-shot requests only. Inside the REPL, use the built-in form
 `explain <request>` or `explain <history_id>` instead.
 
+When you run with `--verbose`, trace output includes fast-path diagnostics (`fast_path=direct_command`
+or `fast_path=ambiguity_blocked`) and planner invocation status (`planner=invoked`).
+
 ## REPL session history and rerun safety
 
 REPL always keeps in-memory session history for the current process. Persistent history is optional
