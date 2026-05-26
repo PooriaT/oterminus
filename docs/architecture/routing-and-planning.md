@@ -12,6 +12,7 @@ Routing is reached only after two earlier checks:
 1. **Direct command detection**: supported direct shell commands skip the planner but still continue
    to validation and policy. They are not treated as ambiguous natural language.
 2. **Ambiguity detection**: vague natural-language requests stop before routing and planner calls.
+   These are logged as planner-skipped fast-path outcomes (`planner_skip_reason=ambiguity_blocked`).
    OTerminus shows safe read-only inspection alternatives and does not execute anything.
 
 ## Deterministic router
