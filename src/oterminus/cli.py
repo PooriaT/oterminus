@@ -31,6 +31,7 @@ from oterminus.history import PersistentHistoryStore, SessionHistory
 from oterminus.doctor import print_report, run_doctor
 from oterminus.executor import Executor
 from oterminus.failure_explainer import FailureExplainer
+from oterminus.local_planner import plan_locally
 from oterminus.logging_utils import configure_logging
 from oterminus.ollama_client import OllamaClientError, OllamaPlannerClient
 from oterminus.planner import Planner, PlannerError
@@ -43,6 +44,7 @@ from oterminus.validator import Validator
 LOGGER = logging.getLogger("oterminus")
 PLANNER_SKIP_DIRECT_COMMAND = "direct_command"
 PLANNER_SKIP_AMBIGUITY_BLOCKED = "ambiguity_blocked"
+PLANNER_SKIP_LOCAL_PLANNER = "local_planner"
 
 
 class RunMode(str, Enum):
@@ -174,12 +176,29 @@ def handle_request(
                 history_item.routed_category = route.category
             if debug_trace:
                 print(f"[trace] route category={route.category} confidence={route.confidence:.2f}")
-                print("[trace] planner=invoked")
-            planner = planner_factory if hasattr(planner_factory, "plan") else planner_factory()
-            event.planner_invoked = True
-            event.planner_skipped = False
-            event.planner_skip_reason = None
-            proposal = planner.plan(request)
+
+            local_match = plan_locally(
+                request,
+                route,
+                disabled_pack_ids=effective_disabled_pack_ids,
+            )
+            if local_match is not None:
+                proposal = local_match.proposal
+                event.planner_invoked = False
+                event.planner_skipped = True
+                event.planner_skip_reason = PLANNER_SKIP_LOCAL_PLANNER
+                if debug_trace:
+                    print(
+                        f"[trace] fast_path=local_planner rule={local_match.rule_id} planner=skipped"
+                    )
+            else:
+                if debug_trace:
+                    print("[trace] local_planner=no_match planner=invoked")
+                planner = planner_factory if hasattr(planner_factory, "plan") else planner_factory()
+                event.planner_invoked = True
+                event.planner_skipped = False
+                event.planner_skip_reason = None
+                proposal = planner.plan(request)
         elif debug_trace:
             print("[trace] fast_path=direct_command planner=skipped")
     except (PlannerError, OllamaClientError, SetupError) as exc:

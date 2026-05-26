@@ -146,3 +146,5 @@ For the full local quality checklist, including Ruff format/lint and pytest comm
 request.
 
 - Optional local persistent REPL history is available via `OTERMINUS_HISTORY_ENABLED=true`; reruns still go through normal validation + confirmation.
+
+For a small set of deterministic natural-language requests, OTerminus can skip Ollama by producing a local structured proposal before normal validation and confirmation.

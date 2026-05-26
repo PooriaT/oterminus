@@ -117,3 +117,5 @@ When enabled, audit events may include:
 - `failure_stderr_summary` (redacted/bounded)
 
 See [Configuration reference](config.md#failure-explanations-opt-in) for enablement and limits.
+
+- `planner_skip_reason` values: `direct_command`, `ambiguity_blocked`, `local_planner`, or `null` when planner ran.

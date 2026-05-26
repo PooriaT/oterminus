@@ -68,3 +68,5 @@ Add or update fixture cases when any of the following change:
 
 - unit tests verify module behavior and edge cases
 - eval fixtures verify end-to-end proposal/validation invariants across representative prompts
+
+- `fast_path_local_planner.json` validates deterministic local-planner matches and conservative no-match behavior without requiring Ollama.

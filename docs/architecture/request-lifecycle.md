@@ -138,3 +138,5 @@ for the current process session and do not execute shell commands.
 `rerun <history_id>` does not shortcut execution. It submits the original user input back into the
 same request lifecycle described above, including ambiguity handling, planning/direct detection,
 validation/policy, preview, and explicit execute confirmation.
+
+- After routing, OTerminus attempts a deterministic local planner for a small set of unambiguous requests. If it matches, Ollama is skipped and the same validation/preview/confirmation flow continues.
