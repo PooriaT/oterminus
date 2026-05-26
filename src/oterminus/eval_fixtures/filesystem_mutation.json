@@ -1,0 +1,134 @@
+[
+  {
+    "id": "direct-cp-write",
+    "user_input": "cp -pn src.txt dst.txt",
+    "expected_mode": "structured",
+    "expected_command_family": "cp",
+    "expected_risk_level": "write",
+    "expected_acceptance": true,
+    "expected_rendered_command": "cp -p -n src.txt dst.txt",
+    "expected_argv": [
+      "cp",
+      "-p",
+      "-n",
+      "src.txt",
+      "dst.txt"
+    ]
+  },
+  {
+    "id": "direct-mv-write",
+    "user_input": "mv -n old.txt new.txt",
+    "expected_mode": "structured",
+    "expected_command_family": "mv",
+    "expected_risk_level": "write",
+    "expected_acceptance": true,
+    "expected_rendered_command": "mv -n old.txt new.txt",
+    "expected_argv": [
+      "mv",
+      "-n",
+      "old.txt",
+      "new.txt"
+    ]
+  },
+  {
+    "id": "direct-chmod-write",
+    "user_input": "chmod 755 run.sh",
+    "expected_mode": "structured",
+    "expected_command_family": "chmod",
+    "expected_risk_level": "write",
+    "expected_acceptance": true,
+    "expected_rendered_command": "chmod 755 run.sh",
+    "expected_argv": [
+      "chmod",
+      "755",
+      "run.sh"
+    ]
+  },
+  {
+    "id": "direct-mkdir-write",
+    "user_input": "mkdir -p tmp/build",
+    "expected_mode": "structured",
+    "expected_command_family": "mkdir",
+    "expected_risk_level": "write",
+    "expected_acceptance": true,
+    "expected_rendered_command": "mkdir -p tmp/build",
+    "expected_argv": [
+      "mkdir",
+      "-p",
+      "tmp/build"
+    ]
+  },
+  {
+    "id": "direct-cd-experimental-allowed",
+    "user_input": "cd src",
+    "expected_mode": "experimental",
+    "expected_command_family": "cd",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "cd src",
+    "expected_argv": [
+      "cd",
+      "src"
+    ]
+  },
+  {
+    "id": "planner-structured-mkdir-write",
+    "user_input": "create build folder",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "mkdir",
+      "arguments": {
+        "path": "build",
+        "parents": true
+      },
+      "summary": "make folder",
+      "explanation": "mkdir",
+      "risk_level": "write",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "structured",
+    "expected_command_family": "mkdir",
+    "expected_risk_level": "write",
+    "expected_acceptance": true,
+    "expected_rendered_command": "mkdir -p build",
+    "expected_argv": [
+      "mkdir",
+      "-p",
+      "build"
+    ]
+  },
+  {
+    "id": "planner-structured-cp-write",
+    "user_input": "copy report",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "cp",
+      "arguments": {
+        "source": "report.txt",
+        "destination": "backup/report.txt",
+        "recursive": false,
+        "preserve": false,
+        "no_clobber": true
+      },
+      "summary": "copy report",
+      "explanation": "copy file",
+      "risk_level": "write",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "structured",
+    "expected_command_family": "cp",
+    "expected_risk_level": "write",
+    "expected_acceptance": true,
+    "expected_rendered_command": "cp -n report.txt backup/report.txt",
+    "expected_argv": [
+      "cp",
+      "-n",
+      "report.txt",
+      "backup/report.txt"
+    ]
+  }
+]

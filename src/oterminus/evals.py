@@ -73,6 +73,16 @@ class EvalSummary:
     failed: int
 
 
+def default_fixtures_dir() -> Path:
+    module_root = Path(__file__).resolve().parent
+    package_fixtures = module_root / "eval_fixtures"
+    if package_fixtures.exists():
+        return package_fixtures
+
+    repo_fixtures = module_root.parent.parent / "evals" / "cases"
+    return repo_fixtures
+
+
 def load_eval_cases(fixtures_dir: Path) -> list[EvalCase]:
     if not fixtures_dir.exists():
         raise FileNotFoundError(f"Eval fixtures directory does not exist: {fixtures_dir}")
@@ -281,8 +291,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run deterministic eval fixtures for oterminus.")
     parser.add_argument(
         "--fixtures-dir",
-        default="evals/cases",
-        help="Directory containing eval fixture JSON files (default: evals/cases)",
+        default=str(default_fixtures_dir()),
+        help="Directory containing eval fixture JSON files (default: packaged fixtures)",
     )
     return parser.parse_args(argv)
 

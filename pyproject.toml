@@ -2,9 +2,32 @@
 name = "oterminus"
 version = "0.1.0"
 description = "Local AI-powered terminal assistant with explicit confirmation and safety controls"
-authors = ["oterminus contributors"]
+authors = ["OTerminus contributors"]
+license = "MIT"
 readme = "README.md"
-include = ["README.md"]
+homepage = "https://github.com/pooriat/oterminus"
+repository = "https://github.com/pooriat/oterminus"
+documentation = "https://pooriat.github.io/oterminus/"
+keywords = ["cli", "terminal", "assistant", "safety", "ollama"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Utilities",
+]
+include = [
+    "README.md",
+    { path = "src/oterminus/eval_fixtures/*.json", format = ["sdist", "wheel"] },
+]
+exclude = [
+    "site/**",
+    ".github/**",
+    ".venv/**",
+]
 packages = [
     { include = "oterminus", from = "src", format = ["sdist", "wheel"] },
 ]

@@ -1,0 +1,89 @@
+[
+  {
+    "id": "direct-open-local",
+    "user_input": "open .",
+    "expected_mode": "structured",
+    "expected_command_family": "open",
+    "expected_risk_level": "safe",
+    "expected_acceptance": false,
+    "expected_rendered_command": "open .",
+    "expected_argv": [
+      "open",
+      "."
+    ],
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "open",
+      "arguments": {
+        "path": "."
+      },
+      "summary": "open current folder",
+      "explanation": "open local folder",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "optional_notes": "`open` is supported for structured rendering but blocked by policy on non-macOS runtimes."
+  },
+  {
+    "id": "direct-open-url-blocked",
+    "user_input": "open https://example.com",
+    "expected_planner_error_contains": "path must refer to a local filesystem target",
+    "optional_notes": "URL inputs for open are rejected during structured argument validation.",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "open",
+      "arguments": {
+        "path": "https://example.com"
+      },
+      "summary": "open url",
+      "explanation": "invalid structured path",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": []
+    }
+  },
+  {
+    "id": "planner-experimental-when-structured-available-blocked",
+    "user_input": "please open this folder",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "experimental",
+      "command_family": "open",
+      "command": "open .",
+      "summary": "open folder",
+      "explanation": "experimental fallback",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "structured",
+    "expected_command_family": "open",
+    "expected_risk_level": "safe",
+    "expected_acceptance": false,
+    "expected_rendered_command": "open .",
+    "expected_argv": [
+      "open",
+      "."
+    ],
+    "optional_notes": "Validator rejects experimental fallback when structured rendering is available for this command family."
+  },
+  {
+    "id": "planner-structured-open-url-parse-fails",
+    "user_input": "could you open the project website",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "experimental",
+      "command_family": "open",
+      "command": "open https://example.com",
+      "summary": "open url",
+      "explanation": "fallback",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_planner_error_contains": "path must refer to a local filesystem target"
+  }
+]
