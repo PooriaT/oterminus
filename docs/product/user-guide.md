@@ -408,3 +408,5 @@ deploy/publish operations, and arbitrary `poetry run ...` commands.
 
 These operations may execute local project code and tooling, so preview and explicit confirmation
 are always required. This capability is not arbitrary shell support.
+
+OTerminus also has a conservative deterministic local planner for a small set of clear natural-language requests (for example: `show current directory`, `show files`, `show disk usage`). This fast path only builds structured proposals; it never executes directly and still requires validation, preview, and confirmation.

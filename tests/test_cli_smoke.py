@@ -23,8 +23,8 @@ from oterminus.policies import ConfirmationLevel
 
 
 def test_parse_args_one_shot() -> None:
-    args = parse_args(["show", "files"])
-    assert args.request == ["show", "files"]
+    args = parse_args(["show", "files", "in", "this", "directory"])
+    assert args.request == ["show", "files", "in", "this", "directory"]
     assert args.cli_mode == "request"
 
 
@@ -59,20 +59,20 @@ def test_parse_args_rejects_explain_doctor_request() -> None:
 
 def test_parse_args_rejects_mutually_exclusive_run_modes() -> None:
     with pytest.raises(SystemExit) as exc_info:
-        parse_args(["--dry-run", "--explain", "show", "files"])
+        parse_args(["--dry-run", "--explain", "show", "files", "in", "this", "directory"])
 
     assert exc_info.value.code == 2
 
 
 def test_parse_args_dry_run_mode() -> None:
-    args = parse_args(["--dry-run", "show", "files"])
+    args = parse_args(["--dry-run", "show", "files", "in", "this", "directory"])
     assert args.dry_run is True
     assert args.explain is False
     assert args.cli_mode == "request"
 
 
 def test_parse_args_explain_mode() -> None:
-    args = parse_args(["--explain", "show", "files"])
+    args = parse_args(["--explain", "show", "files", "in", "this", "directory"])
     assert args.explain is True
     assert args.dry_run is False
     assert args.cli_mode == "request"
@@ -234,7 +234,7 @@ def test_main_request_exits_when_startup_setup_fails(monkeypatch, capsys) -> Non
 
     monkeypatch.setattr("oterminus.cli.ensure_startup_ready", fail_setup)
 
-    code = main(["--verbose", "show", "files"])
+    code = main(["--verbose", "search", "for", "python", "files"])
 
     assert code == 2
     assert "Ollama is installed but not running." in capsys.readouterr().out
@@ -375,10 +375,10 @@ def test_main_dry_run_natural_language_uses_planner_and_skips_executor(monkeypat
     monkeypatch.setattr("oterminus.cli.OllamaPlannerClient", Mock(return_value=Mock()))
     monkeypatch.setattr("oterminus.cli.Planner", lambda client: planner)
 
-    code = main(["--dry-run", "show", "files"])
+    code = main(["--dry-run", "show", "files", "in", "this", "directory"])
 
     assert code == 0
-    planner.plan.assert_called_once_with("show files")
+    planner.plan.assert_called_once_with("show files in this directory")
     executor.run.assert_not_called()
 
 
@@ -420,10 +420,10 @@ def test_main_explain_natural_language_uses_planner_and_skips_executor(monkeypat
     monkeypatch.setattr("oterminus.cli.OllamaPlannerClient", Mock(return_value=Mock()))
     monkeypatch.setattr("oterminus.cli.Planner", lambda client: planner)
 
-    code = main(["--explain", "show", "files"])
+    code = main(["--explain", "show", "files", "in", "this", "directory"])
 
     assert code == 0
-    planner.plan.assert_called_once_with("show files")
+    planner.plan.assert_called_once_with("show files in this directory")
     executor.run.assert_not_called()
 
 
@@ -456,7 +456,7 @@ def test_main_uses_selected_model(monkeypatch) -> None:
         )[1],
     )
 
-    code = main(["--verbose", "show", "files"])
+    code = main(["--verbose", "search", "for", "python", "files"])
 
     assert code == 17
     planner_client.assert_called_once_with(model="llama3.2:latest")
@@ -614,7 +614,7 @@ def test_handle_request_cancel(monkeypatch) -> None:
     executor = Mock()
     monkeypatch.setattr("builtins.input", lambda _: "n")
 
-    code = handle_request("show files", planner, validator, executor)
+    code = handle_request("show files in this directory", planner, validator, executor)
     assert code == 0
     executor.run.assert_not_called()
 
@@ -1074,7 +1074,7 @@ def test_handle_request_natural_language_verbose_shows_planner_invoked(monkeypat
 
     assert code == 0
     output = capsys.readouterr().out
-    assert "[trace] planner=invoked" in output
+    assert "[trace] local_planner=no_match planner=invoked" in output
 
 
 def test_ask_confirmation_requires_experimental_phrase(monkeypatch) -> None:
@@ -1470,7 +1470,7 @@ def test_history_records_are_created(monkeypatch) -> None:
 
 def test_history_command_displays_records() -> None:
     history = SessionHistory()
-    item = history.start("show files")
+    item = history.start("show files in this directory")
     item.rendered_command = "find . -name '*.py'"
     item.risk_level = "safe"
     item.execution_status = "executed"
@@ -1487,7 +1487,7 @@ def test_history_command_displays_records() -> None:
 
     assert output is not None
     assert "id" in output
-    assert "show files" in output
+    assert "show files in this directory" in output
     assert "find . -name '*.py'" in output
 
 
@@ -1807,7 +1807,7 @@ def test_repl_passes_persistent_store_to_handle_request(monkeypatch) -> None:
     captured: dict[str, object] = {}
 
     monkeypatch.setattr("oterminus.cli.create_prompt_session", lambda: (None, "plain_input"))
-    answers = iter(["show files", "exit"])
+    answers = iter(["show files in this directory", "exit"])
     monkeypatch.setattr("builtins.input", lambda _: next(answers))
 
     def fake_handle_request(*_args, **kwargs) -> int:

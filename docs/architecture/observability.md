@@ -59,3 +59,6 @@ Persisted history records may include request text, rendered command text, local
 
 When enabled, audit captures only bounded metadata for failure explanation outcomes (not full stdout/stderr).
 See [Audit log schema](../reference/audit-log-schema.md) and [Configuration reference](../reference/config.md#failure-explanations-opt-in).
+
+- `planner_skip_reason` now includes `local_planner` when deterministic local planning produced the proposal.
+- Verbose trace includes `fast_path=local_planner` with a rule id on matches, and `local_planner=no_match planner=invoked` on misses.
