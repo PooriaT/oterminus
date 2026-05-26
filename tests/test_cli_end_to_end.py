@@ -34,7 +34,7 @@ def _planned_ls_proposal() -> Proposal:
             "all": False,
             "recursive": False,
         },
-        summary="show files",
+        summary="show files in this directory",
         explanation="List files in the current directory.",
         risk_level=RiskLevel.SAFE,
         needs_confirmation=True,
@@ -133,6 +133,9 @@ def test_direct_dry_run_validates_previews_audits_and_skips_execution(
     payload = _read_audit_payload(config.audit_log_path)
     assert payload["user_input"] == "ls"
     assert payload["direct_command_detected"] is True
+    assert payload["planner_invoked"] is False
+    assert payload["planner_skipped"] is True
+    assert payload["planner_skip_reason"] == "direct_command"
     assert payload["validation_accepted"] is True
     assert payload["confirmation_result"] == "skipped_dry_run"
     assert payload["execution_exit_code"] is None
@@ -164,6 +167,9 @@ def test_direct_explain_validates_renders_explanation_audits_and_skips_execution
     payload = _read_audit_payload(config.audit_log_path)
     assert payload["user_input"] == "ls"
     assert payload["direct_command_detected"] is True
+    assert payload["planner_invoked"] is False
+    assert payload["planner_skipped"] is True
+    assert payload["planner_skip_reason"] == "direct_command"
     assert payload["validation_accepted"] is True
     assert payload["confirmation_result"] == "skipped_explain"
     assert payload["execution_exit_code"] is None
@@ -188,7 +194,7 @@ def test_natural_language_inspection_modes_use_planner_without_executor(
     monkeypatch.setattr("oterminus.cli.Planner", lambda client: planner)
     monkeypatch.setattr("builtins.input", Mock(side_effect=AssertionError("no confirmation")))
 
-    code = main([flag, "show", "files"])
+    code = main([flag, "show", "files", "in", "this", "directory"])
 
     assert code == 0
     output = capsys.readouterr().out
@@ -197,11 +203,11 @@ def test_natural_language_inspection_modes_use_planner_without_executor(
         assert "Dry-run mode: execution skipped" in output
     else:
         assert "--- oterminus explanation ---" in output
-    planner.plan.assert_called_once_with("show files")
+    planner.plan.assert_called_once_with("show files in this directory")
     validator.validate.assert_called_once()
     executor.run.assert_not_called()
     payload = _read_audit_payload(config.audit_log_path)
-    assert payload["user_input"] == "show files"
+    assert payload["user_input"] == "show files in this directory"
     assert payload["direct_command_detected"] is False
     assert payload["routed_category"] == "filesystem_inspect"
     assert payload["confirmation_result"] == expected_status

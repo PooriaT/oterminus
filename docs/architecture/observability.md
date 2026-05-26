@@ -8,15 +8,18 @@ When enabled, each request lifecycle writes one JSON line with fields covering:
 
 - request metadata
 - ambiguity outcome for blocked natural-language requests
+- planner fast-path diagnostics (`planner_invoked`, `planner_skipped`, `planner_skip_reason`)
 - routing and proposal decisions when planning continues
 - validation outcome and reasons/warnings
 - confirmation result or lifecycle stop status
 - execution exit code and timing
+- stage-level latency metrics (`timings_ms`) to show where time was spent and whether planner was skipped
 - execution output truncation metadata (flags and character counts), without storing raw stdout/stderr
 - rerun lineage (`rerun_source_history_id`) when a request is triggered via `rerun <history_id>`
 
 For ambiguous natural-language requests, the audit event records `ambiguity_detected`,
-`ambiguity_reason`, `ambiguity_safe_options`, and `confirmation_result: "blocked_ambiguous"`.
+`ambiguity_reason`, `ambiguity_safe_options`, `confirmation_result: "blocked_ambiguous"`, and
+`planner_skip_reason: "ambiguity_blocked"`.
 Because the request stops before planning, validation, confirmation, and execution, the downstream
 fields for those stages remain unset.
 
@@ -33,7 +36,9 @@ and argv.
 
 ## Runtime diagnostics
 
-- `--verbose` prints concise trace lines for routing/proposal/validation/confirmation
+- `--verbose` prints concise trace lines for fast-path/planner decisions, routing, proposal,
+  validation, and confirmation (for example: `fast_path=direct_command planner=skipped` and
+  `planner=invoked`)
 - `audit status` reports current audit settings and path
 - `audit tail [n]` prints recent local audit events without executing a request
 - `audit clear` requires explicit confirmation before clearing the local audit log
@@ -56,3 +61,5 @@ Persisted history records may include request text, rendered command text, local
 When enabled, audit captures only bounded metadata for failure explanation outcomes (not full stdout/stderr).
 See [Audit log schema](../reference/audit-log-schema.md) and [Configuration reference](../reference/config.md#failure-explanations-opt-in).
 
+- `planner_skip_reason` now includes `local_planner` when deterministic local planning produced the proposal.
+- Verbose trace includes `fast_path=local_planner` with a rule id on matches, and `local_planner=no_match planner=invoked` on misses.

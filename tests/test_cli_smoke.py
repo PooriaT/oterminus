@@ -23,8 +23,8 @@ from oterminus.policies import ConfirmationLevel
 
 
 def test_parse_args_one_shot() -> None:
-    args = parse_args(["show", "files"])
-    assert args.request == ["show", "files"]
+    args = parse_args(["show", "files", "in", "this", "directory"])
+    assert args.request == ["show", "files", "in", "this", "directory"]
     assert args.cli_mode == "request"
 
 
@@ -59,20 +59,20 @@ def test_parse_args_rejects_explain_doctor_request() -> None:
 
 def test_parse_args_rejects_mutually_exclusive_run_modes() -> None:
     with pytest.raises(SystemExit) as exc_info:
-        parse_args(["--dry-run", "--explain", "show", "files"])
+        parse_args(["--dry-run", "--explain", "show", "files", "in", "this", "directory"])
 
     assert exc_info.value.code == 2
 
 
 def test_parse_args_dry_run_mode() -> None:
-    args = parse_args(["--dry-run", "show", "files"])
+    args = parse_args(["--dry-run", "show", "files", "in", "this", "directory"])
     assert args.dry_run is True
     assert args.explain is False
     assert args.cli_mode == "request"
 
 
 def test_parse_args_explain_mode() -> None:
-    args = parse_args(["--explain", "show", "files"])
+    args = parse_args(["--explain", "show", "files", "in", "this", "directory"])
     assert args.explain is True
     assert args.dry_run is False
     assert args.cli_mode == "request"
@@ -234,7 +234,7 @@ def test_main_request_exits_when_startup_setup_fails(monkeypatch, capsys) -> Non
 
     monkeypatch.setattr("oterminus.cli.ensure_startup_ready", fail_setup)
 
-    code = main(["--verbose", "show", "files"])
+    code = main(["--verbose", "search", "for", "python", "files"])
 
     assert code == 2
     assert "Ollama is installed but not running." in capsys.readouterr().out
@@ -375,10 +375,10 @@ def test_main_dry_run_natural_language_uses_planner_and_skips_executor(monkeypat
     monkeypatch.setattr("oterminus.cli.OllamaPlannerClient", Mock(return_value=Mock()))
     monkeypatch.setattr("oterminus.cli.Planner", lambda client: planner)
 
-    code = main(["--dry-run", "show", "files"])
+    code = main(["--dry-run", "show", "files", "in", "this", "directory"])
 
     assert code == 0
-    planner.plan.assert_called_once_with("show files")
+    planner.plan.assert_called_once_with("show files in this directory")
     executor.run.assert_not_called()
 
 
@@ -420,10 +420,10 @@ def test_main_explain_natural_language_uses_planner_and_skips_executor(monkeypat
     monkeypatch.setattr("oterminus.cli.OllamaPlannerClient", Mock(return_value=Mock()))
     monkeypatch.setattr("oterminus.cli.Planner", lambda client: planner)
 
-    code = main(["--explain", "show", "files"])
+    code = main(["--explain", "show", "files", "in", "this", "directory"])
 
     assert code == 0
-    planner.plan.assert_called_once_with("show files")
+    planner.plan.assert_called_once_with("show files in this directory")
     executor.run.assert_not_called()
 
 
@@ -456,7 +456,7 @@ def test_main_uses_selected_model(monkeypatch) -> None:
         )[1],
     )
 
-    code = main(["--verbose", "show", "files"])
+    code = main(["--verbose", "search", "for", "python", "files"])
 
     assert code == 17
     planner_client.assert_called_once_with(model="llama3.2:latest")
@@ -614,7 +614,7 @@ def test_handle_request_cancel(monkeypatch) -> None:
     executor = Mock()
     monkeypatch.setattr("builtins.input", lambda _: "n")
 
-    code = handle_request("show files", planner, validator, executor)
+    code = handle_request("show files in this directory", planner, validator, executor)
     assert code == 0
     executor.run.assert_not_called()
 
@@ -970,8 +970,7 @@ def test_handle_request_direct_command_verbose_shows_trace(monkeypatch, capsys) 
 
     assert code == 0
     output = capsys.readouterr().out
-    assert "[trace] Detected as direct shell command." in output
-    assert "[trace] Skipped Ollama planner." in output
+    assert "[trace] fast_path=direct_command planner=skipped" in output
     assert "[trace] Validation accepted." in output
 
 
@@ -1029,6 +1028,53 @@ def test_handle_request_ambiguous_request_is_intercepted(capsys) -> None:
     planner.plan.assert_not_called()
     validator.validate.assert_not_called()
     executor.run.assert_not_called()
+
+
+def test_handle_request_ambiguous_verbose_shows_fast_path_trace(capsys) -> None:
+    from oterminus.cli import handle_request
+
+    code = handle_request("delete unnecessary files", Mock(), Mock(), Mock(), debug_trace=True)
+
+    assert code == 0
+    output = capsys.readouterr().out
+    assert "[trace] fast_path=ambiguity_blocked planner=skipped" in output
+
+
+def test_handle_request_natural_language_verbose_shows_planner_invoked(monkeypatch, capsys) -> None:
+    from oterminus.cli import handle_request
+
+    planner = Mock()
+    planner.plan.return_value = Proposal(
+        action_type=ActionType.SHELL_COMMAND,
+        mode=ProposalMode.STRUCTURED,
+        command_family="find",
+        arguments={"path": ".", "name": "*.py"},
+        summary="list files",
+        explanation="desc",
+        risk_level=RiskLevel.SAFE,
+        needs_confirmation=True,
+        notes=[],
+    )
+    validator = Mock()
+    validator.validate.return_value = ValidationResult(
+        accepted=True,
+        risk_level=RiskLevel.SAFE,
+        rendered_command="find . -name '*.py'",
+        argv=["find", ".", "-name", "*.py"],
+    )
+    executor = Mock()
+    executor.run.return_value.returncode = 0
+    executor.run.return_value.stdout = ""
+    executor.run.return_value.stderr = ""
+    monkeypatch.setattr("builtins.input", lambda _: "y")
+
+    code = handle_request(
+        "show files in this directory", planner, validator, executor, debug_trace=True
+    )
+
+    assert code == 0
+    output = capsys.readouterr().out
+    assert "[trace] local_planner=no_match planner=invoked" in output
 
 
 def test_ask_confirmation_requires_experimental_phrase(monkeypatch) -> None:
@@ -1092,7 +1138,14 @@ def test_handle_request_writes_structured_audit_log(monkeypatch, tmp_path: Path)
     assert payload["confirmation_result"] == "confirmed"
     assert payload["execution_exit_code"] == 0
     assert payload["argv"] == ["find", ".", "-name", "*.py"]
+    assert payload["planner_invoked"] is True
+    assert payload["planner_skipped"] is False
+    assert payload["planner_skip_reason"] is None
     assert payload["duration_ms"] >= 0
+    assert payload["timings_ms"]["direct_command_detection_ms"] >= 0
+    assert payload["timings_ms"]["validation_ms"] >= 0
+    assert payload["timings_ms"]["execution_ms"] >= 0
+    assert payload["timings_ms"]["total_duration_ms"] >= 0
 
 
 def test_handle_request_dry_run_writes_audit_without_execution(tmp_path: Path) -> None:
@@ -1134,6 +1187,7 @@ def test_handle_request_dry_run_writes_audit_without_execution(tmp_path: Path) -
     payload = json.loads(audit_path.read_text(encoding="utf-8").strip())
     assert payload["confirmation_result"] == "skipped_dry_run"
     assert payload["execution_exit_code"] is None
+    assert "execution_ms" not in payload["timings_ms"]
 
 
 def test_handle_request_ambiguous_writes_audit_without_executor(tmp_path: Path) -> None:
@@ -1165,8 +1219,37 @@ def test_handle_request_ambiguous_writes_audit_without_executor(tmp_path: Path) 
         "show project files",
     ]
     assert payload["confirmation_result"] == "blocked_ambiguous"
+    assert payload["planner_invoked"] is False
+    assert payload["planner_skipped"] is True
+    assert payload["planner_skip_reason"] == "ambiguity_blocked"
+    assert "routing_ms" not in payload["timings_ms"]
+    assert "planner_ms" not in payload["timings_ms"]
     validator.validate.assert_not_called()
     executor.run.assert_not_called()
+
+
+def test_handle_request_planner_error_marks_planner_invoked_in_audit(tmp_path: Path) -> None:
+    from oterminus.audit import AuditLogger
+    from oterminus.cli import handle_request
+    from oterminus.planner import PlannerError
+
+    planner = Mock()
+    planner.plan.side_effect = PlannerError("failed")
+
+    code = handle_request(
+        "show files in this directory",
+        planner,
+        Mock(),
+        Mock(),
+        audit_logger=AuditLogger(tmp_path / "audit.jsonl"),
+    )
+
+    assert code == 2
+    payload = json.loads((tmp_path / "audit.jsonl").read_text(encoding="utf-8").strip())
+    assert payload["confirmation_result"] == "planner_error"
+    assert payload["planner_invoked"] is True
+    assert payload["planner_skipped"] is False
+    assert payload["planner_skip_reason"] is None
 
 
 def test_handle_request_ambiguous_lifecycle_blocks_before_confirmation(monkeypatch, capsys) -> None:
@@ -1356,6 +1439,11 @@ def test_main_ambiguous_request_does_not_require_startup_or_planner(
     payload = json.loads(config.audit_log_path.read_text(encoding="utf-8").strip())
     assert payload["ambiguity_detected"] is True
     assert payload["confirmation_result"] == "blocked_ambiguous"
+    assert payload["planner_invoked"] is False
+    assert payload["planner_skipped"] is True
+    assert payload["planner_skip_reason"] == "ambiguity_blocked"
+    assert "routing_ms" not in payload["timings_ms"]
+    assert "planner_ms" not in payload["timings_ms"]
     validator.validate.assert_not_called()
     executor.run.assert_not_called()
 
@@ -1391,7 +1479,7 @@ def test_history_records_are_created(monkeypatch) -> None:
 
 def test_history_command_displays_records() -> None:
     history = SessionHistory()
-    item = history.start("show files")
+    item = history.start("show files in this directory")
     item.rendered_command = "find . -name '*.py'"
     item.risk_level = "safe"
     item.execution_status = "executed"
@@ -1408,7 +1496,7 @@ def test_history_command_displays_records() -> None:
 
     assert output is not None
     assert "id" in output
-    assert "show files" in output
+    assert "show files in this directory" in output
     assert "find . -name '*.py'" in output
 
 
@@ -1728,7 +1816,7 @@ def test_repl_passes_persistent_store_to_handle_request(monkeypatch) -> None:
     captured: dict[str, object] = {}
 
     monkeypatch.setattr("oterminus.cli.create_prompt_session", lambda: (None, "plain_input"))
-    answers = iter(["show files", "exit"])
+    answers = iter(["show files in this directory", "exit"])
     monkeypatch.setattr("builtins.input", lambda _: next(answers))
 
     def fake_handle_request(*_args, **kwargs) -> int:
@@ -1830,3 +1918,68 @@ def test_handle_repl_history_rerun_propagates_failure_explainer(monkeypatch) -> 
 
     assert out == ""
     assert captured.get("failure_explainer") is explainer
+
+
+def test_handle_request_verbose_prints_timings_trace(monkeypatch, capsys) -> None:
+    from oterminus.cli import handle_request
+
+    planner = Mock()
+    planner.plan.return_value = Proposal(
+        action_type=ActionType.SHELL_COMMAND,
+        mode=ProposalMode.STRUCTURED,
+        command_family="pwd",
+        arguments={},
+        summary="pwd",
+        explanation="desc",
+        risk_level=RiskLevel.SAFE,
+        needs_confirmation=True,
+        notes=[],
+    )
+    validator = Mock()
+    validator.validate.return_value = ValidationResult(
+        accepted=True,
+        risk_level=RiskLevel.SAFE,
+        rendered_command="pwd",
+        argv=["pwd"],
+    )
+    executor = Mock()
+    executor.run.return_value.returncode = 0
+    executor.run.return_value.stdout = ""
+    executor.run.return_value.stderr = ""
+    monkeypatch.setattr("builtins.input", lambda _: "y")
+
+    code = handle_request("show current directory", planner, validator, executor, debug_trace=True)
+    assert code == 0
+    output = capsys.readouterr().out
+    assert "[trace] timings" in output
+
+
+def test_handle_request_normal_output_hides_timings_trace(monkeypatch, capsys) -> None:
+    from oterminus.cli import handle_request
+
+    planner = Mock()
+    planner.plan.return_value = Proposal(
+        action_type=ActionType.SHELL_COMMAND,
+        mode=ProposalMode.STRUCTURED,
+        command_family="pwd",
+        arguments={},
+        summary="pwd",
+        explanation="desc",
+        risk_level=RiskLevel.SAFE,
+        needs_confirmation=True,
+        notes=[],
+    )
+    validator = Mock()
+    validator.validate.return_value = ValidationResult(
+        accepted=True,
+        risk_level=RiskLevel.SAFE,
+        rendered_command="pwd",
+        argv=["pwd"],
+    )
+    executor = Mock()
+    monkeypatch.setattr("builtins.input", lambda _: "n")
+
+    code = handle_request("show current directory", planner, validator, executor, debug_trace=False)
+    assert code == 0
+    output = capsys.readouterr().out
+    assert "[trace] timings" not in output

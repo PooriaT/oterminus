@@ -68,7 +68,8 @@ read-only inspection alternatives.
 Ambiguous requests stop before planner setup, planner calls, validation, confirmation prompts, and
 execution. Nothing is executed, including in dry-run or explain mode. Their audit events use
 `confirmation_result: "blocked_ambiguous"` and include the ambiguity reason plus suggested safe
-options.
+options. They also record planner skip diagnostics with `planner_invoked: false`,
+`planner_skipped: true`, and `planner_skip_reason: "ambiguity_blocked"`.
 
 ### 4) Capability router
 
@@ -137,3 +138,10 @@ for the current process session and do not execute shell commands.
 `rerun <history_id>` does not shortcut execution. It submits the original user input back into the
 same request lifecycle described above, including ambiguity handling, planning/direct detection,
 validation/policy, preview, and explicit execute confirmation.
+
+- After routing, OTerminus attempts a deterministic local planner for a small set of unambiguous requests. If it matches, Ollama is skipped and the same validation/preview/confirmation flow continues.
+
+
+### Timing observability
+
+When audit logging is enabled, lifecycle stages record approximate local latencies in `timings_ms` using `time.perf_counter()` (milliseconds). These metrics are for debugging and contributor observability; they do not include command stdout/stderr content.

@@ -187,6 +187,9 @@ natural-language requests stop before planning.
 The CLI flag is for one-shot requests only. Inside the REPL, use the built-in form
 `explain <request>` or `explain <history_id>` instead.
 
+When you run with `--verbose`, trace output includes fast-path diagnostics (`fast_path=direct_command`
+or `fast_path=ambiguity_blocked`), planner invocation status (`planner=invoked`), and a concise timing summary (for example: `[trace] timings direct=1ms route=1ms planner=skipped ... total=4ms`).
+
 ## REPL session history and rerun safety
 
 REPL always keeps in-memory session history for the current process. Persistent history is optional
@@ -405,3 +408,5 @@ deploy/publish operations, and arbitrary `poetry run ...` commands.
 
 These operations may execute local project code and tooling, so preview and explicit confirmation
 are always required. This capability is not arbitrary shell support.
+
+OTerminus also has a conservative deterministic local planner for a small set of clear natural-language requests (for example: `show current directory`, `show files`, `show disk usage`). This fast path only builds structured proposals; it never executes directly and still requires validation, preview, and confirmation.

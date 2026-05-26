@@ -17,6 +17,9 @@ class AuditEvent:
     ambiguity_detected: bool = False
     ambiguity_reason: str | None = None
     ambiguity_safe_options: list[str] = field(default_factory=list)
+    planner_invoked: bool = False
+    planner_skipped: bool = False
+    planner_skip_reason: str | None = None
     routed_category: str | None = None
     proposal_mode: str | None = None
     command_family: str | None = None
@@ -35,6 +38,7 @@ class AuditEvent:
     stderr_visible_chars: int | None = None
     rerun_source_history_id: int | None = None
     duration_ms: int | None = None
+    timings_ms: dict[str, int] = field(default_factory=dict)
     failure_explanation_requested: bool = False
     failure_explanation_generated: bool = False
     failure_explanation_error: str | None = None

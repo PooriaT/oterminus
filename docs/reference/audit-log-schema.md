@@ -14,6 +14,9 @@ Audit logs are newline-delimited JSON objects (JSONL), one event per handled req
 - `ambiguity_detected` (bool)
 - `ambiguity_reason` (nullable string)
 - `ambiguity_safe_options` (string array)
+- `planner_invoked` (bool)
+- `planner_skipped` (bool)
+- `planner_skip_reason` (nullable string; e.g. `direct_command`, `ambiguity_blocked`)
 - `routed_category` (nullable string)
 - `proposal_mode` (nullable string)
 - `command_family` (nullable string)
@@ -33,6 +36,7 @@ Audit logs are newline-delimited JSON objects (JSONL), one event per handled req
 - `stderr_visible_chars` (nullable int)
 - `rerun_source_history_id` (nullable int)
 - `duration_ms` (nullable int)
+- `timings_ms` (object mapping stage names to non-negative integer milliseconds)
 
 ## Ambiguity outcomes
 
@@ -43,9 +47,28 @@ When an ambiguous request is blocked, the event records:
 - `ambiguity_reason` with the matched phrase or broad-scope reason
 - `ambiguity_safe_options` with read-only inspection alternatives
 - `confirmation_result: "blocked_ambiguous"`
+- `planner_invoked: false`
+- `planner_skipped: true`
+- `planner_skip_reason: "ambiguity_blocked"`
+
+When a direct command is handled through the local fast path, the event records:
+
+- `planner_invoked: false`
+- `planner_skipped: true`
+- `planner_skip_reason: "direct_command"`
+
+When a non-ambiguous natural-language request uses the planner:
+
+- `planner_invoked: true`
+- `planner_skipped: false`
+- `planner_skip_reason: null`
 
 Planner, validator, confirmation, and executor fields remain unset because the request stops before
 those stages.
+
+`timings_ms` stores local, approximate stage durations (perf-counter based) for observability, such as
+`direct_command_detection_ms`, `ambiguity_detection_ms`, `routing_ms`, `local_planner_ms`, `planner_ms`,
+`validation_ms`, `execution_ms`, and `total_duration_ms`. Skipped stages are omitted.
 
 ## Rerun lineage
 
@@ -100,3 +123,4 @@ When enabled, audit events may include:
 
 See [Configuration reference](config.md#failure-explanations-opt-in) for enablement and limits.
 
+- `planner_skip_reason` values: `direct_command`, `ambiguity_blocked`, `local_planner`, or `null` when planner ran.

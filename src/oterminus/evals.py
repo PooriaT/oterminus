@@ -10,9 +10,11 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_valida
 
 from oterminus.ambiguity import detect_ambiguity
 from oterminus.direct_commands import detect_direct_command
+from oterminus.local_planner import plan_locally
 from oterminus.models import ProposalMode, RiskLevel
 from oterminus.planner import Planner, PlannerError
 from oterminus.policies import PolicyConfig
+from oterminus.router import route_request
 from oterminus.validator import Validator
 
 
@@ -151,38 +153,45 @@ def evaluate_case(case: EvalCase, validator: Validator) -> EvalResult:
             return EvalResult(case_id=case.id, passed=len(mismatches) == 0, mismatches=mismatches)
         if case.expected_ambiguity_detected is True:
             return EvalResult(case_id=case.id, passed=False, mismatches=mismatches)
-        if case.planner_proposal is None:
-            return EvalResult(
-                case_id=case.id,
-                passed=False,
-                mismatches=[
-                    *mismatches,
-                    EvalMismatch(
-                        field="planner_proposal",
-                        expected="fixture with planner_proposal for non-direct input",
-                        actual=None,
-                    ),
-                ],
-            )
 
-        try:
-            proposal = Planner.parse_proposal(json.dumps(case.planner_proposal))
-        except PlannerError as exc:
-            if case.expected_planner_error_contains and case.expected_planner_error_contains in str(
-                exc
-            ):
-                return EvalResult(case_id=case.id, passed=True, mismatches=[])
-            return EvalResult(
-                case_id=case.id,
-                passed=False,
-                mismatches=[
-                    EvalMismatch(
-                        field="planner_parse",
-                        expected="valid planner payload",
-                        actual=str(exc),
-                    )
-                ],
-            )
+        route = route_request(case.user_input)
+        local_match = plan_locally(case.user_input, route)
+        if local_match is not None:
+            proposal = local_match.proposal
+        else:
+            if case.planner_proposal is None:
+                return EvalResult(
+                    case_id=case.id,
+                    passed=False,
+                    mismatches=[
+                        *mismatches,
+                        EvalMismatch(
+                            field="planner_proposal",
+                            expected="fixture with planner_proposal or local-planner match for non-direct input",
+                            actual=None,
+                        ),
+                    ],
+                )
+
+            try:
+                proposal = Planner.parse_proposal(json.dumps(case.planner_proposal))
+            except PlannerError as exc:
+                if (
+                    case.expected_planner_error_contains
+                    and case.expected_planner_error_contains in str(exc)
+                ):
+                    return EvalResult(case_id=case.id, passed=True, mismatches=[])
+                return EvalResult(
+                    case_id=case.id,
+                    passed=False,
+                    mismatches=[
+                        EvalMismatch(
+                            field="planner_parse",
+                            expected="valid planner payload",
+                            actual=str(exc),
+                        )
+                    ],
+                )
 
     validation = validator.validate(proposal)
 

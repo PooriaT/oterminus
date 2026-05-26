@@ -12,6 +12,7 @@ Routing is reached only after two earlier checks:
 1. **Direct command detection**: supported direct shell commands skip the planner but still continue
    to validation and policy. They are not treated as ambiguous natural language.
 2. **Ambiguity detection**: vague natural-language requests stop before routing and planner calls.
+   These are logged as planner-skipped fast-path outcomes (`planner_skip_reason=ambiguity_blocked`).
    OTerminus shows safe read-only inspection alternatives and does not execute anything.
 
 ## Deterministic router
@@ -117,3 +118,7 @@ Network diagnostics contact external hosts. The planner prompt says only these r
 are supported and disallows mutating HTTP methods, request bodies, arbitrary or secret-bearing
 headers, cookies, downloads, scanning, SSH/SCP, nmap, wget, netcat, sudo network commands, and shell
 pipelines/redirection. Validator checks remain authoritative.
+
+
+## Deterministic local planner fast-path
+For a small allowlist of unambiguous requests (for example: current directory, clear screen, list files, disk usage, and git status), OTerminus attempts deterministic local planning after routing and before the Ollama planner. On a local match, OTerminus produces a structured proposal and skips Ollama; validation, preview, confirmation, and execution policy still apply unchanged. If no conservative match exists, OTerminus falls back to the Ollama planner.
