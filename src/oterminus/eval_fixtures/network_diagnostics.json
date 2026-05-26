@@ -1,0 +1,191 @@
+[
+  {
+    "id": "network-ping-structured",
+    "user_input": "ping example.com 4 times",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "ping",
+      "arguments": {"host": "example.com", "count": 4},
+      "summary": "ping example.com",
+      "explanation": "Send four ICMP echo requests to example.com.",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": ["This command contacts external hosts and may reveal your IP address, DNS query, target host, or network metadata."]
+    },
+    "expected_mode": "structured",
+    "expected_command_family": "ping",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "ping -c 4 example.com",
+    "expected_argv": ["ping", "-c", "4", "example.com"]
+  },
+  {
+    "id": "network-http-head-structured",
+    "user_input": "show HTTP headers for https://example.com",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "curl",
+      "arguments": {"operation": "http_head", "url": "https://example.com"},
+      "summary": "show HTTP headers",
+      "explanation": "Use a constrained HTTP HEAD request.",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": ["This command contacts external hosts and may reveal your IP address, DNS query, target host, or network metadata."]
+    },
+    "expected_mode": "structured",
+    "expected_command_family": "curl",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "curl -I https://example.com",
+    "expected_argv": ["curl", "-I", "https://example.com"]
+  },
+  {
+    "id": "network-dig-structured",
+    "user_input": "look up DNS for example.com",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "dig",
+      "arguments": {"domain": "example.com"},
+      "summary": "look up DNS records",
+      "explanation": "Run a basic dig lookup.",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": ["This command contacts external hosts and may reveal your IP address, DNS query, target host, or network metadata."]
+    },
+    "expected_mode": "structured",
+    "expected_command_family": "dig",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "dig example.com",
+    "expected_argv": ["dig", "example.com"]
+  },
+  {
+    "id": "network-nslookup-structured",
+    "user_input": "run nslookup for example.com",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "nslookup",
+      "arguments": {"domain": "example.com"},
+      "summary": "run nslookup",
+      "explanation": "Run a basic nslookup query.",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": ["This command contacts external hosts and may reveal your IP address, DNS query, target host, or network metadata."]
+    },
+    "expected_mode": "structured",
+    "expected_command_family": "nslookup",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "nslookup example.com",
+    "expected_argv": ["nslookup", "example.com"]
+  },
+  {
+    "id": "network-reject-curl-post",
+    "user_input": "POST to https://example.com",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "experimental",
+      "command_family": "curl",
+      "command": "curl -X POST https://example.com",
+      "summary": "POST request",
+      "explanation": "Unsupported mutating HTTP method fixture.",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "experimental",
+    "expected_command_family": "curl",
+    "expected_risk_level": "safe",
+    "expected_acceptance": false,
+    "expected_rendered_command": "curl -X POST https://example.com",
+    "expected_argv": ["curl", "-X", "POST", "https://example.com"]
+  },
+  {
+    "id": "network-reject-curl-authorization-header",
+    "user_input": "curl with Authorization header",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "experimental",
+      "command_family": "curl",
+      "command": "curl -H 'Authorization: Bearer token' https://example.com",
+      "summary": "curl with auth header",
+      "explanation": "Unsupported secret-bearing header fixture.",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "experimental",
+    "expected_command_family": "curl",
+    "expected_risk_level": "safe",
+    "expected_acceptance": false,
+    "expected_rendered_command": "curl -H 'Authorization: Bearer token' https://example.com",
+    "expected_argv": ["curl", "-H", "Authorization: Bearer token", "https://example.com"]
+  },
+  {
+    "id": "network-reject-curl-download",
+    "user_input": "download https://example.com to a file",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "experimental",
+      "command_family": "curl",
+      "command": "curl -o file https://example.com",
+      "summary": "download file",
+      "explanation": "Unsupported download fixture.",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "experimental",
+    "expected_command_family": "curl",
+    "expected_risk_level": "safe",
+    "expected_acceptance": false,
+    "expected_rendered_command": "curl -o file https://example.com",
+    "expected_argv": ["curl", "-o", "file", "https://example.com"]
+  },
+  {
+    "id": "network-reject-scan-host",
+    "user_input": "scan this host",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "experimental",
+      "command_family": "nmap",
+      "command": "nmap example.com",
+      "summary": "scan host",
+      "explanation": "Unsupported network scanning fixture.",
+      "risk_level": "dangerous",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "experimental",
+    "expected_command_family": "nmap",
+    "expected_risk_level": "dangerous",
+    "expected_acceptance": false,
+    "expected_rendered_command": "nmap example.com",
+    "expected_argv": ["nmap", "example.com"]
+  },
+  {
+    "id": "network-reject-ssh-host",
+    "user_input": "ssh into this host",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "experimental",
+      "command_family": "ssh",
+      "command": "ssh example.com",
+      "summary": "ssh host",
+      "explanation": "Unsupported SSH fixture.",
+      "risk_level": "dangerous",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "experimental",
+    "expected_command_family": "ssh",
+    "expected_risk_level": "dangerous",
+    "expected_acceptance": false,
+    "expected_rendered_command": "ssh example.com",
+    "expected_argv": ["ssh", "example.com"]
+  }
+]

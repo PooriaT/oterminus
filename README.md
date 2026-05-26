@@ -48,6 +48,17 @@ poetry install
 poetry run oterminus
 ```
 
+### Local package artifact validation
+
+Before any publish workflow is introduced, validate local package artifacts end-to-end:
+
+```bash
+poetry run python scripts/validate_package_install.py
+```
+
+This builds both `sdist` and `wheel`, installs the wheel into a temporary clean virtualenv, and runs CLI smoke checks.
+
+
 On first run, OTerminus checks Ollama readiness (`ollama` on PATH, running service, local models),
 then prompts you to select a model if one is not already configured.
 

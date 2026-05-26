@@ -1,0 +1,78 @@
+[
+  {
+    "id": "planner-command-ls-normalized",
+    "user_input": "show files with sizes",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "command": "ls -lh",
+      "summary": "list files",
+      "explanation": "show details",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "structured",
+    "expected_command_family": "ls",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "ls -l -h .",
+    "expected_argv": [
+      "ls",
+      "-l",
+      "-h",
+      "."
+    ]
+  },
+  {
+    "id": "planner-experimental-stat-fallback",
+    "user_input": "show size as bytes exactly",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "experimental",
+      "command_family": "stat",
+      "command": "stat -f %z README.md",
+      "summary": "size",
+      "explanation": "custom stat format",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "experimental",
+    "expected_command_family": "stat",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "stat -f %z README.md",
+    "expected_argv": [
+      "stat",
+      "-f",
+      "%z",
+      "README.md"
+    ]
+  },
+  {
+    "id": "planner-direct-command-text-not-detected",
+    "user_input": "please run ls -lh",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "experimental",
+      "command_family": "ls",
+      "command": "ls -lh",
+      "summary": "list files",
+      "explanation": "assistant suggests command",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "structured",
+    "expected_command_family": "ls",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "ls -l -h .",
+    "expected_argv": [
+      "ls",
+      "-l",
+      "-h",
+      "."
+    ]
+  }
+]

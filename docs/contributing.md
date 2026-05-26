@@ -102,6 +102,29 @@ poetry run mkdocs build --strict
 poetry run oterminus-evals
 ```
 
+
+## Local package build + wheel install validation
+
+PR #141 focuses on packaging correctness before any publish automation. Validate local artifacts with:
+
+```bash
+poetry run python scripts/validate_package_install.py
+```
+
+The script will:
+
+1. build `sdist` and `wheel` with `poetry build`
+2. create a temporary virtual environment
+3. install the local wheel
+4. verify `import oterminus`
+5. run CLI smoke checks: `oterminus --help`, `oterminus doctor`, and `oterminus-evals`
+
+Notes:
+
+- `oterminus doctor` may report Ollama readiness issues in clean environments; this does not block packaging validation.
+- `oterminus-evals` uses packaged fixture data from `src/oterminus/eval_fixtures/` so it works after wheel install.
+- Publishing to TestPyPI/PyPI is intentionally handled in later PRs.
+
 ## Pull request template and checklist
 
 Every pull request should use `.github/pull_request_template.md` and keep every checklist item in
