@@ -194,6 +194,31 @@ def test_detect_direct_command_respects_disabled_network_pack() -> None:
     assert proposal is None
 
 
+def test_detect_direct_command_respects_developer_profile_disabled_packs() -> None:
+    proposal = detect_direct_command(
+        "ping -c 4 example.com", disabled_pack_ids=frozenset({"dangerous", "network"})
+    )
+
+    assert proposal is None
+
+
+def test_detect_direct_command_respects_beginner_profile_disabled_packs() -> None:
+    proposal = detect_direct_command(
+        "git status --short",
+        disabled_pack_ids=frozenset(
+            {"archive", "dangerous", "git", "macos", "network", "process", "project"}
+        ),
+    )
+
+    assert proposal is None
+
+
+def test_detect_direct_command_respects_power_profile_dangerous_pack() -> None:
+    proposal = detect_direct_command("rm -rf build", disabled_pack_ids=frozenset({"dangerous"}))
+
+    assert proposal is None
+
+
 def test_detect_direct_command_routes_unsupported_archive_forms_to_validator() -> None:
     tar_proposal = detect_direct_command("tar -xf archive.tar")
     unzip_proposal = detect_direct_command("unzip archive.zip")

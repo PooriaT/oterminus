@@ -145,6 +145,17 @@ def test_route_request_network_diagnostics() -> None:
     assert "network_diagnostics" in route.suggested_capabilities
 
 
+def test_route_request_filters_disabled_profile_packs() -> None:
+    route = route_request(
+        "ping example.com 4 times", disabled_pack_ids=frozenset({"dangerous", "network"})
+    )
+
+    assert route.category == "unsupported"
+    assert route.suggested_families == ()
+    assert route.suggested_capabilities == ()
+    assert "disabled or unavailable" in route.reason
+
+
 def test_route_request_check_if_stays_with_local_inspection_when_not_network_specific() -> None:
     assert route_request("check if python is running").category == "process_inspect"
     assert route_request("check if python responds").category != "network_diagnostics"

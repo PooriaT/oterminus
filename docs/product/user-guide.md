@@ -314,7 +314,9 @@ format, validation rules, and behavior details, see
 
 You can also choose a profile preset with `OTERMINUS_COMMAND_PROFILE`:
 `beginner`, `safe`, `developer`, or `power`. Profiles are convenience presets for disabled packs
-only; policy mode, validation, and confirmation remain authoritative.
+only; policy mode, validation, and confirmation remain authoritative. Disabled packs are hidden from
+autocomplete, planner hints, and discovery output, and disabled commands are rejected before
+execution even when typed directly.
 
 
 ## Platform-specific commands

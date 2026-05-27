@@ -868,3 +868,81 @@ def test_validator_rejects_structured_project_health_when_project_pack_disabled(
 
     assert result.accepted is False
     assert any("command pack 'project' is disabled" in reason for reason in result.reasons)
+
+
+@pytest.mark.parametrize(
+    ("command", "disabled_pack", "pack_id"),
+    [
+        ("ps -Af", "process", "process"),
+        ("ping -c 4 example.com", "network", "network"),
+        ("git status --short", "git", "git"),
+        ("tar -tf archive.tar", "archive", "archive"),
+    ],
+)
+def test_validator_rejects_beginner_profile_disabled_packs(
+    command: str, disabled_pack: str, pack_id: str
+) -> None:
+    disabled = frozenset({"archive", "dangerous", "git", "macos", "network", "process", "project"})
+    assert disabled_pack in disabled
+    validator = Validator(PolicyConfig(disabled_command_packs=disabled))
+
+    result = validator.validate(make_proposal(command))
+
+    assert result.accepted is False
+    assert any(f"command pack '{pack_id}' is disabled" in reason for reason in result.reasons)
+
+
+def test_validator_rejects_beginner_profile_project_pack() -> None:
+    validator = Validator(
+        PolicyConfig(
+            disabled_command_packs=frozenset(
+                {"archive", "dangerous", "git", "macos", "network", "process", "project"}
+            )
+        )
+    )
+    proposal = Proposal(
+        action_type=ActionType.SHELL_COMMAND,
+        mode=ProposalMode.STRUCTURED,
+        command_family="project_health",
+        arguments={"operation": "run_tests"},
+        summary="test",
+        explanation="test",
+        risk_level=RiskLevel.WRITE,
+        needs_confirmation=True,
+        notes=[],
+    )
+
+    result = validator.validate(proposal)
+
+    assert result.accepted is False
+    assert any("command pack 'project' is disabled" in reason for reason in result.reasons)
+
+
+def test_validator_developer_profile_rejects_network_but_allows_git() -> None:
+    validator = Validator(PolicyConfig(disabled_command_packs=frozenset({"dangerous", "network"})))
+
+    network_result = validator.validate(make_proposal("ping -c 4 example.com"))
+    git_result = validator.validate(make_proposal("git status --short"))
+
+    assert network_result.accepted is False
+    assert any("command pack 'network' is disabled" in reason for reason in network_result.reasons)
+    assert git_result.accepted is True
+
+
+def test_validator_power_profile_rejects_dangerous_but_allows_network() -> None:
+    validator = Validator(
+        PolicyConfig(
+            mode=RiskLevel.DANGEROUS,
+            allow_dangerous=True,
+            disabled_command_packs=frozenset({"dangerous"}),
+        )
+    )
+
+    dangerous_result = validator.validate(make_proposal("rm -rf build"))
+    network_result = validator.validate(make_proposal("ping -c 4 example.com"))
+
+    assert dangerous_result.accepted is False
+    assert any(
+        "command pack 'dangerous' is disabled" in reason for reason in dangerous_result.reasons
+    )
+    assert network_result.accepted is True

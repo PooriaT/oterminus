@@ -13,7 +13,7 @@ from enum import Enum
 
 from oterminus.ambiguity import AmbiguityResult, detect_ambiguity
 from oterminus.audit import AuditEvent, AuditLogger
-from oterminus.commands import get_command_spec, supported_capabilities
+from oterminus.commands import get_command_spec, supported_base_commands, supported_capabilities
 from oterminus.discovery import (
     render_capabilities,
     render_capability_help,
@@ -164,10 +164,10 @@ def handle_request(
         if parts:
             print("[trace] timings " + " ".join(parts))
 
-    effective_disabled_pack_ids = (
+    effective_disabled_pack_ids = _coerce_disabled_pack_ids(
         disabled_pack_ids
         if disabled_pack_ids is not None
-        else getattr(validator.policy, "disabled_command_packs", frozenset())
+        else getattr(getattr(validator, "policy", None), "disabled_command_packs", frozenset())
     )
 
     direct_detection_started = time.perf_counter()
@@ -208,7 +208,7 @@ def handle_request(
                 _persist_if_needed()
                 return 0
             route_started = time.perf_counter()
-            route = route_request(request)
+            route = route_request(request, disabled_pack_ids=effective_disabled_pack_ids)
             timings_ms["routing_ms"] = _duration_ms_from_counter(route_started)
             event.routed_category = route.category
             if history_item is not None:
@@ -502,10 +502,10 @@ def repl(
         for item in persistent_store.load():
             session_history.add_persisted(item)
 
-    effective_disabled_pack_ids = (
+    effective_disabled_pack_ids = _coerce_disabled_pack_ids(
         disabled_pack_ids
         if disabled_pack_ids is not None
-        else getattr(validator.policy, "disabled_command_packs", frozenset())
+        else getattr(getattr(validator, "policy", None), "disabled_command_packs", frozenset())
     )
 
     try:
@@ -537,7 +537,9 @@ def repl(
         if audit_response is not None:
             print(audit_response)
             continue
-        discovery_response = handle_repl_discovery_command(request)
+        discovery_response = handle_repl_discovery_command(
+            request, disabled_pack_ids=effective_disabled_pack_ids
+        )
         if discovery_response is not None:
             print(discovery_response)
             continue
@@ -608,28 +610,43 @@ def read_repl_input(prompt_session: object | None) -> str:
     return prompt_session.prompt("oterminus> ")
 
 
-def handle_repl_discovery_command(request: str) -> str | None:
+def _coerce_disabled_pack_ids(value: object) -> frozenset[str]:
+    if isinstance(value, frozenset):
+        return value
+    if isinstance(value, (set, tuple, list)):
+        return frozenset(str(item) for item in value)
+    return frozenset()
+
+
+def handle_repl_discovery_command(
+    request: str,
+    *,
+    disabled_pack_ids: frozenset[str] | None = None,
+    platform_id: str | None = None,
+) -> str | None:
     lowered = request.lower().strip()
-    capabilities = supported_capabilities()
+    capabilities = supported_capabilities(disabled_pack_ids, platform_id)
     capability_map = {capability.capability_id: capability for capability in capabilities}
 
     if lowered == "help":
         return render_help()
 
     if lowered == "capabilities":
-        return render_capabilities()
+        return render_capabilities(disabled_pack_ids=disabled_pack_ids, platform_id=platform_id)
 
     if lowered == "commands":
-        return render_commands()
+        return render_commands(disabled_pack_ids=disabled_pack_ids, platform_id=platform_id)
 
     if lowered == "examples":
-        return render_examples()
+        return render_examples(disabled_pack_ids=disabled_pack_ids, platform_id=platform_id)
 
     if lowered.startswith("examples "):
         target = lowered.split(maxsplit=1)[1]
         if target not in capability_map:
             return render_unknown_help_target(target)
-        return render_examples_for_capability(target)
+        return render_examples_for_capability(
+            target, disabled_pack_ids=disabled_pack_ids, platform_id=platform_id
+        )
 
     if lowered == "help capabilities":
         return render_help_capabilities()
@@ -637,9 +654,13 @@ def handle_repl_discovery_command(request: str) -> str | None:
     if lowered.startswith("help "):
         target = lowered.split(maxsplit=1)[1]
         if target in capability_map:
-            return render_capability_help(target)
-        if get_command_spec(target) is not None:
-            return render_command_help(target)
+            return render_capability_help(
+                target, disabled_pack_ids=disabled_pack_ids, platform_id=platform_id
+            )
+        if target in supported_base_commands(disabled_pack_ids, platform_id):
+            return render_command_help(
+                target, disabled_pack_ids=disabled_pack_ids, platform_id=platform_id
+            )
         return render_unknown_help_target(target)
 
     return None

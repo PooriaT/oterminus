@@ -3,6 +3,7 @@ from __future__ import annotations
 from oterminus.commands import (
     NETWORK_TOUCHING_WARNING,
     get_command_spec,
+    get_enabled_command_spec,
     supported_base_commands,
     supported_capabilities,
 )
@@ -19,17 +20,21 @@ def render_help() -> str:
     )
 
 
-def render_capabilities() -> str:
+def render_capabilities(
+    *, disabled_pack_ids: frozenset[str] | None = None, platform_id: str | None = None
+) -> str:
     lines = ["Supported capabilities:"]
-    for capability in supported_capabilities():
+    for capability in supported_capabilities(disabled_pack_ids, platform_id):
         suffix = " [network-touching]" if capability.network_touching else ""
         lines.append(f"- {capability.capability_id}: {capability.capability_description}{suffix}")
     return "\n".join(lines)
 
 
-def render_commands() -> str:
+def render_commands(
+    *, disabled_pack_ids: frozenset[str] | None = None, platform_id: str | None = None
+) -> str:
     lines = ["Supported command families by capability:"]
-    for capability in supported_capabilities():
+    for capability in supported_capabilities(disabled_pack_ids, platform_id):
         lines.append(f"{capability.capability_id}:")
         for command_name in capability.commands:
             spec = get_command_spec(command_name)
@@ -38,9 +43,11 @@ def render_commands() -> str:
     return "\n".join(lines)
 
 
-def render_examples() -> str:
+def render_examples(
+    *, disabled_pack_ids: frozenset[str] | None = None, platform_id: str | None = None
+) -> str:
     lines = ["Example requests by capability:"]
-    for capability in supported_capabilities():
+    for capability in supported_capabilities(disabled_pack_ids, platform_id):
         lines.append(f"{capability.capability_id}:")
         has_any = False
         for command_name in capability.commands:
@@ -54,9 +61,18 @@ def render_examples() -> str:
     return "\n".join(lines)
 
 
-def render_examples_for_capability(capability_id: str) -> str:
+def render_examples_for_capability(
+    capability_id: str,
+    *,
+    disabled_pack_ids: frozenset[str] | None = None,
+    platform_id: str | None = None,
+) -> str:
     capability = next(
-        (item for item in supported_capabilities() if item.capability_id == capability_id),
+        (
+            item
+            for item in supported_capabilities(disabled_pack_ids, platform_id)
+            if item.capability_id == capability_id
+        ),
         None,
     )
     if capability is None:
@@ -86,9 +102,18 @@ def render_help_capabilities() -> str:
     )
 
 
-def render_capability_help(capability_id: str) -> str:
+def render_capability_help(
+    capability_id: str,
+    *,
+    disabled_pack_ids: frozenset[str] | None = None,
+    platform_id: str | None = None,
+) -> str:
     capability = next(
-        (item for item in supported_capabilities() if item.capability_id == capability_id),
+        (
+            item
+            for item in supported_capabilities(disabled_pack_ids, platform_id)
+            if item.capability_id == capability_id
+        ),
         None,
     )
     if capability is None:
@@ -123,8 +148,13 @@ def render_capability_help(capability_id: str) -> str:
     return "\n".join(lines)
 
 
-def render_command_help(command_family: str) -> str:
-    spec = get_command_spec(command_family)
+def render_command_help(
+    command_family: str,
+    *,
+    disabled_pack_ids: frozenset[str] | None = None,
+    platform_id: str | None = None,
+) -> str:
+    spec = get_enabled_command_spec(command_family, disabled_pack_ids, platform_id)
     if spec is None:
         return f"Unknown command family: {command_family}\nTry: commands"
 

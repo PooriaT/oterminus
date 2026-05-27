@@ -276,3 +276,27 @@ def test_project_pack_can_be_disabled() -> None:
 
     assert "project_health" not in commands
     assert "project_health" not in capabilities
+
+
+def test_supported_commands_respect_profile_style_disabled_pack_set() -> None:
+    disabled = frozenset({"archive", "dangerous", "git", "macos", "network", "process", "project"})
+    commands = set(supported_base_commands(disabled_pack_ids=disabled, platform_id="darwin"))
+    capabilities = {
+        cap.capability_id
+        for cap in supported_capabilities(disabled_pack_ids=disabled, platform_id="darwin")
+    }
+
+    assert commands.isdisjoint({"git", "ping", "ps", "tar", "unzip", "project_health", "open"})
+    assert capabilities.isdisjoint(
+        {
+            "archive_inspection",
+            "git_inspection",
+            "network_diagnostics",
+            "process_inspection",
+            "project_health",
+            "macos_desktop",
+            "destructive_operations",
+        }
+    )
+    assert "filesystem_inspection" in capabilities
+    assert "ls" in commands
