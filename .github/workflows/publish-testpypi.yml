@@ -11,6 +11,8 @@ jobs:
   build-distributions:
     name: Build distributions
     runs-on: ubuntu-latest
+    outputs:
+      package_version: ${{ steps.package_version.outputs.version }}
 
     steps:
       - name: Check out repository
@@ -73,6 +75,17 @@ jobs:
             echo "scripts/check_docs_links.py not found; skipping."
           fi
 
+      - name: Resolve package version from pyproject.toml
+        id: package_version
+        run: |
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import tomllib
+          from pathlib import Path
+
+          pyproject = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
+          print("version=" + pyproject["tool"]["poetry"]["version"])
+          PY
+
       - name: Build distributions
         run: poetry build
 
@@ -114,6 +127,7 @@ jobs:
   verify-testpypi-install:
     name: Verify TestPyPI install smoke checks
     needs:
+      - build-distributions
       - publish-testpypi
     runs-on: ubuntu-latest
 
@@ -126,25 +140,29 @@ jobs:
       - name: Create clean virtual environment
         run: python -m venv .venv-testpypi
 
-      - name: Resolve package version from pyproject.toml
-        id: package_version
-        run: |
-          python - <<'PY' >> "$GITHUB_OUTPUT"
-          import tomllib
-          from pathlib import Path
-
-          pyproject = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
-          print("version=" + pyproject["tool"]["poetry"]["version"])
-          PY
-
-      - name: Install oterminus from TestPyPI
+      - name: Install exact oterminus version from TestPyPI (with retries)
+        env:
+          PACKAGE_VERSION: ${{ needs.build-distributions.outputs.package_version }}
         run: |
           . .venv-testpypi/bin/activate
           python -m pip install --upgrade pip
-          python -m pip install \
-            --index-url https://test.pypi.org/simple/ \
-            --extra-index-url https://pypi.org/simple/ \
-            "oterminus==${{ steps.package_version.outputs.version }}"
+
+          for attempt in 1 2 3 4 5; do
+            echo "Attempt ${attempt}: installing oterminus==${PACKAGE_VERSION} from TestPyPI"
+            if python -m pip install \
+              --index-url https://test.pypi.org/simple/ \
+              --extra-index-url https://pypi.org/simple/ \
+              "oterminus==${PACKAGE_VERSION}"; then
+              exit 0
+            fi
+
+            if [ "$attempt" -eq 5 ]; then
+              echo "Failed to install oterminus==${PACKAGE_VERSION} from TestPyPI after 5 attempts."
+              exit 1
+            fi
+
+            sleep 15
+          done
 
       - name: Run installed package smoke checks
         run: |

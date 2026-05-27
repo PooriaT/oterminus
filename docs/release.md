@@ -30,7 +30,7 @@ The TestPyPI workflow automatically:
    - docs link checker (if script exists)
 3. builds distributions via `poetry build`
 4. publishes artifacts to TestPyPI via OIDC Trusted Publishing
-5. creates a clean virtualenv, installs from TestPyPI, and runs smoke checks:
+5. creates a clean virtualenv, installs the exact published version from TestPyPI (with short retries for index propagation), and runs smoke checks:
    - `oterminus --help`
    - `oterminus doctor`
    - `oterminus-evals`
@@ -38,7 +38,7 @@ The TestPyPI workflow automatically:
 Install command used post-publish:
 
 ```bash
-python -m pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ oterminus
+python -m pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ "oterminus==<resolved-version>"
 ```
 
 ### Production PyPI workflow automation
@@ -112,3 +112,6 @@ In repository **Settings → Environments**:
 4. optionally restrict deployment branches/tags to release patterns
 
 Do **not** add long-lived `PYPI_API_TOKEN` secrets when Trusted Publishing is configured.
+
+
+Note: `oterminus doctor` may exit non-zero in CI if Ollama is unavailable; this smoke check still confirms the CLI is installed and callable.
