@@ -148,22 +148,30 @@ jobs:
           python -m pip install --upgrade pip
 
           for attempt in 1 2 3 4 5; do
-            echo "Attempt ${attempt}: installing oterminus==${PACKAGE_VERSION} from TestPyPI"
-            if python -m pip install \
+            echo "Attempt ${attempt}: downloading oterminus==${PACKAGE_VERSION} from TestPyPI only"
+            rm -rf /tmp/testpypi-wheel
+            mkdir -p /tmp/testpypi-wheel
+
+            if python -m pip download \
               --index-url https://test.pypi.org/simple/ \
-              --extra-index-url https://pypi.org/simple/ \
+              --no-deps \
+              --dest /tmp/testpypi-wheel \
               "oterminus==${PACKAGE_VERSION}"; then
-              exit 0
+              echo "Downloaded oterminus==${PACKAGE_VERSION} from TestPyPI"
+              break
             fi
 
             if [ "$attempt" -eq 5 ]; then
-              echo "Failed to install oterminus==${PACKAGE_VERSION} from TestPyPI after 5 attempts."
+              echo "Failed to download oterminus==${PACKAGE_VERSION} from TestPyPI after 5 attempts."
               exit 1
             fi
 
             sleep 15
           done
 
+          python -m pip install \
+            --extra-index-url https://pypi.org/simple/ \
+            /tmp/testpypi-wheel/oterminus-*.whl
       - name: Run installed package smoke checks
         run: |
           . .venv-testpypi/bin/activate
