@@ -57,6 +57,22 @@ jobs:
       - name: Run deterministic evals
         run: poetry run oterminus-evals
 
+      - name: Check generated command reference docs if script exists
+        run: |
+          if [ -f scripts/generate_command_reference.py ]; then
+            poetry run python scripts/generate_command_reference.py --check
+          else
+            echo "scripts/generate_command_reference.py not found; skipping."
+          fi
+
+      - name: Check docs links if script exists
+        run: |
+          if [ -f scripts/check_docs_links.py ]; then
+            poetry run python scripts/check_docs_links.py
+          else
+            echo "scripts/check_docs_links.py not found; skipping."
+          fi
+
       - name: Build distributions
         run: poetry build
 
@@ -94,3 +110,54 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           repository-url: https://test.pypi.org/legacy/
+
+  verify-testpypi-install:
+    name: Verify TestPyPI install smoke checks
+    needs:
+      - publish-testpypi
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Create clean virtual environment
+        run: python -m venv .venv-testpypi
+
+      - name: Resolve package version from pyproject.toml
+        id: package_version
+        run: |
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import tomllib
+          from pathlib import Path
+
+          pyproject = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
+          print("version=" + pyproject["tool"]["poetry"]["version"])
+          PY
+
+      - name: Install oterminus from TestPyPI
+        run: |
+          . .venv-testpypi/bin/activate
+          python -m pip install --upgrade pip
+          python -m pip install \
+            --index-url https://test.pypi.org/simple/ \
+            --extra-index-url https://pypi.org/simple/ \
+            "oterminus==${{ steps.package_version.outputs.version }}"
+
+      - name: Run installed package smoke checks
+        run: |
+          . .venv-testpypi/bin/activate
+          oterminus --help
+
+          set +e
+          oterminus doctor
+          doctor_exit_code=$?
+          set -e
+
+          if [ "$doctor_exit_code" -ne 0 ]; then
+            echo "oterminus doctor exited with code ${doctor_exit_code}; continuing because Ollama may be unavailable in CI."
+          fi
+
+          oterminus-evals
