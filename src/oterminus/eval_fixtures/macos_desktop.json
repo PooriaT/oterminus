@@ -2,6 +2,7 @@
   {
     "id": "direct-open-local",
     "user_input": "open .",
+    "platform_id": "linux",
     "expected_mode": "structured",
     "expected_command_family": "open",
     "expected_risk_level": "safe",
@@ -29,6 +30,7 @@
   {
     "id": "direct-open-url-blocked",
     "user_input": "open https://example.com",
+    "platform_id": "linux",
     "expected_planner_error_contains": "path must refer to a local filesystem target",
     "optional_notes": "URL inputs for open are rejected during structured argument validation.",
     "planner_proposal": {
@@ -48,6 +50,7 @@
   {
     "id": "planner-experimental-when-structured-available-blocked",
     "user_input": "please open this folder",
+    "platform_id": "linux",
     "planner_proposal": {
       "action_type": "shell_command",
       "mode": "experimental",
@@ -73,6 +76,7 @@
   {
     "id": "planner-structured-open-url-parse-fails",
     "user_input": "could you open the project website",
+    "platform_id": "linux",
     "planner_proposal": {
       "action_type": "shell_command",
       "mode": "experimental",

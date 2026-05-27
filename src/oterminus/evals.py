@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+from contextlib import contextmanager
 import json
 from dataclasses import dataclass
 from pathlib import Path
@@ -9,6 +10,7 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
 from oterminus.ambiguity import detect_ambiguity
+from oterminus.commands import registry as command_registry
 from oterminus.direct_commands import detect_direct_command
 from oterminus.local_planner import plan_locally
 from oterminus.models import ProposalMode, RiskLevel
@@ -34,6 +36,7 @@ class EvalCase(BaseModel):
     expected_ambiguity_detected: bool | None = None
     expected_ambiguity_reason_contains: str | None = None
     expected_ambiguity_safe_options: list[str] | None = None
+    platform_id: str | None = None
     optional_notes: str | None = None
 
     @model_validator(mode="after")
@@ -118,7 +121,14 @@ def load_eval_cases(fixtures_dir: Path) -> list[EvalCase]:
 def evaluate_case(case: EvalCase, validator: Validator) -> EvalResult:
     mismatches: list[EvalMismatch] = []
 
-    proposal = detect_direct_command(case.user_input)
+    with _temporary_platform(case.platform_id):
+        return _evaluate_case_on_platform(case, validator, mismatches)
+
+
+def _evaluate_case_on_platform(
+    case: EvalCase, validator: Validator, mismatches: list[EvalMismatch]
+) -> EvalResult:
+    proposal = detect_direct_command(case.user_input, platform_id=case.platform_id)
     if proposal is None:
         ambiguity = detect_ambiguity(case.user_input)
         if case.expected_ambiguity_detected is not None and (
@@ -164,7 +174,7 @@ def evaluate_case(case: EvalCase, validator: Validator) -> EvalResult:
         if case.expected_ambiguity_detected is True:
             return EvalResult(case_id=case.id, passed=False, mismatches=mismatches)
 
-        route = route_request(case.user_input)
+        route = route_request(case.user_input, platform_id=case.platform_id)
         local_match = plan_locally(case.user_input, route)
         if local_match is not None:
             proposal = local_match.proposal
@@ -257,6 +267,19 @@ def evaluate_case(case: EvalCase, validator: Validator) -> EvalResult:
         )
 
     return EvalResult(case_id=case.id, passed=len(mismatches) == 0, mismatches=mismatches)
+
+
+@contextmanager
+def _temporary_platform(platform_id: str | None):
+    if platform_id is None:
+        yield
+        return
+    original = command_registry.sys.platform
+    command_registry.sys.platform = platform_id
+    try:
+        yield
+    finally:
+        command_registry.sys.platform = original
 
 
 def run_eval_cases(

@@ -138,7 +138,7 @@ Precedence rule:
 
 This means explicit disabled packs always disable additional packs and never re-enable profile-disabled packs.
 
-All disabled packs are removed from planner/completion context and commands are rejected by validator before execution. This is separate from capability IDs and does not change policy mode.
+All disabled packs are removed from planner, route, completion, and REPL discovery context. The validator remains authoritative: disabled commands are rejected before execution even if a user types a direct command or a planner proposes one. This is separate from capability IDs and does not change policy mode or confirmation.
 
 ### Examples
 
@@ -152,9 +152,10 @@ export OTERMINUS_COMMAND_PROFILE=developer
 # Broad non-dangerous preset.
 export OTERMINUS_COMMAND_PROFILE=power
 
-# Start from developer preset, then additionally disable network + macos packs.
+# Start from developer preset, then additionally disable macos.
+# Final disabled packs: dangerous, network, macos.
 export OTERMINUS_COMMAND_PROFILE=developer
-export OTERMINUS_DISABLED_COMMAND_PACKS=network,macos
+export OTERMINUS_DISABLED_COMMAND_PACKS=macos
 ```
 
 

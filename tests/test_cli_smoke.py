@@ -104,6 +104,23 @@ def test_repl_capabilities_lists_known_capability_ids() -> None:
     assert "destructive_operations" in output
 
 
+def test_repl_discovery_respects_disabled_packs() -> None:
+    disabled = frozenset({"dangerous", "network"})
+
+    capabilities = handle_repl_discovery_command("capabilities", disabled_pack_ids=disabled)
+    commands = handle_repl_discovery_command("commands", disabled_pack_ids=disabled)
+    help_ping = handle_repl_discovery_command("help ping", disabled_pack_ids=disabled)
+
+    assert capabilities is not None
+    assert commands is not None
+    assert help_ping is not None
+    assert "network_diagnostics" not in capabilities
+    assert "destructive_operations" not in capabilities
+    assert "ping" not in commands
+    assert "rm" not in commands
+    assert "Unknown help target" in help_ping
+
+
 def test_repl_help_for_capability_includes_commands_and_examples() -> None:
     output = handle_repl_discovery_command("help filesystem_inspection")
 
@@ -1314,6 +1331,39 @@ def test_handle_request_direct_commands_skip_ambiguity_and_go_to_validator() -> 
     assert rm_code == 3
     assert validator.validate.call_count == 2
     planner.plan.assert_not_called()
+    executor.run.assert_not_called()
+
+
+def test_handle_request_disabled_direct_command_still_hits_validator_via_planner() -> None:
+    from oterminus.cli import handle_request
+    from oterminus.policies import PolicyConfig
+    from oterminus.validator import Validator
+
+    planner = Mock()
+    planner.plan.return_value = Proposal(
+        action_type=ActionType.SHELL_COMMAND,
+        mode=ProposalMode.STRUCTURED,
+        command_family="ping",
+        arguments={"host": "example.com", "count": 4},
+        summary="ping",
+        explanation="ping",
+        risk_level=RiskLevel.SAFE,
+        needs_confirmation=True,
+        notes=[],
+    )
+    validator = Validator(PolicyConfig(disabled_command_packs=frozenset({"dangerous", "network"})))
+    executor = Mock()
+
+    code = handle_request(
+        "ping -c 4 example.com",
+        planner,
+        validator,
+        executor,
+        run_mode=RunMode.DRY_RUN,
+    )
+
+    assert code == 3
+    planner.plan.assert_called_once()
     executor.run.assert_not_called()
 
 

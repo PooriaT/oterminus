@@ -1,4 +1,5 @@
 from oterminus.planner import Planner
+from oterminus.policies import PolicyConfig
 from oterminus.prompts import build_system_prompt
 
 
@@ -44,6 +45,24 @@ def test_planner_includes_unsupported_router_context() -> None:
     prompt = client.calls[0]["user_prompt"]
     assert "category=unsupported" in prompt
     assert "limitations" in prompt
+
+
+def test_planner_route_context_excludes_disabled_profile_capabilities() -> None:
+    client = _StubClient(
+        '{"action_type":"shell_command","mode":"experimental","command":"pwd",'
+        '"summary":"fallback","explanation":"unsupported request fallback",'
+        '"risk_level":"safe","needs_confirmation":true,"notes":["experimental"]}'
+    )
+    planner = Planner(
+        client, policy=PolicyConfig(disabled_command_packs=frozenset({"dangerous", "network"}))
+    )
+
+    planner.plan("ping example.com 4 times")
+
+    prompt = client.calls[0]["user_prompt"]
+    assert "category=unsupported" in prompt
+    assert "network_diagnostics" not in prompt
+    assert "suggested_families=none" in prompt
 
 
 def test_planner_system_prompt_includes_supported_capabilities() -> None:
@@ -126,3 +145,19 @@ def test_planner_system_prompt_excludes_project_health_when_project_pack_disable
     prompt = build_system_prompt(disabled_pack_ids=frozenset({"project"}))
     assert "project_health" not in prompt
     assert "run_tests|lint_check|format_check|build_docs|run_evals" not in prompt
+
+
+def test_planner_system_prompt_respects_beginner_profile_disabled_packs() -> None:
+    disabled = frozenset({"archive", "dangerous", "git", "macos", "network", "process", "project"})
+
+    prompt = build_system_prompt(disabled_pack_ids=disabled, platform_id="darwin")
+
+    assert "archive_inspection" not in prompt
+    assert "git_inspection" not in prompt
+    assert "network_diagnostics" not in prompt
+    assert "process_inspection" not in prompt
+    assert "project_health" not in prompt
+    assert "macos_desktop" not in prompt
+    assert "`git`" not in prompt
+    assert "`ping`" not in prompt
+    assert "`ps`" not in prompt

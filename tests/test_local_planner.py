@@ -38,6 +38,18 @@ def test_local_planner_respects_disabled_git_pack() -> None:
     assert match is None
 
 
+def test_local_planner_respects_beginner_profile_disabled_packs() -> None:
+    disabled = frozenset({"archive", "dangerous", "git", "macos", "network", "process", "project"})
+
+    match = plan_locally(
+        "show git status",
+        route_request("show git status", disabled_pack_ids=disabled),
+        disabled_pack_ids=disabled,
+    )
+
+    assert match is None
+
+
 def test_local_planner_unsafe_requests_fall_back() -> None:
     assert plan_locally("delete junk", route_request("delete junk")) is None
     assert plan_locally("install dependencies", route_request("install dependencies")) is None

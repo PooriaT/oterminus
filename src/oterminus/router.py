@@ -3,7 +3,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 import re
 
-from oterminus.commands import COMMAND_REGISTRY, get_commands_by_capability
+from oterminus.commands import (
+    COMMAND_REGISTRY,
+    get_commands_by_capability,
+    get_enabled_command_registry,
+    supported_capabilities,
+)
 from oterminus.models import RiskLevel
 
 
@@ -30,132 +35,170 @@ class RouteResult:
     suggested_capabilities: tuple[str, ...] = ()
 
 
-def route_request(user_input: str) -> RouteResult:
+def route_request(
+    user_input: str,
+    *,
+    disabled_pack_ids: frozenset[str] | None = None,
+    platform_id: str | None = None,
+) -> RouteResult:
     text = user_input.strip().lower()
     if not text:
-        return RouteResult(
-            category="unsupported",
-            confidence=0.0,
-            reason="Empty request.",
-            suggested_families=(),
+        return _filter_route_result(
+            RouteResult(
+                category="unsupported",
+                confidence=0.0,
+                reason="Empty request.",
+                suggested_families=(),
+            ),
+            disabled_pack_ids=disabled_pack_ids,
+            platform_id=platform_id,
+        )
+
+    def filtered(route: RouteResult) -> RouteResult:
+        return _filter_route_result(
+            route, disabled_pack_ids=disabled_pack_ids, platform_id=platform_id
         )
 
     if _has_any(text, _UNSUPPORTED_NETWORK_HINTS):
-        return RouteResult(
-            category="unsupported",
-            confidence=0.92,
-            reason="Request asks for network behavior outside constrained read-only diagnostics.",
-            suggested_families=(),
-            suggested_capabilities=(),
+        return filtered(
+            RouteResult(
+                category="unsupported",
+                confidence=0.92,
+                reason="Request asks for network behavior outside constrained read-only diagnostics.",
+                suggested_families=(),
+                suggested_capabilities=(),
+            )
         )
 
     if _has_any(text, _NETWORK_DIAGNOSTIC_HINTS) or _has_network_responds_shape(text):
         families = _families_for_category("network_diagnostics", text)
-        return RouteResult(
-            category="network_diagnostics",
-            confidence=0.9,
-            reason="Request asks for constrained read-only network diagnostics.",
-            suggested_families=families,
-            suggested_capabilities=_capabilities_for_category("network_diagnostics"),
+        return filtered(
+            RouteResult(
+                category="network_diagnostics",
+                confidence=0.9,
+                reason="Request asks for constrained read-only network diagnostics.",
+                suggested_families=families,
+                suggested_capabilities=_capabilities_for_category("network_diagnostics"),
+            )
         )
 
     if _has_any(text, _TEXT_SEARCH_HINTS):
         families = _families_for_category("text_search", text)
-        return RouteResult(
-            category="text_search",
-            confidence=0.92,
-            reason="Request includes text-match/search wording.",
-            suggested_families=families,
-            suggested_capabilities=_capabilities_for_category("text_search"),
+        return filtered(
+            RouteResult(
+                category="text_search",
+                confidence=0.92,
+                reason="Request includes text-match/search wording.",
+                suggested_families=families,
+                suggested_capabilities=_capabilities_for_category("text_search"),
+            )
         )
 
     if _has_any(text, _PROCESS_INSPECT_HINTS):
         families = _families_for_category("process_inspect", text)
-        return RouteResult(
-            category="process_inspect",
-            confidence=0.87,
-            reason="Request references running processes or resource usage.",
-            suggested_families=families,
-            suggested_capabilities=_capabilities_for_category("process_inspect"),
+        return filtered(
+            RouteResult(
+                category="process_inspect",
+                confidence=0.87,
+                reason="Request references running processes or resource usage.",
+                suggested_families=families,
+                suggested_capabilities=_capabilities_for_category("process_inspect"),
+            )
         )
 
     if _has_any(text, _METADATA_HINTS):
         families = _families_for_category("metadata_inspect", text)
-        return RouteResult(
-            category="metadata_inspect",
-            confidence=0.9,
-            reason="Request asks for file metadata or disk usage properties.",
-            suggested_families=families,
-            suggested_capabilities=_capabilities_for_category("metadata_inspect"),
+        return filtered(
+            RouteResult(
+                category="metadata_inspect",
+                confidence=0.9,
+                reason="Request asks for file metadata or disk usage properties.",
+                suggested_families=families,
+                suggested_capabilities=_capabilities_for_category("metadata_inspect"),
+            )
         )
 
     if _has_any(text, _GIT_MUTATION_HINTS):
-        return RouteResult(
-            category="unsupported",
-            confidence=0.9,
-            reason="Request includes mutating or network Git action not supported in curated mode.",
-            suggested_families=(),
-            suggested_capabilities=(),
+        return filtered(
+            RouteResult(
+                category="unsupported",
+                confidence=0.9,
+                reason="Request includes mutating or network Git action not supported in curated mode.",
+                suggested_families=(),
+                suggested_capabilities=(),
+            )
         )
 
     if _has_any(text, _PROJECT_HEALTH_UNSAFE_HINTS):
-        return RouteResult(
-            category="unsupported",
-            confidence=0.9,
-            reason="Request asks for unsupported project-health mutation or dependency management.",
-            suggested_families=(),
-            suggested_capabilities=(),
+        return filtered(
+            RouteResult(
+                category="unsupported",
+                confidence=0.9,
+                reason="Request asks for unsupported project-health mutation or dependency management.",
+                suggested_families=(),
+                suggested_capabilities=(),
+            )
         )
 
     if _has_any(text, _PROJECT_HEALTH_HINTS):
         families = _families_for_category("project_health", text)
-        return RouteResult(
-            category="project_health",
-            confidence=0.92,
-            reason="Request asks for curated project health checks.",
-            suggested_families=families,
-            suggested_capabilities=_capabilities_for_category("project_health"),
+        return filtered(
+            RouteResult(
+                category="project_health",
+                confidence=0.92,
+                reason="Request asks for curated project health checks.",
+                suggested_families=families,
+                suggested_capabilities=_capabilities_for_category("project_health"),
+            )
         )
 
     if _has_any(text, _GIT_INSPECTION_HINTS):
         families = _families_for_category("git_inspection", text)
-        return RouteResult(
-            category="git_inspection",
-            confidence=0.93,
-            reason="Request asks for read-only Git repository inspection.",
-            suggested_families=families,
-            suggested_capabilities=_capabilities_for_category("git_inspection"),
+        return filtered(
+            RouteResult(
+                category="git_inspection",
+                confidence=0.93,
+                reason="Request asks for read-only Git repository inspection.",
+                suggested_families=families,
+                suggested_capabilities=_capabilities_for_category("git_inspection"),
+            )
         )
 
     archive_route = _route_archive_request(text)
     if archive_route is not None:
-        return archive_route
+        return filtered(archive_route)
 
     if _has_any(text, _MUTATION_HINTS):
         families = _families_for_category("filesystem_mutate", text)
-        return RouteResult(
-            category="filesystem_mutate",
-            confidence=0.9,
-            reason="Request implies creating or changing filesystem state.",
-            suggested_families=families,
-            suggested_capabilities=_capabilities_for_category("filesystem_mutate"),
+        return filtered(
+            RouteResult(
+                category="filesystem_mutate",
+                confidence=0.9,
+                reason="Request implies creating or changing filesystem state.",
+                suggested_families=families,
+                suggested_capabilities=_capabilities_for_category("filesystem_mutate"),
+            )
         )
 
     if _has_any(text, _INSPECTION_HINTS):
         families = _families_for_category("filesystem_inspect", text)
-        return RouteResult(
-            category="filesystem_inspect",
-            confidence=0.84,
-            reason="Request asks to view files, folders, or contents.",
-            suggested_families=families,
-            suggested_capabilities=_capabilities_for_category("filesystem_inspect"),
+        return filtered(
+            RouteResult(
+                category="filesystem_inspect",
+                confidence=0.84,
+                reason="Request asks to view files, folders, or contents.",
+                suggested_families=families,
+                suggested_capabilities=_capabilities_for_category("filesystem_inspect"),
+            )
         )
 
-    return RouteResult(
-        category="unsupported",
-        confidence=0.35,
-        reason="No strong local terminal/filesystem intent detected.",
-        suggested_families=(),
+    return filtered(
+        RouteResult(
+            category="unsupported",
+            confidence=0.35,
+            reason="No strong local terminal/filesystem intent detected.",
+            suggested_families=(),
+        )
     )
 
 
@@ -174,6 +217,51 @@ def _matches_hint(text: str, hint: str) -> bool:
 
 def _capabilities_for_category(category: str) -> tuple[str, ...]:
     return _ROUTE_CAPABILITIES.get(category, ())
+
+
+def _filter_route_result(
+    route: RouteResult,
+    *,
+    disabled_pack_ids: frozenset[str] | None,
+    platform_id: str | None,
+) -> RouteResult:
+    if not disabled_pack_ids and platform_id is None:
+        return route
+
+    enabled_commands = set(get_enabled_command_registry(disabled_pack_ids, platform_id))
+    enabled_capabilities = {
+        capability.capability_id
+        for capability in supported_capabilities(disabled_pack_ids, platform_id)
+    }
+    suggested_families = tuple(
+        family for family in route.suggested_families if family in enabled_commands
+    )
+    suggested_capabilities = tuple(
+        capability
+        for capability in route.suggested_capabilities
+        if capability in enabled_capabilities
+    )
+
+    if (
+        route.category != "unsupported"
+        and route.suggested_capabilities
+        and not suggested_capabilities
+    ):
+        return RouteResult(
+            category="unsupported",
+            confidence=route.confidence,
+            reason=f"{route.reason} Matching command capability is disabled or unavailable.",
+            suggested_families=(),
+            suggested_capabilities=(),
+        )
+
+    return RouteResult(
+        category=route.category,
+        confidence=route.confidence,
+        reason=route.reason,
+        suggested_families=suggested_families,
+        suggested_capabilities=suggested_capabilities,
+    )
 
 
 def _families_for_category(category: str, request_text: str) -> tuple[str, ...]:

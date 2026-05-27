@@ -57,7 +57,9 @@ See [command families reference](../reference/command-families.md).
 For the canonical behavior and env var details, see
 [Command pack availability](../reference/config.md#command-pack-availability).
 Profiles (`OTERMINUS_COMMAND_PROFILE`) are implemented as disabled-pack presets only; command
-filtering still flows through the same registry helpers and validator checks.
+filtering still flows through the same registry helpers and validator checks. Registry-backed
+surfaces such as prompt capability summaries, autocomplete, and REPL discovery use the effective
+disabled-pack set so profile-disabled packs are not advertised as available.
 
 
 ## Platform-aware availability

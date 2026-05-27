@@ -26,7 +26,7 @@ class Planner:
         self.policy = policy or PolicyConfig()
 
     def plan(self, request: str) -> Proposal:
-        route = route_request(request)
+        route = route_request(request, disabled_pack_ids=self.policy.disabled_command_packs)
         raw = self.client.chat_json(
             system_prompt=build_system_prompt(disabled_pack_ids=self.policy.disabled_command_packs),
             user_prompt=build_user_prompt(request, route=route),

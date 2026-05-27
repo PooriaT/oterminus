@@ -191,6 +191,30 @@ def test_completion_excludes_disabled_network_pack_commands() -> None:
     assert "ping" not in candidates
 
 
+def test_completion_respects_beginner_profile_disabled_packs() -> None:
+    disabled = frozenset({"archive", "dangerous", "git", "macos", "network", "process", "project"})
+
+    assert "git" not in _texts(build_repl_completions("gi", disabled_pack_ids=disabled))
+    assert "ping" not in _texts(build_repl_completions("pi", disabled_pack_ids=disabled))
+    assert "ps" not in _texts(build_repl_completions("ps", disabled_pack_ids=disabled))
+    assert "tar" not in _texts(build_repl_completions("ta", disabled_pack_ids=disabled))
+    assert "project_health" not in _texts(
+        build_repl_completions("project_", disabled_pack_ids=disabled)
+    )
+
+
+def test_completion_respects_developer_profile_disabled_packs_and_keeps_builtins() -> None:
+    disabled = frozenset({"dangerous", "network"})
+
+    assert "ping" not in _texts(build_repl_completions("pi", disabled_pack_ids=disabled))
+    assert "network_diagnostics" not in _texts(
+        build_repl_completions("network_", disabled_pack_ids=disabled)
+    )
+    assert "git" in _texts(build_repl_completions("gi", disabled_pack_ids=disabled))
+    assert "help" in _texts(build_repl_completions("he", disabled_pack_ids=disabled))
+    assert "history" in _texts(build_repl_completions("his", disabled_pack_ids=disabled))
+
+
 def test_completion_includes_project_health_capability_and_help_target() -> None:
     capability_candidates = _texts(build_repl_completions("project_"))
     help_candidates = _texts(build_repl_completions("help project_"))

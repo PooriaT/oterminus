@@ -210,8 +210,9 @@ prefer one of: - a smaller curated subset, - an explicit experimental-only const
 explicit blocked entry with rationale.
 
 ## Command pack availability
-Command-pack disabling is configured with `OTERMINUS_DISABLED_COMMAND_PACKS`. Keep the canonical
-rules in one place and refer to the config reference:
+Command-pack disabling is configured with `OTERMINUS_COMMAND_PROFILE` presets plus
+`OTERMINUS_DISABLED_COMMAND_PACKS` for additional explicit disables. Keep the canonical rules in one
+place and refer to the config reference:
 [Command pack availability](reference/config.md#command-pack-availability).
 
 
