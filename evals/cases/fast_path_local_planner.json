@@ -1,1 +1,122 @@
-[{"id":"local-pwd-show-current-directory","user_input":"show current directory","expected_mode":"structured","expected_command_family":"pwd","expected_risk_level":"safe","expected_acceptance":true,"expected_rendered_command":"pwd","expected_argv":["pwd"]},{"id":"local-pwd-where-am-i","user_input":"where am i","expected_mode":"structured","expected_command_family":"pwd","expected_risk_level":"safe","expected_acceptance":true,"expected_rendered_command":"pwd","expected_argv":["pwd"]},{"id":"local-ls-show-files","user_input":"show files","expected_mode":"structured","expected_command_family":"ls","expected_risk_level":"safe","expected_acceptance":true,"expected_rendered_command":"ls .","expected_argv":["ls","."]},{"id":"local-ls-with-sizes","user_input":"list files with sizes","expected_mode":"structured","expected_command_family":"ls","expected_risk_level":"safe","expected_acceptance":true,"expected_rendered_command":"ls -l -h .","expected_argv":["ls","-l","-h","."]},{"id":"local-du-folder","user_input":"show disk usage for this folder","expected_mode":"structured","expected_command_family":"du","expected_risk_level":"safe","expected_acceptance":true,"expected_rendered_command":"du -h -s .","expected_argv":["du","-h","-s","."]},{"id":"local-git-status","user_input":"show git status","expected_mode":"structured","expected_command_family":"git","expected_risk_level":"safe","expected_acceptance":true,"expected_rendered_command":"git status --short","expected_argv":["git","status","--short"]},{"id":"local-ambiguous-clean-folder","user_input":"clean this folder","expected_ambiguity_detected":true,"expected_ambiguity_reason_contains":"clean this folder","expected_ambiguity_safe_options":["list large files","list recently modified files","inspect permissions","show temporary-looking files","show project files"]},{"id":"local-no-match-install-dependencies","user_input":"install dependencies","planner_proposal":{"action_type":"shell_command","summary":"Run tests","explanation":"Use the curated project health workflow.","mode":"structured","command_family":"project_health","arguments":{"operation":"run_tests"},"needs_confirmation":true,"notes":[]},"expected_mode":"structured","expected_command_family":"project_health","expected_risk_level":"write","expected_acceptance":true,"expected_rendered_command":"poetry run pytest","expected_argv":["poetry","run","pytest"]}]
+[
+  {
+    "id": "local-pwd-show-current-directory",
+    "user_input": "show current directory",
+    "expected_mode": "structured",
+    "expected_command_family": "pwd",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "pwd",
+    "expected_argv": [
+      "pwd"
+    ]
+  },
+  {
+    "id": "local-pwd-where-am-i",
+    "user_input": "where am i",
+    "expected_mode": "structured",
+    "expected_command_family": "pwd",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "pwd",
+    "expected_argv": [
+      "pwd"
+    ]
+  },
+  {
+    "id": "local-ls-show-files",
+    "user_input": "show files",
+    "expected_mode": "structured",
+    "expected_command_family": "ls",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "ls .",
+    "expected_argv": [
+      "ls",
+      "."
+    ]
+  },
+  {
+    "id": "local-ls-with-sizes",
+    "user_input": "list files with sizes",
+    "expected_mode": "structured",
+    "expected_command_family": "ls",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "ls -l -h .",
+    "expected_argv": [
+      "ls",
+      "-l",
+      "-h",
+      "."
+    ]
+  },
+  {
+    "id": "local-du-folder",
+    "user_input": "show disk usage for this folder",
+    "expected_mode": "structured",
+    "expected_command_family": "du",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "du -h -s .",
+    "expected_argv": [
+      "du",
+      "-h",
+      "-s",
+      "."
+    ]
+  },
+  {
+    "id": "local-git-status",
+    "user_input": "show git status",
+    "expected_mode": "structured",
+    "expected_command_family": "git",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "git status --short",
+    "expected_argv": [
+      "git",
+      "status",
+      "--short"
+    ]
+  },
+  {
+    "id": "local-ambiguous-clean-folder",
+    "user_input": "clean this folder",
+    "expected_ambiguity_detected": true,
+    "expected_ambiguity_reason_contains": "clean this folder",
+    "expected_ambiguity_safe_options": [
+      "list large files",
+      "list recently modified files",
+      "inspect permissions",
+      "show temporary-looking files",
+      "show project files"
+    ]
+  },
+  {
+    "id": "local-no-match-install-dependencies",
+    "user_input": "install dependencies",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "summary": "Run tests",
+      "explanation": "Use the curated project health workflow.",
+      "mode": "structured",
+      "command_family": "project_health",
+      "arguments": {
+        "operation": "run_tests"
+      },
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "structured",
+    "expected_command_family": "project_health",
+    "expected_risk_level": "write",
+    "expected_acceptance": true,
+    "expected_rendered_command": "poetry run pytest",
+    "expected_argv": [
+      "poetry",
+      "run",
+      "pytest"
+    ]
+  }
+]
