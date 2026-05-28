@@ -94,7 +94,11 @@ def load_eval_cases(fixtures_dir: Path) -> list[EvalCase]:
     seen_ids: dict[str, Path] = {}
 
     for path in sorted(fixtures_dir.glob("*.json")):
-        payload = json.loads(path.read_text())
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"Invalid JSON in eval fixture file {path}: {exc}") from exc
+
         if not isinstance(payload, list):
             raise ValueError(f"Fixture file must contain a JSON array: {path}")
 

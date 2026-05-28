@@ -125,5 +125,74 @@
       "-c",
       "README.md"
     ]
+  },
+  {
+    "id": "direct-git-status-short",
+    "user_input": "git status --short",
+    "expected_mode": "structured",
+    "expected_command_family": "git",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "git status --short",
+    "expected_argv": [
+      "git",
+      "status",
+      "--short"
+    ]
+  },
+  {
+    "id": "direct-project-health-format-check",
+    "user_input": "poetry run ruff format --check .",
+    "expected_mode": "structured",
+    "expected_command_family": "project_health",
+    "expected_risk_level": "write",
+    "expected_acceptance": true,
+    "expected_rendered_command": "poetry run ruff format --check .",
+    "expected_argv": [
+      "poetry",
+      "run",
+      "ruff",
+      "format",
+      "--check",
+      "."
+    ]
+  },
+  {
+    "id": "direct-network-dig",
+    "user_input": "dig example.com",
+    "expected_mode": "structured",
+    "expected_command_family": "dig",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "dig example.com",
+    "expected_argv": [
+      "dig",
+      "example.com"
+    ]
+  },
+  {
+    "id": "direct-unsafe-chaining-rejected",
+    "user_input": "pwd && ls",
+    "expected_mode": "experimental",
+    "expected_command_family": "pwd",
+    "expected_risk_level": "safe",
+    "expected_acceptance": false,
+    "expected_rendered_command": "pwd && ls",
+    "expected_argv": [
+      "pwd",
+      "&&",
+      "ls"
+    ],
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "experimental",
+      "command_family": "pwd",
+      "command": "pwd && ls",
+      "summary": "blocked chaining",
+      "explanation": "deterministic eval fixture",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": []
+    }
   }
 ]
