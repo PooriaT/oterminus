@@ -2033,3 +2033,75 @@ def test_handle_request_normal_output_hides_timings_trace(monkeypatch, capsys) -
     assert code == 0
     output = capsys.readouterr().out
     assert "[trace] timings" not in output
+
+
+def test_parse_args_version_flag() -> None:
+    args = parse_args(["--version"])
+
+    assert args.version is True
+    assert args.cli_mode == "request"
+
+
+def test_parse_args_version_command() -> None:
+    args = parse_args(["version"])
+
+    assert args.request == ["version"]
+    assert args.cli_mode == "version"
+
+
+def test_main_version_flag_exits_before_config_doctor_or_repl(monkeypatch, capsys) -> None:
+    from oterminus.cli import main
+
+    monkeypatch.setattr("oterminus.cli.configure_logging", lambda verbose: None)
+    monkeypatch.setattr("oterminus.cli.format_version", Mock(return_value="oterminus 9.9.9"))
+    monkeypatch.setattr("oterminus.cli.load_config", Mock(side_effect=AssertionError("no config")))
+    monkeypatch.setattr(
+        "oterminus.cli.run_doctor_cli", Mock(side_effect=AssertionError("no doctor"))
+    )
+    monkeypatch.setattr(
+        "oterminus.cli.ensure_startup_ready",
+        Mock(side_effect=AssertionError("no Ollama startup check")),
+    )
+    monkeypatch.setattr("oterminus.cli.repl", Mock(side_effect=AssertionError("no REPL")))
+    monkeypatch.setattr(
+        "oterminus.cli.handle_request", Mock(side_effect=AssertionError("no planner path"))
+    )
+
+    code = main(["--version"])
+
+    assert code == 0
+    assert capsys.readouterr().out == "oterminus 9.9.9\n"
+
+
+def test_main_version_command_exits_before_config_doctor_or_repl(monkeypatch, capsys) -> None:
+    from oterminus.cli import main
+
+    monkeypatch.setattr("oterminus.cli.configure_logging", lambda verbose: None)
+    monkeypatch.setattr("oterminus.cli.format_version", Mock(return_value="oterminus 9.9.9"))
+    monkeypatch.setattr("oterminus.cli.load_config", Mock(side_effect=AssertionError("no config")))
+    monkeypatch.setattr(
+        "oterminus.cli.run_doctor_cli", Mock(side_effect=AssertionError("no doctor"))
+    )
+    monkeypatch.setattr(
+        "oterminus.cli.ensure_startup_ready",
+        Mock(side_effect=AssertionError("no Ollama startup check")),
+    )
+    monkeypatch.setattr("oterminus.cli.repl", Mock(side_effect=AssertionError("no REPL")))
+    monkeypatch.setattr(
+        "oterminus.cli.handle_request", Mock(side_effect=AssertionError("no planner path"))
+    )
+
+    code = main(["version"])
+
+    assert code == 0
+    assert capsys.readouterr().out == "oterminus 9.9.9\n"
+
+
+def test_repl_version_builtin_stays_out_of_discovery_registry(monkeypatch) -> None:
+    monkeypatch.setattr("oterminus.cli.format_version", Mock(return_value="oterminus 9.9.9"))
+    monkeypatch.setattr(
+        "oterminus.cli.supported_capabilities",
+        Mock(side_effect=AssertionError("no registry lookup needed")),
+    )
+
+    assert handle_repl_discovery_command("version") == "oterminus 9.9.9"

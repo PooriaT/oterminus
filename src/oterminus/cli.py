@@ -41,6 +41,7 @@ from oterminus.policies import ConfirmationLevel, confirmation_level
 from oterminus.renderer import render_failure_explanation, render_preview
 from oterminus.router import route_request
 from oterminus.validator import Validator
+from oterminus.version import format_version
 
 LOGGER = logging.getLogger("oterminus")
 PLANNER_SKIP_DIRECT_COMMAND = "direct_command"
@@ -80,16 +81,26 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         action="store_true",
         help="Explain command choice and safety decision, without executing.",
     )
+    group.add_argument(
+        "--version",
+        action="store_true",
+        help="Print the installed OTerminus version and exit.",
+    )
     parser.add_argument("--verbose", action="store_true", help="Enable debug logging")
     args = parser.parse_args(argv)
     args.cli_mode = _cli_mode_from_request(args.request)
-    if args.cli_mode == "doctor" and (args.dry_run or args.explain):
-        parser.error("doctor cannot be combined with --dry-run or --explain")
+    if args.cli_mode in {"doctor", "version"} and (args.dry_run or args.explain):
+        parser.error(f"{args.cli_mode} cannot be combined with --dry-run or --explain")
     return args
 
 
 def _cli_mode_from_request(request: list[str]) -> str:
-    return "doctor" if " ".join(request).strip().lower() == "doctor" else "request"
+    command = " ".join(request).strip().lower()
+    if command == "doctor":
+        return "doctor"
+    if command == "version":
+        return "version"
+    return "request"
 
 
 def ask_confirmation(level: ConfirmationLevel) -> bool:
@@ -625,11 +636,15 @@ def handle_repl_discovery_command(
     platform_id: str | None = None,
 ) -> str | None:
     lowered = request.lower().strip()
-    capabilities = supported_capabilities(disabled_pack_ids, platform_id)
-    capability_map = {capability.capability_id: capability for capability in capabilities}
 
     if lowered == "help":
         return render_help()
+
+    if lowered == "version":
+        return format_version()
+
+    capabilities = supported_capabilities(disabled_pack_ids, platform_id)
+    capability_map = {capability.capability_id: capability for capability in capabilities}
 
     if lowered == "capabilities":
         return render_capabilities(disabled_pack_ids=disabled_pack_ids, platform_id=platform_id)
@@ -760,6 +775,10 @@ def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv or sys.argv[1:])
     configure_logging(verbose=args.verbose)
     run_mode = _run_mode_from_args(args)
+
+    if args.version or args.cli_mode == "version":
+        print(format_version())
+        return 0
 
     if args.cli_mode == "doctor":
         return run_doctor_cli()
