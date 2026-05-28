@@ -65,10 +65,13 @@ poetry run oterminus-evals --fixtures-dir evals/cases
 Eval fixtures are JSON arrays organized by capability or behavior under `evals/cases/`, with a
 packaged mirror under `src/oterminus/eval_fixtures/`. Keep fixture IDs unique across all files and
 prefer readable capability or behavior prefixes such as `network-`, `project-health-`, `direct-`,
-`planner-`, or `ambiguity-`. These local test and eval commands should not require an Ollama
-service. CI uses the same deterministic fixture path, so no Ollama service/model/network call is
-required for the regression gate. See [Evals](architecture/evals.md) for fixture organization and
-format details.
+`planner-`, or `ambiguity-`. New command-pack work should include representative eval coverage for
+accepted behavior plus focused unsafe, unsupported, and ambiguous cases. Use `planner_proposal` for
+natural-language planner-path cases so the eval remains deterministic. These local test and eval
+commands should not require an Ollama service, live network access, a real Git repository state,
+filesystem contents, or subprocess execution. CI uses the same deterministic fixture path, so no
+Ollama service/model/network call is required for the regression gate. See [Evals](architecture/evals.md)
+for fixture organization and format details.
 
 ## Documentation rules
 

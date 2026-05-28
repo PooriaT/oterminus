@@ -148,10 +148,20 @@ Include representative cases for: - expected mode (`structured` vs `experimental
 routing - expected risk level - acceptance/rejection behavior - rendered command + argv when
 deterministic
 
-Add both “happy path” and “should fail” fixtures for new family behavior.
+Choose the fixture file by capability (`network_diagnostics.json`, `git_inspection.json`,
+`project_health.json`, archive/filesystem/text/process/system files) or by cross-cutting behavior
+(`direct_commands.json`, `ambiguity.json`, `unsafe_and_blocked.json`). Add both “happy path” and
+“should fail” fixtures for new family behavior. For natural-language cases that would otherwise need
+Ollama, include a `planner_proposal` fixture. For ambiguity gates, omit `planner_proposal` and assert
+`expected_ambiguity_detected`. For unsupported structured shapes, use
+`expected_planner_error_contains`; for validator/policy blocks, assert `expected_acceptance: false`.
+
 For network-touching families, include safe read-only diagnostics and rejected requests for mutating
 methods, unsafe headers/secrets, unsupported URL forms, shell operators, and unsupported broad
-targets.
+targets. Evals must not require live network access, current filesystem contents, a real Git repo
+state, local project tooling, subprocess execution, or a running Ollama service. If the coverage set
+would become a command manual or exceed a focused 30-60 case expansion, split archive, network,
+project-health, or unsafe coverage into follow-up PRs.
 
 ## 11) Update autocomplete and docs
 If your change introduces a new command/capability visible to users:

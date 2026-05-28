@@ -6,7 +6,10 @@
       "action_type": "shell_command",
       "mode": "structured",
       "command_family": "tar",
-      "arguments": {"operation": "list", "archive_path": "archive.tar"},
+      "arguments": {
+        "operation": "list",
+        "archive_path": "archive.tar"
+      },
       "summary": "list tar archive contents",
       "explanation": "read-only archive inspection",
       "risk_level": "safe",
@@ -18,7 +21,11 @@
     "expected_risk_level": "safe",
     "expected_acceptance": true,
     "expected_rendered_command": "tar -tf archive.tar",
-    "expected_argv": ["tar", "-tf", "archive.tar"]
+    "expected_argv": [
+      "tar",
+      "-tf",
+      "archive.tar"
+    ]
   },
   {
     "id": "archive-list-zip-structured",
@@ -27,7 +34,10 @@
       "action_type": "shell_command",
       "mode": "structured",
       "command_family": "unzip",
-      "arguments": {"operation": "list", "archive_path": "backup.zip"},
+      "arguments": {
+        "operation": "list",
+        "archive_path": "backup.zip"
+      },
       "summary": "list zip archive contents",
       "explanation": "read-only archive inspection",
       "risk_level": "safe",
@@ -39,7 +49,11 @@
     "expected_risk_level": "safe",
     "expected_acceptance": true,
     "expected_rendered_command": "unzip -l backup.zip",
-    "expected_argv": ["unzip", "-l", "backup.zip"]
+    "expected_argv": [
+      "unzip",
+      "-l",
+      "backup.zip"
+    ]
   },
   {
     "id": "archive-inspect-this-zip-structured",
@@ -48,7 +62,10 @@
       "action_type": "shell_command",
       "mode": "structured",
       "command_family": "unzip",
-      "arguments": {"operation": "list", "archive_path": "archive.zip"},
+      "arguments": {
+        "operation": "list",
+        "archive_path": "archive.zip"
+      },
       "summary": "list zip archive contents",
       "explanation": "read-only archive inspection",
       "risk_level": "safe",
@@ -60,7 +77,11 @@
     "expected_risk_level": "safe",
     "expected_acceptance": true,
     "expected_rendered_command": "unzip -l archive.zip",
-    "expected_argv": ["unzip", "-l", "archive.zip"]
+    "expected_argv": [
+      "unzip",
+      "-l",
+      "archive.zip"
+    ]
   },
   {
     "id": "archive-extract-tar-guarded",
@@ -85,7 +106,13 @@
     "expected_risk_level": "write",
     "expected_acceptance": true,
     "expected_rendered_command": "tar -xf archive.tar -C ./out",
-    "expected_argv": ["tar", "-xf", "archive.tar", "-C", "./out"]
+    "expected_argv": [
+      "tar",
+      "-xf",
+      "archive.tar",
+      "-C",
+      "./out"
+    ]
   },
   {
     "id": "archive-extract-zip-guarded",
@@ -110,7 +137,12 @@
     "expected_risk_level": "write",
     "expected_acceptance": true,
     "expected_rendered_command": "unzip backup.zip -d ./restore",
-    "expected_argv": ["unzip", "backup.zip", "-d", "./restore"]
+    "expected_argv": [
+      "unzip",
+      "backup.zip",
+      "-d",
+      "./restore"
+    ]
   },
   {
     "id": "archive-extract-tar-missing-destination",
@@ -154,7 +186,9 @@
       "arguments": {
         "operation": "create_tar_gz",
         "archive_path": "backup.tar.gz",
-        "source_paths": ["src"]
+        "source_paths": [
+          "src"
+        ]
       },
       "summary": "create tar.gz archive",
       "explanation": "guarded archive creation from explicit source paths",
@@ -167,7 +201,12 @@
     "expected_risk_level": "write",
     "expected_acceptance": true,
     "expected_rendered_command": "tar -czf backup.tar.gz src",
-    "expected_argv": ["tar", "-czf", "backup.tar.gz", "src"]
+    "expected_argv": [
+      "tar",
+      "-czf",
+      "backup.tar.gz",
+      "src"
+    ]
   },
   {
     "id": "archive-create-zip-docs-guarded",
@@ -179,7 +218,9 @@
       "arguments": {
         "operation": "create_zip",
         "archive_path": "docs.zip",
-        "source_paths": ["docs"]
+        "source_paths": [
+          "docs"
+        ]
       },
       "summary": "create zip archive",
       "explanation": "guarded archive creation from explicit source paths",
@@ -192,7 +233,12 @@
     "expected_risk_level": "write",
     "expected_acceptance": true,
     "expected_rendered_command": "zip -r docs.zip docs",
-    "expected_argv": ["zip", "-r", "docs.zip", "docs"]
+    "expected_argv": [
+      "zip",
+      "-r",
+      "docs.zip",
+      "docs"
+    ]
   },
   {
     "id": "archive-create-zip-multiple-sources-guarded",
@@ -204,7 +250,10 @@
       "arguments": {
         "operation": "create_zip",
         "archive_path": "backup.zip",
-        "source_paths": ["README.md", "docs"]
+        "source_paths": [
+          "README.md",
+          "docs"
+        ]
       },
       "summary": "create zip archive",
       "explanation": "guarded archive creation from explicit source paths",
@@ -217,7 +266,13 @@
     "expected_risk_level": "write",
     "expected_acceptance": true,
     "expected_rendered_command": "zip -r backup.zip README.md docs",
-    "expected_argv": ["zip", "-r", "backup.zip", "README.md", "docs"]
+    "expected_argv": [
+      "zip",
+      "-r",
+      "backup.zip",
+      "README.md",
+      "docs"
+    ]
   },
   {
     "id": "archive-create-everything-ambiguous",
@@ -235,7 +290,9 @@
       "arguments": {
         "operation": "create_zip",
         "archive_path": "root.zip",
-        "source_paths": ["/"]
+        "source_paths": [
+          "/"
+        ]
       },
       "summary": "create zip archive",
       "explanation": "guarded archive creation",
@@ -257,11 +314,90 @@
       "explanation": "zip encryption is unsupported in guarded archive creation",
       "risk_level": "write",
       "needs_confirmation": true,
-      "notes": ["unsupported archive encryption"]
+      "notes": [
+        "unsupported archive encryption"
+      ]
     },
     "expected_mode": "experimental",
     "expected_command_family": "zip",
     "expected_risk_level": "write",
     "expected_acceptance": false
+  },
+  {
+    "id": "archive-direct-list-tar",
+    "user_input": "tar -tf archive.tar",
+    "expected_mode": "structured",
+    "expected_command_family": "tar",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "tar -tf archive.tar",
+    "expected_argv": [
+      "tar",
+      "-tf",
+      "archive.tar"
+    ]
+  },
+  {
+    "id": "archive-direct-list-zip",
+    "user_input": "unzip -l backup.zip",
+    "expected_mode": "structured",
+    "expected_command_family": "unzip",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "unzip -l backup.zip",
+    "expected_argv": [
+      "unzip",
+      "-l",
+      "backup.zip"
+    ]
+  },
+  {
+    "id": "archive-reject-arbitrary-tar-flags-direct",
+    "user_input": "tar --strip-components=1 -xf archive.tar -C out",
+    "expected_mode": "experimental",
+    "expected_command_family": "tar",
+    "expected_risk_level": "write",
+    "expected_acceptance": false,
+    "expected_rendered_command": "tar --strip-components=1 -xf archive.tar -C out",
+    "expected_argv": [
+      "tar",
+      "--strip-components=1",
+      "-xf",
+      "archive.tar",
+      "-C",
+      "out"
+    ]
+  },
+  {
+    "id": "archive-reject-unzip-password-direct",
+    "user_input": "unzip -P secret backup.zip -d out",
+    "expected_mode": "experimental",
+    "expected_command_family": "unzip",
+    "expected_risk_level": "write",
+    "expected_acceptance": false,
+    "expected_rendered_command": "unzip -P secret backup.zip -d out",
+    "expected_argv": [
+      "unzip",
+      "-P",
+      "secret",
+      "backup.zip",
+      "-d",
+      "out"
+    ]
+  },
+  {
+    "id": "archive-reject-zip-encrypt-direct",
+    "user_input": "zip -e backup.zip src",
+    "expected_mode": "experimental",
+    "expected_command_family": "zip",
+    "expected_risk_level": "write",
+    "expected_acceptance": false,
+    "expected_rendered_command": "zip -e backup.zip src",
+    "expected_argv": [
+      "zip",
+      "-e",
+      "backup.zip",
+      "src"
+    ]
   }
 ]

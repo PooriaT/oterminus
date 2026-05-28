@@ -6,7 +6,9 @@
       "action_type": "shell_command",
       "mode": "structured",
       "command_family": "git",
-      "arguments": {"operation": "status_short"},
+      "arguments": {
+        "operation": "status_short"
+      },
       "summary": "show short status",
       "explanation": "read-only git status",
       "risk_level": "safe",
@@ -18,7 +20,11 @@
     "expected_risk_level": "safe",
     "expected_acceptance": true,
     "expected_rendered_command": "git status --short",
-    "expected_argv": ["git", "status", "--short"]
+    "expected_argv": [
+      "git",
+      "status",
+      "--short"
+    ]
   },
   {
     "id": "git-branch-current-structured",
@@ -27,7 +33,9 @@
       "action_type": "shell_command",
       "mode": "structured",
       "command_family": "git",
-      "arguments": {"operation": "branch_current"},
+      "arguments": {
+        "operation": "branch_current"
+      },
       "summary": "show current branch",
       "explanation": "read-only git branch",
       "risk_level": "safe",
@@ -39,7 +47,11 @@
     "expected_risk_level": "safe",
     "expected_acceptance": true,
     "expected_rendered_command": "git branch --show-current",
-    "expected_argv": ["git", "branch", "--show-current"]
+    "expected_argv": [
+      "git",
+      "branch",
+      "--show-current"
+    ]
   },
   {
     "id": "git-log-last-5-structured",
@@ -48,7 +60,10 @@
       "action_type": "shell_command",
       "mode": "structured",
       "command_family": "git",
-      "arguments": {"operation": "log_oneline", "count": 5},
+      "arguments": {
+        "operation": "log_oneline",
+        "count": 5
+      },
       "summary": "show last 5 commits",
       "explanation": "read-only git history",
       "risk_level": "safe",
@@ -60,7 +75,13 @@
     "expected_risk_level": "safe",
     "expected_acceptance": true,
     "expected_rendered_command": "git log --oneline -n 5",
-    "expected_argv": ["git", "log", "--oneline", "-n", "5"]
+    "expected_argv": [
+      "git",
+      "log",
+      "--oneline",
+      "-n",
+      "5"
+    ]
   },
   {
     "id": "git-log-recent-default-structured",
@@ -69,7 +90,9 @@
       "action_type": "shell_command",
       "mode": "structured",
       "command_family": "git",
-      "arguments": {"operation": "log_oneline"},
+      "arguments": {
+        "operation": "log_oneline"
+      },
       "summary": "show recent commits",
       "explanation": "read-only git history",
       "risk_level": "safe",
@@ -81,7 +104,13 @@
     "expected_risk_level": "safe",
     "expected_acceptance": true,
     "expected_rendered_command": "git log --oneline -n 10",
-    "expected_argv": ["git", "log", "--oneline", "-n", "10"]
+    "expected_argv": [
+      "git",
+      "log",
+      "--oneline",
+      "-n",
+      "10"
+    ]
   },
   {
     "id": "git-diff-summary-structured",
@@ -90,7 +119,9 @@
       "action_type": "shell_command",
       "mode": "structured",
       "command_family": "git",
-      "arguments": {"operation": "diff_stat"},
+      "arguments": {
+        "operation": "diff_stat"
+      },
       "summary": "show git diff summary",
       "explanation": "read-only git diff stats",
       "risk_level": "safe",
@@ -102,7 +133,11 @@
     "expected_risk_level": "safe",
     "expected_acceptance": true,
     "expected_rendered_command": "git diff --stat",
-    "expected_argv": ["git", "diff", "--stat"]
+    "expected_argv": [
+      "git",
+      "diff",
+      "--stat"
+    ]
   },
   {
     "id": "git-diff-name-only-structured",
@@ -111,7 +146,9 @@
       "action_type": "shell_command",
       "mode": "structured",
       "command_family": "git",
-      "arguments": {"operation": "diff_name_only"},
+      "arguments": {
+        "operation": "diff_name_only"
+      },
       "summary": "show changed files",
       "explanation": "read-only git diff names",
       "risk_level": "safe",
@@ -123,6 +160,162 @@
     "expected_risk_level": "safe",
     "expected_acceptance": true,
     "expected_rendered_command": "git diff --name-only",
-    "expected_argv": ["git", "diff", "--name-only"]
+    "expected_argv": [
+      "git",
+      "diff",
+      "--name-only"
+    ]
+  },
+  {
+    "id": "git-reject-commit-structured",
+    "user_input": "commit current changes",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "git",
+      "summary": "fixture proposal",
+      "explanation": "deterministic eval fixture",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": [],
+      "arguments": {
+        "operation": "commit"
+      }
+    },
+    "expected_planner_error_contains": "operation must be one of"
+  },
+  {
+    "id": "git-reject-add-structured",
+    "user_input": "stage all changes",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "git",
+      "summary": "fixture proposal",
+      "explanation": "deterministic eval fixture",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": [],
+      "arguments": {
+        "operation": "add"
+      }
+    },
+    "expected_planner_error_contains": "operation must be one of"
+  },
+  {
+    "id": "git-reject-push-structured",
+    "user_input": "push commits",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "git",
+      "summary": "fixture proposal",
+      "explanation": "deterministic eval fixture",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": [],
+      "arguments": {
+        "operation": "push"
+      }
+    },
+    "expected_planner_error_contains": "operation must be one of"
+  },
+  {
+    "id": "git-reject-reset-clean-checkout-structured",
+    "user_input": "hard reset the current branch",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "git",
+      "summary": "fixture proposal",
+      "explanation": "deterministic eval fixture",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": [],
+      "arguments": {
+        "operation": "reset_hard"
+      }
+    },
+    "expected_planner_error_contains": "operation must be one of"
+  },
+  {
+    "id": "git-direct-reject-commit",
+    "user_input": "git commit -m update",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "experimental",
+      "command_family": "git",
+      "summary": "fixture proposal",
+      "explanation": "deterministic eval fixture",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": [],
+      "command": "git commit -m update"
+    },
+    "expected_mode": "experimental",
+    "expected_command_family": "git",
+    "expected_risk_level": "safe",
+    "expected_acceptance": false,
+    "expected_rendered_command": "git commit -m update",
+    "expected_argv": [
+      "git",
+      "commit",
+      "-m",
+      "update"
+    ]
+  },
+  {
+    "id": "git-reject-pull-structured",
+    "user_input": "pull latest changes",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "git",
+      "arguments": {
+        "operation": "pull"
+      },
+      "summary": "unsupported git mutation",
+      "explanation": "deterministic eval fixture",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_planner_error_contains": "operation must be one of"
+  },
+  {
+    "id": "git-reject-clean-structured",
+    "user_input": "unsupported git clean operation",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "git",
+      "arguments": {
+        "operation": "clean"
+      },
+      "summary": "unsupported git mutation",
+      "explanation": "deterministic eval fixture",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_planner_error_contains": "operation must be one of"
+  },
+  {
+    "id": "git-reject-checkout-structured",
+    "user_input": "checkout another branch",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "git",
+      "arguments": {
+        "operation": "checkout"
+      },
+      "summary": "unsupported git mutation",
+      "explanation": "deterministic eval fixture",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_planner_error_contains": "operation must be one of"
   }
 ]

@@ -95,9 +95,44 @@ Add or update fixture cases when any of the following change:
 - structured rendering behavior
 - planner payload shape or parsing behavior
 
-Add both accepted and rejected cases when a capability has meaningful safety boundaries. Keep broad
-coverage expansion focused; small fixture additions are best paired with the behavior change that
-needs regression protection.
+Add both accepted and rejected cases when a capability has meaningful safety boundaries. Newer
+command packs should include at least one representative accepted fixture plus focused rejection
+coverage for unsupported flags, unsafe operations, broad targets, and command-family-specific policy
+boundaries. Keep broad coverage expansion focused; small fixture additions are best paired with the
+behavior change that needs regression protection.
+
+## Adding cases for newer capabilities
+
+Choose the fixture file by the capability or behavior under test:
+
+- Put archive listing, extraction, creation, and archive-specific rejection cases in
+  `archive_inspection.json`. Use a separate archive fixture only if archive coverage grows enough to
+  justify a focused follow-up.
+- Put ping, curl HEAD, DNS lookups, and network-specific rejection cases in
+  `network_diagnostics.json`. Evals must never perform live network calls; use `planner_proposal` or
+  direct-command detection only.
+- Put read-only Git status, branch, log, and diff cases in `git_inspection.json`. Do not rely on the
+  checkout being a Git repository because evals validate proposals and rendering only.
+- Put curated test/lint/format-check/docs/eval operations in `project_health.json`. Project-health
+  evals model preview and validation; they must not execute project commands.
+- Put direct shell-like forms in `direct_commands.json` when direct detection is the behavior under
+  test. Put generic shell syntax blocks, unknown families, package-manager installs, scans, and
+  arbitrary project execution in `unsafe_and_blocked.json`.
+- Put vague user requests that must stop before planning in `ambiguity.json`; omit
+  `planner_proposal` and set `expected_ambiguity_detected` plus a reason substring. Add a
+  non-ambiguous contrast case when a nearby specific request should continue into planning.
+
+For natural-language requests that would otherwise call the planner, include a deterministic
+`planner_proposal` payload. The eval runner parses that payload locally, so fixtures must not depend
+on Ollama, subprocess execution, real filesystem contents, network availability, current Git state,
+or locally installed project tooling. Rejected structured payloads should use
+`expected_planner_error_contains` when schema validation must fail before validator execution;
+rejected command proposals should assert `expected_acceptance: false` and, when deterministic,
+`expected_rendered_command` and `expected_argv`.
+
+Split eval expansion into a separate PR or issue when one command pack needs broad matrix coverage,
+multiple new fixture files, or exhaustive flag permutations. Prefer 30-60 high-value cases in a
+single coverage PR and leave command-manual-level coverage for follow-ups.
 
 ## Relationship to tests
 
