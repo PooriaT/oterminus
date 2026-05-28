@@ -254,7 +254,7 @@
     },
     "expected_mode": "experimental",
     "expected_command_family": "git",
-    "expected_risk_level": "safe",
+    "expected_risk_level": "dangerous",
     "expected_acceptance": false,
     "expected_rendered_command": "git commit -m update",
     "expected_argv": [

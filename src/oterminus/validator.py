@@ -378,6 +378,8 @@ class Validator:
     def _risk_for_command_shape(
         self, spec: CommandSpec, arguments: list[str], *, default: RiskLevel
     ) -> RiskLevel:
+        if spec.name == "git" and _looks_like_git_mutation_shape(arguments):
+            return RiskLevel.DANGEROUS
         if _looks_like_archive_extraction_shape(spec.name, arguments):
             return RiskLevel.WRITE
         if _looks_like_archive_creation_shape(spec.name, arguments):
@@ -566,6 +568,33 @@ def _dedupe_preserve_order(values: list[str]) -> list[str]:
         seen.add(value)
         deduped.append(value)
     return deduped
+
+
+def _looks_like_git_mutation_shape(arguments: list[str]) -> bool:
+    if not arguments:
+        return False
+    return arguments[0] in {
+        "add",
+        "am",
+        "apply",
+        "bisect",
+        "checkout",
+        "cherry-pick",
+        "clean",
+        "commit",
+        "merge",
+        "mv",
+        "pull",
+        "push",
+        "rebase",
+        "reset",
+        "restore",
+        "revert",
+        "rm",
+        "stash",
+        "switch",
+        "tag",
+    }
 
 
 def _is_supported_git_inspection_shape(arguments: list[str]) -> bool:
