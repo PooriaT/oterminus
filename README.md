@@ -157,5 +157,6 @@ For the full local quality checklist, including Ruff format/lint and pytest comm
 request.
 
 - Optional local persistent REPL history is available via `OTERMINUS_HISTORY_ENABLED=true`; reruns still go through normal validation + confirmation.
+- Audit logs and persistent history are local JSONL files; redaction is enabled by default, but review logs/history before sharing. See the [audit schema](docs/reference/audit-log-schema.md) and [configuration reference](docs/reference/config.md).
 
 For a small set of deterministic natural-language requests, OTerminus can skip Ollama by producing a local structured proposal before normal validation and confirmation.

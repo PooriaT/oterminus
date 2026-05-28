@@ -231,7 +231,9 @@ History commands:
 for rejected, ambiguous, cancelled, dry-run, or explain-only outcomes.
 
 History output and persisted history files may include command text, local paths, and execution
-context. Review carefully before sharing terminal screenshots or history snippets publicly.
+context. Persisted history does not store stdout/stderr, full failure output, or raw planner
+responses, and `OTERMINUS_HISTORY_REDACT` is enabled by default when audit redaction is enabled.
+Review carefully before sharing terminal screenshots or history snippets publicly.
 
 `--dry-run` and `--explain` are mutually exclusive and apply to requests, not to the `doctor`
 diagnostics command. For example, `poetry run oterminus --dry-run doctor` and
@@ -275,8 +277,9 @@ OTerminus.
 When audit logging is disabled (`OTERMINUS_AUDIT_ENABLED=false`), tail/clear commands report that
 audit is disabled and do not create a log file.
 
-Redaction is enabled by default (`OTERMINUS_AUDIT_REDACT=true`). Even with redaction, logs may
-still contain local paths and command context, so review before sharing publicly.
+Redaction is enabled by default (`OTERMINUS_AUDIT_REDACT=true`). Audit events store output
+truncation metadata and exit codes, not full stdout/stderr. Even with redaction, logs may still
+contain local paths, command context, and validation decisions, so review before sharing publicly.
 
 ## Safety expectations
 
@@ -306,6 +309,14 @@ Unsupported operations include POST/PUT/PATCH/DELETE, request bodies, arbitrary 
 authorization headers, cookies, downloads, scanning, traceroute, SSH/SCP, netcat, nmap, wget,
 network commands through sudo, arbitrary network shell commands, and shell pipelines/redirection.
 OTerminus is still not a general network automation tool.
+
+## Environment variable lookup privacy
+
+Curated `env` support is intentionally narrow because full environment output often includes
+secrets. Bare `env` and multi-variable dumps are rejected; accepted requests use a single variable,
+for example `env PATH`. OTerminus still warns that environment values may contain secrets, and
+secret-like lookups such as `env TOKEN` should not be pasted into public issues, chats, logs, or
+screenshots without review.
 
 ## Command pack availability
 You can disable specific command packs with `OTERMINUS_DISABLED_COMMAND_PACKS`. For the exact
@@ -403,7 +414,8 @@ If `OTERMINUS_EXPLAIN_FAILURES=true`, OTerminus may print a concise explanation 
 - Runs only after command execution (not in dry-run/explain modes).
 - Never auto-executes suggested next actions.
 - Suggestions are guidance only (`dry-run`/`copy-only`).
-- Context sent to explanation is redacted and truncated.
+- Context sent to explanation is redacted and truncated before it is sent to the configured local Ollama model. Full audit logs and persisted history are not sent.
+- Model-returned suggested actions and summaries are redacted before display/audit metadata where applicable.
 
 For exact environment variables, see [Configuration reference](../reference/config.md#failure-explanations-opt-in).
 

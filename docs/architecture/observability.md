@@ -1,6 +1,6 @@
 # Observability
 
-OTerminus provides local observability through audit events and optional verbose traces.
+OTerminus provides local observability through audit events, optional persistent history, opt-in failure explanations, and optional verbose traces. These artifacts stay local; OTerminus does not upload audit logs or history.
 
 ## Audit logging
 
@@ -32,7 +32,7 @@ Audit configuration:
 ## Audit privacy
 
 With redaction enabled (default), likely secret material is masked in command/request/reason fields
-and argv.
+and argv before JSONL writes. Audit events store stdout/stderr truncation metadata (for example original/visible character counts and truncation flags), not full command output. Redaction is best-effort, and logs may still include local paths, command context, and validation decisions, so users should review them before sharing.
 
 ## Runtime diagnostics
 
@@ -50,16 +50,20 @@ Persistent REPL history is optional and local-only (JSONL). It stores request/de
 
 ## Persistent history privacy
 
-Persistent REPL history is separate from audit logging and is disabled by default. When enabled (`OTERMINUS_HISTORY_ENABLED=true`), records are stored only on the local machine as JSONL at `OTERMINUS_HISTORY_PATH`.
+Persistent REPL history is separate from audit logging and is disabled by default. When enabled (`OTERMINUS_HISTORY_ENABLED=true`), records are stored only on the local machine as JSONL at `OTERMINUS_HISTORY_PATH`. It can be disabled again with `OTERMINUS_HISTORY_ENABLED=false`.
 
-Persisted history records may include request text, rendered command text, local paths, routing/proposal metadata, risk and validation status, execution status, and rerun lineage IDs. They do not store command stdout/stderr.
+Persisted history records may include request text, rendered command text, local paths, routing/proposal metadata, risk and validation status, execution status, and rerun lineage IDs. They do not store command stdout/stderr, full failure output, or raw planner responses.
 
-`OTERMINUS_HISTORY_REDACT` can redact obvious secret-looking values before write, but redaction is best-effort and does not guarantee removal of all sensitive context. Review history content before copying, pasting, or publishing it.
+`OTERMINUS_HISTORY_REDACT` defaults to the audit-redaction setting and can redact obvious secret-looking values before write, but redaction is best-effort and does not guarantee removal of all sensitive context. Review history content before copying, pasting, or publishing it.
 
 ## Failure explanations (opt-in)
 
-When enabled, audit captures only bounded metadata for failure explanation outcomes (not full stdout/stderr).
+Failure explanations are disabled by default (`OTERMINUS_EXPLAIN_FAILURES=false`). When enabled, OTerminus sends only redacted and truncated command/stdout/stderr snippets to the configured local Ollama model, never full audit logs or history. Suggested next actions are rendered as guidance and are not executed automatically. Audit captures only bounded metadata for failure explanation outcomes (not full stdout/stderr).
 See [Audit log schema](../reference/audit-log-schema.md) and [Configuration reference](../reference/config.md#failure-explanations-opt-in).
+
+## Environment output privacy
+
+Environment variables often contain credentials. Curated `env` support is constrained to single-variable lookups and validation emits a warning even for accepted lookups. Bare `env` and multi-variable dumps are rejected in curated mode, and users should avoid sharing env output publicly without review.
 
 - `planner_skip_reason` now includes `local_planner` when deterministic local planning produced the proposal.
 - Verbose trace includes `fast_path=local_planner` with a rule id on matches, and `local_planner=no_match planner=invoked` on misses.

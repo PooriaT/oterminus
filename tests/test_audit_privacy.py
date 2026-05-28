@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 
 from oterminus.audit import AuditEvent, AuditLogger
+from oterminus.cli import _write_audit_event
 from oterminus.audit_privacy import redact_argv, redact_text
 
 
@@ -23,6 +24,34 @@ def test_redact_text_redacts_bearer_tokens() -> None:
 
     assert "super-secret-jwt" not in redacted
     assert "Bearer [REDACTED]" in redacted
+
+
+def test_redact_text_covers_common_secret_patterns() -> None:
+    cases = {
+        "API_KEY=value": "value",
+        "api_key: value": "value",
+        "TOKEN=value": "value",
+        "--token value": "value",
+        "--token=value": "value",
+        "PASSWORD=value": "value",
+        "--password value": "value",
+        "--password=value": "value",
+        "Authorization: Bearer abc123": "abc123",
+        "Bearer abc123": "abc123",
+        "token ghp_abcdefghijklmnopqrstuvwxyz123456": "ghp_abcdefghijklmnopqrstuvwxyz123456",
+        "curl https://user:pass@example.com/path": "user:pass@",
+    }
+
+    for raw, secret in cases.items():
+        redacted = redact_text(raw)
+        assert secret not in redacted
+        assert "[REDACTED]" in redacted
+
+
+def test_redact_argv_covers_split_flags_equals_flags_and_env_assignments() -> None:
+    assert redact_argv(["cmd", "--token", "secret"])[2] == "[REDACTED]"
+    assert redact_argv(["cmd", "--password=secret"])[1] == "--password=[REDACTED]"
+    assert redact_argv(["cmd", "TOKEN=secret"])[1] == "TOKEN=[REDACTED]"
 
 
 def test_redact_argv_redacts_sensitive_env_assignments() -> None:
@@ -86,10 +115,16 @@ def test_audit_payload_does_not_include_stdout_or_stderr_content(tmp_path: Path)
     assert payload["stdout_truncated"] is True
 
 
-def test_audit_logger_redacts_failure_explanation_fields(tmp_path: Path) -> None:
+def test_audit_logger_redacts_warnings_rejections_ambiguity_and_failure_fields(
+    tmp_path: Path,
+) -> None:
     path = tmp_path / "audit.jsonl"
     logger = AuditLogger(path)
     event = AuditEvent.start("run")
+    event.ambiguity_reason = "TOKEN=abc123 broad request"
+    event.ambiguity_safe_options = ["inspect --password hunter2"]
+    event.warnings = ["warning TOKEN=abc123"]
+    event.rejection_reasons = ["rejected --password hunter2"]
     event.failure_explanation_requested = True
     event.failure_explanation_generated = True
     event.failure_suggested_next_action = "curl --token abc123"
@@ -97,6 +132,16 @@ def test_audit_logger_redacts_failure_explanation_fields(tmp_path: Path) -> None
     logger.write(event)
 
     payload = json.loads(path.read_text(encoding="utf-8").strip())
+    serialized = json.dumps(payload)
     assert payload["failure_explanation_requested"] is True
-    assert "abc123" not in payload["failure_suggested_next_action"]
-    assert "hunter2" not in payload["failure_stderr_summary"]
+    assert "abc123" not in serialized
+    assert "hunter2" not in serialized
+    assert payload["ambiguity_safe_options"] == ["inspect --password [REDACTED]"]
+
+
+def test_write_audit_event_noops_when_audit_logger_is_disabled(tmp_path: Path) -> None:
+    event = AuditEvent.start("TOKEN=secret")
+
+    _write_audit_event(None, event)
+
+    assert list(tmp_path.iterdir()) == []

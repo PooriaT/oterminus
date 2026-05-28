@@ -56,10 +56,12 @@ class FailureExplainer:
         if not suggested_next_action:
             raw_mode = "none"
 
+        parsed_stderr_summary = str(parsed.get("stderr_summary") or stderr_summary)
+
         return FailureExplanation(
             command=redact_text(command),
             exit_code=exit_code,
-            stderr_summary=str(parsed.get("stderr_summary") or stderr_summary),
+            stderr_summary=_truncate(redact_text(parsed_stderr_summary), self._max_chars),
             likely_cause=redact_text(likely_cause),
             suggested_next_action=suggested_next_action,
             suggested_next_action_mode=SuggestedNextActionMode(raw_mode),
@@ -68,7 +70,10 @@ class FailureExplainer:
 
 
 def _redact_and_truncate(value: str, max_chars: int) -> str:
-    redacted = redact_text(value)
-    if len(redacted) <= max_chars:
-        return redacted
-    return redacted[:max_chars]
+    return _truncate(redact_text(value), max_chars)
+
+
+def _truncate(value: str, max_chars: int) -> str:
+    if len(value) <= max_chars:
+        return value
+    return value[:max_chars]
