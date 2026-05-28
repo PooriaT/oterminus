@@ -6,7 +6,9 @@
       "action_type": "shell_command",
       "mode": "structured",
       "command_family": "project_health",
-      "arguments": {"operation": "run_tests"},
+      "arguments": {
+        "operation": "run_tests"
+      },
       "summary": "Run the project test suite",
       "explanation": "Runs the curated project health test operation.",
       "risk_level": "write",
@@ -18,80 +20,407 @@
     "expected_risk_level": "write",
     "expected_acceptance": true,
     "expected_rendered_command": "poetry run pytest",
-    "expected_argv": ["poetry", "run", "pytest"]
+    "expected_argv": [
+      "poetry",
+      "run",
+      "pytest"
+    ]
   },
   {
     "id": "project-health-run-test-suite",
     "user_input": "run the test suite",
-    "planner_proposal": {"action_type": "shell_command", "mode": "structured", "command_family": "project_health", "arguments": {"operation": "run_tests"}, "summary": "Run the project test suite", "explanation": "Runs the curated project health test operation.", "risk_level": "write", "needs_confirmation": true, "notes": []},
-    "expected_mode": "structured", "expected_command_family": "project_health", "expected_risk_level": "write", "expected_acceptance": true,
-    "expected_rendered_command": "poetry run pytest", "expected_argv": ["poetry", "run", "pytest"]
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "project_health",
+      "arguments": {
+        "operation": "run_tests"
+      },
+      "summary": "Run the project test suite",
+      "explanation": "Runs the curated project health test operation.",
+      "risk_level": "write",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "structured",
+    "expected_command_family": "project_health",
+    "expected_risk_level": "write",
+    "expected_acceptance": true,
+    "expected_rendered_command": "poetry run pytest",
+    "expected_argv": [
+      "poetry",
+      "run",
+      "pytest"
+    ]
   },
   {
     "id": "project-health-check-linting",
     "user_input": "check linting",
-    "planner_proposal": {"action_type": "shell_command", "mode": "structured", "command_family": "project_health", "arguments": {"operation": "lint_check"}, "summary": "Check linting", "explanation": "Runs the curated lint check.", "risk_level": "write", "needs_confirmation": true, "notes": []},
-    "expected_mode": "structured", "expected_command_family": "project_health", "expected_risk_level": "write", "expected_acceptance": true,
-    "expected_rendered_command": "poetry run ruff check .", "expected_argv": ["poetry", "run", "ruff", "check", "."]
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "project_health",
+      "arguments": {
+        "operation": "lint_check"
+      },
+      "summary": "Check linting",
+      "explanation": "Runs the curated lint check.",
+      "risk_level": "write",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "structured",
+    "expected_command_family": "project_health",
+    "expected_risk_level": "write",
+    "expected_acceptance": true,
+    "expected_rendered_command": "poetry run ruff check .",
+    "expected_argv": [
+      "poetry",
+      "run",
+      "ruff",
+      "check",
+      "."
+    ]
   },
   {
     "id": "project-health-run-ruff-check",
     "user_input": "run ruff check",
-    "planner_proposal": {"action_type": "shell_command", "mode": "structured", "command_family": "project_health", "arguments": {"operation": "lint_check"}, "summary": "Check linting", "explanation": "Runs the curated lint check.", "risk_level": "write", "needs_confirmation": true, "notes": []},
-    "expected_mode": "structured", "expected_command_family": "project_health", "expected_risk_level": "write", "expected_acceptance": true,
-    "expected_rendered_command": "poetry run ruff check .", "expected_argv": ["poetry", "run", "ruff", "check", "."]
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "project_health",
+      "arguments": {
+        "operation": "lint_check"
+      },
+      "summary": "Check linting",
+      "explanation": "Runs the curated lint check.",
+      "risk_level": "write",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "structured",
+    "expected_command_family": "project_health",
+    "expected_risk_level": "write",
+    "expected_acceptance": true,
+    "expected_rendered_command": "poetry run ruff check .",
+    "expected_argv": [
+      "poetry",
+      "run",
+      "ruff",
+      "check",
+      "."
+    ]
   },
   {
     "id": "project-health-check-formatting",
     "user_input": "check formatting",
-    "planner_proposal": {"action_type": "shell_command", "mode": "structured", "command_family": "project_health", "arguments": {"operation": "format_check"}, "summary": "Check formatting", "explanation": "Runs formatting check mode.", "risk_level": "write", "needs_confirmation": true, "notes": []},
-    "expected_mode": "structured", "expected_command_family": "project_health", "expected_risk_level": "write", "expected_acceptance": true,
-    "expected_rendered_command": "poetry run ruff format --check .", "expected_argv": ["poetry", "run", "ruff", "format", "--check", "."]
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "project_health",
+      "arguments": {
+        "operation": "format_check"
+      },
+      "summary": "Check formatting",
+      "explanation": "Runs formatting check mode.",
+      "risk_level": "write",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "structured",
+    "expected_command_family": "project_health",
+    "expected_risk_level": "write",
+    "expected_acceptance": true,
+    "expected_rendered_command": "poetry run ruff format --check .",
+    "expected_argv": [
+      "poetry",
+      "run",
+      "ruff",
+      "format",
+      "--check",
+      "."
+    ]
   },
   {
     "id": "project-health-run-format-check",
     "user_input": "run format check",
-    "planner_proposal": {"action_type": "shell_command", "mode": "structured", "command_family": "project_health", "arguments": {"operation": "format_check"}, "summary": "Check formatting", "explanation": "Runs formatting check mode.", "risk_level": "write", "needs_confirmation": true, "notes": []},
-    "expected_mode": "structured", "expected_command_family": "project_health", "expected_risk_level": "write", "expected_acceptance": true,
-    "expected_rendered_command": "poetry run ruff format --check .", "expected_argv": ["poetry", "run", "ruff", "format", "--check", "."]
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "project_health",
+      "arguments": {
+        "operation": "format_check"
+      },
+      "summary": "Check formatting",
+      "explanation": "Runs formatting check mode.",
+      "risk_level": "write",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "structured",
+    "expected_command_family": "project_health",
+    "expected_risk_level": "write",
+    "expected_acceptance": true,
+    "expected_rendered_command": "poetry run ruff format --check .",
+    "expected_argv": [
+      "poetry",
+      "run",
+      "ruff",
+      "format",
+      "--check",
+      "."
+    ]
   },
   {
     "id": "project-health-build-docs",
     "user_input": "build docs",
-    "planner_proposal": {"action_type": "shell_command", "mode": "structured", "command_family": "project_health", "arguments": {"operation": "build_docs"}, "summary": "Build docs", "explanation": "Runs strict docs build.", "risk_level": "write", "needs_confirmation": true, "notes": []},
-    "expected_mode": "structured", "expected_command_family": "project_health", "expected_risk_level": "write", "expected_acceptance": true,
-    "expected_rendered_command": "poetry run mkdocs build --strict", "expected_argv": ["poetry", "run", "mkdocs", "build", "--strict"]
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "project_health",
+      "arguments": {
+        "operation": "build_docs"
+      },
+      "summary": "Build docs",
+      "explanation": "Runs strict docs build.",
+      "risk_level": "write",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "structured",
+    "expected_command_family": "project_health",
+    "expected_risk_level": "write",
+    "expected_acceptance": true,
+    "expected_rendered_command": "poetry run mkdocs build --strict",
+    "expected_argv": [
+      "poetry",
+      "run",
+      "mkdocs",
+      "build",
+      "--strict"
+    ]
   },
   {
     "id": "project-health-check-docs-build",
     "user_input": "check docs build",
-    "planner_proposal": {"action_type": "shell_command", "mode": "structured", "command_family": "project_health", "arguments": {"operation": "build_docs"}, "summary": "Build docs", "explanation": "Runs strict docs build.", "risk_level": "write", "needs_confirmation": true, "notes": []},
-    "expected_mode": "structured", "expected_command_family": "project_health", "expected_risk_level": "write", "expected_acceptance": true,
-    "expected_rendered_command": "poetry run mkdocs build --strict", "expected_argv": ["poetry", "run", "mkdocs", "build", "--strict"]
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "project_health",
+      "arguments": {
+        "operation": "build_docs"
+      },
+      "summary": "Build docs",
+      "explanation": "Runs strict docs build.",
+      "risk_level": "write",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "structured",
+    "expected_command_family": "project_health",
+    "expected_risk_level": "write",
+    "expected_acceptance": true,
+    "expected_rendered_command": "poetry run mkdocs build --strict",
+    "expected_argv": [
+      "poetry",
+      "run",
+      "mkdocs",
+      "build",
+      "--strict"
+    ]
   },
   {
     "id": "project-health-run-evals",
     "user_input": "run evals",
-    "planner_proposal": {"action_type": "shell_command", "mode": "structured", "command_family": "project_health", "arguments": {"operation": "run_evals"}, "summary": "Run evals", "explanation": "Runs curated eval workflow.", "risk_level": "write", "needs_confirmation": true, "notes": []},
-    "expected_mode": "structured", "expected_command_family": "project_health", "expected_risk_level": "write", "expected_acceptance": true,
-    "expected_rendered_command": "poetry run oterminus-evals", "expected_argv": ["poetry", "run", "oterminus-evals"]
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "project_health",
+      "arguments": {
+        "operation": "run_evals"
+      },
+      "summary": "Run evals",
+      "explanation": "Runs curated eval workflow.",
+      "risk_level": "write",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "structured",
+    "expected_command_family": "project_health",
+    "expected_risk_level": "write",
+    "expected_acceptance": true,
+    "expected_rendered_command": "poetry run oterminus-evals",
+    "expected_argv": [
+      "poetry",
+      "run",
+      "oterminus-evals"
+    ]
   },
   {
     "id": "project-health-reject-fix-formatting",
     "user_input": "fix formatting",
-    "planner_proposal": {"action_type": "shell_command", "mode": "experimental", "command": "poetry run ruff format .", "summary": "format code", "explanation": "Unsupported write formatting variant.", "risk_level": "write", "needs_confirmation": true, "notes": []},
-    "expected_mode": "experimental", "expected_risk_level": "dangerous", "expected_acceptance": false
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "experimental",
+      "command": "poetry run ruff format .",
+      "summary": "format code",
+      "explanation": "Unsupported write formatting variant.",
+      "risk_level": "write",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "experimental",
+    "expected_risk_level": "dangerous",
+    "expected_acceptance": false
   },
   {
     "id": "project-health-reject-install-deps",
     "user_input": "install dependencies",
-    "planner_proposal": {"action_type": "shell_command", "mode": "experimental", "command": "poetry install", "summary": "install deps", "explanation": "Unsupported dependency installation.", "risk_level": "write", "needs_confirmation": true, "notes": []},
-    "expected_mode": "experimental", "expected_risk_level": "dangerous", "expected_acceptance": false
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "experimental",
+      "command": "poetry install",
+      "summary": "install deps",
+      "explanation": "Unsupported dependency installation.",
+      "risk_level": "write",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "experimental",
+    "expected_risk_level": "dangerous",
+    "expected_acceptance": false
   },
   {
     "id": "project-health-reject-publish",
     "user_input": "publish package",
-    "planner_proposal": {"action_type": "shell_command", "mode": "experimental", "command": "poetry publish", "summary": "publish", "explanation": "Unsupported publish request.", "risk_level": "dangerous", "needs_confirmation": true, "notes": []},
-    "expected_mode": "experimental", "expected_risk_level": "dangerous", "expected_acceptance": false
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "experimental",
+      "command": "poetry publish",
+      "summary": "publish",
+      "explanation": "Unsupported publish request.",
+      "risk_level": "dangerous",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "experimental",
+    "expected_risk_level": "dangerous",
+    "expected_acceptance": false
+  },
+  {
+    "id": "project-health-direct-pytest",
+    "user_input": "poetry run pytest",
+    "expected_mode": "structured",
+    "expected_command_family": "project_health",
+    "expected_risk_level": "write",
+    "expected_acceptance": true,
+    "expected_rendered_command": "poetry run pytest",
+    "expected_argv": [
+      "poetry",
+      "run",
+      "pytest"
+    ]
+  },
+  {
+    "id": "project-health-direct-evals",
+    "user_input": "poetry run oterminus-evals",
+    "expected_mode": "structured",
+    "expected_command_family": "project_health",
+    "expected_risk_level": "write",
+    "expected_acceptance": true,
+    "expected_rendered_command": "poetry run oterminus-evals",
+    "expected_argv": [
+      "poetry",
+      "run",
+      "oterminus-evals"
+    ]
+  },
+  {
+    "id": "project-health-reject-arbitrary-poetry-run",
+    "user_input": "run arbitrary poetry command",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "project_health",
+      "summary": "fixture proposal",
+      "explanation": "deterministic eval fixture",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": [],
+      "arguments": {
+        "operation": "poetry_run_mypy"
+      }
+    },
+    "expected_planner_error_contains": "operation must be one of"
+  },
+  {
+    "id": "project-health-reject-poetry-update",
+    "user_input": "update poetry dependencies",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "project_health",
+      "summary": "fixture proposal",
+      "explanation": "deterministic eval fixture",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": [],
+      "arguments": {
+        "operation": "poetry_update"
+      }
+    },
+    "expected_planner_error_contains": "operation must be one of"
+  },
+  {
+    "id": "project-health-reject-ruff-format-write-direct",
+    "user_input": "poetry run ruff format .",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "experimental",
+      "command_family": "poetry",
+      "summary": "fixture proposal",
+      "explanation": "deterministic eval fixture",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": [],
+      "command": "poetry run ruff format ."
+    },
+    "expected_mode": "experimental",
+    "expected_command_family": "poetry",
+    "expected_risk_level": "dangerous",
+    "expected_acceptance": false,
+    "expected_rendered_command": "poetry run ruff format .",
+    "expected_argv": [
+      "poetry",
+      "run",
+      "ruff",
+      "format",
+      "."
+    ]
+  },
+  {
+    "id": "project-health-reject-deploy-direct",
+    "user_input": "deploy this project",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "experimental",
+      "command_family": "poetry",
+      "summary": "fixture proposal",
+      "explanation": "deterministic eval fixture",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": [],
+      "command": "poetry run deploy"
+    },
+    "expected_mode": "experimental",
+    "expected_command_family": "poetry",
+    "expected_risk_level": "dangerous",
+    "expected_acceptance": false,
+    "expected_rendered_command": "poetry run deploy",
+    "expected_argv": [
+      "poetry",
+      "run",
+      "deploy"
+    ]
   }
 ]

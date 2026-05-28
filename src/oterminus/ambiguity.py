@@ -24,6 +24,7 @@ _AMBIGUOUS_PHRASES: tuple[str, ...] = (
     "extract this",
     "archive everything",
     "backup this project",
+    "backup everything",
     "compress my files",
     "zip this",
 )
@@ -36,6 +37,7 @@ _BROAD_MUTATION_VERBS: tuple[str, ...] = (
     "organize",
     "repair",
     "optimize",
+    "backup",
     "make",
 )
 
@@ -48,6 +50,8 @@ _VAGUE_OBJECT_HINTS: tuple[str, ...] = (
     "folder",
     "directory",
     "project",
+    "repo",
+    "repository",
     "permissions",
     "files",
 )

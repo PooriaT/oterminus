@@ -259,6 +259,26 @@ def test_acceptance_rejects_invalid_next_wave_variants(command: str) -> None:
     assert result.accepted is False
 
 
+@pytest.mark.parametrize(
+    "command",
+    [
+        "git add .",
+        "git commit -m x",
+        "git pull",
+        "git push",
+        "git reset --hard",
+        "git clean -fd",
+        "git checkout main",
+    ],
+)
+def test_invalid_git_mutations_are_dangerous(command: str) -> None:
+    validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))
+    result = validator.validate(make_proposal(command))
+
+    assert result.accepted is False
+    assert result.risk_level == RiskLevel.DANGEROUS
+
+
 def test_validator_accepts_structured_project_health_command() -> None:
     validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))
     proposal = Proposal(

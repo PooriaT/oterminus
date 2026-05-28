@@ -158,3 +158,46 @@ def test_default_eval_command_uses_packaged_capability_fixtures() -> None:
     assert parse_args([]).fixtures_dir == str(default_fixtures_dir())
     assert package_fixture_files == repo_fixture_files
     assert len(load_eval_cases(default_fixtures_dir())) == len(load_eval_cases(Path("evals/cases")))
+
+
+def test_expanded_newer_capability_cases_pass_without_ollama() -> None:
+    validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))
+    fixtures = load_eval_cases(Path("evals/cases"))
+    required_ids = {
+        "archive-reject-arbitrary-tar-flags-direct",
+        "network-reject-file-url-structured",
+        "network-reject-wget-unsupported",
+        "git-reject-push-structured",
+        "project-health-reject-ruff-format-write-direct",
+        "direct-git-status-short",
+    }
+    selected = [case for case in fixtures if case.id in required_ids]
+
+    assert {case.id for case in selected} == required_ids
+    results, summary = run_eval_cases(selected, validator)
+
+    assert summary.total == len(required_ids)
+    assert summary.failed == 0
+    assert all(result.passed for result in results)
+
+
+def test_expanded_unsafe_and_ambiguity_cases_cover_expected_boundaries() -> None:
+    validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))
+    fixtures = load_eval_cases(Path("evals/cases"))
+    case_by_id = {case.id: case for case in fixtures}
+
+    assert case_by_id["ambiguous-repair-this-repo"].expected_ambiguity_detected is True
+    assert case_by_id["ambiguous-backup-everything"].planner_proposal is None
+    assert case_by_id["unsafe-command-substitution-blocked"].expected_acceptance is False
+    assert case_by_id["unsafe-unsupported-nmap-scan"].expected_acceptance is False
+
+    selected = [
+        case_by_id["ambiguous-repair-this-repo"],
+        case_by_id["ambiguous-backup-everything"],
+        case_by_id["unsafe-command-substitution-blocked"],
+        case_by_id["unsafe-unsupported-nmap-scan"],
+    ]
+    results, summary = run_eval_cases(selected, validator)
+
+    assert summary.failed == 0
+    assert all(result.passed for result in results)

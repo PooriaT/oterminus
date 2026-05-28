@@ -37,7 +37,9 @@
       "explanation": "use chmod to set executable bit",
       "risk_level": "write",
       "needs_confirmation": true,
-      "notes": ["symbolic chmod stays outside structured numeric chmod rendering"]
+      "notes": [
+        "symbolic chmod stays outside structured numeric chmod rendering"
+      ]
     },
     "expected_ambiguity_detected": false,
     "expected_mode": "experimental",
@@ -49,6 +51,119 @@
       "chmod",
       "u+x",
       "./run.sh"
+    ]
+  },
+  {
+    "id": "ambiguous-fix-permissions",
+    "user_input": "fix permissions",
+    "expected_ambiguity_detected": true,
+    "expected_ambiguity_reason_contains": "broad mutation wording"
+  },
+  {
+    "id": "ambiguous-optimize-this-project",
+    "user_input": "optimize this project",
+    "expected_ambiguity_detected": true,
+    "expected_ambiguity_reason_contains": "broad mutation wording"
+  },
+  {
+    "id": "ambiguous-repair-this-repo",
+    "user_input": "repair this repo",
+    "expected_ambiguity_detected": true,
+    "expected_ambiguity_reason_contains": "broad mutation wording"
+  },
+  {
+    "id": "ambiguous-backup-everything",
+    "user_input": "backup everything",
+    "expected_ambiguity_detected": true,
+    "expected_ambiguity_reason_contains": "Matched ambiguous phrase"
+  },
+  {
+    "id": "ambiguity-contrast-show-large-files",
+    "user_input": "show large files in src",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "find",
+      "summary": "fixture proposal",
+      "explanation": "deterministic eval fixture",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": [],
+      "arguments": {
+        "path": "src",
+        "name": "*"
+      }
+    },
+    "expected_ambiguity_detected": false,
+    "expected_mode": "structured",
+    "expected_command_family": "find",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "find src -name '*'",
+    "expected_argv": [
+      "find",
+      "src",
+      "-name",
+      "*"
+    ]
+  },
+  {
+    "id": "ambiguity-contrast-show-run-sh-permissions",
+    "user_input": "show permissions for run.sh",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "stat",
+      "summary": "fixture proposal",
+      "explanation": "deterministic eval fixture",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": [],
+      "arguments": {
+        "path": "run.sh",
+        "verbose": true
+      }
+    },
+    "expected_ambiguity_detected": false,
+    "expected_mode": "structured",
+    "expected_command_family": "stat",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "stat -x run.sh",
+    "expected_argv": [
+      "stat",
+      "-x",
+      "run.sh"
+    ]
+  },
+  {
+    "id": "ambiguity-contrast-recent-files",
+    "user_input": "list files modified recently in src",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "find",
+      "summary": "fixture proposal",
+      "explanation": "deterministic eval fixture",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": [],
+      "arguments": {
+        "path": "src",
+        "name": "*"
+      }
+    },
+    "expected_ambiguity_detected": false,
+    "expected_mode": "structured",
+    "expected_command_family": "find",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "find src -name '*'",
+    "expected_argv": [
+      "find",
+      "src",
+      "-name",
+      "*"
     ]
   }
 ]
