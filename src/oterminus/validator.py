@@ -584,6 +584,7 @@ def _looks_like_git_mutation_shape(arguments: list[str]) -> bool:
         "commit",
         "merge",
         "mv",
+        "fetch",
         "pull",
         "push",
         "rebase",
