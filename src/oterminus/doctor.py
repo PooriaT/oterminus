@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 
-from oterminus.commands import COMMAND_PACKS, COMMAND_REGISTRY
+from oterminus.commands import COMMAND_PACKS, COMMAND_REGISTRY, current_platform_id
 from oterminus.config import AppConfig, get_user_config_path, load_config
 from oterminus.evals import load_eval_cases
 from oterminus.setup import check_ollama_installed, check_ollama_running, get_available_models
@@ -45,6 +45,7 @@ def run_doctor() -> DoctorReport:
 
     results.append(_check_python_version())
     results.append(_check_package_importable())
+    results.append(_check_platform_support())
 
     cli_installed = check_ollama_installed()
     results.append(_check_ollama_cli(cli_installed))
@@ -142,6 +143,35 @@ def _check_package_importable() -> CheckResult:
         )
     return CheckResult(
         name="oterminus package", status=Status.PASS, message="Import succeeded.", critical=True
+    )
+
+
+def _check_platform_support() -> CheckResult:
+    platform_id = current_platform_id()
+    if platform_id == "darwin":
+        return CheckResult(
+            name="platform",
+            status=Status.PASS,
+            message="Detected darwin; macOS command pack support is available.",
+        )
+    if platform_id == "linux":
+        return CheckResult(
+            name="platform",
+            status=Status.PASS,
+            message="Detected linux; use a Unix-like shell with required commands available.",
+        )
+    if platform_id == "windows":
+        return CheckResult(
+            name="platform",
+            status=Status.WARN,
+            message="Detected native Windows; Command Prompt and PowerShell are not first-class supported.",
+            guidance="Use WSL for a Unix-like environment, then rerun `oterminus doctor` inside WSL.",
+        )
+    return CheckResult(
+        name="platform",
+        status=Status.WARN,
+        message=f"Detected {platform_id}; OTerminus targets macOS and Unix-like POSIX shells.",
+        guidance="Verify required shell commands and Ollama manually before using natural-language planning.",
     )
 
 

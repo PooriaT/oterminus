@@ -38,6 +38,30 @@ def test_doctor_passes_with_healthy_environment(monkeypatch, tmp_path: Path) -> 
     assert _status_by_name(report, "command registry").status is Status.PASS
 
 
+def test_doctor_reports_linux_platform(monkeypatch, tmp_path: Path) -> None:
+    _base_monkeypatches(monkeypatch, tmp_path)
+    monkeypatch.setattr("oterminus.doctor.current_platform_id", lambda: "linux")
+
+    report = run_doctor()
+
+    platform = _status_by_name(report, "platform")
+    assert platform.status is Status.PASS
+    assert "Detected linux" in platform.message
+
+
+def test_doctor_warns_on_native_windows(monkeypatch, tmp_path: Path) -> None:
+    _base_monkeypatches(monkeypatch, tmp_path)
+    monkeypatch.setattr("oterminus.doctor.current_platform_id", lambda: "windows")
+
+    report = run_doctor()
+
+    platform = _status_by_name(report, "platform")
+    assert platform.status is Status.WARN
+    assert "native Windows" in platform.message
+    assert platform.guidance is not None
+    assert "WSL" in platform.guidance
+
+
 def test_doctor_fails_when_ollama_cli_missing(monkeypatch, tmp_path: Path) -> None:
     _base_monkeypatches(monkeypatch, tmp_path)
     monkeypatch.setattr("oterminus.doctor.check_ollama_installed", lambda: False)

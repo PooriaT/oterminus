@@ -16,9 +16,22 @@ oterminus
 ```
 
 Run `oterminus doctor` immediately after installation. It is the recommended post-install
-diagnostic for checking CLI integrity, configuration paths, selected model state, Ollama CLI/service
-readiness, local model availability, audit path, registry metadata, eval fixtures, and relevant
-developer-tool status.
+diagnostic for checking the detected platform, CLI integrity, configuration paths, selected model
+state, Ollama CLI/service readiness, local model availability, audit path, registry metadata, eval
+fixtures, and relevant developer-tool status.
+
+## Supported environments
+
+OTerminus currently targets macOS and Unix-like POSIX terminal environments. Linux-like
+environments may work when Python 3.13+, Ollama, and the required shell commands are installed.
+Native Windows Command Prompt and PowerShell are not first-class supported targets yet; Windows
+users should run OTerminus inside WSL when they need the Unix-like shell behavior expected by the
+current command registry.
+
+Command packs and individual command specs can be platform-aware. The macOS desktop pack, including
+`open`, is available only on supported macOS (`darwin`) platforms. Unsupported platform commands are
+hidden from autocomplete, planner context, and discovery output where practical, but the validator
+remains the authoritative boundary and rejects platform-unsupported commands before execution.
 
 After `doctor` reports a usable setup, start the interactive app or run one-shot requests:
 
@@ -420,7 +433,9 @@ execution even when typed directly.
 
 
 ## Platform-specific commands
-Some command families are platform-specific. For example, `open` is available by default on macOS (`darwin`) only. On unsupported platforms, these commands are hidden from suggestions and planner hints, and rejected by validator before execution.
+Some command families are platform-specific. For example, `open` is available by default on macOS
+(`darwin`) only. On unsupported platforms, these commands are hidden from suggestions and planner
+hints where practical, and rejected by the validator before execution.
 
 ## Output size guards
 

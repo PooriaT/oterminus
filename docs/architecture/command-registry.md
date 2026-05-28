@@ -63,7 +63,17 @@ disabled-pack set so profile-disabled packs are not advertised as available.
 
 
 ## Platform-aware availability
-Command specs can declare `supported_platforms` (normalized ids: `darwin`, `linux`, `windows`). Unsupported commands are filtered from prompt/autocomplete registry views, but validation remains authoritative and rejects unsupported commands before execution.
+
+Command packs and individual command specs can declare `supported_platforms` with normalized ids such
+as `darwin`, `linux`, or `windows`. Pack-level metadata applies to every command in that pack unless
+a command spec declares its own platform set. The current macOS pack is platform-specific and gates
+macOS desktop commands such as `open` to `darwin`.
+
+Registry-backed views use the effective platform when practical: prompt capability summaries, REPL
+autocomplete, direct-command detection, and discovery/help output should not advertise commands that
+are unavailable on the current platform. This filtering is a usability boundary only. Validator
+enforcement remains authoritative, so a platform-unsupported command typed directly or returned by a
+planner is rejected before execution.
 
 ## Project-health pack
 

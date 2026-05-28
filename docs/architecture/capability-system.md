@@ -21,7 +21,11 @@ Each command spec includes:
 - command examples and natural-language aliases
 
 Capability summaries are derived from merged registry metadata and reused for prompts and REPL
-discovery (`capabilities`, `commands`, `examples`, and `help <target>`). These discovery commands are local and deterministic; they do not invoke planner, validator, policy, executor, or Ollama.
+discovery (`capabilities`, `commands`, `examples`, and `help <target>`). These summaries honor
+disabled command packs and platform-aware registry filtering where practical, so platform-specific
+capabilities such as `macos_desktop` are not advertised on unsupported platforms. These discovery
+commands are local and deterministic; they do not invoke planner, validator, policy, executor, or
+Ollama. Filtering does not replace validator or policy checks before execution.
 
 ## Network boundary
 
@@ -64,7 +68,9 @@ rejects disabled command families before execution.
 
 
 ## Platform-aware capability visibility
-Capability summaries are built from platform-filtered command families, so platform-specific capabilities (for example `macos_desktop`) are only advertised where supported.
+
+Capability summaries are built from platform-filtered command families, so platform-specific
+capabilities (for example `macos_desktop`) are only advertised where supported.
 
 ## Git capability scope
 
