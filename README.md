@@ -38,8 +38,32 @@ If ambiguity handling, validation, or policy checks block a request, OTerminus d
 ### Requirements
 
 - Python 3.13+
-- [Poetry](https://python-poetry.org/)
 - [Ollama](https://ollama.com/)
+- [pipx](https://pipx.pypa.io/) for isolated end-user installs
+- [Poetry](https://python-poetry.org/) for local development
+
+### Install from PyPI with pipx
+
+Released OTerminus packages are published as `oterminus` and expose the `oterminus` and
+`oterminus-evals` console scripts. For a normal user install, prefer `pipx` so the application and
+its dependencies stay isolated from your system Python:
+
+```bash
+pipx install oterminus
+oterminus doctor
+oterminus
+```
+
+Use `pipx upgrade oterminus` when you want to update an existing install. On first run, OTerminus
+checks Ollama readiness (`ollama` on PATH, running service, local models), then prompts you to
+select a model if one is not already configured.
+
+### Shell completion vs. REPL autocomplete
+
+OTerminus currently provides **REPL Tab autocomplete** through `prompt_toolkit` after you start the
+interactive app with `oterminus`; it does not currently ship zsh, bash, or fish shell-level
+completion scripts for the outer `oterminus` command. Installation never edits your `.zshrc`,
+`.bashrc`, `config.fish`, or other shell startup files automatically.
 
 ### Local development install
 
@@ -50,7 +74,7 @@ poetry run oterminus
 
 ### Local package artifact validation
 
-Before any publish workflow is introduced, validate local package artifacts end-to-end:
+Before publishing or validating release changes, validate local package artifacts end-to-end:
 
 ```bash
 poetry run python scripts/validate_package_install.py
@@ -58,25 +82,22 @@ poetry run python scripts/validate_package_install.py
 
 This builds both `sdist` and `wheel`, installs the wheel into a temporary clean virtualenv, and runs CLI smoke checks.
 
-
-On first run, OTerminus checks Ollama readiness (`ollama` on PATH, running service, local models),
-then prompts you to select a model if one is not already configured.
-
 ## Quick start examples
 
 ### Common commands
 
 ```bash
-poetry run oterminus
-poetry run oterminus "show disk usage for this folder"
-poetry run oterminus --dry-run "copy notes.txt to backup/notes.txt"
-poetry run oterminus --explain "find processes matching python"
-poetry run oterminus doctor
+oterminus
+oterminus "show disk usage for this folder"
+oterminus --dry-run "copy notes.txt to backup/notes.txt"
+oterminus --explain "find processes matching python"
+oterminus doctor
 ```
 
 ### Interactive REPL
 
-`poetry run oterminus` starts the interactive REPL after startup readiness checks.
+`oterminus` starts the interactive REPL after startup readiness checks. Use
+`poetry run oterminus` when working from a local development checkout.
 
 Examples inside REPL:
 
@@ -97,7 +118,7 @@ Examples inside REPL:
 
 ### One-shot and diagnostics modes
 
-- One-shot requests such as `poetry run oterminus "show disk usage for this folder"` plan, validate,
+- One-shot requests such as `oterminus "show disk usage for this folder"` plan, validate,
   preview, and then require confirmation before execution.
 - `--dry-run` and `--explain` are mutually exclusive one-shot inspection flags for requests. Both
   validate and preview without confirmation or execution; explain mode also describes command choice,

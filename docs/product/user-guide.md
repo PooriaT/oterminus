@@ -1,5 +1,46 @@
 # User Guide
 
+## Install from PyPI with pipx
+
+For released versions, OTerminus is published to PyPI as the `oterminus` package. The package
+installs two console scripts: `oterminus` for the assistant CLI and `oterminus-evals` for the
+packaged evaluation smoke check.
+
+For normal use, prefer `pipx` so OTerminus and its Python dependencies are isolated from your
+system Python environment:
+
+```bash
+pipx install oterminus
+oterminus doctor
+oterminus
+```
+
+Use `pipx upgrade oterminus` to update an existing install. If you are contributing from a source
+checkout, use the Poetry commands in the contributor docs instead, such as `poetry run oterminus`.
+
+## Shell completion strategy
+
+OTerminus separates two different completion surfaces:
+
+1. **Shell-level completion** happens in your outer shell before OTerminus starts. OTerminus does
+   not currently ship generated completion scripts for zsh, bash, or fish. Installing or upgrading
+   OTerminus with `pipx` does not edit `.zshrc`, `.bashrc`, `config.fish`, or any other shell
+   startup file automatically.
+2. **REPL Tab autocomplete** happens inside interactive OTerminus after you run `oterminus`. This
+   is supported through `prompt_toolkit` and is documented in the [Autocomplete](#autocomplete)
+   section.
+
+Current shell-level status:
+
+| Shell | OTerminus shell-level completion status |
+| --- | --- |
+| zsh | No generated `_oterminus` completion script is shipped. |
+| bash | No generated `oterminus` completion script is shipped. |
+| fish | No generated `oterminus.fish` completion script is shipped. |
+
+If shell-level completion is added later, it should remain opt-in and documented as manual shell
+configuration chosen by the user, not as an automatic install-time or runtime mutation.
+
 ## First-run Ollama setup
 
 OTerminus requires local Ollama readiness.
@@ -13,8 +54,10 @@ Startup checks:
 You can run diagnostics explicitly with:
 
 ```bash
-poetry run oterminus doctor
+oterminus doctor
 ```
+
+Use `poetry run oterminus doctor` instead when running from a development checkout.
 
 `doctor` prints the readiness report and exits. It does not start the REPL, execute a request, or
 invoke the Ollama planner.
@@ -44,14 +87,16 @@ oterminus-evals
 
 OTerminus has three user-facing CLI entry points:
 
-- REPL mode: `poetry run oterminus`
-- one-shot request mode: `poetry run oterminus "show disk usage for this folder"`
-- diagnostics mode: `poetry run oterminus doctor`
+- REPL mode: `oterminus`
+- one-shot request mode: `oterminus "show disk usage for this folder"`
+- diagnostics mode: `oterminus doctor`
+
+Use the same commands with a `poetry run` prefix when running from a source checkout.
 
 ### REPL mode
 
 ```bash
-poetry run oterminus
+oterminus
 ```
 
 REPL mode starts an interactive session. Requests entered in the REPL follow the same lifecycle as
@@ -70,7 +115,7 @@ REPL built-ins include (all local, deterministic, and backed by command-registry
 ### One-shot mode
 
 ```bash
-poetry run oterminus "find all .py files"
+oterminus "find all .py files"
 ```
 
 One-shot mode accepts the remaining command-line words as a single request. It detects direct
@@ -81,7 +126,7 @@ confirmation before execution.
 ### Doctor mode
 
 ```bash
-poetry run oterminus doctor
+oterminus doctor
 ```
 
 Doctor mode is diagnostic-only. It prints readiness and integrity checks, including configuration,
@@ -163,7 +208,7 @@ If validation or policy checks fail, OTerminus does not ask for execution confir
 ### Dry run
 
 ```bash
-poetry run oterminus --dry-run "copy notes.txt to backup/notes.txt"
+oterminus --dry-run "copy notes.txt to backup/notes.txt"
 ```
 
 Dry run is a safety preview for checking what OTerminus would do. It still follows the normal
@@ -173,7 +218,7 @@ does not show a confirmation prompt and never executes the command.
 
 Use dry run when you want to verify detection, planning, validation, policy outcome, and the final
 rendered command before deciding whether to run the request normally. Direct commands that can be
-detected locally skip Ollama planning, so a command like `poetry run oterminus --dry-run "ls"` does
+detected locally skip Ollama planning, so a command like `oterminus --dry-run "ls"` does
 not require a live Ollama service. Ambiguous natural-language requests stop before planning.
 
 The CLI flag is for one-shot requests only. Inside the REPL, use the built-in form
@@ -182,7 +227,7 @@ The CLI flag is for one-shot requests only. Inside the REPL, use the built-in fo
 ### Explain mode
 
 ```bash
-poetry run oterminus --explain "show running processes"
+oterminus --explain "show running processes"
 ```
 
 Explain mode is for learning and debugging why OTerminus chose a command. Like dry run, it performs
@@ -193,7 +238,7 @@ rationale when validation or policy rejects a proposal.
 
 Use explain mode when you want to understand the path from request to command rather than simply
 check the final preview. Direct commands that can be detected locally skip Ollama planning, so a
-command like `poetry run oterminus --explain "ls"` does not require a live Ollama service. Ambiguous
+command like `oterminus --explain "ls"` does not require a live Ollama service. Ambiguous
 natural-language requests stop before planning.
 
 The CLI flag is for one-shot requests only. Inside the REPL, use the built-in form
@@ -241,17 +286,19 @@ diagnostics command. For example, `poetry run oterminus --dry-run doctor` and
 
 ## Autocomplete
 
-Tab completion is available only in interactive REPL mode (`poetry run oterminus`) and is local
-(`prompt_toolkit`) for:
+REPL Tab autocomplete is available only inside interactive REPL mode (`oterminus`, or
+`poetry run oterminus` from a development checkout) and is local (`prompt_toolkit`) for:
 
 - built-ins
 - supported command families
 - capability IDs (and optional capability hints)
 - local filesystem paths
 
-Autocomplete is deterministic and does not call Ollama.
+Autocomplete is deterministic and does not call Ollama. It is separate from shell-level completion:
+zsh, bash, and fish are not modified automatically and OTerminus does not currently install shell
+completion scripts for the outer command.
 
-If tab completion does not work:
+If REPL Tab autocomplete does not work:
 
 ```bash
 poetry install
