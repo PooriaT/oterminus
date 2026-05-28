@@ -26,7 +26,7 @@
     ]
   },
   {
-    "id": "specific-make-run-sh-executable",
+    "id": "ambiguity-specific-make-run-sh-executable",
     "user_input": "make ./run.sh executable",
     "planner_proposal": {
       "action_type": "shell_command",
