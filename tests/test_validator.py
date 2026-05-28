@@ -264,6 +264,10 @@ def test_acceptance_rejects_invalid_next_wave_variants(command: str) -> None:
     [
         "git add .",
         "git commit -m x",
+        "git fetch",
+        "git -C repo fetch",
+        "git --git-dir=.git fetch",
+        "git --git-dir .git fetch",
         "git pull",
         "git push",
         "git reset --hard",
