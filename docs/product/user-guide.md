@@ -1,13 +1,13 @@
 # User Guide
 
-## Install from PyPI with pipx
+## Public install / normal user flow
 
 For released versions, OTerminus is published to PyPI as the `oterminus` package. The package
 installs two console scripts: `oterminus` for the assistant CLI and `oterminus-evals` for the
 packaged evaluation smoke check.
 
-For normal use, prefer `pipx` so OTerminus and its Python dependencies are isolated from your
-system Python environment:
+For normal CLI use, prefer `pipx` because it installs OTerminus in an isolated environment instead
+of mixing OTerminus and its dependencies into your system Python environment:
 
 ```bash
 pipx install oterminus
@@ -15,8 +15,86 @@ oterminus doctor
 oterminus
 ```
 
-Use `pipx upgrade oterminus` to update an existing install. If you are contributing from a source
-checkout, use the Poetry commands in the contributor docs instead, such as `poetry run oterminus`.
+Run `oterminus doctor` immediately after installation. It is the recommended post-install
+diagnostic for checking CLI integrity, configuration paths, selected model state, Ollama CLI/service
+readiness, local model availability, audit path, registry metadata, eval fixtures, and relevant
+developer-tool status.
+
+After `doctor` reports a usable setup, start the interactive app or run one-shot requests:
+
+```bash
+oterminus
+oterminus "show disk usage for this folder"
+oterminus --dry-run "copy notes.txt to backup/notes.txt"
+oterminus --explain "find processes matching python"
+```
+
+## Upgrade and uninstall
+
+Update an existing isolated `pipx` install with:
+
+```bash
+pipx upgrade oterminus
+```
+
+Remove the isolated CLI with:
+
+```bash
+pipx uninstall oterminus
+```
+
+## pip fallback
+
+If `pipx` is not available, you can install from PyPI with pip:
+
+```bash
+python -m pip install oterminus
+```
+
+`pipx` remains preferred for command-line use because it keeps the OTerminus application environment
+separate from your system Python and from other Python projects.
+
+## Development install
+
+Use Poetry only when you are developing OTerminus from a source checkout:
+
+```bash
+poetry install
+poetry run oterminus
+```
+
+Development commands can use the same CLI forms with a `poetry run` prefix, for example
+`poetry run oterminus doctor` or `poetry run oterminus --dry-run "ls"`. Local wheel/package
+validation with `poetry run python scripts/validate_package_install.py` is a contributor and
+release-maintainer workflow, not the primary user install path. See the
+[contributor workflow](../contributing.md#local-package-build-wheel-install-validation) and
+[release guide](../release.md) for package validation and publishing details.
+
+## Ollama requirement for natural-language planning
+
+PyPI installation gives you the OTerminus CLI; it does not install Ollama, start the Ollama service,
+or download a local model. Ollama is still required for natural-language planning. Direct commands
+and some deterministic local paths may skip model planning, but first-run natural-language usage
+depends on Ollama being ready.
+
+Startup and doctor readiness checks include:
+
+1. `ollama` is available on PATH.
+2. Ollama service is reachable (`ollama list`).
+3. At least one model is installed.
+
+Run diagnostics explicitly with:
+
+```bash
+oterminus doctor
+```
+
+`doctor` prints the readiness report and exits. It does not start the REPL, execute a request, or
+invoke the Ollama planner. If Ollama is missing, not running, or has no installed model, `doctor`
+should report that clearly so you can fix the local model setup before natural-language planning.
+
+If no model is configured yet, OTerminus shows installed models and prompts you to choose one. The
+selection is saved in `~/.oterminus/config.json` (or `OTERMINUS_CONFIG_PATH` if set).
 
 ## Shell completion strategy
 
@@ -28,7 +106,7 @@ OTerminus separates two different completion surfaces:
    startup file automatically.
 2. **REPL Tab autocomplete** happens inside interactive OTerminus after you run `oterminus`. This
    is supported through `prompt_toolkit` and is documented in the [Autocomplete](#autocomplete)
-   section.
+   section. It completes built-ins, supported commands/capabilities, and local filesystem paths.
 
 Current shell-level status:
 
@@ -41,47 +119,11 @@ Current shell-level status:
 If shell-level completion is added later, it should remain opt-in and documented as manual shell
 configuration chosen by the user, not as an automatic install-time or runtime mutation.
 
-## First-run Ollama setup
-
-OTerminus requires local Ollama readiness.
-
-Startup checks:
-
-1. `ollama` is available on PATH.
-2. Ollama service is reachable (`ollama list`).
-3. At least one model is installed.
-
-You can run diagnostics explicitly with:
-
-```bash
-oterminus doctor
-```
-
-Use `poetry run oterminus doctor` instead when running from a development checkout.
-
-`doctor` prints the readiness report and exits. It does not start the REPL, execute a request, or
-invoke the Ollama planner.
-
-If no model is configured yet, OTerminus shows installed models and prompts you to choose one. The
-selection is saved in `~/.oterminus/config.json` (or `OTERMINUS_CONFIG_PATH` if set).
-
 ## Model selection behavior
 
 - First run: choose from discovered local models.
 - Later runs: saved model is reused.
 - If saved model is missing: OTerminus warns and asks for a new selection.
-
-## Installed-wheel smoke check
-
-After building and installing a local wheel in a clean environment, run:
-
-```bash
-oterminus --help
-oterminus doctor
-oterminus-evals
-```
-
-`doctor` is diagnostics-only and safe for packaging validation even when Ollama is not configured yet.
 
 ## Running OTerminus
 
