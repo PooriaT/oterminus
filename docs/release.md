@@ -59,6 +59,29 @@ The production workflow automatically:
 
 Authentication is OIDC Trusted Publishing (`id-token: write`) with `pypa/gh-action-pypi-publish`; no long-lived PyPI API tokens are required.
 
+## Post-release user install verification
+
+After a production PyPI release is available, verify the end-user installation path with `pipx` from
+a clean environment:
+
+```bash
+pipx install oterminus
+oterminus --help
+oterminus doctor
+oterminus-evals
+```
+
+For an existing `pipx` install, verify upgrades with:
+
+```bash
+pipx upgrade oterminus
+```
+
+The published package name is `oterminus`; the installed console scripts are `oterminus` and
+`oterminus-evals`. Release verification should not add or rely on automatic shell startup-file
+changes. OTerminus currently supports REPL Tab autocomplete via `prompt_toolkit`, but does not ship
+zsh, bash, or fish shell-level completion scripts.
+
 ## What remains manual and intentional
 
 The following steps are intentionally **manual** for release control:

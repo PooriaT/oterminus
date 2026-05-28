@@ -116,7 +116,7 @@ poetry run oterminus-evals
 
 ## Local package build + wheel install validation
 
-PR #141 focuses on packaging correctness before any publish automation. Validate local artifacts with:
+Validate local artifacts before publishing or changing packaging behavior:
 
 ```bash
 poetry run python scripts/validate_package_install.py
@@ -135,6 +135,7 @@ Notes:
 - `oterminus doctor` may report Ollama readiness issues in clean environments; this does not block packaging validation.
 - `oterminus-evals` uses packaged fixture data from `src/oterminus/eval_fixtures/` so it works after wheel install.
 - Publishing to TestPyPI and production PyPI is documented in `docs/release.md` and uses GitHub OIDC Trusted Publishing with protected deployment environments.
+- End-user installs should use `pipx install oterminus` after PyPI release; contributors should not add install-time or runtime behavior that automatically edits user shell startup files for completion.
 
 ## Pull request template and checklist
 
