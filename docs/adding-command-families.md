@@ -227,7 +227,17 @@ place and refer to the config reference:
 
 
 ## Declare platform support
-When adding platform-specific commands, set `supported_platforms` on the command spec (or pack) using normalized ids (`darwin`, `linux`, `windows`). Keep validator enforcement intact: unsupported platform commands must be rejected before execution.
+
+When adding platform-specific commands, set `supported_platforms` on the command spec or command
+pack using normalized ids (`darwin`, `linux`, `windows`). Use pack-level metadata when every command
+in the pack has the same platform boundary, as the macOS desktop pack does for `open`; use
+spec-level metadata for individual exceptions.
+
+Unsupported platform commands should be filtered out of autocomplete, planner context, and discovery
+views where practical, but that filtering is not a security boundary. Keep validator enforcement
+intact: unsupported platform commands must be rejected before execution, and platform filtering must
+not bypass normal validation, risk policy, or confirmation checks. Do not document native Windows
+support or add Windows classifiers unless the command behavior is implemented and tested.
 
 ## Additional guidance for project-workflow capabilities
 

@@ -17,6 +17,7 @@ Validator enforces:
 - command-family/base-command consistency
 - dangerous flag/target warnings and risk escalation
 - network-touching command warnings when registry metadata marks the command
+- platform support metadata from command specs and command packs
 - forbidden operand prefixes (for example URL targets for `open`)
 - allowed-root path restrictions when configured
 - policy compatibility for computed risk level
@@ -60,9 +61,9 @@ When a command spec sets `network_touching=True`, accepted previews include this
 `This command contacts external hosts and may reveal your IP address, DNS query, target host, or network metadata.`
 
 The warning is informational and does not weaken existing checks. The command must still be in the
-curated registry, pass command-shape validation, pass risk policy, and receive user confirmation
-before execution. Experimental mode remains subject to the same network metadata and must not be
-used as a shortcut to add broad network command access.
+curated registry, pass platform support checks, pass command-shape validation, pass risk policy, and
+receive user confirmation before execution. Experimental mode remains subject to the same network
+metadata and must not be used as a shortcut to add broad network command access.
 
 ## Policy model
 

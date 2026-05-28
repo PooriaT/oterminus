@@ -38,9 +38,23 @@ If ambiguity handling, validation, or policy checks block a request, OTerminus d
 ### Requirements
 
 - Python 3.13+
+- macOS or a Unix-like POSIX terminal environment with the required shell commands available
 - [Ollama](https://ollama.com/) for natural-language planning
 - [pipx](https://pipx.pypa.io/) for isolated end-user installs
 - [Poetry](https://python-poetry.org/) for local development
+
+### Supported platforms
+
+OTerminus currently targets macOS and Unix-like terminal environments. The command registry contains
+platform-aware packs: macOS desktop commands such as `open` are available only on supported macOS
+(`darwin`) systems, hidden from suggestions and planner context where practical elsewhere, and still
+rejected by the validator before execution if requested on an unsupported platform.
+
+Linux-like environments may work when the required shell commands and Ollama are installed, but
+OTerminus does not yet claim native Windows Command Prompt or PowerShell support. Windows users
+should run OTerminus inside WSL for a Unix-like shell boundary; no Windows command support is added
+or implied. Run `oterminus doctor` after installation to see the detected platform and readiness
+checks.
 
 ### Install from PyPI
 
@@ -54,9 +68,9 @@ oterminus doctor
 oterminus
 ```
 
-Use `oterminus doctor` after installation to check CLI, configuration, and Ollama readiness before
-your first natural-language planning request. PyPI installation does not install or start an Ollama
-model for you. Direct commands and some deterministic local paths may not need a live model, but
+Use `oterminus doctor` after installation to check platform, CLI, configuration, and Ollama
+readiness before your first natural-language planning request. PyPI installation does not install
+or start an Ollama model for you. Direct commands and some deterministic local paths may not need a live model, but
 first-run natural-language usage depends on Ollama being installed, running, and having a local
 model available.
 
