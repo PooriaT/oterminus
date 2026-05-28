@@ -21,6 +21,8 @@ file. The implementation in `src/oterminus/config.py` is the source of truth for
 | Persistent history path | `OTERMINUS_HISTORY_PATH` | Not supported | `~/.oterminus/history.jsonl` | Local JSONL file used when persistent history is enabled. |
 | Persistent history limit | `OTERMINUS_HISTORY_LIMIT` | Not supported | `100` | Maximum number of persisted records loaded into each REPL session. Must be a valid integer in the environment; loaded values are clamped to at least `1` by the history store. |
 | Persistent history redaction | `OTERMINUS_HISTORY_REDACT` | Not supported | Follows `OTERMINUS_AUDIT_REDACT` | Uses the same boolean parsing as `OTERMINUS_AUDIT_ENABLED`; controls redaction before writing history records. |
+| Failure explanations enabled | `OTERMINUS_EXPLAIN_FAILURES` | Not supported | `false` | Opt-in local Ollama failure explanations for non-zero exits only. Suggested next actions are never executed automatically. |
+| Failure explanation max chars | `OTERMINUS_FAILURE_EXPLANATION_MAX_CHARS` | Not supported | `4000` | Positive integer. Bounds each redacted stdout/stderr snippet sent to the configured local Ollama model. |
 | Command-pack profile preset | `OTERMINUS_COMMAND_PROFILE` | Not supported | Unset | Optional preset for command-pack availability (`beginner`, `safe`, `developer`, `power`). Unset preserves existing behavior. |
 
 ## Environment variables
@@ -40,6 +42,8 @@ Supported `OTERMINUS_*` variables are:
 - `OTERMINUS_HISTORY_PATH`
 - `OTERMINUS_HISTORY_LIMIT`
 - `OTERMINUS_HISTORY_REDACT`
+- `OTERMINUS_EXPLAIN_FAILURES`
+- `OTERMINUS_FAILURE_EXPLANATION_MAX_CHARS`
 - `OTERMINUS_COMMAND_PROFILE`
 
 `OTERMINUS_MODEL` is not currently implemented. Set the persisted `model` field in the user config
@@ -78,8 +82,8 @@ In practice:
 - `audit_log_path` follows full precedence: `OTERMINUS_AUDIT_LOG_PATH`, then user config
   `audit_log_path`, then `~/.oterminus/audit.jsonl`.
 - `model` is user-config only; there is no environment override.
-- timeout, policy, allowed roots, audit enabled/redaction, and all history settings are
-  environment-only and fall back directly to defaults.
+- timeout, policy, allowed roots, audit enabled/redaction, history settings, failure-explanation
+  settings, and output limits are environment-only and fall back directly to defaults.
 - malformed, missing, unreadable, or non-object user config JSON is ignored and defaults are used
   where applicable.
 
@@ -106,6 +110,8 @@ export OTERMINUS_HISTORY_ENABLED=false
 export OTERMINUS_HISTORY_PATH=~/.oterminus/history.jsonl
 export OTERMINUS_HISTORY_LIMIT=100
 export OTERMINUS_HISTORY_REDACT=true
+export OTERMINUS_EXPLAIN_FAILURES=false
+export OTERMINUS_FAILURE_EXPLANATION_MAX_CHARS=4000
 ```
 
 ## Command pack availability
@@ -159,9 +165,24 @@ export OTERMINUS_DISABLED_COMMAND_PACKS=macos
 ```
 
 
+## Privacy notes
+
+Audit logs and persistent history are local JSONL files and are not uploaded by OTerminus. Audit
+redaction is enabled by default, persistent history is disabled by default, and history redaction
+defaults to audit redaction when unset. Audit and history records do not include full stdout/stderr,
+but they can still contain local paths, command context, risk decisions, validation reasons, and
+other sensitive operational context. Review these files before pasting them into issues, chats, or
+public logs. Disable audit logging with `OTERMINUS_AUDIT_ENABLED=false`, keep persistent history
+off with `OTERMINUS_HISTORY_ENABLED=false`, and keep failure explanations off with
+`OTERMINUS_EXPLAIN_FAILURES=false`.
+
+The curated `env` command is constrained to a single variable lookup (`env PATH`, not bare `env`)
+and still warns because environment variables can contain secrets. Avoid querying secret-like
+variables unless you intend to display them locally.
+
 ## Failure explanations (opt-in)
 
 - `OTERMINUS_EXPLAIN_FAILURES` (default `false`): when enabled, OTerminus can generate a post-execution failure explanation for non-zero exit codes only.
-- `OTERMINUS_FAILURE_EXPLANATION_MAX_CHARS` (default `4000`): bounds redacted stderr/stdout snippets sent to the explainer and written to audit metadata.
+- `OTERMINUS_FAILURE_EXPLANATION_MAX_CHARS` (default `4000`): bounds redacted stderr/stdout snippets sent to the configured local Ollama explainer. Audit metadata stores the model-returned redacted summary, not full command output.
 - Suggested next actions are **never auto-executed**; they are displayed as dry-run/copy-only guidance.
 - Output snippets are redacted and truncated; avoid sharing logs that may still contain sensitive paths or context.

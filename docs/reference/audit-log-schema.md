@@ -1,6 +1,6 @@
 # Audit Log Schema
 
-Audit logs are newline-delimited JSON objects (JSONL), one event per handled request.
+Audit logs are newline-delimited JSON objects (JSONL), one event per handled request. They are written only to the configured local file and are not uploaded by OTerminus.
 
 ## Default path
 
@@ -78,13 +78,13 @@ validation/policy/confirmation rules still apply.
 
 ## Redaction
 
-When audit redaction is enabled, text and argv fields are passed through redaction helpers before
-writing. Audit events intentionally do not include raw stdout/stderr command output.
+When audit redaction is enabled (the default), text and argv fields are passed through redaction helpers before
+writing. Audit events intentionally do not include raw stdout/stderr command output; they store only truncation flags, character counts, and exit-code metadata for command output. Redaction is best-effort, so do not share audit logs blindly.
 
 ## User-facing audit commands
 
 - `audit status`: reports enabled/disabled state, configured path, file existence, and redaction.
-- `audit tail [n]`: shows most recent events from the local JSONL file (default `n=10`).
+- `audit tail [n]`: shows most recent events from the local JSONL file (default `n=10`). Review output before sharing it because it can include local paths and command context.
 - `audit clear`: asks for exact confirmation (`CLEAR AUDIT`) before clearing the local log.
 
 When audit is disabled, tail and clear commands do not create a new log file.
@@ -110,11 +110,11 @@ When audit is disabled, tail and clear commands do not create a new log file.
 }
 ```
 
-Note: persistent REPL history uses a separate local JSONL file (`OTERMINUS_HISTORY_PATH`) and is not an audit log replacement; reruns from persisted history still emit normal audit events.
+Note: persistent REPL history uses a separate local JSONL file (`OTERMINUS_HISTORY_PATH`) and is not an audit log replacement; reruns from persisted history still emit normal audit events. History is disabled by default and, when enabled, should be reviewed before sharing because it may contain paths and command context.
 
 ## Failure explanations (opt-in)
 
-When enabled, audit events may include:
+When enabled, failure explanation sends only redacted/truncated command, stdout, and stderr context to the configured local Ollama model. Suggested next actions are displayed only and are never executed automatically. Audit events may include:
 - `failure_explanation_requested`
 - `failure_explanation_generated`
 - `failure_explanation_error`

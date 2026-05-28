@@ -74,7 +74,8 @@ Keep documentation organized this way:
 - Keep `README.md` as the landing page and quick orientation.
 - Put detailed product, architecture, reference, eval, and contributor material under `/docs`.
 - Update MkDocs navigation when adding, moving, or deleting docs pages.
-- Do not include secrets, real tokens, real audit logs, or personal local paths in docs or fixtures.
+- Do not include secrets, real tokens, real audit logs, persisted history files, or personal local paths in docs or fixtures.
+- When audit, history, failure-explanation, output, or env privacy behavior changes, update the relevant docs in the same PR.
 
 Validate docs before review:
 

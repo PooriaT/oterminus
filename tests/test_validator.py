@@ -278,6 +278,14 @@ def test_validator_accepts_structured_project_health_command() -> None:
     assert any("may execute project code" in warning for warning in result.warnings)
 
 
+def test_validator_rejects_env_with_no_operands() -> None:
+    validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))
+    result = validator.validate(make_proposal("env"))
+
+    assert result.accepted is False
+    assert any("requires at least 1 operand" in reason for reason in result.reasons)
+
+
 def test_validator_rejects_env_with_more_than_one_operand() -> None:
     validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))
     result = validator.validate(make_proposal("env PATH HOME"))
@@ -286,9 +294,17 @@ def test_validator_rejects_env_with_more_than_one_operand() -> None:
     assert any("allows at most 1 operand" in reason for reason in result.reasons)
 
 
-def test_validator_warns_about_environment_secrets_for_env_lookup() -> None:
+def test_validator_accepts_single_variable_env_lookup() -> None:
     validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))
     result = validator.validate(make_proposal("env PATH"))
+
+    assert result.accepted is True
+    assert result.argv == ["env", "PATH"]
+
+
+def test_validator_warns_about_environment_secrets_for_env_lookup() -> None:
+    validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))
+    result = validator.validate(make_proposal("env TOKEN"))
 
     assert result.accepted is True
     assert any("Environment values may include secrets" in warning for warning in result.warnings)

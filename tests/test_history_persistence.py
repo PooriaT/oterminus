@@ -1,6 +1,54 @@
+import json
 from pathlib import Path
 
+from oterminus.config import load_config
+
 from oterminus.history import PersistentHistoryStore, SessionHistory, SessionHistoryItem
+
+
+def test_history_config_defaults_to_disabled_and_redacted(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(tmp_path / "config.json"))
+    monkeypatch.delenv("OTERMINUS_HISTORY_ENABLED", raising=False)
+    monkeypatch.delenv("OTERMINUS_HISTORY_REDACT", raising=False)
+    monkeypatch.delenv("OTERMINUS_AUDIT_REDACT", raising=False)
+
+    config = load_config()
+
+    assert config.history_enabled is False
+    assert config.history_redact is True
+
+
+def test_persistence_writes_only_bounded_metadata_not_outputs_or_raw_planner(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "h.jsonl"
+    store = PersistentHistoryStore(path, enabled=True, limit=10, redact=True)
+    item = SessionHistoryItem(
+        id=1,
+        user_input="TOKEN=secret",
+        rendered_command="env TOKEN",
+        command_family="env",
+        risk_level="safe",
+        validation_status="accepted",
+        execution_status="executed",
+        exit_code=0,
+    )
+    item.proposal = {"raw_planner_response": "TOKEN=secret"}
+    item.validation = {"stdout": "TOKEN=secret"}
+
+    store.append(item)
+
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    assert payload["user_input"] == "TOKEN=[REDACTED]"
+    assert payload["rendered_command"] == "env TOKEN"
+    assert payload["command_family"] == "env"
+    assert "stdout" not in payload
+    assert "stderr" not in payload
+    assert "failure_stderr_summary" not in payload
+    assert "failure_stdout_summary" not in payload
+    assert "proposal" not in payload
+    assert "validation" not in payload
+    assert "raw_planner_response" not in path.read_text(encoding="utf-8")
 
 
 def test_persistence_disabled_does_not_create_file(tmp_path: Path) -> None:
