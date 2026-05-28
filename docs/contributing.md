@@ -109,6 +109,7 @@ poetry run ruff check .
 poetry run pytest
 poetry run pytest --cov=src/oterminus --cov-report=term-missing
 poetry run python scripts/check_docs_links.py
+poetry run python scripts/generate_command_reference.py --check
 poetry run mkdocs build --strict
 poetry run oterminus-evals
 ```
