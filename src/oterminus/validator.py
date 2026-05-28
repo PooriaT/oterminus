@@ -570,32 +570,91 @@ def _dedupe_preserve_order(values: list[str]) -> list[str]:
     return deduped
 
 
+GIT_MUTATION_SUBCOMMANDS = {
+    "add",
+    "am",
+    "apply",
+    "bisect",
+    "checkout",
+    "cherry-pick",
+    "clean",
+    "commit",
+    "fetch",
+    "merge",
+    "mv",
+    "pull",
+    "push",
+    "rebase",
+    "reset",
+    "restore",
+    "revert",
+    "rm",
+    "stash",
+    "switch",
+    "tag",
+}
+
+GIT_GLOBAL_FLAGS = {
+    "--bare",
+    "--glob-pathspecs",
+    "--help",
+    "--html-path",
+    "--icase-pathspecs",
+    "--literal-pathspecs",
+    "--man-path",
+    "--no-optional-locks",
+    "--no-pager",
+    "--no-replace-objects",
+    "--noglob-pathspecs",
+    "--paginate",
+    "--version",
+    "-p",
+}
+
+GIT_GLOBAL_FLAGS_WITH_VALUES = {
+    "--config-env",
+    "--exec-path",
+    "--git-dir",
+    "--namespace",
+    "--super-prefix",
+    "--work-tree",
+    "-C",
+    "-c",
+}
+
+
 def _looks_like_git_mutation_shape(arguments: list[str]) -> bool:
-    if not arguments:
-        return False
-    return arguments[0] in {
-        "add",
-        "am",
-        "apply",
-        "bisect",
-        "checkout",
-        "cherry-pick",
-        "clean",
-        "commit",
-        "merge",
-        "mv",
-        "fetch",
-        "pull",
-        "push",
-        "rebase",
-        "reset",
-        "restore",
-        "revert",
-        "rm",
-        "stash",
-        "switch",
-        "tag",
-    }
+    subcommand = _git_subcommand_after_global_options(arguments)
+    return subcommand in GIT_MUTATION_SUBCOMMANDS
+
+
+def _git_subcommand_after_global_options(arguments: list[str]) -> str | None:
+    index = 0
+    while index < len(arguments):
+        arg = arguments[index]
+        if arg == "--":
+            index += 1
+            break
+        if arg in GIT_GLOBAL_FLAGS:
+            index += 1
+            continue
+        if arg in GIT_GLOBAL_FLAGS_WITH_VALUES:
+            index += 2
+            continue
+        if any(
+            arg.startswith(f"{flag}=")
+            for flag in GIT_GLOBAL_FLAGS_WITH_VALUES
+            if flag.startswith("--")
+        ):
+            index += 1
+            continue
+        if arg.startswith("-"):
+            return None
+        return arg
+
+    if index < len(arguments):
+        return arguments[index]
+    return None
 
 
 def _is_supported_git_inspection_shape(arguments: list[str]) -> bool:
