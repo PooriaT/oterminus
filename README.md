@@ -38,15 +38,15 @@ If ambiguity handling, validation, or policy checks block a request, OTerminus d
 ### Requirements
 
 - Python 3.13+
-- [Ollama](https://ollama.com/)
+- [Ollama](https://ollama.com/) for natural-language planning
 - [pipx](https://pipx.pypa.io/) for isolated end-user installs
 - [Poetry](https://python-poetry.org/) for local development
 
-### Install from PyPI with pipx
+### Install from PyPI
 
 Released OTerminus packages are published as `oterminus` and expose the `oterminus` and
-`oterminus-evals` console scripts. For a normal user install, prefer `pipx` so the application and
-its dependencies stay isolated from your system Python:
+`oterminus-evals` console scripts. For normal CLI use, prefer `pipx` because it isolates OTerminus
+and its dependencies from your system Python environment:
 
 ```bash
 pipx install oterminus
@@ -54,9 +54,24 @@ oterminus doctor
 oterminus
 ```
 
-Use `pipx upgrade oterminus` when you want to update an existing install. On first run, OTerminus
-checks Ollama readiness (`ollama` on PATH, running service, local models), then prompts you to
-select a model if one is not already configured.
+Use `oterminus doctor` after installation to check CLI, configuration, and Ollama readiness before
+your first natural-language planning request. PyPI installation does not install or start an Ollama
+model for you. Direct commands and some deterministic local paths may not need a live model, but
+first-run natural-language usage depends on Ollama being installed, running, and having a local
+model available.
+
+Upgrade or uninstall the isolated CLI with:
+
+```bash
+pipx upgrade oterminus
+pipx uninstall oterminus
+```
+
+If you cannot use `pipx`, install with pip instead:
+
+```bash
+python -m pip install oterminus
+```
 
 ### Shell completion vs. REPL autocomplete
 
@@ -71,16 +86,6 @@ completion scripts for the outer `oterminus` command. Installation never edits y
 poetry install
 poetry run oterminus
 ```
-
-### Local package artifact validation
-
-Before publishing or validating release changes, validate local package artifacts end-to-end:
-
-```bash
-poetry run python scripts/validate_package_install.py
-```
-
-This builds both `sdist` and `wheel`, installs the wheel into a temporary clean virtualenv, and runs CLI smoke checks.
 
 ## Quick start examples
 

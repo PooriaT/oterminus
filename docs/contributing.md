@@ -4,6 +4,16 @@ Use the same Poetry-based commands locally that CI runs on pull requests. The go
 repository readable after the collapsed-file cleanup and to catch formatting, lint, test, docs, and
 eval regressions before review.
 
+## Public installs vs. development installs
+
+End users should install released OTerminus packages from PyPI, preferably with
+`pipx install oterminus` so the CLI is isolated from the system Python environment. If `pipx` is
+unavailable, the user-facing fallback is `python -m pip install oterminus`. Keep these public
+install instructions in README and the user guide aligned with actual package metadata and CLI
+behavior.
+
+Contributors working from a source checkout should use Poetry instead of a public PyPI install.
+
 ## Set up development dependencies
 
 ```bash
@@ -84,8 +94,12 @@ Keep documentation organized this way:
 - Keep `README.md` as the landing page and quick orientation.
 - Put detailed product, architecture, reference, eval, and contributor material under `/docs`.
 - Update MkDocs navigation when adding, moving, or deleting docs pages.
-- Do not include secrets, real tokens, real audit logs, persisted history files, or personal local paths in docs or fixtures.
-- When audit, history, failure-explanation, output, or env privacy behavior changes, update the relevant docs in the same PR.
+- Keep public install docs aligned with PyPI/pipx behavior, development docs aligned with Poetry,
+  and release/package-validation docs aligned with the package validation script.
+- Do not include secrets, real tokens, real audit logs, persisted history files, or personal local
+  paths in docs or fixtures.
+- When audit, history, failure-explanation, output, install behavior, packaging metadata, or env
+  privacy behavior changes, update the relevant docs in the same PR.
 
 Validate docs before review:
 
@@ -117,7 +131,8 @@ poetry run oterminus-evals
 
 ## Local package build + wheel install validation
 
-Validate local artifacts before publishing or changing packaging behavior:
+Validate local artifacts before publishing or changing packaging behavior. This script is for
+release/development validation, not the primary user install path:
 
 ```bash
 poetry run python scripts/validate_package_install.py

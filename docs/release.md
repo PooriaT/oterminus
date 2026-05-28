@@ -1,6 +1,7 @@
 # Release and package publishing
 
-OTerminus release publishing is intentionally staged so the first public PyPI releases are repeatable and safe.
+OTerminus release publishing is intentionally staged so the first public PyPI releases are
+repeatable and safe.
 
 ## Workflow map
 
@@ -57,12 +58,28 @@ The production workflow automatically:
 3. builds distributions once
 4. publishes the exact built artifacts to PyPI after environment approval
 
-Authentication is OIDC Trusted Publishing (`id-token: write`) with `pypa/gh-action-pypi-publish`; no long-lived PyPI API tokens are required.
+Authentication is OIDC Trusted Publishing (`id-token: write`) with
+`pypa/gh-action-pypi-publish`; no long-lived PyPI API tokens are required.
+
+## Local package validation
+
+Before publishing or changing packaging behavior, validate local artifacts from a source checkout:
+
+```bash
+poetry run python scripts/validate_package_install.py
+```
+
+This contributor/release-maintainer check builds the local `sdist` and `wheel`, installs the wheel
+into a temporary clean virtual environment, verifies `import oterminus`, and runs installed-console
+smoke checks such as `oterminus --help`, `oterminus doctor`, and `oterminus-evals`. It is not the
+primary end-user install path; users should install released packages from PyPI with
+`pipx install oterminus` or, when `pipx` is unavailable,
+`python -m pip install oterminus`.
 
 ## Post-release user install verification
 
-After a production PyPI release is available, verify the end-user installation path with `pipx` from
-a clean environment:
+After a production PyPI release is available, verify the preferred end-user installation path with
+`pipx` from a clean environment:
 
 ```bash
 pipx install oterminus
@@ -71,16 +88,33 @@ oterminus doctor
 oterminus-evals
 ```
 
+Also verify the pip fallback in a clean virtual environment:
+
+```bash
+python -m pip install oterminus
+oterminus --help
+oterminus doctor
+```
+
 For an existing `pipx` install, verify upgrades with:
 
 ```bash
 pipx upgrade oterminus
+oterminus doctor
 ```
 
 The published package name is `oterminus`; the installed console scripts are `oterminus` and
-`oterminus-evals`. Release verification should not add or rely on automatic shell startup-file
-changes. OTerminus currently supports REPL Tab autocomplete via `prompt_toolkit`, but does not ship
-zsh, bash, or fish shell-level completion scripts.
+`oterminus-evals`. `oterminus doctor` is the recommended post-install diagnostic and should clearly
+report Ollama CLI, service, and local-model readiness. PyPI installation does not install or start
+Ollama; natural-language planning still depends on a ready local Ollama setup, although direct
+commands and some deterministic local paths may not need a live model.
+
+Release verification should not add or rely on automatic shell startup-file changes. OTerminus
+currently supports REPL Tab autocomplete via `prompt_toolkit`, but does not ship zsh, bash, or fish
+shell-level completion scripts.
+
+Note: `oterminus doctor` may exit non-zero in clean or CI environments if Ollama is unavailable;
+this still confirms the installed CLI is callable and that readiness failures are surfaced clearly.
 
 ## What remains manual and intentional
 
@@ -135,6 +169,3 @@ In repository **Settings → Environments**:
 4. optionally restrict deployment branches/tags to release patterns
 
 Do **not** add long-lived `PYPI_API_TOKEN` secrets when Trusted Publishing is configured.
-
-
-Note: `oterminus doctor` may exit non-zero in CI if Ollama is unavailable; this smoke check still confirms the CLI is installed and callable.
