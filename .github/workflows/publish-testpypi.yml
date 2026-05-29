@@ -176,6 +176,7 @@ jobs:
         run: |
           . .venv-testpypi/bin/activate
           oterminus --help
+          oterminus --version
 
           set +e
           oterminus doctor
