@@ -11,14 +11,16 @@ of mixing OTerminus and its dependencies into your system Python environment:
 
 ```bash
 pipx install oterminus
+oterminus --version
 oterminus doctor
 oterminus
 ```
 
-Run `oterminus doctor` immediately after installation. It is the recommended post-install
-diagnostic for checking the detected platform, CLI integrity, configuration paths, selected model
-state, Ollama CLI/service readiness, local model availability, audit path, registry metadata, eval
-fixtures, and relevant developer-tool status.
+Run `oterminus --version` after installation to confirm the installed package version. Then run
+`oterminus doctor`; it is the recommended post-install diagnostic for checking the detected
+platform, CLI integrity, configuration paths, selected model state, Ollama CLI/service readiness,
+local model availability, audit path, registry metadata, eval fixtures, and relevant developer-tool
+status.
 
 ## Supported environments
 
@@ -48,7 +50,10 @@ Update an existing isolated `pipx` install with:
 
 ```bash
 pipx upgrade oterminus
+oterminus --version
 ```
+
+The version check is a lightweight package diagnostic and does not require Ollama.
 
 Remove the isolated CLI with:
 
@@ -77,9 +82,10 @@ poetry run oterminus
 ```
 
 Development commands can use the same CLI forms with a `poetry run` prefix, for example
-`poetry run oterminus doctor` or `poetry run oterminus --dry-run "ls"`. Local wheel/package
-validation with `poetry run python scripts/validate_package_install.py` is a contributor and
-release-maintainer workflow, not the primary user install path. See the
+`poetry run oterminus --version`, `poetry run oterminus doctor`, or
+`poetry run oterminus --dry-run "ls"`. Local wheel/package validation with
+`poetry run python scripts/validate_package_install.py` is a contributor and release-maintainer
+workflow, not the primary user install path. See the
 [contributor workflow](../contributing.md#local-package-build-wheel-install-validation) and
 [release guide](../release.md) for package validation and publishing details.
 
@@ -96,15 +102,27 @@ Startup and doctor readiness checks include:
 2. Ollama service is reachable (`ollama list`).
 3. At least one model is installed.
 
-Run diagnostics explicitly with:
+Check only the installed package version with:
+
+```bash
+oterminus --version
+oterminus version
+```
+
+Both version forms print the same concise package version, exit successfully, and do not start the
+REPL, run doctor/setup checks, read or write request history, or require Ollama. Inside the REPL,
+`version` prints the same diagnostic output without going through natural-language planning.
+
+Run environment diagnostics explicitly with:
 
 ```bash
 oterminus doctor
 ```
 
 `doctor` prints the readiness report and exits. It does not start the REPL, execute a request, or
-invoke the Ollama planner. If Ollama is missing, not running, or has no installed model, `doctor`
-should report that clearly so you can fix the local model setup before natural-language planning.
+invoke the Ollama planner. Unlike `--version`, it checks environment readiness such as Ollama
+availability. If Ollama is missing, not running, or has no installed model, `doctor` should report
+that clearly so you can fix the local model setup before natural-language planning.
 
 If no model is configured yet, OTerminus shows installed models and prompts you to choose one. The
 selection is saved in `~/.oterminus/config.json` (or `OTERMINUS_CONFIG_PATH` if set).
@@ -335,9 +353,10 @@ context. Persisted history does not store stdout/stderr, full failure output, or
 responses, and `OTERMINUS_HISTORY_REDACT` is enabled by default when audit redaction is enabled.
 Review carefully before sharing terminal screenshots or history snippets publicly.
 
-`--dry-run` and `--explain` are mutually exclusive and apply to requests, not to the `doctor`
-diagnostics command. For example, `poetry run oterminus --dry-run doctor` and
-`poetry run oterminus doctor --dry-run` are invalid combinations.
+`--dry-run` and `--explain` are mutually exclusive and apply to requests, not to the `doctor` or
+`version` diagnostics commands. For example, `poetry run oterminus --dry-run doctor`,
+`poetry run oterminus doctor --dry-run`, and `poetry run oterminus --dry-run version` are invalid
+combinations.
 
 ## Autocomplete
 

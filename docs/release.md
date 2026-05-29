@@ -33,6 +33,7 @@ The TestPyPI workflow automatically:
 4. publishes artifacts to TestPyPI via OIDC Trusted Publishing
 5. creates a clean virtualenv, installs the exact published version from TestPyPI (with short retries for index propagation), and runs smoke checks:
    - `oterminus --help`
+   - `oterminus --version`
    - `oterminus doctor`
    - `oterminus-evals`
 
@@ -71,7 +72,8 @@ poetry run python scripts/validate_package_install.py
 
 This contributor/release-maintainer check builds the local `sdist` and `wheel`, installs the wheel
 into a temporary clean virtual environment, verifies `import oterminus`, and runs installed-console
-smoke checks such as `oterminus --help`, `oterminus doctor`, and `oterminus-evals`. It is not the
+smoke checks such as `oterminus --help`, `oterminus --version`, `oterminus version`,
+`oterminus doctor`, and `oterminus-evals`. It is not the
 primary end-user install path; users should install released packages from PyPI with
 `pipx install oterminus` or, when `pipx` is unavailable,
 `python -m pip install oterminus`.
@@ -84,6 +86,7 @@ After a production PyPI release is available, verify the preferred end-user inst
 ```bash
 pipx install oterminus
 oterminus --help
+oterminus --version
 oterminus doctor
 oterminus-evals
 ```
@@ -93,6 +96,7 @@ Also verify the pip fallback in a clean virtual environment:
 ```bash
 python -m pip install oterminus
 oterminus --help
+oterminus --version
 oterminus doctor
 ```
 
@@ -100,11 +104,13 @@ For an existing `pipx` install, verify upgrades with:
 
 ```bash
 pipx upgrade oterminus
+oterminus --version
 oterminus doctor
 ```
 
 The published package name is `oterminus`; the installed console scripts are `oterminus` and
-`oterminus-evals`. `oterminus doctor` is the recommended post-install diagnostic and should clearly
+`oterminus-evals`. `oterminus --version` confirms the installed package version without requiring
+Ollama; `oterminus doctor` is the recommended post-install readiness diagnostic and should clearly
 report Ollama CLI, service, and local-model readiness. PyPI installation does not install or start
 Ollama; natural-language planning still depends on a ready local Ollama setup, although direct
 commands and some deterministic local paths may not need a live model.

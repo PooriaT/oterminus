@@ -64,14 +64,16 @@ and its dependencies from your system Python environment:
 
 ```bash
 pipx install oterminus
+oterminus --version
 oterminus doctor
 oterminus
 ```
 
-Use `oterminus doctor` after installation to check platform, CLI, configuration, and Ollama
-readiness before your first natural-language planning request. PyPI installation does not install
-or start an Ollama model for you. Direct commands and some deterministic local paths may not need a live model, but
-first-run natural-language usage depends on Ollama being installed, running, and having a local
+Use `oterminus --version` after install or upgrade to confirm the installed package version. Use
+`oterminus doctor` after installation to check platform, CLI, configuration, and Ollama readiness
+before your first natural-language planning request. PyPI installation does not install or start an
+Ollama model for you. Direct commands and some deterministic local paths may not need a live model,
+but first-run natural-language usage depends on Ollama being installed, running, and having a local
 model available.
 
 Upgrade or uninstall the isolated CLI with:
@@ -142,6 +144,8 @@ Examples inside REPL:
 - `--dry-run` and `--explain` are mutually exclusive one-shot inspection flags for requests. Both
   validate and preview without confirmation or execution; explain mode also describes command choice,
   relevant flags/arguments, risk, and policy interpretation.
+- `--version` prints the installed package version and exits. It does not start the REPL, run
+  doctor/setup checks, or require Ollama; `oterminus version` prints the same diagnostic output.
 - `doctor` is diagnostics-only: it prints readiness checks and exits without starting the REPL,
   executing a request, or invoking the Ollama planner. It cannot be combined with `--dry-run` or
   `--explain`.

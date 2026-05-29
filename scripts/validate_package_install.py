@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import subprocess
 import sys
 import tempfile
@@ -21,6 +22,15 @@ def run(
     if check and proc.returncode != 0:
         raise SystemExit(proc.returncode)
     return proc
+
+
+def validate_version_output(proc: subprocess.CompletedProcess[str]) -> str:
+    output = proc.stdout.strip()
+    match = re.fullmatch(r"oterminus\s+(\S+)", output)
+    if match is None:
+        print(f"Unexpected version output: {output!r}", file=sys.stderr)
+        raise SystemExit(1)
+    return match.group(1)
 
 
 def script_path(bin_dir: Path, name: str) -> Path:
@@ -49,10 +59,27 @@ def main() -> int:
         run([str(py), "-m", "pip", "install", "--upgrade", "pip"])
         run([str(pip), "install", str(wheel)])
         run([str(py), "-c", "import oterminus"])
+        installed_version = run(
+            [
+                str(py),
+                "-c",
+                'from importlib.metadata import version; print(version("oterminus"))',
+            ]
+        ).stdout.strip()
         oterminus = script_path(bin_dir, "oterminus")
         oterminus_evals = script_path(bin_dir, "oterminus-evals")
 
         run([str(oterminus), "--help"])
+        cli_version = validate_version_output(run([str(oterminus), "--version"]))
+        command_version = validate_version_output(run([str(oterminus), "version"]))
+        if cli_version != installed_version or command_version != installed_version:
+            print(
+                "Version command output does not match installed package metadata: "
+                f"metadata={installed_version!r} --version={cli_version!r} "
+                f"version={command_version!r}",
+                file=sys.stderr,
+            )
+            return 1
         run([str(oterminus), "doctor"], check=False)
         run([str(oterminus_evals)])
 

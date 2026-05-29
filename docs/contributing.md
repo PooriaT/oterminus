@@ -144,7 +144,8 @@ The script will:
 2. create a temporary virtual environment
 3. install the local wheel
 4. verify `import oterminus`
-5. run CLI smoke checks: `oterminus --help`, `oterminus doctor`, and `oterminus-evals`
+5. run CLI smoke checks: `oterminus --help`, `oterminus --version`, `oterminus version`,
+   `oterminus doctor`, and `oterminus-evals`
 
 Notes:
 
