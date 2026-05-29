@@ -141,7 +141,7 @@
     ]
   },
   {
-    "id": "direct-project-health-format-check",
+    "id": "direct-project-health-format-check-rejected",
     "user_input": "poetry run ruff format --check .",
     "planner_proposal": {
       "action_type": "shell_command",

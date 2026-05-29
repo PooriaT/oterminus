@@ -238,6 +238,39 @@ def test_one_shot_execute_mode_decline_stops_before_executor(
     assert payload["execution_exit_code"] is None
 
 
+def test_natural_language_project_health_uses_local_planner_and_requires_confirmation(
+    monkeypatch, tmp_path: Path, capsys
+) -> None:
+    from oterminus.cli import main
+
+    config = _config(tmp_path)
+    validator, executor = _install_main_dependencies(monkeypatch, config)
+    monkeypatch.setattr(
+        "oterminus.cli.ensure_startup_ready",
+        Mock(side_effect=AssertionError("project health local planner should not require Ollama")),
+    )
+    monkeypatch.setattr("oterminus.cli.Planner", Mock(side_effect=AssertionError("no planner")))
+    monkeypatch.setattr("builtins.input", Mock(return_value="n"))
+
+    code = main(["run", "tests"])
+
+    assert code == 0
+    output = capsys.readouterr().out
+    assert "poetry run pytest" in output
+    assert "Cancelled." in output
+    validator.validate.assert_called_once()
+    executor.run.assert_not_called()
+    payload = _read_audit_payload(config.audit_log_path)
+    assert payload["direct_command_detected"] is False
+    assert payload["planner_invoked"] is False
+    assert payload["planner_skipped"] is True
+    assert payload["planner_skip_reason"] == "local_planner"
+    assert payload["routed_category"] == "project_health"
+    assert payload["command_family"] == "project_health"
+    assert payload["confirmation_result"] == "cancelled"
+    assert payload["execution_exit_code"] is None
+
+
 def test_one_shot_execute_mode_confirmation_runs_executor(monkeypatch, tmp_path: Path) -> None:
     from oterminus.cli import main
 

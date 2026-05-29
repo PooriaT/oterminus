@@ -50,6 +50,39 @@ def test_local_planner_respects_beginner_profile_disabled_packs() -> None:
     assert match is None
 
 
+def test_local_planner_maps_project_health_requests() -> None:
+    cases = {
+        "run tests": "run_tests",
+        "run the test suite": "run_tests",
+        "check linting": "lint_check",
+        "run ruff check": "lint_check",
+        "check formatting": "format_check",
+        "run format check": "format_check",
+        "build docs": "build_docs",
+        "check docs build": "build_docs",
+        "run evals": "run_evals",
+    }
+
+    for request, operation in cases.items():
+        match = plan_locally(request, route_request(request))
+        assert match is not None, request
+        assert match.proposal.command_family == "project_health"
+        assert match.proposal.arguments == {"operation": operation}
+        assert match.proposal.needs_confirmation is True
+
+
+def test_local_planner_respects_disabled_project_pack() -> None:
+    disabled = frozenset({"project"})
+    match = plan_locally(
+        "run tests",
+        route_request("run tests", disabled_pack_ids=disabled),
+        disabled_pack_ids=disabled,
+    )
+
+    assert match is None
+
+
 def test_local_planner_unsafe_requests_fall_back() -> None:
     assert plan_locally("delete junk", route_request("delete junk")) is None
     assert plan_locally("install dependencies", route_request("install dependencies")) is None
+    assert plan_locally("format the code", route_request("format the code")) is None

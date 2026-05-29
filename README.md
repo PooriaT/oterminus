@@ -175,6 +175,14 @@ and `nslookup`. These commands contact external hosts, show a network metadata w
 and still require confirmation. OTerminus does not support POST/PUT/DELETE requests, secret headers,
 downloads, scanning, SSH, or arbitrary network automation.
 
+## Project health
+
+The `project_health` capability supports curated developer checks through structured operations:
+tests, lint checks, format checks, docs builds, and evals. These render to exact `poetry run ...`
+commands, may execute local project code, and always go through preview, validation, policy, and
+confirmation. OTerminus does not support arbitrary Poetry commands, installs/updates,
+deploy/publish commands, or write-formatting such as `ruff format .`.
+
 ## Documentation
 
 The README is the landing page. Full documentation is generated from [`docs/`](docs/index.md) and

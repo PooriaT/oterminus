@@ -136,6 +136,14 @@ class Validator:
             )
 
         base = args[0]
+        if not (
+            proposal.mode == ProposalMode.STRUCTURED and proposal.command_family == "project_health"
+        ):
+            project_tool_reasons = _unsupported_project_tool_reasons(args)
+            if project_tool_reasons:
+                reasons.extend(project_tool_reasons)
+                risk = RiskLevel.DANGEROUS
+
         if proposal.mode != ProposalMode.STRUCTURED and base == "project_health":
             reasons.append(
                 "project_health is only valid in structured mode and must render a curated tooling command."
@@ -151,6 +159,8 @@ class Validator:
 
         spec = get_command_spec(base)
         if proposal.mode == ProposalMode.STRUCTURED and proposal.command_family == "project_health":
+            if not proposal.needs_confirmation:
+                reasons.append("project_health proposals must require explicit confirmation.")
             expected = {
                 ("poetry", "run", "pytest"),
                 ("poetry", "run", "ruff", "check", "."),
@@ -568,6 +578,45 @@ def _dedupe_preserve_order(values: list[str]) -> list[str]:
         seen.add(value)
         deduped.append(value)
     return deduped
+
+
+def _unsupported_project_tool_reasons(args: list[str]) -> list[str]:
+    if not args:
+        return []
+
+    base = args[0]
+    reasons: list[str] = []
+
+    if base == "poetry":
+        if args[:2] == ["poetry", "run"]:
+            reasons.append(
+                "Direct 'poetry run ...' is unsupported. Use structured project_health with "
+                "operation run_tests, lint_check, format_check, build_docs, or run_evals."
+            )
+            if args == ["poetry", "run", "ruff", "format", "."]:
+                reasons.append(
+                    "Write-formatting is unsupported; only the curated format_check operation "
+                    "renders 'poetry run ruff format --check .'."
+                )
+            if len(args) >= 3 and args[2] in {"deploy", "publish"}:
+                reasons.append("Deploy and publish commands are unsupported.")
+            return _dedupe_preserve_order(reasons)
+
+        if len(args) >= 2 and args[1] in {"add", "update", "install"}:
+            reasons.append(f"'poetry {args[1]}' is unsupported in curated project health.")
+            return reasons
+
+        if len(args) >= 2 and args[1] in {"publish", "deploy"}:
+            reasons.append("Deploy and publish commands are unsupported.")
+            return reasons
+
+    if base in {"pip", "npm", "brew"} and len(args) >= 2 and args[1] == "install":
+        reasons.append(f"'{base} install' is unsupported in curated project health.")
+
+    if base in {"deploy", "publish"}:
+        reasons.append("Deploy and publish commands are unsupported.")
+
+    return _dedupe_preserve_order(reasons)
 
 
 GIT_MUTATION_SUBCOMMANDS = {

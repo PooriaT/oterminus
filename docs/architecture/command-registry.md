@@ -86,14 +86,15 @@ planner is rejected before execution.
 
 ## Project-health pack
 
-The `project` pack exposes the `project_health` command family as planned/experimental metadata
-(maturity `experimental_only`, `direct_supported=false`). It is intentionally excluded from normal
-autocomplete, router suggestions, and planner prompt executable context until follow-up execution
-support graduates the maturity metadata.
+The `project` pack exposes the `project_health` command family as structured executable support
+(maturity `structured`, `direct_supported=false`). It is visible in normal autocomplete, router
+suggestions, planner prompt executable context, discovery, and generated references, but it is not a
+generic Poetry command and direct shell detection remains disabled.
 
 The family accepts only a strict operation enum (`run_tests`, `lint_check`, `format_check`,
 `build_docs`, `run_evals`) and renders curated commands only. Arbitrary `poetry run ...` forms are
-not supported by structured rendering or validation.
+not supported by structured rendering, direct command detection, or validation.
 
-Because project tooling may execute local project code, the command family remains write-risk and
-must keep explicit preview and confirmation when execution support is advertised.
+Because project tooling may execute local project code, the command family is write-risk and keeps
+explicit preview and confirmation. Dependency installation/update, deploy/publish commands, and
+write-formatting (`poetry run ruff format .`) are rejected.
