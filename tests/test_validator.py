@@ -411,6 +411,16 @@ def test_validator_rejects_unsupported_project_tooling_commands_with_clear_reaso
     assert any(expected_reason in reason for reason in result.reasons)
 
 
+@pytest.mark.parametrize("command", ["ls deploy", "cat publish"])
+def test_validator_does_not_treat_deploy_publish_operands_as_commands(command: str) -> None:
+    validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))
+
+    result = validator.validate(make_proposal(command))
+
+    assert result.accepted is True
+    assert not any("Deploy and publish commands are unsupported" in r for r in result.reasons)
+
+
 def test_validator_rejects_env_with_no_operands() -> None:
     validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))
     result = validator.validate(make_proposal("env"))

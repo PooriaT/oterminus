@@ -598,7 +598,7 @@ def _unsupported_project_tool_reasons(args: list[str]) -> list[str]:
                     "Write-formatting is unsupported; only the curated format_check operation "
                     "renders 'poetry run ruff format --check .'."
                 )
-            if any(token in {"deploy", "publish"} for token in args[2:]):
+            if len(args) >= 3 and args[2] in {"deploy", "publish"}:
                 reasons.append("Deploy and publish commands are unsupported.")
             return _dedupe_preserve_order(reasons)
 
@@ -613,7 +613,7 @@ def _unsupported_project_tool_reasons(args: list[str]) -> list[str]:
     if base in {"pip", "npm", "brew"} and len(args) >= 2 and args[1] == "install":
         reasons.append(f"'{base} install' is unsupported in curated project health.")
 
-    if base in {"deploy", "publish"} or any(token in {"deploy", "publish"} for token in args[1:]):
+    if base in {"deploy", "publish"}:
         reasons.append("Deploy and publish commands are unsupported.")
 
     return _dedupe_preserve_order(reasons)
