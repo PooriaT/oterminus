@@ -43,15 +43,16 @@ Files are organized by capability or behavior:
 | `planner_normalization.json` | Planner parsing, normalization, and direct-command boundary behavior. |
 | `process_inspection.json` | Process listing and matching behavior. |
 | `project_health.json` | Curated project test, lint, format, docs, and eval operations. |
+| `release_smoke.json` | Cross-cutting public install and first-use proposal/validation smoke flows. |
 | `system_inspection.json` | System inspection commands and environment-safety behavior. |
 | `text_inspection.json` | Text/statistical inspection commands. |
 | `unsafe_and_blocked.json` | Shell syntax, dangerous commands, unknown families, and policy blocks. |
 
 Fixture IDs must be unique across all files. Prefer readable IDs prefixed with the capability or
-behavior under test, such as `network-...`, `project-health-...`, `direct-...`, `planner-...`, or
-`ambiguity-...`. Keep unsafe or rejected behavior grouped intentionally in the capability file when
-it is capability-specific, or in `unsafe_and_blocked.json` when it exercises generic policy or shell
-syntax blocking.
+behavior under test, such as `network-...`, `project-health-...`, `release-...`, `direct-...`,
+`planner-...`, or `ambiguity-...`. Keep unsafe or rejected behavior grouped intentionally in the
+capability file when it is capability-specific, or in `unsafe_and_blocked.json` when it exercises
+generic policy or shell syntax blocking.
 
 The eval loader reads every `*.json` file in sorted filename order and preserves per-file case order.
 That ordering is deterministic and is covered by unit tests.
@@ -94,12 +95,20 @@ Add or update fixture cases when any of the following change:
 - ambiguity detection behavior
 - structured rendering behavior
 - planner payload shape or parsing behavior
+- public install or first-use behavior that should stay deterministic after packaging
 
 Add both accepted and rejected cases when a capability has meaningful safety boundaries. Newer
 command packs should include at least one representative accepted fixture plus focused rejection
 coverage for unsupported flags, unsafe operations, broad targets, and command-family-specific policy
 boundaries. Keep broad coverage expansion focused; small fixture additions are best paired with the
 behavior change that needs regression protection.
+
+Use `release_smoke.json` for small cross-cutting checks that protect public-install and first-use
+behavior across direct commands, deterministic local planner paths, ambiguity blocking, and a minimal
+planner-fixture path. These are still proposal/validation evals: they do not execute commands, do not
+call Ollama, and do not inspect a real installed package. Keep command-family behavior in the
+capability-specific fixture files, and use CLI tests for subprocess-style entry-point behavior such
+as `oterminus --version`, `oterminus version`, and `oterminus doctor`.
 
 ## Adding cases for newer capabilities
 
@@ -118,6 +127,10 @@ Choose the fixture file by the capability or behavior under test:
 - Put direct shell-like forms in `direct_commands.json` when direct detection is the behavior under
   test. Put generic shell syntax blocks, unknown families, package-manager installs, scans, and
   arbitrary project execution in `unsafe_and_blocked.json`.
+- Put release-smoke cases in `release_smoke.json` only when the behavior crosses capability
+  boundaries or protects public installation, CLI entry-point readiness, dry-run/explain previews,
+  deterministic local planner first-use prompts, ambiguity lifecycle, or planner-fixture validation
+  that should remain available without Ollama.
 - Put vague user requests that must stop before planning in `ambiguity.json`; omit
   `planner_proposal` and set `expected_ambiguity_detected` plus a reason substring. Add a
   non-ambiguous contrast case when a nearby specific request should continue into planning.
@@ -138,5 +151,7 @@ single coverage PR and leave command-manual-level coverage for follow-ups.
 
 - Unit tests verify module behavior, loader errors, deterministic fixture ordering, and edge cases.
 - Eval fixtures verify end-to-end proposal/validation invariants across representative prompts.
+- Release-smoke CLI tests cover entry-point behavior that the eval harness does not model, including
+  version and doctor commands.
 - CI runs `poetry run oterminus-evals` alongside tests, lint, formatting, docs, and generated-doc
   checks.

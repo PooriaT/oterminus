@@ -1,0 +1,116 @@
+[
+  {
+    "id": "release-direct-which-oterminus",
+    "user_input": "which oterminus",
+    "expected_mode": "structured",
+    "expected_command_family": "which",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "which oterminus",
+    "expected_argv": [
+      "which",
+      "oterminus"
+    ]
+  },
+  {
+    "id": "release-direct-pwd",
+    "user_input": "pwd",
+    "expected_mode": "structured",
+    "expected_command_family": "pwd",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "pwd",
+    "expected_argv": [
+      "pwd"
+    ]
+  },
+  {
+    "id": "release-local-print-working-directory",
+    "user_input": "print working directory",
+    "expected_mode": "structured",
+    "expected_command_family": "pwd",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "pwd",
+    "expected_argv": [
+      "pwd"
+    ]
+  },
+  {
+    "id": "release-local-list-files",
+    "user_input": "list files",
+    "expected_mode": "structured",
+    "expected_command_family": "ls",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "ls .",
+    "expected_argv": [
+      "ls",
+      "."
+    ]
+  },
+  {
+    "id": "release-local-disk-usage",
+    "user_input": "show disk usage",
+    "expected_mode": "structured",
+    "expected_command_family": "df",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "df -h",
+    "expected_argv": [
+      "df",
+      "-h"
+    ]
+  },
+  {
+    "id": "release-ambiguity-fix-project",
+    "user_input": "fix this project",
+    "expected_ambiguity_detected": true,
+    "expected_ambiguity_reason_contains": "Matched ambiguous phrase"
+  },
+  {
+    "id": "release-ambiguity-delete-unnecessary-files",
+    "user_input": "delete unnecessary files",
+    "expected_ambiguity_detected": true,
+    "expected_ambiguity_reason_contains": "Matched ambiguous phrase",
+    "expected_ambiguity_safe_options": [
+      "list large files",
+      "list recently modified files",
+      "inspect permissions",
+      "show temporary-looking files",
+      "show project files"
+    ]
+  },
+  {
+    "id": "release-planner-readme-line-count",
+    "user_input": "count lines in README",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "wc",
+      "arguments": {
+        "paths": [
+          "README.md"
+        ],
+        "lines": true,
+        "words": false,
+        "bytes": false
+      },
+      "summary": "count README lines",
+      "explanation": "deterministic release smoke fixture",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "structured",
+    "expected_command_family": "wc",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "wc -l README.md",
+    "expected_argv": [
+      "wc",
+      "-l",
+      "README.md"
+    ]
+  }
+]
