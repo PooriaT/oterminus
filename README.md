@@ -197,6 +197,8 @@ published to GitHub Pages after merges to `main` (once Pages is enabled in repos
 - User guide: [`docs/product/user-guide.md`](docs/product/user-guide.md)
 - Configuration reference: [`docs/reference/config.md`](docs/reference/config.md)
 - Contributor workflow: [`docs/contributing.md`](docs/contributing.md)
+- Changelog: [`CHANGELOG.md`](CHANGELOG.md)
+- Release process: [`docs/release.md`](docs/release.md)
 - Contributor command-family guide:
   [`docs/adding-command-families.md`](docs/adding-command-families.md)
 - Evals docs: [`docs/architecture/evals.md`](docs/architecture/evals.md)
