@@ -3,6 +3,7 @@ from __future__ import annotations
 from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
 
+import pytest
 import tomllib
 
 from oterminus.evals import default_fixtures_dir
@@ -53,6 +54,14 @@ def test_validate_package_install_checks_cli_version(monkeypatch, tmp_path: Path
             return subprocess.CompletedProcess(cmd, 0, stdout="0.1.1\n", stderr="")
         if cmd[-1] in {"--version", "version"}:
             return subprocess.CompletedProcess(cmd, 0, stdout="oterminus 0.1.1\n", stderr="")
+        if cmd[-2:] == ["completion", "zsh"]:
+            return subprocess.CompletedProcess(cmd, 0, stdout="#compdef oterminus\n", stderr="")
+        if cmd[-2:] == ["completion", "bash"]:
+            return subprocess.CompletedProcess(
+                cmd, 0, stdout="complete -F _oterminus_completion oterminus\n", stderr=""
+            )
+        if cmd[-2:] == ["completion", "fish"]:
+            return subprocess.CompletedProcess(cmd, 0, stdout="complete -c oterminus\n", stderr="")
         return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
 
     monkeypatch.setattr(validate_package_install, "DIST_DIR", dist_dir)
@@ -62,7 +71,49 @@ def test_validate_package_install_checks_cli_version(monkeypatch, tmp_path: Path
     assert validate_package_install.main() == 0
     assert any(cmd[-1] == "--version" for cmd in recorded)
     assert any(cmd[-1] == "version" for cmd in recorded)
+    assert any(cmd[-2:] == ["completion", "zsh"] for cmd in recorded)
+    assert any(cmd[-2:] == ["completion", "bash"] for cmd in recorded)
+    assert any(cmd[-2:] == ["completion", "fish"] for cmd in recorded)
     assert any(env and "OTERMINUS_CONFIG_PATH" in env for env in command_envs)
+
+
+@pytest.mark.parametrize(
+    ("shell", "stdout"),
+    (
+        ("zsh", "#compdef oterminus\n"),
+        ("bash", "complete -F _oterminus_completion oterminus\n"),
+        ("fish", "complete -c oterminus\n"),
+    ),
+)
+def test_validate_package_install_accepts_completion_output(shell: str, stdout: str) -> None:
+    import subprocess
+
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "validate_package_install.py"
+    spec = spec_from_file_location("validate_package_install", module_path)
+    assert spec and spec.loader
+    validate_package_install = module_from_spec(spec)
+    spec.loader.exec_module(validate_package_install)
+
+    proc = subprocess.CompletedProcess(
+        ["oterminus", "completion", shell], 0, stdout=stdout, stderr=""
+    )
+
+    validate_package_install.validate_completion_output(shell, proc)
+
+
+def test_validate_package_install_rejects_empty_completion_output() -> None:
+    import subprocess
+
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "validate_package_install.py"
+    spec = spec_from_file_location("validate_package_install", module_path)
+    assert spec and spec.loader
+    validate_package_install = module_from_spec(spec)
+    spec.loader.exec_module(validate_package_install)
+
+    proc = subprocess.CompletedProcess(["oterminus", "completion", "zsh"], 0, stdout="", stderr="")
+
+    with pytest.raises(SystemExit):
+        validate_package_install.validate_completion_output("zsh", proc)
 
 
 def test_package_validation_smoke_env_uses_temp_paths(tmp_path: Path) -> None:

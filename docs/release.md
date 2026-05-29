@@ -213,8 +213,8 @@ not install or start Ollama; natural-language planning still depends on a ready 
 although direct commands and some deterministic local paths may not need a live model.
 
 Release verification should not add or rely on automatic shell startup-file changes. OTerminus
-currently supports REPL Tab autocomplete via `prompt_toolkit`, but does not ship zsh, bash, or fish
-shell-level completion scripts.
+supports REPL Tab autocomplete via `prompt_toolkit` and prints opt-in zsh, bash, and fish
+shell-level completion scripts with `oterminus completion <shell>`.
 
 Note: `oterminus doctor` may exit non-zero in clean or CI environments if Ollama is unavailable;
 this still confirms the installed CLI is callable and that readiness failures are surfaced clearly.
