@@ -93,9 +93,11 @@ create a log file.
 
 ## Diagnostics visibility
 
-`poetry run oterminus doctor` reports the current configuration and readiness state that affects
-startup, including whether the configured model is available and whether the audit path is usable.
-It does not introduce additional configuration keys or environment variables.
+`oterminus doctor` reports the current configuration and readiness state that affects startup,
+including whether the configured model is available and whether the config, audit, and persistent
+history paths are usable. If persistent history is disabled, doctor reports that state and does not
+create or write a history file. It does not introduce additional configuration keys or environment
+variables.
 
 ## Example
 

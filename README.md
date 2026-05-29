@@ -70,11 +70,12 @@ oterminus
 ```
 
 Use `oterminus --version` after install or upgrade to confirm the installed package version. Use
-`oterminus doctor` after installation to check platform, CLI, configuration, and Ollama readiness
-before your first natural-language planning request. PyPI installation does not install or start an
-Ollama model for you. Direct commands and some deterministic local paths may not need a live model,
-but first-run natural-language usage depends on Ollama being installed, running, and having a local
-model available.
+`oterminus doctor` after installation to check the package/runtime environment, pipx or virtualenv
+context, platform, configuration files, audit/history paths, and Ollama readiness before your first
+natural-language planning request. PyPI installation does not install or start an Ollama model for
+you. Direct commands and some deterministic local paths may not need a live model, but first-run
+natural-language usage depends on Ollama being installed, running, and having a local model
+available.
 
 Upgrade or uninstall the isolated CLI with:
 
