@@ -551,7 +551,8 @@ def _check_history_path(config: AppConfig | None) -> CheckResult:
             message="Persistent history is disabled.",
         )
 
-    history_dir = config.history_path.expanduser().parent
+    history_path = config.history_path.expanduser()
+    history_dir = history_path.parent
     try:
         history_dir.mkdir(parents=True, exist_ok=True)
     except OSError as exc:
@@ -560,6 +561,30 @@ def _check_history_path(config: AppConfig | None) -> CheckResult:
             status=Status.FAIL,
             message=f"Cannot create history directory: {history_dir}.",
             guidance=f"Set OTERMINUS_HISTORY_PATH to a writable location. Details: {exc}",
+            critical=True,
+        )
+
+    if history_path.exists():
+        if history_path.is_dir():
+            return CheckResult(
+                name="history path",
+                status=Status.FAIL,
+                message=f"History path points to a directory, not a JSONL file: {history_path}.",
+                guidance="Set OTERMINUS_HISTORY_PATH to a writable JSONL file path.",
+                critical=True,
+            )
+        if os.access(history_path, os.W_OK):
+            return CheckResult(
+                name="history path",
+                status=Status.PASS,
+                message=f"History file writable: {history_path}.",
+                critical=True,
+            )
+        return CheckResult(
+            name="history path",
+            status=Status.FAIL,
+            message=f"History file is not writable: {history_path}.",
+            guidance="Grant write permission to the history file or set OTERMINUS_HISTORY_PATH to a writable location.",
             critical=True,
         )
 

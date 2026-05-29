@@ -353,6 +353,53 @@ def test_doctor_checks_unwritable_history_path(monkeypatch, tmp_path: Path) -> N
     assert _status_by_name(report, "history path").status is Status.FAIL
 
 
+def test_doctor_checks_existing_history_file_writability(monkeypatch, tmp_path: Path) -> None:
+    _base_monkeypatches(monkeypatch, tmp_path)
+    history_path = tmp_path / "history" / "history.jsonl"
+    history_path.parent.mkdir()
+    history_path.write_text("", encoding="utf-8")
+    config = AppConfig(
+        model="gemma3:latest",
+        audit_enabled=True,
+        audit_log_path=tmp_path / "audit" / "audit.jsonl",
+        history_enabled=True,
+        history_path=history_path,
+    )
+    monkeypatch.setattr("oterminus.doctor.load_config", lambda: config)
+    monkeypatch.setattr(
+        "oterminus.doctor.os.access",
+        lambda path, mode: False if Path(path) == history_path else True,
+    )
+
+    report = run_doctor()
+
+    history = _status_by_name(report, "history path")
+    assert history.status is Status.FAIL
+    assert "file is not writable" in history.message
+
+
+def test_doctor_rejects_history_path_that_is_existing_directory(
+    monkeypatch, tmp_path: Path
+) -> None:
+    _base_monkeypatches(monkeypatch, tmp_path)
+    history_path = tmp_path / "history-dir"
+    history_path.mkdir()
+    config = AppConfig(
+        model="gemma3:latest",
+        audit_enabled=True,
+        audit_log_path=tmp_path / "audit" / "audit.jsonl",
+        history_enabled=True,
+        history_path=history_path,
+    )
+    monkeypatch.setattr("oterminus.doctor.load_config", lambda: config)
+
+    report = run_doctor()
+
+    history = _status_by_name(report, "history path")
+    assert history.status is Status.FAIL
+    assert "points to a directory" in history.message
+
+
 def test_doctor_checks_registry_integrity(monkeypatch, tmp_path: Path) -> None:
     _base_monkeypatches(monkeypatch, tmp_path)
 
