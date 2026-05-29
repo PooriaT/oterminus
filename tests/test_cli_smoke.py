@@ -117,7 +117,7 @@ def test_repl_discovery_respects_disabled_packs() -> None:
     assert "network_diagnostics" not in capabilities
     assert "destructive_operations" not in capabilities
     assert "ping" not in commands
-    assert "rm" not in commands
+    assert "\n  - rm" not in commands
     assert "Unknown help target" in help_ping
 
 
@@ -126,7 +126,7 @@ def test_repl_help_for_capability_includes_commands_and_examples() -> None:
 
     assert output is not None
     assert "Capability: filesystem_inspection" in output
-    assert "Supported command families" in output
+    assert "Command families" in output
     assert "Examples:" in output
 
 
@@ -143,7 +143,7 @@ def test_repl_examples_includes_grouped_capabilities() -> None:
     output = handle_repl_discovery_command("examples")
 
     assert output is not None
-    assert "Example requests by capability" in output
+    assert "Example requests by normal executable capability" in output
     assert "filesystem_inspection" in output
 
 

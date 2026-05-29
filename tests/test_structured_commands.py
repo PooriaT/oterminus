@@ -295,6 +295,36 @@ def test_supported_structured_families_are_curated(command_family: str) -> None:
             ("zip", "-r", "backup.zip", "src", "README.md"),
             "zip -r backup.zip src README.md",
         ),
+        (
+            "project_health",
+            {"operation": "run_tests"},
+            ("poetry", "run", "pytest"),
+            "poetry run pytest",
+        ),
+        (
+            "project_health",
+            {"operation": "lint_check"},
+            ("poetry", "run", "ruff", "check", "."),
+            "poetry run ruff check .",
+        ),
+        (
+            "project_health",
+            {"operation": "format_check"},
+            ("poetry", "run", "ruff", "format", "--check", "."),
+            "poetry run ruff format --check .",
+        ),
+        (
+            "project_health",
+            {"operation": "build_docs"},
+            ("poetry", "run", "mkdocs", "build", "--strict"),
+            "poetry run mkdocs build --strict",
+        ),
+        (
+            "project_health",
+            {"operation": "run_evals"},
+            ("poetry", "run", "oterminus-evals"),
+            "poetry run oterminus-evals",
+        ),
     ],
 )
 def test_render_structured_command(
@@ -469,6 +499,20 @@ def test_parse_raw_command_as_structured(
 def test_render_structured_command_rejects_invalid_arguments() -> None:
     with pytest.raises(StructuredCommandError):
         render_structured_command("chmod", {"path": "run.sh", "mode": "u+x"})
+
+
+@pytest.mark.parametrize(
+    "arguments",
+    [
+        {},
+        {"operation": "poetry_run_pytest"},
+        {"operation": "run_tests", "command": "poetry run pytest tests"},
+        {"operation": "format_write"},
+    ],
+)
+def test_render_structured_project_health_rejects_invalid_arguments(arguments: dict) -> None:
+    with pytest.raises(StructuredCommandError):
+        render_structured_command("project_health", arguments)
 
 
 def test_render_structured_command_rejects_open_url_target() -> None:

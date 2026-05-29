@@ -55,7 +55,8 @@ Set `maturity_level` intentionally:
 - `direct_only`: command can be accepted only as direct user command, but no structured renderer
   exists yet.
 - `experimental_only`: command is allowed only through constrained experimental path (higher
-  friction).
+  friction) when `direct_supported=true`; with `direct_supported=false`, it is planned/metadata-only
+  and must not be advertised as normal executable support.
 - `blocked`: explicitly tracked but blocked from execution.
 
 Use these rules: - Pick **`structured`** when command behavior can be represented with a stable
@@ -65,6 +66,9 @@ temporary gap and strong constraints remain. - Pick **`blocked`** for privileged
 commands that should never execute in curated policy.
 
 If uncertain, start stricter (`experimental_only` or `blocked`) and relax later with tests.
+When a planned/metadata-only capability graduates to executable support, update `maturity_level`,
+`direct_supported` if direct command input is supported, examples, prompt coverage,
+discovery/completion tests, generated references, and docs in the same PR.
 
 ## 3) Assign `risk_level` with justification
 Use least privilege:
@@ -167,6 +171,8 @@ project-health, or unsafe coverage into follow-up PRs.
 If your change introduces a new command/capability visible to users:
 
 - verify completion behavior still works for first-token suggestions and capability hints
+- keep planned/metadata-only capabilities out of executable autocomplete and planner context until
+  maturity metadata is updated
 - add/adjust completion tests if needed
 - update README and contributor docs when behavior/policy changes
 
@@ -191,6 +197,8 @@ poetry run mkdocs build --strict
 ```
 
 Do not edit command tables in those reference pages by hand; update registry specs and regenerate.
+Generated reference tables must show risk, maturity/status, direct support, examples, and notes so
+planned/experimental capabilities are not mistaken for fully supported workflows.
 
 ## Acceptance checklist
 
@@ -198,6 +206,8 @@ Before merging, confirm all of the following:
 
 - [ ] Command has a `capability_id`.
 - [ ] Risk level is explicitly justified.
+- [ ] Maturity/status accurately reflects whether the command is normal executable,
+  direct-only, experimental fallback, planned/metadata-only, or blocked.
 - [ ] Allowed flags are minimal and intentional.
 - [ ] Dangerous flags are marked when applicable.
 - [ ] Network-touching commands set `network_touching=True`.
@@ -244,3 +254,5 @@ support or add Windows classifiers unless the command behavior is implemented an
 If a family can execute local project code through standard tooling (tests, docs, evals), treat it as
 write-risk metadata at minimum, document this explicitly in `notes`, and keep operation choices
 enumerated/curated. Do not introduce a generic shell escape hatch such as arbitrary `poetry run ...`.
+If only structured natural-language support is intended, keep `direct_supported=false` and add tests
+showing exact direct command strings are not accepted as a broad project-tooling shortcut.

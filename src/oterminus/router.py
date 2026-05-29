@@ -7,6 +7,7 @@ from oterminus.commands import (
     COMMAND_REGISTRY,
     get_commands_by_capability,
     get_enabled_command_registry,
+    is_normal_executable_spec,
     supported_capabilities,
 )
 from oterminus.models import RiskLevel
@@ -225,13 +226,16 @@ def _filter_route_result(
     disabled_pack_ids: frozenset[str] | None,
     platform_id: str | None,
 ) -> RouteResult:
-    if not disabled_pack_ids and platform_id is None:
-        return route
-
-    enabled_commands = set(get_enabled_command_registry(disabled_pack_ids, platform_id))
+    enabled_commands = {
+        name
+        for name, spec in get_enabled_command_registry(disabled_pack_ids, platform_id).items()
+        if is_normal_executable_spec(spec)
+    }
     enabled_capabilities = {
         capability.capability_id
-        for capability in supported_capabilities(disabled_pack_ids, platform_id)
+        for capability in supported_capabilities(
+            disabled_pack_ids, platform_id, normal_executable_only=True
+        )
     }
     suggested_families = tuple(
         family for family in route.suggested_families if family in enabled_commands
@@ -328,7 +332,7 @@ def _is_hint_eligible_family(family: str) -> bool:
     spec = COMMAND_REGISTRY.get(family)
     if spec is None:
         return False
-    return spec.risk_level != RiskLevel.DANGEROUS
+    return spec.risk_level != RiskLevel.DANGEROUS and is_normal_executable_spec(spec)
 
 
 def _category_affinity_score(family: str, category: str) -> int:

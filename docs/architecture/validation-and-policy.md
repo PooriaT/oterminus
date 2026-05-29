@@ -103,6 +103,8 @@ structured rendering of the curated operations (`run_tests`, `lint_check`, `form
 `build_docs`, `run_evals`) into exact command argv forms.
 
 Validation rejects arbitrary project tooling commands (for example unsupported `poetry run ...`,
-package installation/update commands, and publish/deploy commands). Accepted project-health proposals
-carry a warning that local project code/tooling may execute and remain write-risk with explicit
-preview + confirmation requirements.
+package installation/update commands, publish/deploy commands, and write-formatting such as
+`poetry run ruff format .`). Accepted project-health proposals carry a warning that local project
+code/tooling may execute and remain write-risk with explicit preview + confirmation requirements.
+Only `poetry run ruff format --check .` is supported for formatting, and only via the
+`format_check` structured operation.

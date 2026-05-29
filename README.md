@@ -160,6 +160,10 @@ OTerminus supports two first-class proposal modes:
   safely as structured arguments. It is still strictly validated, previewed, and confirmed before
   execution.
 
+Capability maturity/status comes from registry metadata. Planned or metadata-only capabilities are
+shown in detailed references/help with warnings, but are not advertised as normal executable
+autocomplete or planner actions until their maturity metadata is updated.
+
 See [structured rendering](docs/architecture/structured-rendering.md), [routing and
 planning](docs/architecture/routing-and-planning.md), and the [request
 lifecycle](docs/architecture/request-lifecycle.md) for details.
@@ -170,6 +174,14 @@ The `network_diagnostics` capability supports only fixed-count ping, HTTP HEAD (
 and `nslookup`. These commands contact external hosts, show a network metadata warning in preview,
 and still require confirmation. OTerminus does not support POST/PUT/DELETE requests, secret headers,
 downloads, scanning, SSH, or arbitrary network automation.
+
+## Project health
+
+The `project_health` capability supports curated developer checks through structured operations:
+tests, lint checks, format checks, docs builds, and evals. These render to exact `poetry run ...`
+commands, may execute local project code, and always go through preview, validation, policy, and
+confirmation. OTerminus does not support arbitrary Poetry commands, installs/updates,
+deploy/publish commands, or write-formatting such as `ruff format .`.
 
 ## Documentation
 

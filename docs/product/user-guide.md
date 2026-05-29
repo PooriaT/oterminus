@@ -545,17 +545,24 @@ For exact environment variables, see [Configuration reference](../reference/conf
 
 ## Project health capability
 
-The `project_health` capability provides curated executable checks (`run_tests`, `lint_check`,
-`format_check`, `build_docs`, `run_evals`) through deterministic structured rendering.
+The `project_health` capability is a supported curated developer workflow. It uses structured
+operations only and renders exact project-tooling commands:
 
-Supported natural-language requests include: run tests, check linting, check formatting, build
-docs, and run evals.
+- `run_tests` -> `poetry run pytest`
+- `lint_check` -> `poetry run ruff check .`
+- `format_check` -> `poetry run ruff format --check .`
+- `build_docs` -> `poetry run mkdocs build --strict`
+- `run_evals` -> `poetry run oterminus-evals`
+
+Clear requests such as `run tests`, `check linting`, `run format check`, `build docs`, and
+`run evals` can be planned deterministically without Ollama. They still only produce a proposal:
+validation, preview, policy checks, and explicit confirmation happen before any execution.
 
 Unsupported requests include dependency/package management (`poetry add`, `poetry install`,
 `poetry update`, `pip install`, `npm install`, `brew install`), write-formatting (`ruff format .`),
 deploy/publish operations, and arbitrary `poetry run ...` commands.
 
-These operations may execute local project code and tooling, so preview and explicit confirmation
-are always required. This capability is not arbitrary shell support.
+These operations may execute local project code and tooling. This capability is not arbitrary shell
+support or arbitrary Poetry command support.
 
 OTerminus also has a conservative deterministic local planner for a small set of clear natural-language requests (for example: `show current directory`, `show files`, `show disk usage`). This fast path only builds structured proposals; it never executes directly and still requires validation, preview, and confirmation.

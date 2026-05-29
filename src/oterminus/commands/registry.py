@@ -15,7 +15,7 @@ from .process import COMMAND_PACK as PROCESS_COMMANDS
 from .project import COMMAND_PACK as PROJECT_COMMANDS
 from .system import COMMAND_PACK as SYSTEM_COMMANDS
 from .text import COMMAND_PACK as TEXT_COMMANDS
-from .types import CommandSpec, DirectDetectionMode
+from .types import CommandSpec, DirectDetectionMode, MaturityLevel, maturity_status_label
 
 
 @dataclass(frozen=True, slots=True)
@@ -27,6 +27,7 @@ class CapabilitySummary:
     commands: tuple[str, ...]
     aliases: tuple[str, ...]
     network_touching: bool = False
+    normal_executable: bool = True
 
 
 @dataclass(frozen=True, slots=True)
@@ -190,9 +191,29 @@ def get_enabled_command_spec(
 
 
 def supported_base_commands(
-    disabled_pack_ids: frozenset[str] | None = None, platform_id: str | None = None
+    disabled_pack_ids: frozenset[str] | None = None,
+    platform_id: str | None = None,
+    *,
+    normal_executable_only: bool = False,
 ) -> tuple[str, ...]:
-    return tuple(sorted(get_enabled_command_registry(disabled_pack_ids, platform_id)))
+    registry = get_enabled_command_registry(disabled_pack_ids, platform_id)
+    if normal_executable_only:
+        registry = {
+            name: spec for name, spec in registry.items() if is_normal_executable_spec(spec)
+        }
+    return tuple(sorted(registry))
+
+
+def is_planned_metadata_only_spec(spec: CommandSpec) -> bool:
+    return spec.maturity_level == MaturityLevel.EXPERIMENTAL_ONLY and not spec.direct_supported
+
+
+def is_normal_executable_spec(spec: CommandSpec) -> bool:
+    return spec.maturity_level != MaturityLevel.BLOCKED and not is_planned_metadata_only_spec(spec)
+
+
+def command_maturity_status(spec: CommandSpec) -> str:
+    return maturity_status_label(spec.maturity_level, direct_supported=spec.direct_supported)
 
 
 def supported_categories() -> tuple[str, ...]:
@@ -210,8 +231,14 @@ def get_commands_by_capability(capability_id: str) -> tuple[str, ...]:
 def supported_capabilities(
     disabled_pack_ids: frozenset[str] | None = None,
     platform_id: str | None = None,
+    *,
+    normal_executable_only: bool = False,
 ) -> tuple[CapabilitySummary, ...]:
     registry = get_enabled_command_registry(disabled_pack_ids, platform_id)
+    if normal_executable_only:
+        registry = {
+            name: spec for name, spec in registry.items() if is_normal_executable_spec(spec)
+        }
     capability_ids = sorted({spec.capability_id for spec in registry.values()})
     summaries: list[CapabilitySummary] = []
     for capability_id in capability_ids:
@@ -221,6 +248,7 @@ def supported_capabilities(
         maturity_levels = sorted({spec.maturity_level.value for spec in specs})
         commands = tuple(sorted(spec.name for spec in specs))
         network_touching = any(spec.network_touching for spec in specs)
+        normal_executable = any(is_normal_executable_spec(spec) for spec in specs)
         summaries.append(
             CapabilitySummary(
                 capability_id=capability_id,
@@ -230,6 +258,7 @@ def supported_capabilities(
                 commands=commands,
                 aliases=tuple(aliases),
                 network_touching=network_touching,
+                normal_executable=normal_executable,
             )
         )
     return tuple(summaries)
@@ -242,8 +271,14 @@ def command_examples_for_prompt(
     platform_id: str | None = None,
 ) -> str:
     rows: list[str] = []
-    registry = get_enabled_command_registry(disabled_pack_ids, platform_id)
-    for capability in supported_capabilities(disabled_pack_ids, platform_id):
+    registry = {
+        name: spec
+        for name, spec in get_enabled_command_registry(disabled_pack_ids, platform_id).items()
+        if is_normal_executable_spec(spec)
+    }
+    for capability in supported_capabilities(
+        disabled_pack_ids, platform_id, normal_executable_only=True
+    ):
         if not capability.commands:
             continue
         examples = []
@@ -272,7 +307,11 @@ def capability_summary_for_prompt(
     platform_id: str | None = None,
 ) -> str:
     lines: list[str] = []
-    for capability in supported_capabilities(disabled_pack_ids, platform_id)[:max_capabilities]:
+    for capability in supported_capabilities(
+        disabled_pack_ids,
+        platform_id,
+        normal_executable_only=True,
+    )[:max_capabilities]:
         command_sample = ", ".join(capability.commands[:max_commands_per_capability])
         alias_sample = (
             ", ".join(capability.aliases[:max_aliases_per_capability])
@@ -289,7 +328,7 @@ def capability_summary_for_prompt(
 
 def command_examples_for_readme() -> str:
     lines: list[str] = []
-    for capability in supported_capabilities():
+    for capability in supported_capabilities(normal_executable_only=True):
         lines.append(f"- `{capability.capability_id}`: {capability.capability_description}")
         lines.append(f"  - Commands: {', '.join(f'`{name}`' for name in capability.commands)}")
         if capability.aliases:

@@ -75,6 +75,16 @@ def plan_locally(
     ):
         return _build_match("git_status", "git", {"operation": "status_short"}, disabled_pack_ids)
 
+    if route and route.category == "project_health":
+        operation = _project_health_operation(text)
+        if operation is not None:
+            return _build_match(
+                f"project_health_{operation}",
+                "project_health",
+                {"operation": operation},
+                disabled_pack_ids,
+            )
+
     return None
 
 
@@ -100,3 +110,22 @@ def _build_match(
         }
     )
     return LocalPlannerMatch(proposal=proposal, rule_id=rule_id)
+
+
+def _project_health_operation(text: str) -> str | None:
+    if text in {"run tests", "run the test suite", "run project tests"}:
+        return "run_tests"
+    if text in {"check linting", "run ruff check", "check ruff", "run project lint"}:
+        return "lint_check"
+    if text in {
+        "check formatting",
+        "check if formatting is okay",
+        "run format check",
+        "check project formatting",
+    }:
+        return "format_check"
+    if text in {"build docs", "check docs build", "run mkdocs build", "build project docs"}:
+        return "build_docs"
+    if text in {"run evals", "run oterminus evals", "run project evals"}:
+        return "run_evals"
+    return None

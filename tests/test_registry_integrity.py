@@ -7,6 +7,7 @@ from oterminus.commands import (
     COMMAND_PACKS,
     COMMAND_REGISTRY,
     MaturityLevel,
+    is_normal_executable_spec,
     supported_base_commands,
     supported_categories,
 )
@@ -103,8 +104,11 @@ def test_supported_categories_match_expected_registry_values() -> None:
 def test_autocomplete_uses_registry_metadata_for_first_token(tmp_path: Path) -> None:
     candidates = _completion_texts(build_repl_completions("", cwd=tmp_path))
 
-    for command_name in supported_base_commands():
+    for command_name in supported_base_commands(normal_executable_only=True):
         assert command_name in candidates
+    for command_name in supported_base_commands():
+        if not is_normal_executable_spec(COMMAND_REGISTRY[command_name]):
+            assert command_name not in candidates
 
 
 def test_planner_system_prompt_stays_compact() -> None:

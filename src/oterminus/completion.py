@@ -111,11 +111,17 @@ def build_repl_completions(
 
     if is_first_token:
         suggestions.update(REPL_BUILTINS)
-        suggestions.update(supported_base_commands(disabled_pack_ids, platform_id))
-        for capability in supported_capabilities(disabled_pack_ids, platform_id):
+        suggestions.update(
+            supported_base_commands(disabled_pack_ids, platform_id, normal_executable_only=True)
+        )
+        for capability in supported_capabilities(
+            disabled_pack_ids, platform_id, normal_executable_only=True
+        ):
             suggestions.add(capability.capability_id)
         if include_capability_hints:
-            for capability in supported_capabilities(disabled_pack_ids, platform_id):
+            for capability in supported_capabilities(
+                disabled_pack_ids, platform_id, normal_executable_only=True
+            ):
                 suggestions.add(capability.capability_label)
                 suggestions.update(capability.aliases)
         suggestions.update(NL_TEMPLATES)

@@ -29,8 +29,23 @@ def test_network_diagnostics_help_exposes_warning_and_supported_commands() -> No
 def test_project_health_help_exposes_supported_operations_and_warning() -> None:
     output = render_capability_help("project_health")
     assert "Capability: project_health" in output
+    assert "Normal executable support: yes" in output
+    assert "structured" in output
     assert "may execute local project code or tooling" in output
     assert "run_tests, lint_check, format_check, build_docs, run_evals" in output
+
+
+def test_project_health_listed_as_normal_executable_command_and_example() -> None:
+    commands = render_commands()
+    examples = render_examples()
+    command_help = render_command_help("project_health")
+
+    assert "project_health:\n  - project_health" in commands
+    assert "run tests" in examples
+    assert "Status: structured (normal executable support)" in command_help
+    assert "Direct support: no" in command_help
+    assert "Normal executable support: yes" in command_help
+    assert "Arbitrary 'poetry run ...'" in command_help
 
 
 def test_discovery_hides_profile_disabled_capabilities_and_commands() -> None:
@@ -45,7 +60,7 @@ def test_discovery_hides_profile_disabled_capabilities_and_commands() -> None:
     assert "network_diagnostics" not in examples
     assert "ping" not in commands
     assert "destructive_operations" not in capabilities
-    assert "rm" not in commands
+    assert "\n  - rm" not in commands
     assert "git_inspection" in capabilities
 
 

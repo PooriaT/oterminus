@@ -302,6 +302,125 @@ def test_validator_accepts_structured_project_health_command() -> None:
     assert any("may execute project code" in warning for warning in result.warnings)
 
 
+@pytest.mark.parametrize(
+    ("operation", "expected_argv"),
+    [
+        ("run_tests", ["poetry", "run", "pytest"]),
+        ("lint_check", ["poetry", "run", "ruff", "check", "."]),
+        ("format_check", ["poetry", "run", "ruff", "format", "--check", "."]),
+        ("build_docs", ["poetry", "run", "mkdocs", "build", "--strict"]),
+        ("run_evals", ["poetry", "run", "oterminus-evals"]),
+    ],
+)
+def test_validator_accepts_all_project_health_operations(
+    operation: str, expected_argv: list[str]
+) -> None:
+    validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))
+    proposal = Proposal(
+        action_type=ActionType.SHELL_COMMAND,
+        mode=ProposalMode.STRUCTURED,
+        command_family="project_health",
+        arguments={"operation": operation},
+        summary="project health",
+        explanation="curated project health operation",
+        risk_level=RiskLevel.WRITE,
+        needs_confirmation=True,
+        notes=[],
+    )
+
+    result = validator.validate(proposal)
+
+    assert result.accepted is True
+    assert result.risk_level == RiskLevel.WRITE
+    assert result.argv == expected_argv
+    assert any("may execute project code" in warning for warning in result.warnings)
+
+
+def test_validator_rejects_project_health_without_confirmation() -> None:
+    validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))
+    proposal = Proposal(
+        action_type=ActionType.SHELL_COMMAND,
+        mode=ProposalMode.STRUCTURED,
+        command_family="project_health",
+        arguments={"operation": "run_tests"},
+        summary="project health",
+        explanation="curated project health operation",
+        risk_level=RiskLevel.WRITE,
+        needs_confirmation=False,
+        notes=[],
+    )
+
+    result = validator.validate(proposal)
+
+    assert result.accepted is False
+    assert any("must require explicit confirmation" in reason for reason in result.reasons)
+
+
+def test_validator_rejects_project_health_when_project_pack_disabled() -> None:
+    validator = Validator(
+        PolicyConfig(
+            mode=RiskLevel.WRITE,
+            allow_dangerous=False,
+            disabled_command_packs=frozenset({"project"}),
+        )
+    )
+    proposal = Proposal(
+        action_type=ActionType.SHELL_COMMAND,
+        mode=ProposalMode.STRUCTURED,
+        command_family="project_health",
+        arguments={"operation": "run_tests"},
+        summary="project health",
+        explanation="curated project health operation",
+        risk_level=RiskLevel.WRITE,
+        needs_confirmation=True,
+        notes=[],
+    )
+
+    result = validator.validate(proposal)
+
+    assert result.accepted is False
+    assert any("command pack 'project'" in reason for reason in result.reasons)
+
+
+@pytest.mark.parametrize(
+    ("command", "expected_reason"),
+    [
+        ("poetry run pytest", "Direct 'poetry run ...' is unsupported"),
+        ("poetry run pytest tests/test_validator.py", "Direct 'poetry run ...' is unsupported"),
+        ("poetry run mypy", "Direct 'poetry run ...' is unsupported"),
+        ("poetry run ruff format .", "Write-formatting is unsupported"),
+        ("poetry add requests", "'poetry add' is unsupported"),
+        ("poetry update", "'poetry update' is unsupported"),
+        ("poetry install", "'poetry install' is unsupported"),
+        ("pip install requests", "'pip install' is unsupported"),
+        ("npm install", "'npm install' is unsupported"),
+        ("brew install wget", "'brew install' is unsupported"),
+        ("poetry publish", "Deploy and publish commands are unsupported"),
+        ("poetry run deploy", "Deploy and publish commands are unsupported"),
+    ],
+)
+def test_validator_rejects_unsupported_project_tooling_commands_with_clear_reason(
+    command: str, expected_reason: str
+) -> None:
+    validator = Validator(PolicyConfig(mode=RiskLevel.DANGEROUS, allow_dangerous=True))
+
+    result = validator.validate(make_proposal(command))
+
+    assert result.accepted is False
+    assert result.risk_level == RiskLevel.DANGEROUS
+    assert any(expected_reason in reason for reason in result.reasons)
+
+
+@pytest.mark.parametrize("command", ["ls deploy", "cat publish"])
+def test_validator_does_not_treat_deploy_publish_operands_as_commands(command: str) -> None:
+    validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))
+
+    result = validator.validate(make_proposal(command))
+
+    assert result.accepted is True
+    assert not any("Deploy and publish commands are unsupported" in r for r in result.reasons)
+
+
 def test_validator_rejects_env_with_no_operands() -> None:
     validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))
     result = validator.validate(make_proposal("env"))

@@ -15,6 +15,27 @@ def test_route_request_common_buckets() -> None:
     assert route_request("run mkdocs build").category == "project_health"
 
 
+def test_route_request_project_health_supported_requests() -> None:
+    route = route_request("run the test suite")
+
+    assert route.category == "project_health"
+    assert route.suggested_families == ("project_health",)
+    assert route.suggested_capabilities == ("project_health",)
+    assert route_request("check if formatting is okay").category == "project_health"
+    assert route_request("run format check").category == "project_health"
+    assert route_request("run evals").category == "project_health"
+    assert route_request("run OTerminus evals").category == "project_health"
+
+
+def test_route_request_project_health_disabled_pack() -> None:
+    route = route_request("run the test suite", disabled_pack_ids=frozenset({"project"}))
+
+    assert route.category == "unsupported"
+    assert route.suggested_families == ()
+    assert route.suggested_capabilities == ()
+    assert "disabled or unavailable" in route.reason
+
+
 def test_route_request_ambiguous_prefers_safe_inspection() -> None:
     route = route_request("show project files")
 

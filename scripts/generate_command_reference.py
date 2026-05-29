@@ -8,7 +8,12 @@ import sys
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "src"))
 
-from oterminus.commands import COMMAND_PACKS, COMMAND_REGISTRY, NETWORK_TOUCHING_WARNING
+from oterminus.commands import (
+    COMMAND_PACKS,
+    COMMAND_REGISTRY,
+    NETWORK_TOUCHING_WARNING,
+    command_maturity_status,
+)
 
 DOCS_REFERENCE = REPO_ROOT / "docs" / "reference"
 CAPABILITY_MAP_PATH = DOCS_REFERENCE / "capability-map.md"
@@ -24,6 +29,14 @@ def _normalize_level(value: object) -> str:
     if hasattr(value, "value"):
         return str(value.value)
     return str(value)
+
+
+def _direct_support_text(values: set[bool]) -> str:
+    if values == {True}:
+        return "yes"
+    if values == {False}:
+        return "no"
+    return "mixed"
 
 
 def _platform_text(platforms: object) -> str:
@@ -52,7 +65,8 @@ def _render_capability_map() -> str:
         "Commands",
         "Platforms",
         "Risk levels present",
-        "Maturity levels present",
+        "Maturity/status",
+        "Direct support",
     ]
     if has_network_touching:
         headers.append("Network")
@@ -72,7 +86,8 @@ def _render_capability_map() -> str:
         first = specs[0]
         commands = ", ".join(f"`{spec.name}`" for spec in specs)
         risks = ", ".join(sorted({_normalize_level(spec.risk_level) for spec in specs}))
-        maturities = ", ".join(sorted({_normalize_level(spec.maturity_level) for spec in specs}))
+        maturities = "<br>".join(sorted({command_maturity_status(spec) for spec in specs}))
+        direct_support = _direct_support_text({spec.direct_supported for spec in specs})
         notes = sorted({note for spec in specs for note in _notes_for_spec(spec)})
         notes_text = "<br>".join(notes) if notes else "—"
         row = [
@@ -83,6 +98,7 @@ def _render_capability_map() -> str:
             _platform_text({p for spec in specs for p in (spec.supported_platforms or ())}),
             risks,
             maturities,
+            direct_support,
         ]
         if has_network_touching:
             row.append("yes" if any(spec.network_touching for spec in specs) else "no")
@@ -124,6 +140,7 @@ def _render_command_families() -> str:
             "Platforms",
             "Risk",
             "Maturity",
+            "Status",
             "Direct support",
         ]
         if has_network_touching:
@@ -152,6 +169,7 @@ def _render_command_families() -> str:
                 _platform_text(spec.supported_platforms),
                 _normalize_level(spec.risk_level),
                 _normalize_level(spec.maturity_level),
+                command_maturity_status(spec),
                 "yes" if spec.direct_supported else "no",
             ]
             if has_network_touching:

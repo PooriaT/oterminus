@@ -62,16 +62,29 @@ def test_generated_reference_can_show_network_touching_metadata(monkeypatch) -> 
     command_families = docs[module.COMMAND_FAMILIES_PATH]
 
     assert (
-        "| Capability ID | Label | Description | Commands | Platforms | Risk levels present | Maturity levels present | Network | Notes |"
+        "| Capability ID | Label | Description | Commands | Platforms | Risk levels present | Maturity/status | Direct support | Network | Notes |"
         in capability_map
     )
     assert "| synthetic_network | Synthetic network |" in capability_map
     assert (
-        "| `netcheck` | network_inspection | all | safe | structured | yes | yes |"
+        "| `netcheck` | network_inspection | all | safe | structured | structured (normal executable support) | yes | yes |"
         in command_families
     )
     assert NETWORK_TOUCHING_WARNING in capability_map
     assert NETWORK_TOUCHING_WARNING in command_families
+
+
+def test_generated_references_show_project_health_structured_status() -> None:
+    docs = module.generate_reference_docs()
+    capability_map = docs[module.CAPABILITY_MAP_PATH]
+    command_families = docs[module.COMMAND_FAMILIES_PATH]
+
+    assert "| project_health | Project health |" in capability_map
+    assert "structured (normal executable support)" in capability_map
+    assert "structured | structured (normal executable support) | no" in command_families
+    assert "Project health operations may execute local project code" in capability_map
+    assert "Direct support" in capability_map
+    assert "Direct support" in command_families
 
 
 def test_output_is_deterministic() -> None:
