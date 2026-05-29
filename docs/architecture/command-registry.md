@@ -36,6 +36,15 @@ Registry metadata is reused across:
 - planner prompt capability summaries
 - validator allowlist + shape checks
 - REPL `help`, `commands`, `examples`
+- generated capability and command-family references
+
+Maturity level is the registry source of truth for how a family may be presented. `structured` and
+`direct_only` are normal executable states. `experimental_only` is either a constrained executable
+fallback when direct support is enabled or planned/metadata-only when `direct_supported=false`.
+`blocked` families are unavailable. Normal executable surfaces such as first-token autocomplete,
+router suggestions, and planner prompt context must not advertise planned/metadata-only families as
+available actions. Detailed help and generated references should still show their maturity/status,
+direct support, risk, examples, and warnings.
 
 `network_touching` defaults to `false`. Network diagnostics command families opt in explicitly so
 prompts, discovery, validation warnings, and generated reference docs can mark the external-host
@@ -77,12 +86,14 @@ planner is rejected before execution.
 
 ## Project-health pack
 
-The `project` pack exposes the `project_health` command family as deterministic structured execution
-(maturity `structured`, `direct_supported=false`).
+The `project` pack exposes the `project_health` command family as planned/experimental metadata
+(maturity `experimental_only`, `direct_supported=false`). It is intentionally excluded from normal
+autocomplete, router suggestions, and planner prompt executable context until follow-up execution
+support graduates the maturity metadata.
 
 The family accepts only a strict operation enum (`run_tests`, `lint_check`, `format_check`,
 `build_docs`, `run_evals`) and renders curated commands only. Arbitrary `poetry run ...` forms are
 not supported by structured rendering or validation.
 
 Because project tooling may execute local project code, the command family remains write-risk and
-requires explicit preview and confirmation.
+must keep explicit preview and confirmation when execution support is advertised.

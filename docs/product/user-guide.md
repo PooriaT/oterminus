@@ -545,17 +545,19 @@ For exact environment variables, see [Configuration reference](../reference/conf
 
 ## Project health capability
 
-The `project_health` capability provides curated executable checks (`run_tests`, `lint_check`,
-`format_check`, `build_docs`, `run_evals`) through deterministic structured rendering.
+The `project_health` capability is currently planned/experimental metadata, not a normal supported
+user workflow. It is kept in detailed help and generated references so its intended scope is visible,
+but it is hidden from normal executable autocomplete and planner prompt context until follow-up
+execution support is complete.
 
-Supported natural-language requests include: run tests, check linting, check formatting, build
-docs, and run evals.
+Planned operations are: `run_tests`, `lint_check`, `format_check`, `build_docs`, and `run_evals`.
 
 Unsupported requests include dependency/package management (`poetry add`, `poetry install`,
 `poetry update`, `pip install`, `npm install`, `brew install`), write-formatting (`ruff format .`),
 deploy/publish operations, and arbitrary `poetry run ...` commands.
 
 These operations may execute local project code and tooling, so preview and explicit confirmation
-are always required. This capability is not arbitrary shell support.
+are required before this capability can be advertised as executable support. This capability is not
+arbitrary shell support.
 
 OTerminus also has a conservative deterministic local planner for a small set of clear natural-language requests (for example: `show current directory`, `show files`, `show disk usage`). This fast path only builds structured proposals; it never executes directly and still requires validation, preview, and confirmation.

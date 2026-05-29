@@ -17,6 +17,7 @@ Each command spec includes:
 - `capability_id`
 - `capability_label`
 - `capability_description`
+- `risk_level`, `maturity_level`, and `direct_supported`
 - `network_touching` for commands that contact external hosts
 - command examples and natural-language aliases
 
@@ -26,6 +27,13 @@ disabled command packs and platform-aware registry filtering where practical, so
 capabilities such as `macos_desktop` are not advertised on unsupported platforms. These discovery
 commands are local and deterministic; they do not invoke planner, validator, policy, executor, or
 Ollama. Filtering does not replace validator or policy checks before execution.
+
+Maturity/status is user-facing and model-facing metadata. `structured` and `direct_only` describe
+normal executable support. `experimental_only` with direct support is a constrained executable
+fallback. `experimental_only` without direct support is treated as planned/metadata-only in normal
+discovery, autocomplete, router suggestions, and planner prompt context. `blocked` is unavailable.
+Generated references and detailed help still show planned/experimental metadata so contributors and
+users can see the intended scope without mistaking it for supported execution.
 
 ## Network boundary
 
@@ -53,6 +61,7 @@ remain unsupported.
 - `process_inspection`
 - `system_inspection`
 - `network_diagnostics`
+- `project_health` (planned/experimental metadata only until normal execution support is complete)
 - `macos_desktop`
 - `destructive_operations`
 
@@ -80,10 +89,12 @@ The `git_inspection` capability is intentionally scoped to read-only inspection.
 
 ## Capability: `project_health`
 
-`project_health` is a curated developer-workflow capability for common repository health checks:
-`run_tests`, `lint_check`, `format_check`, `build_docs`, and `run_evals`.
+`project_health` is tracked as a planned/experimental developer-workflow capability for common
+repository health checks: `run_tests`, `lint_check`, `format_check`, `build_docs`, and `run_evals`.
+It remains metadata-only in normal discovery, autocomplete, router suggestions, and planner prompt
+context until the follow-up execution-support work is complete.
 
-It is executable via deterministic structured rendering with a strict, closed operation set:
+The intended curated operation set is:
 - `run_tests` -> `poetry run pytest`
 - `lint_check` -> `poetry run ruff check .`
 - `format_check` -> `poetry run ruff format --check .`
@@ -91,6 +102,7 @@ It is executable via deterministic structured rendering with a strict, closed op
 - `run_evals` -> `poetry run oterminus-evals`
 
 Safety boundary:
+- do not advertise as normal executable support while maturity remains planned/experimental
 - always preview and require explicit confirmation
 - reject arbitrary `poetry run ...` commands
 - reject dependency install/update commands
