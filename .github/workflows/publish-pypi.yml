@@ -94,8 +94,8 @@ jobs:
       - name: Build docs (strict)
         run: poetry run mkdocs build --strict
 
-      - name: Build distributions
-        run: poetry build
+      - name: Validate installed package smoke checks
+        run: poetry run python scripts/validate_package_install.py
 
       - name: Assert dist artifacts exist
         run: |

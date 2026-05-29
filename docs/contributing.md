@@ -126,6 +126,7 @@ poetry run python scripts/check_docs_links.py
 poetry run python scripts/generate_command_reference.py --check
 poetry run mkdocs build --strict
 poetry run oterminus-evals
+poetry run python scripts/validate_package_install.py
 ```
 
 
@@ -140,7 +141,7 @@ poetry run python scripts/validate_package_install.py
 
 The script will:
 
-1. build `sdist` and `wheel` with `poetry build`
+1. remove stale local `dist/` artifacts, then build `sdist` and `wheel` with `poetry build`
 2. create a temporary virtual environment
 3. install the local wheel
 4. verify `import oterminus`
@@ -149,9 +150,14 @@ The script will:
 
 Notes:
 
-- `oterminus doctor` may report Ollama readiness issues in clean environments; this does not block packaging validation.
+- `oterminus doctor` may exit non-zero or report Ollama readiness issues in clean or CI
+  environments; this does not block packaging validation because the script still confirms CLI
+  installability.
 - `oterminus-evals` uses packaged fixture data from `src/oterminus/eval_fixtures/` so it works after wheel install.
-- Publishing to TestPyPI and production PyPI is documented in `docs/release.md` and uses GitHub OIDC Trusted Publishing with protected deployment environments.
+- CI and the production PyPI workflow run the same package validation command before the production publish boundary.
+- Publishing to TestPyPI and production PyPI is documented in `docs/release.md` and uses GitHub
+  OIDC Trusted Publishing with protected deployment environments. The TestPyPI workflow still
+  verifies the exact published version by installing it back from TestPyPI after publish.
 - End-user installs should use `pipx install oterminus` after PyPI release; contributors should not add install-time or runtime behavior that automatically edits user shell startup files for completion.
 
 ## Pull request template and checklist

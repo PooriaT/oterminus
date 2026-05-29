@@ -69,3 +69,6 @@ jobs:
 
       - name: Build docs (strict)
         run: poetry run mkdocs build --strict
+
+      - name: Validate installed package smoke checks
+        run: poetry run python scripts/validate_package_install.py
