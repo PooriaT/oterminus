@@ -7,11 +7,14 @@ PROJECT_HEALTH = {
     "capability_label": "Project health",
     "capability_description": (
         "Curated project maintenance checks (tests, lint, format check, docs build, evals) "
-        "modeled for explicit preview and confirmation."
+        "tracked as planned/experimental metadata until normal execution support is complete."
     ),
 }
 
 PROJECT_HEALTH_WARNING = (
+    "Project health is planned/experimental metadata in normal discovery, autocomplete, and planner "
+    "context; it is not advertised as normal executable support until follow-up execution work is "
+    "complete.",
     "Project health operations may execute local project code or tooling (for example via test suites, "
     "docs builds, and eval workflows).",
     "Always preview and require explicit user confirmation before execution.",
@@ -25,7 +28,7 @@ COMMAND_PACK: tuple[CommandSpec, ...] = (
         category="developer_workflow",
         **PROJECT_HEALTH,
         risk_level=RiskLevel.WRITE,
-        maturity_level=MaturityLevel.STRUCTURED,
+        maturity_level=MaturityLevel.EXPERIMENTAL_ONLY,
         direct_supported=False,
         min_operands=0,
         max_operands=0,

@@ -71,9 +71,8 @@ def test_planner_system_prompt_includes_supported_capabilities() -> None:
     assert "filesystem_inspection" in prompt
     assert "process_inspection" in prompt
     assert "commands:" in prompt
-    assert "project_health" in prompt
-    assert "may execute local project code and tooling" in prompt
-    assert "Do not propose arbitrary `poetry run ...`" in prompt
+    assert "project_health" not in prompt
+    assert "run_tests|lint_check|format_check|build_docs|run_evals" not in prompt
 
 
 def test_planner_system_prompt_env_shape_requires_variable_operand() -> None:
@@ -145,6 +144,22 @@ def test_planner_system_prompt_excludes_project_health_when_project_pack_disable
     prompt = build_system_prompt(disabled_pack_ids=frozenset({"project"}))
     assert "project_health" not in prompt
     assert "run_tests|lint_check|format_check|build_docs|run_evals" not in prompt
+
+
+def test_planner_route_context_excludes_project_health_while_planned_only() -> None:
+    client = _StubClient(
+        '{"action_type":"shell_command","mode":"experimental","command":"pwd",'
+        '"summary":"fallback","explanation":"unsupported request fallback",'
+        '"risk_level":"safe","needs_confirmation":true,"notes":["experimental"]}'
+    )
+    planner = Planner(client)
+
+    planner.plan("run the test suite")
+
+    prompt = client.calls[0]["user_prompt"]
+    assert "category=unsupported" in prompt
+    assert "project_health" not in prompt
+    assert "suggested_families=none" in prompt
 
 
 def test_planner_system_prompt_respects_beginner_profile_disabled_packs() -> None:

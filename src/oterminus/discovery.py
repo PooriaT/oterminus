@@ -2,8 +2,10 @@ from __future__ import annotations
 
 from oterminus.commands import (
     NETWORK_TOUCHING_WARNING,
+    command_maturity_status,
     get_command_spec,
     get_enabled_command_spec,
+    is_normal_executable_spec,
     supported_base_commands,
     supported_capabilities,
 )
@@ -23,41 +25,51 @@ def render_help() -> str:
 def render_capabilities(
     *, disabled_pack_ids: frozenset[str] | None = None, platform_id: str | None = None
 ) -> str:
-    lines = ["Supported capabilities:"]
+    lines = ["Capabilities:"]
     for capability in supported_capabilities(disabled_pack_ids, platform_id):
         suffix = " [network-touching]" if capability.network_touching else ""
-        lines.append(f"- {capability.capability_id}: {capability.capability_description}{suffix}")
+        status = "normal executable" if capability.normal_executable else "metadata only"
+        lines.append(
+            f"- {capability.capability_id}: {capability.capability_description}{suffix} "
+            f"[status: {status}; maturity: {', '.join(capability.maturity_levels)}]"
+        )
     return "\n".join(lines)
 
 
 def render_commands(
     *, disabled_pack_ids: frozenset[str] | None = None, platform_id: str | None = None
 ) -> str:
-    lines = ["Supported command families by capability:"]
+    lines = ["Normal executable command families by capability:"]
     for capability in supported_capabilities(disabled_pack_ids, platform_id):
         lines.append(f"{capability.capability_id}:")
+        has_any = False
         for command_name in capability.commands:
             spec = get_command_spec(command_name)
+            if spec is None or not is_normal_executable_spec(spec):
+                continue
             suffix = " (network-touching)" if spec is not None and spec.network_touching else ""
             lines.append(f"  - {command_name}{suffix}")
+            has_any = True
+        if not has_any:
+            lines.append("  - (metadata only; not normal executable support)")
     return "\n".join(lines)
 
 
 def render_examples(
     *, disabled_pack_ids: frozenset[str] | None = None, platform_id: str | None = None
 ) -> str:
-    lines = ["Example requests by capability:"]
+    lines = ["Example requests by normal executable capability:"]
     for capability in supported_capabilities(disabled_pack_ids, platform_id):
         lines.append(f"{capability.capability_id}:")
         has_any = False
         for command_name in capability.commands:
             spec = get_command_spec(command_name)
-            if spec is None or not spec.examples:
+            if spec is None or not spec.examples or not is_normal_executable_spec(spec):
                 continue
             lines.append(f"  - {spec.examples[0]}")
             has_any = True
         if not has_any:
-            lines.append("  - (no registry examples available)")
+            lines.append("  - (no normal executable examples available)")
     return "\n".join(lines)
 
 
@@ -82,12 +94,12 @@ def render_examples_for_capability(
     has_any = False
     for command_name in capability.commands:
         spec = get_command_spec(command_name)
-        if spec is None or not spec.examples:
+        if spec is None or not spec.examples or not is_normal_executable_spec(spec):
             continue
         lines.append(f"- {spec.examples[0]}")
         has_any = True
     if not has_any:
-        lines.append("- (no registry examples available)")
+        lines.append("- (no normal executable examples available)")
     return "\n".join(lines)
 
 
@@ -98,6 +110,8 @@ def render_help_capabilities() -> str:
         "- Capabilities group related command families.\n"
         "- Structured mode is preferred when a capability is supported.\n"
         "- Experimental mode is a constrained fallback for select workflows.\n"
+        "- Experimental/planned metadata-only capabilities are visible in detailed help and "
+        "generated references, but are not advertised as normal executable workflows.\n"
         "- Direct commands still pass validation and confirmation policy gates."
     )
 
@@ -124,15 +138,24 @@ def render_capability_help(
         f"Label: {capability.capability_label}",
         f"Description: {capability.capability_description}",
         f"Maturity in registry: {', '.join(capability.maturity_levels)}",
+        f"Normal executable support: {'yes' if capability.normal_executable else 'no'}",
         f"Network-touching: {'yes' if capability.network_touching else 'no'}",
-        "Supported command families:",
+        "Command families:",
     ]
-    lines.extend(f"- {command_name}" for command_name in capability.commands)
-    lines.append("Examples:")
     for command_name in capability.commands:
         spec = get_command_spec(command_name)
-        if spec is not None and spec.examples:
+        if spec is None:
+            continue
+        lines.append(f"- {command_name} [{command_maturity_status(spec)}]")
+    lines.append("Examples:")
+    has_examples = False
+    for command_name in capability.commands:
+        spec = get_command_spec(command_name)
+        if spec is not None and spec.examples and is_normal_executable_spec(spec):
             lines.append(f"- {spec.examples[0]}")
+            has_examples = True
+    if not has_examples:
+        lines.append("- (no normal executable examples available)")
     notes = {
         note
         for command_name in capability.commands
@@ -164,7 +187,9 @@ def render_command_help(
         f"Category: {spec.category}",
         f"Risk level: {spec.risk_level.value}",
         f"Maturity: {spec.maturity_level.value}",
+        f"Status: {command_maturity_status(spec)}",
         f"Direct support: {'yes' if spec.direct_supported else 'no'}",
+        f"Normal executable support: {'yes' if is_normal_executable_spec(spec) else 'no'}",
         f"Network-touching: {'yes' if spec.network_touching else 'no'}",
     ]
     if spec.examples:

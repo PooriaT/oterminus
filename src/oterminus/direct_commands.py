@@ -2,7 +2,11 @@ from __future__ import annotations
 
 import shlex
 
-from oterminus.commands import get_enabled_command_spec, looks_like_direct_invocation
+from oterminus.commands import (
+    get_enabled_command_spec,
+    is_normal_executable_spec,
+    looks_like_direct_invocation,
+)
 from oterminus.models import ActionType, Proposal, ProposalMode
 from oterminus.structured_commands import StructuredCommandError, parse_raw_command_as_structured
 
@@ -26,7 +30,7 @@ def detect_direct_command(
     project_health_arguments = _parse_project_health_direct(args)
     if project_health_arguments is not None:
         spec = get_enabled_command_spec("project_health", disabled_pack_ids, platform_id)
-        if spec is None:
+        if spec is None or not spec.direct_supported or not is_normal_executable_spec(spec):
             return None
         return Proposal(
             action_type=ActionType.SHELL_COMMAND,

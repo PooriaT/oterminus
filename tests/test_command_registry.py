@@ -7,10 +7,13 @@ from oterminus.commands import (
     MaturityLevel,
     capability_summary_for_prompt,
     command,
+    command_maturity_status,
     command_examples_for_prompt,
     direct_supported_base_commands,
     get_commands_by_capability,
     get_command_spec,
+    is_normal_executable_spec,
+    is_planned_metadata_only_spec,
     looks_like_direct_invocation,
     merge_command_packs,
     normalize_platform_id,
@@ -266,8 +269,23 @@ def test_project_health_capability_metadata() -> None:
     assert spec is not None
     assert spec.capability_id == "project_health"
     assert spec.risk_level == RiskLevel.WRITE
+    assert spec.maturity_level == MaturityLevel.EXPERIMENTAL_ONLY
     assert spec.direct_supported is False
+    assert is_planned_metadata_only_spec(spec) is True
+    assert is_normal_executable_spec(spec) is False
+    assert "not normal executable support" in command_maturity_status(spec)
     assert "execute local project code" in " ".join(spec.notes).lower()
+
+
+def test_project_health_excluded_from_normal_executable_summaries() -> None:
+    assert "project_health" in supported_base_commands()
+    assert "project_health" not in supported_base_commands(normal_executable_only=True)
+    assert "project_health" in {cap.capability_id for cap in supported_capabilities()}
+    assert "project_health" not in {
+        cap.capability_id for cap in supported_capabilities(normal_executable_only=True)
+    }
+    assert "project_health" not in capability_summary_for_prompt(max_capabilities=20)
+    assert "project_health" not in command_examples_for_prompt(max_examples=20)
 
 
 def test_project_pack_can_be_disabled() -> None:

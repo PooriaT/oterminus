@@ -9,10 +9,19 @@ def test_route_request_common_buckets() -> None:
     assert route_request("list all files in this directory").category == "filesystem_inspect"
     assert route_request("show running python processes").category == "process_inspect"
     assert route_request("show disk space").category == "metadata_inspect"
-    assert route_request("run the test suite").category == "project_health"
-    assert route_request("run ruff check").category == "project_health"
-    assert route_request("check docs build").category == "project_health"
-    assert route_request("run mkdocs build").category == "project_health"
+    assert route_request("run the test suite").category == "unsupported"
+    assert route_request("run ruff check").category == "unsupported"
+    assert route_request("check docs build").category == "unsupported"
+    assert route_request("run mkdocs build").category == "unsupported"
+
+
+def test_route_request_hides_project_health_while_planned_only() -> None:
+    route = route_request("run the test suite")
+
+    assert route.category == "unsupported"
+    assert route.suggested_families == ()
+    assert route.suggested_capabilities == ()
+    assert "disabled or unavailable" in route.reason
 
 
 def test_route_request_ambiguous_prefers_safe_inspection() -> None:

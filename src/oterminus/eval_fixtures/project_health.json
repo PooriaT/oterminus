@@ -310,10 +310,21 @@
   {
     "id": "project-health-direct-pytest",
     "user_input": "poetry run pytest",
-    "expected_mode": "structured",
-    "expected_command_family": "project_health",
-    "expected_risk_level": "write",
-    "expected_acceptance": true,
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "experimental",
+      "command_family": "poetry",
+      "summary": "fixture proposal",
+      "explanation": "deterministic eval fixture",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": [],
+      "command": "poetry run pytest"
+    },
+    "expected_mode": "experimental",
+    "expected_command_family": "poetry",
+    "expected_risk_level": "dangerous",
+    "expected_acceptance": false,
     "expected_rendered_command": "poetry run pytest",
     "expected_argv": [
       "poetry",
@@ -324,10 +335,21 @@
   {
     "id": "project-health-direct-evals",
     "user_input": "poetry run oterminus-evals",
-    "expected_mode": "structured",
-    "expected_command_family": "project_health",
-    "expected_risk_level": "write",
-    "expected_acceptance": true,
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "experimental",
+      "command_family": "poetry",
+      "summary": "fixture proposal",
+      "explanation": "deterministic eval fixture",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": [],
+      "command": "poetry run oterminus-evals"
+    },
+    "expected_mode": "experimental",
+    "expected_command_family": "poetry",
+    "expected_risk_level": "dangerous",
+    "expected_acceptance": false,
     "expected_rendered_command": "poetry run oterminus-evals",
     "expected_argv": [
       "poetry",

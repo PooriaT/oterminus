@@ -55,6 +55,12 @@ Capability summaries include network-boundary metadata when any enabled command 
 notes, but the prompt is not a safety authority. Validator metadata, policy checks, preview,
 confirmation, and executor boundaries remain the enforced path.
 
+Planner prompt context advertises only normal executable command families. Registry entries that are
+planned/metadata-only (`experimental_only` with `direct_supported=false`) remain visible in detailed
+help and generated references, but are filtered out of executable capability summaries, examples,
+route suggestions, and structured argument shapes. This prevents the model from proposing command
+families whose support has not graduated yet.
+
 ## Structured-first normalization
 
 Planner prefers structured mode when possible:
@@ -92,11 +98,13 @@ Mutating/network Git requests are intentionally not routed to `git_inspection` a
 
 ## Project health routing and planning
 
-The router includes a `project_health` category for clear curated health intents such as running
-tests, lint checks, format checks, docs builds, and evals.
+The registry tracks a planned/experimental `project_health` capability for clear curated health
+intents such as running tests, lint checks, format checks, docs builds, and evals.
 
-Planner proposals for this route use structured `project_health` with a single closed enum
-argument: `{"operation": "run_tests|lint_check|format_check|build_docs|run_evals"}`.
+While the command family remains `experimental_only` with `direct_supported=false`, router filtering
+does not expose `project_health` as an executable planner route. The planner prompt also omits the
+structured argument shape, so the model should not produce `project_health` proposals until the
+follow-up execution-support work updates the maturity/status metadata.
 
 Requests for install/update/deploy/publish/arbitrary poetry commands, or write-formatting, are not
 treated as safe project-health execution and remain unsupported/rejected by existing safety paths.

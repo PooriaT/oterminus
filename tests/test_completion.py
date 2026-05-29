@@ -215,8 +215,8 @@ def test_completion_respects_developer_profile_disabled_packs_and_keeps_builtins
     assert "history" in _texts(build_repl_completions("his", disabled_pack_ids=disabled))
 
 
-def test_completion_includes_project_health_capability_and_help_target() -> None:
+def test_completion_hides_project_health_action_but_keeps_help_target() -> None:
     capability_candidates = _texts(build_repl_completions("project_"))
     help_candidates = _texts(build_repl_completions("help project_"))
-    assert "project_health" in capability_candidates
+    assert "project_health" not in capability_candidates
     assert "project_health" in help_candidates

@@ -33,6 +33,20 @@ class MaturityLevel(str, Enum):
     BLOCKED = "blocked"
 
 
+def maturity_status_label(maturity_level: MaturityLevel, *, direct_supported: bool) -> str:
+    if maturity_level == MaturityLevel.STRUCTURED:
+        return "structured (normal executable support)"
+    if maturity_level == MaturityLevel.DIRECT_ONLY:
+        return "direct-only (direct executable support only)"
+    if maturity_level == MaturityLevel.EXPERIMENTAL_ONLY:
+        if direct_supported:
+            return "experimental-only (constrained executable fallback)"
+        return "experimental/planned (metadata only; not normal executable support)"
+    if maturity_level == MaturityLevel.BLOCKED:
+        return "blocked (unavailable)"
+    return maturity_level.value
+
+
 @dataclass(frozen=True, slots=True)
 class CommandSpec:
     name: str

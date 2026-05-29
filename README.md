@@ -160,6 +160,10 @@ OTerminus supports two first-class proposal modes:
   safely as structured arguments. It is still strictly validated, previewed, and confirmed before
   execution.
 
+Capability maturity/status comes from registry metadata. Planned or metadata-only capabilities are
+shown in detailed references/help with warnings, but are not advertised as normal executable
+autocomplete or planner actions until their maturity metadata is updated.
+
 See [structured rendering](docs/architecture/structured-rendering.md), [routing and
 planning](docs/architecture/routing-and-planning.md), and the [request
 lifecycle](docs/architecture/request-lifecycle.md) for details.
