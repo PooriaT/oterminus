@@ -16,6 +16,23 @@ def test_parse_args_completion_command() -> None:
     assert args.completion_shell == "zsh"
 
 
+@pytest.mark.parametrize(
+    "argv",
+    (
+        ["completion", "of", "git", "status"],
+        ["completion", "script", "for", "bash"],
+    ),
+)
+def test_parse_args_completion_prefixed_natural_language_stays_request(argv: list[str]) -> None:
+    from oterminus.cli import parse_args
+
+    args = parse_args(argv)
+
+    assert args.request == argv
+    assert args.cli_mode == "request"
+    assert args.completion_shell is None
+
+
 @pytest.mark.parametrize("shell", supported_shells())
 def test_render_shell_completion_returns_static_script(shell: str) -> None:
     script = render_shell_completion(shell)

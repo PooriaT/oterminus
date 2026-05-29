@@ -107,7 +107,7 @@ def _cli_mode_from_request(request: list[str]) -> str:
         return "doctor"
     if command == "version":
         return "version"
-    if request and request[0].lower() == "completion":
+    if request and request[0].lower() == "completion" and len(request) <= 2:
         return "completion"
     return "request"
 
