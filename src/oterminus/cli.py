@@ -40,6 +40,7 @@ from oterminus.setup import SetupError, ensure_startup_ready
 from oterminus.policies import ConfirmationLevel, confirmation_level
 from oterminus.renderer import render_failure_explanation, render_preview
 from oterminus.router import route_request
+from oterminus.shell_completion import render_shell_completion, supported_shells
 from oterminus.validator import Validator
 from oterminus.version import format_version
 
@@ -89,8 +90,14 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--verbose", action="store_true", help="Enable debug logging")
     args = parser.parse_args(argv)
     args.cli_mode = _cli_mode_from_request(args.request)
-    if args.cli_mode in {"doctor", "version"} and (args.dry_run or args.explain):
+    args.completion_shell = None
+    if args.cli_mode in {"doctor", "version", "completion"} and (args.dry_run or args.explain):
         parser.error(f"{args.cli_mode} cannot be combined with --dry-run or --explain")
+    if args.cli_mode == "completion":
+        shell_names = supported_shells()
+        if len(args.request) != 2 or args.request[1].lower() not in shell_names:
+            parser.error(f"completion requires one shell: {', '.join(shell_names)}")
+        args.completion_shell = args.request[1].lower()
     return args
 
 
@@ -100,6 +107,8 @@ def _cli_mode_from_request(request: list[str]) -> str:
         return "doctor"
     if command == "version":
         return "version"
+    if request and request[0].lower() == "completion":
+        return "completion"
     return "request"
 
 
@@ -778,6 +787,10 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.version or args.cli_mode == "version":
         print(format_version())
+        return 0
+
+    if args.cli_mode == "completion":
+        print(render_shell_completion(args.completion_shell), end="")
         return 0
 
     if args.cli_mode == "doctor":
