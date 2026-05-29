@@ -27,11 +27,13 @@ contributor reference material.
 ### I want to contribute changes
 
 1. [Contributor workflow](contributing.md)
-2. [Capability system](architecture/capability-system.md)
-3. [Command registry](architecture/command-registry.md)
-4. [Capability map](reference/capability-map.md)
-5. [Command families reference](reference/command-families.md)
-6. [Adding command families safely](adding-command-families.md)
+2. [Release and publishing](release.md)
+3. [Changelog](https://github.com/PooriaT/oterminus/blob/main/CHANGELOG.md)
+4. [Capability system](architecture/capability-system.md)
+5. [Command registry](architecture/command-registry.md)
+6. [Capability map](reference/capability-map.md)
+7. [Command families reference](reference/command-families.md)
+8. [Adding command families safely](adding-command-families.md)
 
 ### I want to debug or test behavior
 
@@ -45,6 +47,8 @@ contributor reference material.
 - Product docs: [`docs/product/`](product/what-is-oterminus.md)
 - Architecture docs: [`docs/architecture/`](architecture/overview.md)
 - Reference docs: [`docs/reference/`](reference/config.md)
+- Release process: [`docs/release.md`](release.md)
+- Changelog: [`CHANGELOG.md`](https://github.com/PooriaT/oterminus/blob/main/CHANGELOG.md)
 - ADRs: [`docs/adr/`](adr/0001-capability-first-not-shell-first.md)
 
 ## Build and preview docs locally

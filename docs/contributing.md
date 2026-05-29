@@ -96,6 +96,8 @@ Keep documentation organized this way:
 - Update MkDocs navigation when adding, moving, or deleting docs pages.
 - Keep public install docs aligned with PyPI/pipx behavior, development docs aligned with Poetry,
   and release/package-validation docs aligned with the package validation script.
+- Update the root `CHANGELOG.md` for user-facing changes.
+- Release PRs must update `pyproject.toml` and `CHANGELOG.md` together.
 - Do not include secrets, real tokens, real audit logs, persisted history files, or personal local
   paths in docs or fixtures.
 - When audit, history, failure-explanation, output, install behavior, packaging metadata, or env
