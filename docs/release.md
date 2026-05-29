@@ -56,8 +56,10 @@ The production workflow automatically:
    - `poetry run oterminus-evals`
    - generated docs/reference check
    - docs link checker
-3. builds distributions once
-4. publishes the exact built artifacts to PyPI after environment approval
+3. runs local installed-package validation with
+   `poetry run python scripts/validate_package_install.py`
+4. uploads the validated `dist/` artifacts
+5. publishes the exact validated artifacts to PyPI after environment approval
 
 Authentication is OIDC Trusted Publishing (`id-token: write`) with
 `pypa/gh-action-pypi-publish`; no long-lived PyPI API tokens are required.
@@ -73,10 +75,16 @@ poetry run python scripts/validate_package_install.py
 This contributor/release-maintainer check builds the local `sdist` and `wheel`, installs the wheel
 into a temporary clean virtual environment, verifies `import oterminus`, and runs installed-console
 smoke checks such as `oterminus --help`, `oterminus --version`, `oterminus version`,
-`oterminus doctor`, and `oterminus-evals`. It is not the
-primary end-user install path; users should install released packages from PyPI with
-`pipx install oterminus` or, when `pipx` is unavailable,
-`python -m pip install oterminus`.
+`oterminus doctor`, and `oterminus-evals`. `oterminus doctor` may exit non-zero in CI when Ollama is
+unavailable; the validation still confirms the installed CLI is callable and installable. The script
+uses temporary paths for smoke-check config, audit, and history files and does not publish anything.
+It is not the primary end-user install path; users should install released packages from PyPI with
+`pipx install oterminus` or, when `pipx` is unavailable, `python -m pip install oterminus`.
+
+The main CI workflow runs the same package validation command after the normal tests, lint, evals,
+generated docs checks, docs link checks, and strict docs build. The production release workflow runs
+it before uploading artifacts for PyPI publishing. The TestPyPI workflow still verifies the exact
+published version by installing it back from TestPyPI after publish.
 
 ## Post-release user install verification
 

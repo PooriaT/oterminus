@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -10,11 +12,19 @@ ROOT = Path(__file__).resolve().parents[1]
 DIST_DIR = ROOT / "dist"
 
 
+def section(title: str) -> None:
+    print(f"\n==> {title}")
+
+
 def run(
-    cmd: list[str], *, cwd: Path | None = None, check: bool = True
+    cmd: list[str],
+    *,
+    cwd: Path | None = None,
+    check: bool = True,
+    env: dict[str, str] | None = None,
 ) -> subprocess.CompletedProcess[str]:
-    proc = subprocess.run(cmd, cwd=cwd or ROOT, text=True, capture_output=True)
     print(f"$ {' '.join(cmd)}")
+    proc = subprocess.run(cmd, cwd=cwd or ROOT, text=True, capture_output=True, env=env)
     if proc.stdout:
         print(proc.stdout.rstrip())
     if proc.stderr:
@@ -39,8 +49,24 @@ def script_path(bin_dir: Path, name: str) -> Path:
     return bin_dir / name
 
 
+def smoke_env(td: Path) -> dict[str, str]:
+    env = os.environ.copy()
+    env["OTERMINUS_CONFIG_PATH"] = str(td / "config" / "config.json")
+    env["OTERMINUS_AUDIT_LOG_PATH"] = str(td / "audit" / "audit.jsonl")
+    env["OTERMINUS_HISTORY_PATH"] = str(td / "history" / "history.jsonl")
+    env["OTERMINUS_HISTORY_ENABLED"] = "false"
+    return env
+
+
+def clean_dist() -> None:
+    if DIST_DIR.exists():
+        shutil.rmtree(DIST_DIR)
+
+
 def main() -> int:
-    run(["poetry", "build", "--clean"])
+    section("Build package distributions")
+    clean_dist()
+    run(["poetry", "build"])
 
     wheels = sorted(DIST_DIR.glob("oterminus-*.whl"))
     if not wheels:
@@ -49,15 +75,22 @@ def main() -> int:
     wheel = wheels[-1]
 
     with tempfile.TemporaryDirectory(prefix="oterminus-wheel-") as td:
-        venv_dir = Path(td) / "venv"
+        temp_dir = Path(td)
+        venv_dir = temp_dir / "venv"
+        env = smoke_env(temp_dir)
+
+        section("Create clean virtual environment")
         run([sys.executable, "-m", "venv", str(venv_dir)])
 
         bin_dir = venv_dir / ("Scripts" if sys.platform == "win32" else "bin")
         py = bin_dir / ("python.exe" if sys.platform == "win32" else "python")
         pip = bin_dir / ("pip.exe" if sys.platform == "win32" else "pip")
 
+        section(f"Install built wheel: {wheel.name}")
         run([str(py), "-m", "pip", "install", "--upgrade", "pip"])
         run([str(pip), "install", str(wheel)])
+
+        section("Validate installed package import and metadata")
         run([str(py), "-c", "import oterminus"])
         installed_version = run(
             [
@@ -69,9 +102,10 @@ def main() -> int:
         oterminus = script_path(bin_dir, "oterminus")
         oterminus_evals = script_path(bin_dir, "oterminus-evals")
 
-        run([str(oterminus), "--help"])
-        cli_version = validate_version_output(run([str(oterminus), "--version"]))
-        command_version = validate_version_output(run([str(oterminus), "version"]))
+        section("Run installed CLI smoke checks")
+        run([str(oterminus), "--help"], env=env)
+        cli_version = validate_version_output(run([str(oterminus), "--version"], env=env))
+        command_version = validate_version_output(run([str(oterminus), "version"], env=env))
         if cli_version != installed_version or command_version != installed_version:
             print(
                 "Version command output does not match installed package metadata: "
@@ -80,9 +114,11 @@ def main() -> int:
                 file=sys.stderr,
             )
             return 1
-        run([str(oterminus), "doctor"], check=False)
-        run([str(oterminus_evals)])
+        print("oterminus doctor may exit non-zero when Ollama is unavailable; continuing.")
+        run([str(oterminus), "doctor"], check=False, env=env)
+        run([str(oterminus_evals)], env=env)
 
+    section("Installed package smoke validation passed")
     return 0
 
 

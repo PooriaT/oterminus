@@ -37,10 +37,18 @@ def test_validate_package_install_checks_cli_version(monkeypatch, tmp_path: Path
     wheel = dist_dir / "oterminus-0.1.1-py3-none-any.whl"
     wheel.write_text("wheel")
     recorded: list[list[str]] = []
+    command_envs: list[dict[str, str] | None] = []
 
-    def fake_run(cmd: list[str], *, cwd: Path | None = None, check: bool = True):
+    def fake_run(
+        cmd: list[str],
+        *,
+        cwd: Path | None = None,
+        check: bool = True,
+        env: dict[str, str] | None = None,
+    ):
         del cwd, check
         recorded.append(cmd)
+        command_envs.append(env)
         if cmd[-1] == 'from importlib.metadata import version; print(version("oterminus"))':
             return subprocess.CompletedProcess(cmd, 0, stdout="0.1.1\n", stderr="")
         if cmd[-1] in {"--version", "version"}:
@@ -48,8 +56,42 @@ def test_validate_package_install_checks_cli_version(monkeypatch, tmp_path: Path
         return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
 
     monkeypatch.setattr(validate_package_install, "DIST_DIR", dist_dir)
+    monkeypatch.setattr(validate_package_install, "clean_dist", lambda: None)
     monkeypatch.setattr(validate_package_install, "run", fake_run)
 
     assert validate_package_install.main() == 0
     assert any(cmd[-1] == "--version" for cmd in recorded)
     assert any(cmd[-1] == "version" for cmd in recorded)
+    assert any(env and "OTERMINUS_CONFIG_PATH" in env for env in command_envs)
+
+
+def test_package_validation_smoke_env_uses_temp_paths(tmp_path: Path) -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "validate_package_install.py"
+    spec = spec_from_file_location("validate_package_install", module_path)
+    assert spec and spec.loader
+    validate_package_install = module_from_spec(spec)
+    spec.loader.exec_module(validate_package_install)
+
+    env = validate_package_install.smoke_env(tmp_path)
+
+    assert env["OTERMINUS_CONFIG_PATH"] == str(tmp_path / "config" / "config.json")
+    assert env["OTERMINUS_AUDIT_LOG_PATH"] == str(tmp_path / "audit" / "audit.jsonl")
+    assert env["OTERMINUS_HISTORY_PATH"] == str(tmp_path / "history" / "history.jsonl")
+    assert env["OTERMINUS_HISTORY_ENABLED"] == "false"
+
+
+def test_package_validation_cleans_dist_before_build(monkeypatch, tmp_path: Path) -> None:
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "validate_package_install.py"
+    spec = spec_from_file_location("validate_package_install", module_path)
+    assert spec and spec.loader
+    validate_package_install = module_from_spec(spec)
+    spec.loader.exec_module(validate_package_install)
+
+    dist_dir = tmp_path / "dist"
+    dist_dir.mkdir()
+    (dist_dir / "stale.whl").write_text("stale")
+    monkeypatch.setattr(validate_package_install, "DIST_DIR", dist_dir)
+
+    validate_package_install.clean_dist()
+
+    assert not dist_dir.exists()
