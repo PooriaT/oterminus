@@ -30,6 +30,11 @@ poetry run python scripts/generate_command_reference.py --check
 poetry run python scripts/check_docs_links.py
 ```
 
+The deterministic eval gate includes `release_smoke.json`, which protects public-install and
+first-use proposal/validation flows without calling Ollama, touching the network, executing shell
+commands, or requiring a real installed package. Keep doctor and version readiness covered by CLI
+tests and installed-package smoke checks rather than eval fixtures.
+
 - Build the package:
 
 ```bash
