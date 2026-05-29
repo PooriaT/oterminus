@@ -42,7 +42,8 @@ and argv before JSONL writes. Audit events store stdout/stderr truncation metada
 - `audit status` reports current audit settings and path
 - `audit tail [n]` prints recent local audit events without executing a request
 - `audit clear` requires explicit confirmation before clearing the local audit log
-- `oterminus doctor` runs readiness and integrity checks
+- `oterminus doctor` runs readiness and integrity checks, including whether configured audit and
+  persistent-history directories are usable
 
 See [audit log schema reference](../reference/audit-log-schema.md).
 

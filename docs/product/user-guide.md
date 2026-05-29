@@ -18,9 +18,9 @@ oterminus
 
 Run `oterminus --version` after installation to confirm the installed package version. Then run
 `oterminus doctor`; it is the recommended post-install diagnostic for checking the detected
-platform, CLI integrity, configuration paths, selected model state, Ollama CLI/service readiness,
-local model availability, audit path, registry metadata, eval fixtures, and relevant developer-tool
-status.
+package version, Python runtime, executable path, pipx or virtualenv context, platform,
+configuration paths, selected model state, Ollama CLI/service readiness, local model availability,
+audit/history paths, registry metadata, eval fixtures, and relevant developer-tool status.
 
 ## Supported environments
 
@@ -127,6 +127,42 @@ that clearly so you can fix the local model setup before natural-language planni
 If no model is configured yet, OTerminus shows installed models and prompts you to choose one. The
 selection is saved in `~/.oterminus/config.json` (or `OTERMINUS_CONFIG_PATH` if set).
 
+## Doctor troubleshooting
+
+Run `oterminus doctor` after a PyPI or `pipx` install and after changing Ollama, config, audit, or
+history settings. Doctor is diagnostics-only: it reports readiness and suggested next steps, but it
+does not install Ollama, start services, download models, edit config, or write audit/history
+records.
+
+The report groups checks by package/runtime, platform, Ollama, model/config, local files, optional
+features, and developer-only checks:
+
+- `package import` and `oterminus version` mean the installed OTerminus package can be imported and
+  package metadata is visible. A source checkout may warn that package metadata is unavailable and a
+  local fallback version is being used.
+- `python runtime` shows the Python version and executable path. Unsupported Python is a critical
+  failure; install Python 3.13 or newer, then reinstall OTerminus in that environment.
+- `environment` and `install context` identify virtualenv and likely `pipx` installs when practical.
+  Detection is best-effort; unknown context is a hint, not proof of a broken install.
+- `ollama CLI` missing means the `ollama` executable is not on PATH. Install Ollama, then rerun
+  doctor.
+- `ollama service` failing means the CLI exists but `ollama list` cannot reach the local service.
+  Start Ollama, for example with `ollama serve`, then rerun doctor.
+- `local ollama models` failing means the service is reachable but no local models are installed.
+  Pull a model, for example `ollama pull gemma4`.
+- `configured model` warns when no model has been selected yet. Run OTerminus once to choose from
+  installed models, or set the `model` field in the config JSON. If the configured model is missing,
+  pull that model or update the config to an installed model.
+- `config path`, `audit log path`, and `history path` show whether OTerminus can read or create the
+  relevant local directories. Audit logging is enabled by default; persistent history is disabled by
+  default, so a disabled history check is normally OK.
+- `eval fixtures` and `dev tools` are developer-only checks. They may warn when doctor is run from a
+  source checkout, but they are not expected for normal PyPI or `pipx` installs.
+
+Direct commands may still work without a configured model because they can skip LLM planning after
+local detection. Natural-language planning needs Ollama installed, running, at least one local model
+available, and a selected configured model.
+
 ## Shell completion strategy
 
 OTerminus separates two different completion surfaces:
@@ -203,9 +239,10 @@ oterminus doctor
 ```
 
 Doctor mode is diagnostic-only. It prints readiness and integrity checks, including configuration,
-selected model, Ollama CLI/service/model availability, audit path, registry, eval fixture, and
-developer-tool status where applicable. It exits with the doctor report status and does not start
-the REPL, execute a request, or invoke the Ollama planner.
+selected model, Python runtime, install context, Ollama CLI/service/model availability,
+audit/history paths, registry, eval fixture, and developer-tool status where applicable. It exits
+with the doctor report status and does not start the REPL, execute a request, or invoke the Ollama
+planner.
 
 ### Direct commands
 

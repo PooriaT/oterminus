@@ -119,9 +119,10 @@ oterminus doctor
 The published package name is `oterminus`; the installed console scripts are `oterminus` and
 `oterminus-evals`. `oterminus --version` confirms the installed package version without requiring
 Ollama; `oterminus doctor` is the recommended post-install readiness diagnostic and should clearly
-report Ollama CLI, service, and local-model readiness. PyPI installation does not install or start
-Ollama; natural-language planning still depends on a ready local Ollama setup, although direct
-commands and some deterministic local paths may not need a live model.
+report installed package version, Python executable, install context, Ollama CLI, service,
+local-model readiness, selected model, and config/audit/history path status. PyPI installation does
+not install or start Ollama; natural-language planning still depends on a ready local Ollama setup,
+although direct commands and some deterministic local paths may not need a live model.
 
 Release verification should not add or rely on automatic shell startup-file changes. OTerminus
 currently supports REPL Tab autocomplete via `prompt_toolkit`, but does not ship zsh, bash, or fish
