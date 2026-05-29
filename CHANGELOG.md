@@ -16,7 +16,7 @@ Use this section for changes merged after the next planned release section has b
 
 ### Internal
 
-## 0.1.2 - Unreleased
+## 0.1.3 - Unreleased
 
 Planned patch release.
 
@@ -25,14 +25,28 @@ when no changes in that category apply.
 
 ### Added
 
+- Added --version and version support for installed package verification
+- Added installed-package smoke validation to CI and release workflow
+- Added release-focused smoke evals for public install behavior
+- Added shell-level completion generation for zsh/bash/fish
+
 ### Changed
+
+- Improved doctor output for PyPI/pipx-installed users
 
 ### Fixed
 
+- Normalized collapsed source, config, workflow, and docs formatting
+- reconciled planned project_health capability with user-facing docs and references
+- Aligned package classifiers with actual supported platforms
+
 ### Documentation
+
+- Updated README and docs for public PyPI/pipx installation
+- Added changelog and release checklist for 0.1.2+
 
 ### Internal
 
-## 0.1.1
+## 0.1.2
 
 Initial public PyPI release.
