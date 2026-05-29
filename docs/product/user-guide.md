@@ -184,9 +184,9 @@ Current shell-level status:
 | bash | `oterminus completion bash` prints a static completion script. |
 | fish | `oterminus completion fish` prints a static completion script. |
 
-Detailed shell-specific setup instructions will be documented separately. Shell-level completion
-remains opt-in manual configuration chosen by the user, not an automatic install-time or runtime
-mutation.
+See [Shell completion](shell-completion.md) for shell-specific manual setup and removal
+instructions. Shell-level completion remains opt-in manual configuration chosen by the user, not an
+automatic install-time or runtime mutation.
 
 ## Model selection behavior
 
@@ -409,7 +409,8 @@ REPL Tab autocomplete is available only inside interactive REPL mode (`oterminus
 
 Autocomplete is deterministic and does not call Ollama. It is separate from shell-level completion:
 `oterminus completion zsh|bash|fish` prints outer command completion scripts, and OTerminus does not
-modify zsh, bash, or fish startup files automatically.
+modify zsh, bash, or fish startup files automatically. See
+[Shell completion](shell-completion.md) for shell-level setup.
 
 If REPL Tab autocomplete does not work:
 

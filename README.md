@@ -94,9 +94,17 @@ python -m pip install oterminus
 
 OTerminus provides **REPL Tab autocomplete** through `prompt_toolkit` after you start the
 interactive app with `oterminus`. It can also print opt-in shell-level completion scripts for the
-outer command with `oterminus completion zsh|bash|fish`. The completion command only prints the
-script to stdout; it never edits your `.zshrc`, `.bashrc`, `config.fish`, or other shell startup
-files automatically.
+outer command:
+
+```bash
+oterminus completion zsh
+oterminus completion bash
+oterminus completion fish
+```
+
+The completion command only prints the script to stdout; it never edits your `.zshrc`, `.bashrc`,
+`config.fish`, or other shell startup files automatically. See the
+[shell completion docs](docs/product/shell-completion.md) for manual setup details.
 
 ### Local development install
 

@@ -43,6 +43,22 @@ def validate_version_output(proc: subprocess.CompletedProcess[str]) -> str:
     return match.group(1)
 
 
+def validate_completion_output(shell: str, proc: subprocess.CompletedProcess[str]) -> None:
+    output = proc.stdout.strip()
+    expected_markers = {
+        "zsh": "#compdef oterminus",
+        "bash": "complete -F _oterminus_completion oterminus",
+        "fish": "complete -c oterminus",
+    }
+    expected_marker = expected_markers[shell]
+    if not output or expected_marker not in output:
+        print(
+            f"Unexpected {shell} completion output: {output!r}",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
+
+
 def script_path(bin_dir: Path, name: str) -> Path:
     if sys.platform == "win32":
         return bin_dir / f"{name}.exe"
@@ -116,6 +132,14 @@ def main() -> int:
             return 1
         print("oterminus doctor may exit non-zero when Ollama is unavailable; continuing.")
         run([str(oterminus), "doctor"], check=False, env=env)
+
+        section("Run installed shell completion smoke checks")
+        for shell in ("zsh", "bash", "fish"):
+            validate_completion_output(
+                shell,
+                run([str(oterminus), "completion", shell], env=env),
+            )
+
         run([str(oterminus_evals)], env=env)
 
     section("Installed package smoke validation passed")

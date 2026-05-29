@@ -9,10 +9,11 @@ contributor reference material.
 ### I want to use OTerminus
 
 1. [What is OTerminus?](product/what-is-oterminus.md)
-2. [User guide](product/user-guide.md) — pipx install, Ollama readiness, shell-completion status,
-   REPL, one-shot, doctor, dry-run, explain, and ambiguity handling
-3. [Supported workflows](product/supported-workflows.md)
-4. [Policy modes](product/policy-modes.md)
+2. [User guide](product/user-guide.md) — pipx install, Ollama readiness, REPL, one-shot, doctor,
+   dry-run, explain, and ambiguity handling
+3. [Shell completion](product/shell-completion.md)
+4. [Supported workflows](product/supported-workflows.md)
+5. [Policy modes](product/policy-modes.md)
 
 ### I want to understand the architecture
 
