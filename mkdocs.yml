@@ -27,6 +27,7 @@ nav:
   - Product:
       - What is OTerminus?: product/what-is-oterminus.md
       - User Guide: product/user-guide.md
+      - Shell Completion: product/shell-completion.md
       - Supported Workflows: product/supported-workflows.md
       - Policy Modes: product/policy-modes.md
   - Architecture:
