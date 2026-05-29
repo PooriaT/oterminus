@@ -28,6 +28,7 @@ Route categories:
 - `metadata_inspect`
 - `process_inspect`
 - `network_diagnostics`
+- `project_health`
 - `unsupported`
 
 Router also suggests likely command families/capabilities from registry metadata.
@@ -98,16 +99,18 @@ Mutating/network Git requests are intentionally not routed to `git_inspection` a
 
 ## Project health routing and planning
 
-The registry tracks a planned/experimental `project_health` capability for clear curated health
-intents such as running tests, lint checks, format checks, docs builds, and evals.
+The registry exposes `project_health` as a structured capability for clear curated health intents
+such as running tests, lint checks, format checks, docs builds, and evals. The planner context lists
+only the operation enum: `run_tests`, `lint_check`, `format_check`, `build_docs`, and `run_evals`.
 
-While the command family remains `experimental_only` with `direct_supported=false`, router filtering
-does not expose `project_health` as an executable planner route. The planner prompt also omits the
-structured argument shape, so the model should not produce `project_health` proposals until the
-follow-up execution-support work updates the maturity/status metadata.
+The deterministic router maps clear requests such as `run tests`, `run ruff check`,
+`check formatting`, `run format check`, `build docs`, and `run evals` to the `project_health`
+category when the project pack is enabled. The local planner can turn those requests into structured
+proposals without Ollama; validation, preview, policy, and confirmation still run before execution.
 
 Requests for install/update/deploy/publish/arbitrary poetry commands, or write-formatting, are not
-treated as safe project-health execution and remain unsupported/rejected by existing safety paths.
+treated as safe project-health execution and remain unsupported or rejected. Direct
+`poetry run ...` input is not accepted as direct project-health support.
 
 ## Network diagnostics routing and planning
 
@@ -129,4 +132,4 @@ pipelines/redirection. Validator checks remain authoritative.
 
 
 ## Deterministic local planner fast-path
-For a small allowlist of unambiguous requests (for example: current directory, clear screen, list files, disk usage, and git status), OTerminus attempts deterministic local planning after routing and before the Ollama planner. On a local match, OTerminus produces a structured proposal and skips Ollama; validation, preview, confirmation, and execution policy still apply unchanged. If no conservative match exists, OTerminus falls back to the Ollama planner.
+For a small allowlist of unambiguous requests (for example: current directory, clear screen, list files, disk usage, git status, and supported project-health checks), OTerminus attempts deterministic local planning after routing and before the Ollama planner. On a local match, OTerminus produces a structured proposal and skips Ollama; validation, preview, confirmation, and execution policy still apply unchanged. If no conservative match exists, OTerminus falls back to the Ollama planner.

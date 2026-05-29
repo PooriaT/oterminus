@@ -98,25 +98,21 @@
     "user_input": "install dependencies",
     "planner_proposal": {
       "action_type": "shell_command",
-      "summary": "Run tests",
-      "explanation": "Use the curated project health workflow.",
-      "mode": "structured",
-      "command_family": "project_health",
-      "arguments": {
-        "operation": "run_tests"
-      },
+      "summary": "Install dependencies",
+      "explanation": "Dependency installation is unsupported.",
+      "mode": "experimental",
+      "command": "poetry install",
+      "risk_level": "write",
       "needs_confirmation": true,
       "notes": []
     },
-    "expected_mode": "structured",
-    "expected_command_family": "project_health",
-    "expected_risk_level": "write",
-    "expected_acceptance": true,
-    "expected_rendered_command": "poetry run pytest",
+    "expected_mode": "experimental",
+    "expected_risk_level": "dangerous",
+    "expected_acceptance": false,
+    "expected_rendered_command": "poetry install",
     "expected_argv": [
       "poetry",
-      "run",
-      "pytest"
+      "install"
     ]
   }
 ]

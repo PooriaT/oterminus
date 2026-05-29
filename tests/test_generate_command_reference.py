@@ -74,14 +74,15 @@ def test_generated_reference_can_show_network_touching_metadata(monkeypatch) -> 
     assert NETWORK_TOUCHING_WARNING in command_families
 
 
-def test_generated_references_show_project_health_planned_status() -> None:
+def test_generated_references_show_project_health_structured_status() -> None:
     docs = module.generate_reference_docs()
     capability_map = docs[module.CAPABILITY_MAP_PATH]
     command_families = docs[module.COMMAND_FAMILIES_PATH]
 
     assert "| project_health | Project health |" in capability_map
-    assert "experimental/planned (metadata only; not normal executable support)" in capability_map
-    assert "experimental_only | experimental/planned" in command_families
+    assert "structured (normal executable support)" in capability_map
+    assert "structured | structured (normal executable support) | no" in command_families
+    assert "Project health operations may execute local project code" in capability_map
     assert "Direct support" in capability_map
     assert "Direct support" in command_families
 

@@ -67,8 +67,8 @@ commands that should never execute in curated policy.
 
 If uncertain, start stricter (`experimental_only` or `blocked`) and relax later with tests.
 When a planned/metadata-only capability graduates to executable support, update `maturity_level`,
-`direct_supported`, examples, prompt coverage, discovery/completion tests, generated references, and
-docs in the same PR.
+`direct_supported` if direct command input is supported, examples, prompt coverage,
+discovery/completion tests, generated references, and docs in the same PR.
 
 ## 3) Assign `risk_level` with justification
 Use least privilege:
@@ -254,3 +254,5 @@ support or add Windows classifiers unless the command behavior is implemented an
 If a family can execute local project code through standard tooling (tests, docs, evals), treat it as
 write-risk metadata at minimum, document this explicitly in `notes`, and keep operation choices
 enumerated/curated. Do not introduce a generic shell escape hatch such as arbitrary `poetry run ...`.
+If only structured natural-language support is intended, keep `direct_supported=false` and add tests
+showing exact direct command strings are not accepted as a broad project-tooling shortcut.

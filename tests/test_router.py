@@ -9,14 +9,26 @@ def test_route_request_common_buckets() -> None:
     assert route_request("list all files in this directory").category == "filesystem_inspect"
     assert route_request("show running python processes").category == "process_inspect"
     assert route_request("show disk space").category == "metadata_inspect"
-    assert route_request("run the test suite").category == "unsupported"
-    assert route_request("run ruff check").category == "unsupported"
-    assert route_request("check docs build").category == "unsupported"
-    assert route_request("run mkdocs build").category == "unsupported"
+    assert route_request("run the test suite").category == "project_health"
+    assert route_request("run ruff check").category == "project_health"
+    assert route_request("check docs build").category == "project_health"
+    assert route_request("run mkdocs build").category == "project_health"
 
 
-def test_route_request_hides_project_health_while_planned_only() -> None:
+def test_route_request_project_health_supported_requests() -> None:
     route = route_request("run the test suite")
+
+    assert route.category == "project_health"
+    assert route.suggested_families == ("project_health",)
+    assert route.suggested_capabilities == ("project_health",)
+    assert route_request("check if formatting is okay").category == "project_health"
+    assert route_request("run format check").category == "project_health"
+    assert route_request("run evals").category == "project_health"
+    assert route_request("run OTerminus evals").category == "project_health"
+
+
+def test_route_request_project_health_disabled_pack() -> None:
+    route = route_request("run the test suite", disabled_pack_ids=frozenset({"project"}))
 
     assert route.category == "unsupported"
     assert route.suggested_families == ()

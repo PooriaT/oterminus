@@ -105,11 +105,11 @@
 
 **Label:** Project health
 
-**Description:** Curated project maintenance checks (tests, lint, format check, docs build, evals) tracked as planned/experimental metadata until normal execution support is complete.
+**Description:** Curated project maintenance checks for tests, lint, format checks, docs builds, and evals.
 
 | Command | Category | Platforms | Risk | Maturity | Status | Direct support | Network | Examples | Natural-language aliases | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|
-| `project_health` | developer_workflow | all | write | experimental_only | experimental/planned (metadata only; not normal executable support) | no | no | `project_health run_tests`<br>`project_health lint_check`<br>`project_health format_check`<br>`project_health build_docs`<br>`project_health run_evals` | `run project tests`, `check project formatting`, `run project lint`, `build project docs`, `run project evals` | Project health is planned/experimental metadata in normal discovery, autocomplete, and planner context; it is not advertised as normal executable support until follow-up execution work is complete.<br>Project health operations may execute local project code or tooling (for example via test suites, docs builds, and eval workflows).<br>Always preview and require explicit user confirmation before execution.<br>Only curated operations are in scope: run_tests, lint_check, format_check, build_docs, run_evals.<br>Arbitrary 'poetry run ...' and arbitrary shell execution are not supported. |
+| `project_health` | developer_workflow | all | write | structured | structured (normal executable support) | no | no | `run tests`<br>`check linting`<br>`run format check`<br>`build docs`<br>`run evals` | `run tests`, `run the test suite`, `run project tests`, `check linting`, `run ruff check`, `check formatting`, `run format check`, `check project formatting`, `run project lint`, `build docs`, `build project docs`, `run evals`, `run project evals` | Project health operations may execute local project code or tooling (for example via test suites, docs builds, and eval workflows).<br>Always preview and require explicit user confirmation before execution.<br>Only curated operations are in scope: run_tests, lint_check, format_check, build_docs, run_evals.<br>Arbitrary 'poetry run ...', install/update/deploy/publish commands, write-formatting, and arbitrary shell execution are not supported. |
 
 ## `system_inspection`
 

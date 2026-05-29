@@ -61,7 +61,7 @@ remain unsupported.
 - `process_inspection`
 - `system_inspection`
 - `network_diagnostics`
-- `project_health` (planned/experimental metadata only until normal execution support is complete)
+- `project_health`
 - `macos_desktop`
 - `destructive_operations`
 
@@ -89,12 +89,12 @@ The `git_inspection` capability is intentionally scoped to read-only inspection.
 
 ## Capability: `project_health`
 
-`project_health` is tracked as a planned/experimental developer-workflow capability for common
-repository health checks: `run_tests`, `lint_check`, `format_check`, `build_docs`, and `run_evals`.
-It remains metadata-only in normal discovery, autocomplete, router suggestions, and planner prompt
-context until the follow-up execution-support work is complete.
+`project_health` is a supported structured developer-workflow capability for common repository
+health checks: `run_tests`, `lint_check`, `format_check`, `build_docs`, and `run_evals`. It remains
+structured-only in this release: direct `poetry run ...` command input is not accepted as a
+project-health shortcut.
 
-The intended curated operation set is:
+The curated operation set is:
 - `run_tests` -> `poetry run pytest`
 - `lint_check` -> `poetry run ruff check .`
 - `format_check` -> `poetry run ruff format --check .`
@@ -102,9 +102,9 @@ The intended curated operation set is:
 - `run_evals` -> `poetry run oterminus-evals`
 
 Safety boundary:
-- do not advertise as normal executable support while maturity remains planned/experimental
 - always preview and require explicit confirmation
 - reject arbitrary `poetry run ...` commands
 - reject dependency install/update commands
+- reject deploy/publish commands
 - reject write-format (`poetry run ruff format .`)
 - reject shell chaining/pipes/redirection/substitution

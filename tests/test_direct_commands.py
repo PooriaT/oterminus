@@ -259,7 +259,7 @@ def test_detect_direct_command_allows_archive_natural_language_to_reach_planner(
     assert detect_direct_command("zip this") is None
 
 
-def test_detect_direct_command_rejects_exact_project_health_forms_while_planned_only() -> None:
+def test_detect_direct_command_rejects_exact_project_health_forms() -> None:
     assert detect_direct_command("poetry run pytest") is None
     assert detect_direct_command("poetry run ruff format --check .") is None
 
