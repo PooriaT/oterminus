@@ -9,7 +9,7 @@ import pytest
 from oterminus.config import AppConfig
 from oterminus.models import ActionType, Proposal, ProposalMode, RiskLevel
 from oterminus.policies import PolicyConfig
-from oterminus.validator import Validator
+from oterminus.validator import ProposalOrigin, Validator
 
 
 def _config(tmp_path: Path, *, audit_enabled: bool = True) -> AppConfig:
@@ -236,6 +236,35 @@ def test_one_shot_execute_mode_decline_stops_before_executor(
     payload = _read_audit_payload(config.audit_log_path)
     assert payload["confirmation_result"] == "cancelled"
     assert payload["execution_exit_code"] is None
+
+
+def test_direct_ls_passthrough_skips_planner_and_uses_direct_validation_origin(
+    monkeypatch, tmp_path: Path, capsys
+) -> None:
+    from oterminus.cli import main
+
+    config = _config(tmp_path)
+    validator, executor = _install_main_dependencies(monkeypatch, config)
+    monkeypatch.setattr(
+        "oterminus.cli.ensure_startup_ready",
+        Mock(side_effect=AssertionError("direct command should not need Ollama")),
+    )
+    monkeypatch.setattr("builtins.input", Mock(side_effect=AssertionError("dry-run")))
+
+    code = main(["--dry-run", "--", "ls", "-ltrh"])
+
+    assert code == 0
+    output = capsys.readouterr().out
+    assert "ls -ltrh" in output
+    validator.validate.assert_called_once()
+    assert validator.validate.call_args.kwargs["origin"] == ProposalOrigin.DIRECT_COMMAND
+    executor.run.assert_not_called()
+    payload = _read_audit_payload(config.audit_log_path)
+    assert payload["direct_command_detected"] is True
+    assert payload["planner_skip_reason"] == "direct_command"
+    assert payload["proposal_origin"] == "direct_command"
+    assert payload["rendered_command"] == "ls -ltrh"
+    assert payload["argv"] == ["ls", "-ltrh"]
 
 
 def test_natural_language_project_health_uses_local_planner_and_requires_confirmation(

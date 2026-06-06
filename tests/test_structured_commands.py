@@ -501,6 +501,26 @@ def test_render_structured_command_rejects_invalid_arguments() -> None:
         render_structured_command("chmod", {"path": "run.sh", "mode": "u+x"})
 
 
+def test_structured_ls_rendering_stays_typed_and_deterministic() -> None:
+    rendered = render_structured_command(
+        "ls",
+        {"path": ".", "long": True, "human_readable": True, "all": True, "recursive": False},
+    )
+
+    assert rendered.argv == ("ls", "-l", "-h", "-a", ".")
+    assert rendered.command == "ls -l -h -a ."
+
+
+def test_structured_ls_rejects_arbitrary_flags() -> None:
+    with pytest.raises(StructuredCommandError):
+        render_structured_command("ls", {"arbitrary_flags": ["--color=auto"]})
+
+
+def test_parse_passthrough_only_ls_flags_is_not_structured() -> None:
+    assert parse_raw_command_as_structured("ls -ltrh") is None
+    assert parse_raw_command_as_structured("ls --color=auto") is None
+
+
 @pytest.mark.parametrize(
     "arguments",
     [

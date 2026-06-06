@@ -17,7 +17,7 @@ from oterminus.models import ProposalMode, RiskLevel
 from oterminus.planner import Planner, PlannerError
 from oterminus.policies import PolicyConfig
 from oterminus.router import route_request
-from oterminus.validator import Validator
+from oterminus.validator import ProposalOrigin, Validator
 
 
 class EvalCase(BaseModel):
@@ -133,6 +133,7 @@ def _evaluate_case_on_platform(
     case: EvalCase, validator: Validator, mismatches: list[EvalMismatch]
 ) -> EvalResult:
     proposal = detect_direct_command(case.user_input, platform_id=case.platform_id)
+    proposal_origin = ProposalOrigin.DIRECT_COMMAND if proposal is not None else ProposalOrigin.UNKNOWN
     if proposal is None:
         ambiguity = detect_ambiguity(case.user_input)
         if case.expected_ambiguity_detected is not None and (
@@ -182,6 +183,7 @@ def _evaluate_case_on_platform(
         local_match = plan_locally(case.user_input, route)
         if local_match is not None:
             proposal = local_match.proposal
+            proposal_origin = ProposalOrigin.LOCAL_PLANNER
         else:
             if case.planner_proposal is None:
                 return EvalResult(
@@ -199,6 +201,7 @@ def _evaluate_case_on_platform(
 
             try:
                 proposal = Planner.parse_proposal(json.dumps(case.planner_proposal))
+                proposal_origin = ProposalOrigin.OLLAMA_PLANNER
             except PlannerError as exc:
                 if (
                     case.expected_planner_error_contains
@@ -217,7 +220,7 @@ def _evaluate_case_on_platform(
                     ],
                 )
 
-    validation = validator.validate(proposal)
+    validation = validator.validate(proposal, origin=proposal_origin)
 
     if case.expected_mode is not None and proposal.mode != case.expected_mode:
         mismatches.append(

@@ -94,6 +94,12 @@ trusting command text. Direct commands may also be normalized into structured ar
 is available. Experimental proposals may carry command text, but they remain constrained by parsing,
 registry, validator, policy, preview, and stronger confirmation.
 
+Some trusted direct commands may remain experimental when the typed schema cannot represent the
+user's argv exactly. For example, `ls -ltrh` is detected locally, skips Ollama planning, preserves
+`["ls", "-ltrh"]`, and reaches validation with direct-command origin. Natural-language requests such
+as "show files sorted by modification time" still go through the local planner or Ollama planner and
+can only produce typed structured arguments.
+
 ### 7) Validation and policy
 
 Validator enforces:

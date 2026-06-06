@@ -4,7 +4,7 @@ from oterminus.commands import COMMAND_REGISTRY, NETWORK_TOUCHING_WARNING, comma
 from oterminus.models import ActionType, Proposal, ProposalMode, RiskLevel
 from oterminus.policies import PolicyConfig
 from oterminus.structured_commands import StructuredCommandError, parse_raw_command_as_structured
-from oterminus.validator import Validator
+from oterminus.validator import ProposalOrigin, Validator
 
 
 def make_proposal(
@@ -103,6 +103,106 @@ def test_accept_short_flag_clusters_for_curated_safe_commands() -> None:
 
     assert result.accepted is True
     assert result.risk_level == RiskLevel.SAFE
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "ls -ltrh",
+        "ls --color=auto",
+        "ls --sort=time",
+    ],
+)
+def test_accept_direct_origin_ls_safe_inspection_passthrough(command: str) -> None:
+    validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))
+    result = validator.validate(make_proposal(command), origin=ProposalOrigin.DIRECT_COMMAND)
+
+    assert result.accepted is True
+    assert result.risk_level == RiskLevel.SAFE
+    assert result.argv == command.split()
+    assert result.rendered_command == command
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "ls -ltrh | cat",
+        "ls -l > output.txt",
+        "ls $(pwd)",
+        "ls `pwd`",
+        "ls -l && whoami",
+        "ls -- /tmp",
+        "ls --color=",
+        "ls --bad!",
+        "ls https://example.com",
+    ],
+)
+def test_reject_direct_origin_ls_unsafe_passthrough_forms(command: str) -> None:
+    validator = Validator(PolicyConfig(mode=RiskLevel.DANGEROUS, allow_dangerous=True))
+    result = validator.validate(make_proposal(command), origin=ProposalOrigin.DIRECT_COMMAND)
+
+    assert result.accepted is False
+
+
+def test_reject_direct_origin_ls_path_outside_allowed_roots(tmp_path) -> None:
+    validator = Validator(
+        PolicyConfig(
+            mode=RiskLevel.WRITE,
+            allow_dangerous=False,
+            allowed_roots=(tmp_path,),
+        )
+    )
+    result = validator.validate(
+        make_proposal("ls -ltrh /etc"), origin=ProposalOrigin.DIRECT_COMMAND
+    )
+
+    assert result.accepted is False
+    assert any("Paths outside allowed roots" in reason for reason in result.reasons)
+
+
+def test_reject_disabled_pack_for_direct_origin_ls_passthrough() -> None:
+    validator = Validator(
+        PolicyConfig(
+            mode=RiskLevel.WRITE,
+            allow_dangerous=False,
+            disabled_command_packs=frozenset({"filesystem"}),
+        )
+    )
+    result = validator.validate(make_proposal("ls -ltrh"), origin=ProposalOrigin.DIRECT_COMMAND)
+
+    assert result.accepted is False
+    assert any("command pack 'filesystem' is disabled" in reason for reason in result.reasons)
+
+
+@pytest.mark.parametrize(
+    "origin",
+    [ProposalOrigin.UNKNOWN, ProposalOrigin.OLLAMA_PLANNER, ProposalOrigin.LOCAL_PLANNER],
+)
+def test_reject_ls_passthrough_without_trusted_direct_origin(origin: ProposalOrigin) -> None:
+    validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))
+    result = validator.validate(make_proposal("ls -ltrh"), origin=origin)
+
+    assert result.accepted is False
+    assert any("Unsupported flag '-ltrh' for command 'ls'." in reason for reason in result.reasons)
+
+
+def test_reject_passthrough_when_proposal_family_does_not_match_base() -> None:
+    validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))
+    proposal = make_proposal("ls -ltrh", mode=ProposalMode.EXPERIMENTAL, command_family="du")
+
+    result = validator.validate(proposal, origin=ProposalOrigin.DIRECT_COMMAND)
+
+    assert result.accepted is False
+    assert any("does not match command_family" in reason for reason in result.reasons)
+    assert any("Unsupported flag '-ltrh' for command 'ls'." in reason for reason in result.reasons)
+
+
+def test_explicit_policy_command_flags_remain_strict_for_direct_origin() -> None:
+    validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))
+    result = validator.validate(make_proposal("du --color=auto ."), origin=ProposalOrigin.DIRECT_COMMAND)
+
+    assert result.accepted is False
+    assert any("Unsupported flag '--color=auto' for command 'du'." in reason for reason in result.reasons)
 
 
 def test_accept_inline_value_flag_for_curated_safe_command() -> None:

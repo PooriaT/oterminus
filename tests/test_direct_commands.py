@@ -52,6 +52,49 @@ def test_detect_direct_command_for_clear() -> None:
     assert proposal.command_family == "clear"
 
 
+def test_detect_direct_ls_preserves_passthrough_only_flags() -> None:
+    proposal = detect_direct_command("ls -ltrh")
+
+    assert proposal is not None
+    assert proposal.mode == ProposalMode.EXPERIMENTAL
+    assert proposal.command_family == "ls"
+    assert proposal.command == "ls -ltrh"
+
+
+def test_detect_direct_ls_long_option_passthrough() -> None:
+    proposal = detect_direct_command("ls --color=auto")
+
+    assert proposal is not None
+    assert proposal.mode == ProposalMode.EXPERIMENTAL
+    assert proposal.command_family == "ls"
+    assert proposal.command == "ls --color=auto"
+
+
+def test_detect_direct_ls_substitution_stays_raw_for_validation() -> None:
+    proposal = detect_direct_command("ls $(pwd)")
+
+    assert proposal is not None
+    assert proposal.mode == ProposalMode.EXPERIMENTAL
+    assert proposal.command_family == "ls"
+    assert proposal.command == "ls $(pwd)"
+
+
+def test_detect_direct_ls_structured_forms_still_parse() -> None:
+    long = detect_direct_command("ls -l")
+    all_long = detect_direct_command("ls -la")
+    all_human = detect_direct_command("ls -lah .")
+
+    assert long is not None
+    assert long.mode == ProposalMode.STRUCTURED
+    assert long.command_family == "ls"
+    assert all_long is not None
+    assert all_long.mode == ProposalMode.STRUCTURED
+    assert all_long.command_family == "ls"
+    assert all_human is not None
+    assert all_human.mode == ProposalMode.STRUCTURED
+    assert all_human.command_family == "ls"
+
+
 def test_detect_direct_command_preserves_registry_notes() -> None:
     proposal = detect_direct_command("cd src")
 

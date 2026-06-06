@@ -21,6 +21,7 @@ Registry merge rejects duplicate command names and empty capability IDs.
 - capability mapping
 - risk level and maturity level
 - direct detection behavior
+- direct-only flag policy (`direct_flag_policy`)
 - flag model (`allowed_flags`, `flags_with_values`, path-valued/leading flags)
 - operand constraints (`min_operands`, `max_operands`)
 - path safety metadata (`forbidden_operand_prefixes`, path operand mode)
@@ -49,6 +50,12 @@ direct support, risk, examples, and warnings.
 `network_touching` defaults to `false`. Network diagnostics command families opt in explicitly so
 prompts, discovery, validation warnings, and generated reference docs can mark the external-host
 boundary without relying on command-name heuristics.
+
+`direct_flag_policy` defaults to `explicit`. That keeps direct command validation tied to the
+curated flag metadata for every command unless the command explicitly opts into a broader direct-only
+policy. `ls` is the only command using `safe_inspection_passthrough`: natural-language structured
+planning still uses typed `LsArguments` and the explicit `allowed_flags` metadata, while trusted
+direct input such as `ls -ltrh` may preserve a guarded argv shape.
 
 The `network` pack exposes only the `network_diagnostics` capability: fixed-count ping, HTTP HEAD
 via `curl -I`, and basic `dig`/`nslookup`. The registry does not expose broad network tools or

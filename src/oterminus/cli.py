@@ -42,7 +42,7 @@ from oterminus.policies import ConfirmationLevel, confirmation_level
 from oterminus.renderer import render_failure_explanation, render_preview
 from oterminus.router import route_request
 from oterminus.shell_completion import render_shell_completion, supported_shells
-from oterminus.validator import Validator
+from oterminus.validator import ProposalOrigin, Validator
 from oterminus.version import format_version
 
 LOGGER = logging.getLogger("oterminus")
@@ -204,6 +204,9 @@ def handle_request(
     proposal_origin = (
         PROPOSAL_ORIGIN_DIRECT_COMMAND if is_direct_command else PROPOSAL_ORIGIN_UNKNOWN
     )
+    validation_origin = (
+        ProposalOrigin.DIRECT_COMMAND if is_direct_command else ProposalOrigin.UNKNOWN
+    )
     event.direct_command_detected = is_direct_command
     event.planner_invoked = False
     event.planner_skipped = is_direct_command
@@ -256,6 +259,7 @@ def handle_request(
             if local_match is not None:
                 proposal = local_match.proposal
                 proposal_origin = PROPOSAL_ORIGIN_LOCAL_PLANNER
+                validation_origin = ProposalOrigin.LOCAL_PLANNER
                 event.planner_invoked = False
                 event.planner_skipped = True
                 event.planner_skip_reason = PLANNER_SKIP_LOCAL_PLANNER
@@ -273,6 +277,7 @@ def handle_request(
                 planner_started = time.perf_counter()
                 proposal = planner.plan(request)
                 proposal_origin = PROPOSAL_ORIGIN_OLLAMA_PLANNER
+                validation_origin = ProposalOrigin.OLLAMA_PLANNER
                 timings_ms["planner_ms"] = _duration_ms_from_counter(planner_started)
         elif debug_trace:
             print("[trace] fast_path=direct_command planner=skipped")
@@ -299,7 +304,7 @@ def handle_request(
         print(f"[trace] proposal mode={proposal.mode.value} family={proposal.command_family}")
 
     validation_started = time.perf_counter()
-    validation = validator.validate(proposal)
+    validation = validator.validate(proposal, origin=validation_origin)
     timings_ms["validation_ms"] = _duration_ms_from_counter(validation_started)
     event.validation_accepted = validation.accepted
     event.warnings = list(validation.warnings)

@@ -87,6 +87,11 @@ In `CommandSpec`, explicitly model supported flags: - `allowed_flags` - `flags_w
 Guidelines: - Start with the smallest useful subset. - Do **not** bulk-copy man-page flags. - Add
 flags only when backed by workflow need + tests. - Reject unsupported flags by default.
 
+`direct_flag_policy` should usually stay at its default, `explicit`. A broader direct-only policy is
+reserved for safe inspection commands with a documented need, trusted direct-origin validation, and
+focused tests proving structured rendering remains typed. Do not enable `safe_inspection_passthrough`
+for write, network, archive, project-health, or dangerous commands without a separate design review.
+
 ## 5) Handle dangerous flags explicitly
 If specific flags increase blast radius (example recursive deletion), mark them in
 `dangerous_flags`.

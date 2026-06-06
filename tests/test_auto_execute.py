@@ -97,6 +97,16 @@ def test_experimental_safe_command_is_ineligible() -> None:
     assert decision.reason == "proposal_mode"
 
 
+def test_direct_ls_passthrough_only_shape_is_not_auto_execute_eligible() -> None:
+    proposal = _proposal("ls", mode=ProposalMode.EXPERIMENTAL, command="ls -ltrh")
+    validation = _validation(rendered_command="ls -ltrh", argv=["ls", "-ltrh"])
+
+    decision = _decision(proposal=proposal, validation=validation, command_name="ls")
+
+    assert decision.eligible is False
+    assert decision.reason == "proposal_mode"
+
+
 @pytest.mark.parametrize("risk", [RiskLevel.WRITE, RiskLevel.DANGEROUS])
 def test_write_and_dangerous_commands_are_ineligible(risk: RiskLevel) -> None:
     decision = _decision(validation=_validation(risk=risk))

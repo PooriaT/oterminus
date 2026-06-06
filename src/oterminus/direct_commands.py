@@ -10,6 +10,8 @@ from oterminus.commands import (
 from oterminus.models import ActionType, Proposal, ProposalMode
 from oterminus.structured_commands import StructuredCommandError, parse_raw_command_as_structured
 
+BLOCKED_DIRECT_COMMAND_FRAGMENTS = ("$(", "`", "\n", "\r", "\x00")
+
 
 def detect_direct_command(
     request: str, *, disabled_pack_ids: frozenset[str] | None = None, platform_id: str | None = None
@@ -74,11 +76,15 @@ def detect_direct_command(
         )
 
     notes = ["Detected as a direct shell command; skipped the LLM planner.", *spec.notes]
-    try:
-        parsed = parse_raw_command_as_structured(command)
-    except StructuredCommandError as exc:
-        notes.append(f"Structured parsing skipped: {exc}")
+    if any(fragment in command for fragment in BLOCKED_DIRECT_COMMAND_FRAGMENTS):
+        notes.append("Structured parsing skipped: command text contains blocked shell fragments.")
         parsed = None
+    else:
+        try:
+            parsed = parse_raw_command_as_structured(command)
+        except StructuredCommandError as exc:
+            notes.append(f"Structured parsing skipped: {exc}")
+            parsed = None
     if parsed is not None:
         command_family, arguments = parsed
         return Proposal(

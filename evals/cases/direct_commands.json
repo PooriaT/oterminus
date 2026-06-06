@@ -15,6 +15,32 @@
     ]
   },
   {
+    "id": "direct-ls-passthrough-sort-time",
+    "user_input": "ls -ltrh",
+    "expected_mode": "experimental",
+    "expected_command_family": "ls",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "ls -ltrh",
+    "expected_argv": [
+      "ls",
+      "-ltrh"
+    ]
+  },
+  {
+    "id": "direct-ls-passthrough-color",
+    "user_input": "ls --color=auto",
+    "expected_mode": "experimental",
+    "expected_command_family": "ls",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "ls --color=auto",
+    "expected_argv": [
+      "ls",
+      "--color=auto"
+    ]
+  },
+  {
     "id": "direct-pwd",
     "user_input": "pwd",
     "expected_mode": "structured",
