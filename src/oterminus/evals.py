@@ -133,7 +133,9 @@ def _evaluate_case_on_platform(
     case: EvalCase, validator: Validator, mismatches: list[EvalMismatch]
 ) -> EvalResult:
     proposal = detect_direct_command(case.user_input, platform_id=case.platform_id)
-    proposal_origin = ProposalOrigin.DIRECT_COMMAND if proposal is not None else ProposalOrigin.UNKNOWN
+    proposal_origin = (
+        ProposalOrigin.DIRECT_COMMAND if proposal is not None else ProposalOrigin.UNKNOWN
+    )
     if proposal is None:
         ambiguity = detect_ambiguity(case.user_input)
         if case.expected_ambiguity_detected is not None and (

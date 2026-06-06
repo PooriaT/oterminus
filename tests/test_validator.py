@@ -123,6 +123,17 @@ def test_accept_direct_origin_ls_safe_inspection_passthrough(command: str) -> No
     assert result.rendered_command == command
 
 
+def test_direct_origin_ls_passthrough_preserves_hash_in_operand() -> None:
+    validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))
+    result = validator.validate(
+        make_proposal("ls -ltrh foo#bar"), origin=ProposalOrigin.DIRECT_COMMAND
+    )
+
+    assert result.accepted is True
+    assert result.argv == ["ls", "-ltrh", "foo#bar"]
+    assert result.rendered_command == "ls -ltrh foo#bar"
+
+
 @pytest.mark.parametrize(
     "command",
     [
@@ -199,10 +210,14 @@ def test_reject_passthrough_when_proposal_family_does_not_match_base() -> None:
 
 def test_explicit_policy_command_flags_remain_strict_for_direct_origin() -> None:
     validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))
-    result = validator.validate(make_proposal("du --color=auto ."), origin=ProposalOrigin.DIRECT_COMMAND)
+    result = validator.validate(
+        make_proposal("du --color=auto ."), origin=ProposalOrigin.DIRECT_COMMAND
+    )
 
     assert result.accepted is False
-    assert any("Unsupported flag '--color=auto' for command 'du'." in reason for reason in result.reasons)
+    assert any(
+        "Unsupported flag '--color=auto' for command 'du'." in reason for reason in result.reasons
+    )
 
 
 def test_accept_inline_value_flag_for_curated_safe_command() -> None:

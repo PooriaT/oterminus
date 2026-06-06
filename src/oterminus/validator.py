@@ -620,6 +620,7 @@ class Validator:
         try:
             lexer = shlex.shlex(command, posix=True, punctuation_chars="|&;<>")
             lexer.whitespace_split = True
+            lexer.commenters = ""
             tokens = list(lexer)
         except ValueError:
             return [], ["Command could not be parsed safely."]
