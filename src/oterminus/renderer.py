@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 
+from oterminus.messages import EXPERIMENTAL_USER_WARNING, EXPERIMENTAL_VERBOSE_EXPLANATION
 from oterminus.models import Proposal, ProposalMode, ValidationResult
 from oterminus.policies import ConfirmationLevel, confirmation_level
 
@@ -65,11 +66,18 @@ def _render_detailed_preview(
             lines.extend(f"  {line}" for line in argument_lines)
 
     display_notes = _display_notes(proposal.notes, include_debug=verbose)
+    if (
+        verbose
+        and proposal.is_experimental
+        and not _has_equivalent_message(display_notes, EXPERIMENTAL_VERBOSE_EXPLANATION)
+    ):
+        display_notes.append(EXPERIMENTAL_VERBOSE_EXPLANATION)
     if display_notes:
         lines.append("Notes        : " + "; ".join(display_notes))
 
-    if validation.warnings:
-        lines.append("Warnings     : " + "; ".join(validation.warnings))
+    display_warnings = _display_warnings(proposal, validation.warnings)
+    if display_warnings:
+        lines.append("Warnings     : " + "; ".join(display_warnings))
 
     if validation.reasons:
         lines.append("Rejections   : " + "; ".join(validation.reasons))
@@ -84,13 +92,17 @@ def _render_direct_preview(proposal: Proposal, validation: ValidationResult) -> 
         f"Command: {command}",
         f"Risk: {validation.risk_level.value}",
     ]
+    level = confirmation_level(proposal.mode, validation.risk_level)
+    if level == ConfirmationLevel.VERY_STRONG:
+        lines.append(f"Confirmation: {_format_confirmation_level(level)}")
 
     display_notes = _display_notes(proposal.notes, include_debug=False)
     if display_notes:
         lines.append("Notes: " + "; ".join(display_notes))
 
-    if validation.warnings:
-        lines.append("Warnings: " + "; ".join(validation.warnings))
+    display_warnings = _display_warnings(proposal, validation.warnings)
+    if display_warnings:
+        lines.append("Warnings: " + "; ".join(display_warnings))
 
     if validation.reasons:
         lines.append("Rejections: " + "; ".join(validation.reasons))
@@ -100,14 +112,64 @@ def _render_direct_preview(proposal: Proposal, validation: ValidationResult) -> 
 
 def _format_confirmation_level(level: ConfirmationLevel) -> str:
     if level == ConfirmationLevel.VERY_STRONG:
-        return "very strong"
+        return "very strong; type EXECUTE EXPERIMENTAL to run"
     return level.value
 
 
 def _display_notes(notes: list[str], *, include_debug: bool) -> list[str]:
+    notes = [
+        note
+        for note in notes
+        if not _has_same_message(note, EXPERIMENTAL_USER_WARNING)
+        and (include_debug or not _has_equivalent_message([note], EXPERIMENTAL_VERBOSE_EXPLANATION))
+    ]
     if include_debug:
         return notes
     return [note for note in notes if not note.startswith(_DIRECT_DEBUG_NOTE_PREFIXES)]
+
+
+def _display_warnings(proposal: Proposal, warnings: list[str]) -> list[str]:
+    display_warnings = [
+        warning
+        for warning in warnings
+        if not _has_equivalent_message([warning], EXPERIMENTAL_VERBOSE_EXPLANATION)
+        and (proposal.is_experimental or not _has_same_message(warning, EXPERIMENTAL_USER_WARNING))
+    ]
+    if proposal.is_experimental and not _has_equivalent_message(
+        display_warnings, EXPERIMENTAL_USER_WARNING
+    ):
+        display_warnings.insert(0, EXPERIMENTAL_USER_WARNING)
+    return _unique_messages(display_warnings)
+
+
+def _unique_messages(messages: list[str]) -> list[str]:
+    unique: list[str] = []
+    for message in messages:
+        if not _has_same_message(message, *unique):
+            unique.append(message)
+    return unique
+
+
+def _has_equivalent_message(messages: list[str], expected: str) -> bool:
+    if expected == EXPERIMENTAL_VERBOSE_EXPLANATION:
+        return any(
+            _has_same_message(message, expected)
+            or (
+                "outside deterministic structured rendering" in message.lower()
+                and "stricter confirmation" in message.lower()
+            )
+            for message in messages
+        )
+    return any(_has_same_message(message, expected) for message in messages)
+
+
+def _has_same_message(message: str, *expected_messages: str) -> bool:
+    normalized_message = _normalize_message(message)
+    return any(normalized_message == _normalize_message(expected) for expected in expected_messages)
+
+
+def _normalize_message(message: str) -> str:
+    return " ".join(message.strip().lower().split())
 
 
 def render_failure_explanation(explanation) -> str:

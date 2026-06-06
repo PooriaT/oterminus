@@ -1,4 +1,5 @@
 from oterminus.models import ActionType, Proposal, ProposalMode, RiskLevel, ValidationResult
+from oterminus.messages import EXPERIMENTAL_USER_WARNING, EXPERIMENTAL_VERBOSE_EXPLANATION
 from oterminus.renderer import render_preview
 
 
@@ -54,6 +55,9 @@ def test_render_structured_preview_without_command_text() -> None:
     assert "Command fam. : find" in text
     assert "Arguments" in text
     assert '"name": "*.py"' in text
+    assert "Experimental command" not in text
+    assert EXPERIMENTAL_VERBOSE_EXPLANATION not in text
+    assert "EXECUTE EXPERIMENTAL" not in text
 
 
 def test_render_structured_preview_with_legacy_command_text() -> None:
@@ -100,9 +104,7 @@ def test_render_experimental_preview_is_clearly_labeled() -> None:
     validation = ValidationResult(
         accepted=True,
         risk_level=RiskLevel.SAFE,
-        warnings=[
-            "Experimental mode stays outside deterministic structured rendering and uses stricter confirmation."
-        ],
+        warnings=[EXPERIMENTAL_USER_WARNING],
         rendered_command="cat README.md",
         argv=["cat", "README.md"],
     )
@@ -112,8 +114,40 @@ def test_render_experimental_preview_is_clearly_labeled() -> None:
     assert "--- oterminus proposal (EXPERIMENTAL) ---" in text
     assert "Mode         : experimental" in text
     assert "Experimental : yes" in text
-    assert "Confirmation : very strong" in text
+    assert "Confirmation : very strong; type EXECUTE EXPERIMENTAL to run" in text
     assert "Warnings" in text
+    assert EXPERIMENTAL_USER_WARNING in text
+    assert EXPERIMENTAL_VERBOSE_EXPLANATION not in text
+    assert text.count(EXPERIMENTAL_USER_WARNING) == 1
+
+
+def test_render_experimental_preview_verbose_adds_architecture_note_once() -> None:
+    proposal = Proposal(
+        action_type=ActionType.SHELL_COMMAND,
+        mode=ProposalMode.EXPERIMENTAL,
+        command_family="stat",
+        command="stat -f %z README.md",
+        summary="Show readme size",
+        explanation="Experimental fallback",
+        risk_level=RiskLevel.SAFE,
+        needs_confirmation=True,
+        notes=[EXPERIMENTAL_VERBOSE_EXPLANATION],
+    )
+    validation = ValidationResult(
+        accepted=True,
+        risk_level=RiskLevel.SAFE,
+        warnings=[EXPERIMENTAL_USER_WARNING, EXPERIMENTAL_VERBOSE_EXPLANATION],
+        rendered_command="stat -f %z README.md",
+        argv=["stat", "-f", "%z", "README.md"],
+    )
+
+    text = render_preview(proposal, validation, verbose=True)
+
+    assert EXPERIMENTAL_USER_WARNING in text
+    assert EXPERIMENTAL_VERBOSE_EXPLANATION in text
+    assert text.count(EXPERIMENTAL_USER_WARNING) == 1
+    assert text.count(EXPERIMENTAL_VERBOSE_EXPLANATION) == 1
+    assert "Confirmation : very strong; type EXECUTE EXPERIMENTAL to run" in text
 
 
 def test_render_direct_command_default_is_concise() -> None:
@@ -150,6 +184,9 @@ def test_render_direct_command_default_is_concise() -> None:
     assert "Explanation" not in text
     assert "LLM planner" not in text
     assert "Notes:" not in text
+    assert "Experimental command" not in text
+    assert EXPERIMENTAL_VERBOSE_EXPLANATION not in text
+    assert "EXECUTE EXPERIMENTAL" not in text
 
 
 def test_render_direct_command_default_keeps_user_facing_notes() -> None:
@@ -168,13 +205,21 @@ def test_render_direct_command_default_keeps_user_facing_notes() -> None:
         ],
     )
     validation = ValidationResult(
-        accepted=True, risk_level=RiskLevel.SAFE, rendered_command="env", argv=["env"]
+        accepted=True,
+        risk_level=RiskLevel.SAFE,
+        warnings=[EXPERIMENTAL_USER_WARNING],
+        rendered_command="env",
+        argv=["env"],
     )
 
     text = render_preview(proposal, validation, direct_command=True)
 
+    assert "Confirmation: very strong; type EXECUTE EXPERIMENTAL to run" in text
+    assert "Warnings: " + EXPERIMENTAL_USER_WARNING in text
     assert "Notes: Printing the full environment may include sensitive values" in text
     assert "Detected as a direct shell command" not in text
+    assert EXPERIMENTAL_VERBOSE_EXPLANATION not in text
+    assert text.count(EXPERIMENTAL_USER_WARNING) == 1
 
 
 def test_render_direct_command_verbose_shows_debug_notes() -> None:
@@ -198,6 +243,9 @@ def test_render_direct_command_verbose_shows_debug_notes() -> None:
     assert "Summary      : Run direct command: cd" in text
     assert "Explanation  : Input already looks like a shell command." in text
     assert "Notes        : Detected as a direct shell command; skipped the LLM planner." in text
+    assert EXPERIMENTAL_USER_WARNING in text
+    assert EXPERIMENTAL_VERBOSE_EXPLANATION in text
+    assert "Confirmation : very strong; type EXECUTE EXPERIMENTAL to run" in text
 
 
 def test_render_natural_language_default_remains_informative() -> None:
@@ -254,5 +302,8 @@ def test_render_direct_command_non_verbose_keeps_safety_warnings() -> None:
 
     assert "Command: rm -rf tmp" in text
     assert "Risk: dangerous" in text
+    assert "Confirmation: very strong; type EXECUTE EXPERIMENTAL to run" in text
+    assert EXPERIMENTAL_USER_WARNING in text
+    assert EXPERIMENTAL_VERBOSE_EXPLANATION not in text
     assert "Dangerous recursive deletion requested." in text
     assert "Refusing to run recursive delete outside allowed roots." in text

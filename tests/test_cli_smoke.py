@@ -1152,8 +1152,25 @@ def test_ask_confirmation_requires_experimental_phrase(monkeypatch) -> None:
     monkeypatch.setattr("builtins.input", lambda _: "EXECUTE")
     assert ask_confirmation(ConfirmationLevel.VERY_STRONG) is False
 
+    monkeypatch.setattr("builtins.input", lambda _: "execute experimental")
+    assert ask_confirmation(ConfirmationLevel.VERY_STRONG) is False
+
+    monkeypatch.setattr("builtins.input", lambda _: "EXECUTE  EXPERIMENTAL")
+    assert ask_confirmation(ConfirmationLevel.VERY_STRONG) is False
+
     monkeypatch.setattr("builtins.input", lambda _: "EXECUTE EXPERIMENTAL")
     assert ask_confirmation(ConfirmationLevel.VERY_STRONG) is True
+
+
+def test_ask_confirmation_standard_and_strong_are_unchanged(monkeypatch) -> None:
+    monkeypatch.setattr("builtins.input", lambda _: "yes")
+    assert ask_confirmation(ConfirmationLevel.STANDARD) is True
+
+    monkeypatch.setattr("builtins.input", lambda _: "EXECUTE")
+    assert ask_confirmation(ConfirmationLevel.STRONG) is True
+
+    monkeypatch.setattr("builtins.input", lambda _: "EXECUTE EXPERIMENTAL")
+    assert ask_confirmation(ConfirmationLevel.STRONG) is False
 
 
 def test_handle_request_writes_structured_audit_log(monkeypatch, tmp_path: Path) -> None:
