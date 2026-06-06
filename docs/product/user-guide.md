@@ -248,12 +248,15 @@ planner.
 
 ### Direct commands
 
-You can enter supported command families directly (for example `ls -la`, `cd src`, `pwd`, or
-`ping -c 4 example.com`).
+You can enter supported command families directly (for example `ls -la`, `ls -ltrh`,
+`ls --color=auto`, `cd src`, `pwd`, or `ping -c 4 example.com`).
 
 Direct commands skip LLM planning when local direct-command detection succeeds. They still pass
 through validator + policy gates and show a preview before any execution. In normal execute mode,
 they require confirmation by default.
+
+`ls` accepts a broader guarded set of display flags when typed directly. Natural-language requests
+still use the strict typed `ls` fields, so OTerminus does not invent arbitrary `ls` flags from prose.
 
 Network direct commands are detected only for exact constrained forms: `ping -c <count> <host>`,
 `curl -I <http-or-https-url>`, `dig <domain>`, and `nslookup <domain>`. Broad network commands

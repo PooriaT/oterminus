@@ -1,6 +1,13 @@
 from oterminus.models import RiskLevel
 
-from .types import CommandSpec, DirectDetectionMode, MaturityLevel, PathOperandMode, command
+from .types import (
+    CommandSpec,
+    DirectDetectionMode,
+    DirectFlagPolicy,
+    MaturityLevel,
+    PathOperandMode,
+    command,
+)
 
 FILESYSTEM_INSPECTION = {
     "capability_id": "filesystem_inspection",
@@ -31,6 +38,7 @@ COMMAND_PACK: tuple[CommandSpec, ...] = (
         category="inspection",
         **FILESYSTEM_INSPECTION,
         risk_level=RiskLevel.SAFE,
+        direct_flag_policy=DirectFlagPolicy.SAFE_INSPECTION_PASSTHROUGH,
         allowed_flags=("-a", "-h", "-l", "-R"),
         examples=("ls -la",),
         natural_language_aliases=("list files", "show directory contents"),

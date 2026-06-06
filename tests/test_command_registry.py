@@ -4,6 +4,7 @@ from oterminus.commands import (
     COMMAND_PACKS,
     COMMAND_REGISTRY,
     NETWORK_TOUCHING_WARNING,
+    DirectFlagPolicy,
     MaturityLevel,
     capability_summary_for_prompt,
     command,
@@ -103,6 +104,29 @@ def test_command_spec_network_touching_defaults_false() -> None:
     )
 
     assert spec.network_touching is False
+
+
+def test_command_spec_direct_flag_policy_defaults_explicit() -> None:
+    spec = command(
+        name="localcheck",
+        category="inspection",
+        capability_id="synthetic_local",
+        capability_label="Synthetic local",
+        capability_description="Synthetic local command.",
+        risk_level=RiskLevel.SAFE,
+    )
+
+    assert spec.direct_flag_policy == DirectFlagPolicy.EXPLICIT
+
+
+def test_only_ls_uses_safe_inspection_direct_flag_policy() -> None:
+    passthrough_commands = {
+        name
+        for name, spec in COMMAND_REGISTRY.items()
+        if spec.direct_flag_policy == DirectFlagPolicy.SAFE_INSPECTION_PASSTHROUGH
+    }
+
+    assert passthrough_commands == {"ls"}
 
 
 def test_command_spec_can_mark_network_touching() -> None:

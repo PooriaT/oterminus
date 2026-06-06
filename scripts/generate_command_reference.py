@@ -39,6 +39,12 @@ def _direct_support_text(values: set[bool]) -> str:
     return "mixed"
 
 
+def _direct_flag_policy_text(values: set[str]) -> str:
+    if len(values) == 1:
+        return next(iter(values))
+    return "<br>".join(sorted(values))
+
+
 def _platform_text(platforms: object) -> str:
     if not platforms:
         return "all"
@@ -67,6 +73,7 @@ def _render_capability_map() -> str:
         "Risk levels present",
         "Maturity/status",
         "Direct support",
+        "Direct flag policy",
     ]
     if has_network_touching:
         headers.append("Network")
@@ -88,6 +95,9 @@ def _render_capability_map() -> str:
         risks = ", ".join(sorted({_normalize_level(spec.risk_level) for spec in specs}))
         maturities = "<br>".join(sorted({command_maturity_status(spec) for spec in specs}))
         direct_support = _direct_support_text({spec.direct_supported for spec in specs})
+        direct_flag_policy = _direct_flag_policy_text(
+            {_normalize_level(spec.direct_flag_policy) for spec in specs}
+        )
         notes = sorted({note for spec in specs for note in _notes_for_spec(spec)})
         notes_text = "<br>".join(notes) if notes else "—"
         row = [
@@ -99,6 +109,7 @@ def _render_capability_map() -> str:
             risks,
             maturities,
             direct_support,
+            direct_flag_policy,
         ]
         if has_network_touching:
             row.append("yes" if any(spec.network_touching for spec in specs) else "no")
@@ -142,6 +153,7 @@ def _render_command_families() -> str:
             "Maturity",
             "Status",
             "Direct support",
+            "Direct flag policy",
         ]
         if has_network_touching:
             headers.append("Network")
@@ -171,6 +183,7 @@ def _render_command_families() -> str:
                 _normalize_level(spec.maturity_level),
                 command_maturity_status(spec),
                 "yes" if spec.direct_supported else "no",
+                _normalize_level(spec.direct_flag_policy),
             ]
             if has_network_touching:
                 row.append("yes" if spec.network_touching else "no")

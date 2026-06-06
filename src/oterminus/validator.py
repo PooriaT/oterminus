@@ -3,9 +3,11 @@ from __future__ import annotations
 import re
 import shlex
 from pathlib import Path
+from enum import Enum
 
 from oterminus.commands import (
     CommandSpec,
+    DirectFlagPolicy,
     MaturityLevel,
     NETWORK_TOUCHING_WARNING,
     PathOperandMode,
@@ -45,11 +47,20 @@ BLOCKED_FRAGMENT_REASONS = {
 }
 
 
+class ProposalOrigin(str, Enum):
+    DIRECT_COMMAND = "direct_command"
+    LOCAL_PLANNER = "local_planner"
+    OLLAMA_PLANNER = "ollama_planner"
+    UNKNOWN = "unknown"
+
+
 class Validator:
     def __init__(self, policy: PolicyConfig):
         self.policy = policy
 
-    def validate(self, proposal: Proposal) -> ValidationResult:
+    def validate(
+        self, proposal: Proposal, *, origin: ProposalOrigin = ProposalOrigin.UNKNOWN
+    ) -> ValidationResult:
         reasons: list[str] = []
         warnings: list[str] = []
         risk = proposal.risk_level or RiskLevel.DANGEROUS
@@ -82,6 +93,7 @@ class Validator:
                 command = rendered.command
                 args = list(rendered.argv)
                 if proposal.command:
+                    reasons.extend(_blocked_command_text_reasons(proposal.command))
                     warnings.append(
                         "Structured mode ignores the deprecated command field and uses deterministic rendering."
                     )
@@ -202,7 +214,7 @@ class Validator:
                 )
             reasons.extend(self._platform_reasons(spec))
             reasons.extend(self._maturity_reasons(spec))
-            reasons.extend(self._validate_command_shape(spec, args[1:]))
+            reasons.extend(self._validate_command_shape(spec, args[1:], proposal, origin))
             risk = self._risk_for_command_shape(spec, args[1:], default=risk)
             if spec.network_touching and NETWORK_TOUCHING_WARNING not in warnings:
                 warnings.append(NETWORK_TOUCHING_WARNING)
@@ -281,7 +293,13 @@ class Validator:
             f"It is only supported on: {targets}."
         ]
 
-    def _validate_command_shape(self, spec: CommandSpec, arguments: list[str]) -> list[str]:
+    def _validate_command_shape(
+        self,
+        spec: CommandSpec,
+        arguments: list[str],
+        proposal: Proposal,
+        origin: ProposalOrigin,
+    ) -> list[str]:
         if spec.name == "git":
             if _is_supported_git_inspection_shape(arguments):
                 return []
@@ -350,6 +368,16 @@ class Validator:
                 "Arbitrary flags, shell operators, and non-domain targets are not supported."
             ]
 
+        if (
+            origin == ProposalOrigin.DIRECT_COMMAND
+            and spec.direct_flag_policy == DirectFlagPolicy.SAFE_INSPECTION_PASSTHROUGH
+            and proposal.command_family == spec.name
+        ):
+            passthrough_reasons = self._validate_safe_inspection_passthrough(spec, arguments)
+            if not passthrough_reasons:
+                return []
+            return passthrough_reasons
+
         reasons: list[str] = []
         operand_count = 0
         index = 0
@@ -373,6 +401,44 @@ class Validator:
                 index += 1
                 continue
             index += consumed
+
+        if operand_count < spec.min_operands:
+            reasons.append(
+                f"Command '{spec.name}' requires at least {spec.min_operands} operand(s); got {operand_count}."
+            )
+        if spec.max_operands is not None and operand_count > spec.max_operands:
+            reasons.append(
+                f"Command '{spec.name}' allows at most {spec.max_operands} operand(s); got {operand_count}."
+            )
+
+        return _dedupe_preserve_order(reasons)
+
+    def _validate_safe_inspection_passthrough(
+        self, spec: CommandSpec, arguments: list[str]
+    ) -> list[str]:
+        reasons: list[str] = []
+        operand_count = 0
+
+        for arg in arguments:
+            if arg == "--":
+                reasons.append("Option terminator '--' is not supported in curated mode.")
+                continue
+
+            if not arg.startswith("-") or arg == "-":
+                operand_count += 1
+                if _looks_like_url_path_operand(arg):
+                    reasons.append(
+                        f"Path operand '{arg}' for command '{spec.name}' must be a local filesystem target."
+                    )
+                continue
+
+            if arg.startswith("--"):
+                if not _is_safe_passthrough_long_option(arg):
+                    reasons.append(f"Malformed direct option '{arg}' for command '{spec.name}'.")
+                continue
+
+            if not re.fullmatch(r"-[A-Za-z0-9]+", arg):
+                reasons.append(f"Malformed direct option '{arg}' for command '{spec.name}'.")
 
         if operand_count < spec.min_operands:
             reasons.append(
@@ -554,6 +620,7 @@ class Validator:
         try:
             lexer = shlex.shlex(command, posix=True, punctuation_chars="|&;<>")
             lexer.whitespace_split = True
+            lexer.commenters = ""
             tokens = list(lexer)
         except ValueError:
             return [], ["Command could not be parsed safely."]
@@ -578,6 +645,28 @@ def _dedupe_preserve_order(values: list[str]) -> list[str]:
         seen.add(value)
         deduped.append(value)
     return deduped
+
+
+def _is_safe_passthrough_long_option(token: str) -> bool:
+    if token == "--" or any(char.isspace() or ord(char) < 32 for char in token):
+        return False
+    match = re.fullmatch(r"--[A-Za-z][A-Za-z0-9-]*(?:=([A-Za-z0-9_.,:+/@%-]+))?", token)
+    return match is not None and not token.endswith("=")
+
+
+def _looks_like_url_path_operand(value: str) -> bool:
+    lowered = value.lower()
+    return "://" in lowered or lowered.startswith("mailto:")
+
+
+def _blocked_command_text_reasons(command: str) -> list[str]:
+    return _dedupe_preserve_order(
+        [
+            f"Command contains blocked {reason}."
+            for fragment, reason in BLOCKED_FRAGMENT_REASONS.items()
+            if fragment in command
+        ]
+    )
 
 
 def _unsupported_project_tool_reasons(args: list[str]) -> list[str]:

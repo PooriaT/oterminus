@@ -20,6 +20,11 @@ class DirectDetectionMode(str, Enum):
     GREP = "grep"
 
 
+class DirectFlagPolicy(str, Enum):
+    EXPLICIT = "explicit"
+    SAFE_INSPECTION_PASSTHROUGH = "safe_inspection_passthrough"
+
+
 class PathOperandMode(str, Enum):
     DEFAULT = "default"
     CD = "cd"
@@ -60,6 +65,7 @@ class CommandSpec:
     min_operands: int = 0
     max_operands: int | None = None
     direct_detection_mode: DirectDetectionMode = DirectDetectionMode.MIN_OPERANDS
+    direct_flag_policy: DirectFlagPolicy = DirectFlagPolicy.EXPLICIT
     path_operand_mode: PathOperandMode = PathOperandMode.DEFAULT
     allowed_flags: frozenset[str] = field(default_factory=frozenset)
     flags_with_values: frozenset[str] = field(default_factory=frozenset)
@@ -94,6 +100,7 @@ def command(
     min_operands: int = 0,
     max_operands: int | None = None,
     direct_detection_mode: DirectDetectionMode = DirectDetectionMode.MIN_OPERANDS,
+    direct_flag_policy: DirectFlagPolicy = DirectFlagPolicy.EXPLICIT,
     path_operand_mode: PathOperandMode = PathOperandMode.DEFAULT,
     allowed_flags: Iterable[str] = (),
     flags_with_values: Iterable[str] = (),
@@ -122,6 +129,7 @@ def command(
         min_operands=min_operands,
         max_operands=max_operands,
         direct_detection_mode=direct_detection_mode,
+        direct_flag_policy=direct_flag_policy,
         path_operand_mode=path_operand_mode,
         allowed_flags=_frozenset(allowed_flags),
         flags_with_values=_frozenset(flags_with_values),

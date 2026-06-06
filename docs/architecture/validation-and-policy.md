@@ -14,6 +14,7 @@ Validator enforces:
 - command-text parsing and shell-shape checks for experimental mode
 - blocked shell operators/chaining/redirection/pipelines/substitution
 - flag and operand constraints per command spec
+- trusted direct-origin flag policy opt-ins
 - command-family/base-command consistency
 - dangerous flag/target warnings and risk escalation
 - network-touching command warnings when registry metadata marks the command
@@ -53,6 +54,19 @@ Validation rejects ping without a count, excessive ping counts, ping flood/unlim
 ping targets, non-HEAD curl behavior, POST/PUT/PATCH/DELETE, request bodies, arbitrary headers,
 authorization, cookies, downloads/output files, file URLs, arbitrary DNS lookup flags, unsupported
 network tools, shell operators, pipelines, and redirection.
+
+## Direct flag policy
+
+Command specs default to `direct_flag_policy=explicit`, so direct commands and planner proposals use
+the same curated flag metadata unless a command opts in. The first opt-in is `ls`, which uses
+`safe_inspection_passthrough` only for proposals whose origin is trusted local direct-command
+detection. That policy accepts conservative short flag clusters such as `-ltrh`, conservative long
+options such as `--color=auto`, and local path operands while preserving the typed structured `ls`
+schema for natural-language planning.
+
+Planner JSON, proposal notes, summaries, explanations, and command text cannot choose this trusted
+origin. Local-planner, Ollama-planner, unknown, or reconstructed proposals continue through explicit
+flag validation, and every command without the opt-in remains strict.
 
 ## Network-touching warning boundary
 
