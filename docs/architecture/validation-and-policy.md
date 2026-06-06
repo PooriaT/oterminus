@@ -62,7 +62,8 @@ When a command spec sets `network_touching=True`, accepted previews include this
 
 The warning is informational and does not weaken existing checks. The command must still be in the
 curated registry, pass platform support checks, pass command-shape validation, pass risk policy, and
-receive user confirmation before execution. Experimental mode remains subject to the same network
+receive user confirmation before execution. Network-touching commands never qualify for safe
+auto-execute. Experimental mode remains subject to the same network
 metadata and must not be used as a shortcut to add broad network command access.
 
 ## Policy model
@@ -94,6 +95,14 @@ If validation fails:
 
 Experimental mode does not bypass validation or policy. It exists only as a constrained fallback
 when structured rendering is unavailable or unsuitable.
+
+`OTERMINUS_AUTO_EXECUTE_SAFE=true` is an explicit, environment-only exception to the default prompt.
+It does not change validation or risk computation. It is considered only after a successful preview
+for execute-mode requests and only for direct-detected or deterministic local-planner structured
+proposals with exact `safe` risk, no warnings, no rejection reasons, a rendered command/argv, and an
+enabled platform-supported command spec. Warnings, network metadata, write/dangerous risk,
+experimental mode, Ollama-planned proposals, project health, archive extraction/creation, history
+reruns, dry-run, and explain mode all fail closed to the normal confirmation behavior.
 
 ## Project health risk boundary
 

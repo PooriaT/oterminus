@@ -20,6 +20,7 @@ class AuditEvent:
     planner_invoked: bool = False
     planner_skipped: bool = False
     planner_skip_reason: str | None = None
+    proposal_origin: str | None = None
     routed_category: str | None = None
     proposal_mode: str | None = None
     command_family: str | None = None
@@ -29,6 +30,9 @@ class AuditEvent:
     warnings: list[str] = field(default_factory=list)
     rejection_reasons: list[str] = field(default_factory=list)
     confirmation_result: str | None = None
+    auto_execute_safe_enabled: bool = False
+    auto_execute_safe_eligible: bool | None = None
+    auto_execute_safe_reason: str | None = None
     execution_exit_code: int | None = None
     stdout_truncated: bool = False
     stderr_truncated: bool = False

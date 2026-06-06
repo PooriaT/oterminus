@@ -291,6 +291,117 @@ def test_one_shot_execute_mode_confirmation_runs_executor(monkeypatch, tmp_path:
     assert payload["execution_exit_code"] == 0
 
 
+def test_auto_execute_safe_direct_command_skips_confirmation_and_runs_executor(
+    monkeypatch, tmp_path: Path, capsys
+) -> None:
+    from oterminus.cli import main
+
+    config = AppConfig(**(_config(tmp_path).__dict__ | {"auto_execute_safe": True}))
+    _validator, executor = _install_main_dependencies(monkeypatch, config)
+    monkeypatch.setattr(
+        "oterminus.cli.ensure_startup_ready",
+        Mock(side_effect=AssertionError("direct command should not need Ollama")),
+    )
+    monkeypatch.setattr("builtins.input", Mock(side_effect=AssertionError("no confirmation")))
+
+    code = main(["pwd"])
+
+    assert code == 0
+    output = capsys.readouterr().out
+    assert "--- command preview ---" in output
+    assert "Safe auto-execute is enabled. Confirmation skipped" in output
+    executor.run.assert_called_once_with(["pwd"], display_command="pwd")
+    payload = _read_audit_payload(config.audit_log_path)
+    assert payload["confirmation_result"] == "skipped_auto_execute_safe"
+    assert payload["auto_execute_safe_enabled"] is True
+    assert payload["auto_execute_safe_eligible"] is True
+    assert payload["auto_execute_safe_reason"] == "eligible"
+    assert payload["proposal_origin"] == "direct_command"
+
+
+def test_auto_execute_safe_local_planner_command_skips_confirmation(
+    monkeypatch, tmp_path: Path
+) -> None:
+    from oterminus.cli import main
+
+    config = AppConfig(**(_config(tmp_path).__dict__ | {"auto_execute_safe": True}))
+    _validator, executor = _install_main_dependencies(monkeypatch, config)
+    monkeypatch.setattr(
+        "oterminus.cli.ensure_startup_ready",
+        Mock(side_effect=AssertionError("local planner should not need Ollama")),
+    )
+    monkeypatch.setattr("builtins.input", Mock(side_effect=AssertionError("no confirmation")))
+
+    code = main(["show", "current", "directory"])
+
+    assert code == 0
+    executor.run.assert_called_once_with(["pwd"], display_command="pwd")
+    payload = _read_audit_payload(config.audit_log_path)
+    assert payload["confirmation_result"] == "skipped_auto_execute_safe"
+    assert payload["proposal_origin"] == "local_planner"
+
+
+def test_auto_execute_safe_network_command_still_calls_confirmation(
+    monkeypatch, tmp_path: Path
+) -> None:
+    from oterminus.cli import main
+
+    config = AppConfig(**(_config(tmp_path).__dict__ | {"auto_execute_safe": True}))
+    _validator, executor = _install_main_dependencies(monkeypatch, config)
+    confirmation = Mock(return_value="n")
+    monkeypatch.setattr("builtins.input", confirmation)
+
+    code = main(["--", "ping", "-c", "4", "example.com"])
+
+    assert code == 0
+    confirmation.assert_called_once()
+    executor.run.assert_not_called()
+    payload = _read_audit_payload(config.audit_log_path)
+    assert payload["confirmation_result"] == "cancelled"
+    assert payload["auto_execute_safe_eligible"] is False
+
+
+def test_auto_execute_safe_write_command_still_calls_confirmation(
+    monkeypatch, tmp_path: Path
+) -> None:
+    from oterminus.cli import main
+
+    config = AppConfig(**(_config(tmp_path).__dict__ | {"auto_execute_safe": True}))
+    _validator, executor = _install_main_dependencies(monkeypatch, config)
+    confirmation = Mock(return_value="n")
+    monkeypatch.setattr("builtins.input", confirmation)
+
+    code = main(["mkdir", "logs"])
+
+    assert code == 0
+    confirmation.assert_called_once()
+    executor.run.assert_not_called()
+    payload = _read_audit_payload(config.audit_log_path)
+    assert payload["confirmation_result"] == "cancelled"
+    assert payload["auto_execute_safe_eligible"] is False
+
+
+def test_auto_execute_safe_dry_run_and_explain_do_not_execute_or_prompt(
+    monkeypatch, tmp_path: Path
+) -> None:
+    from oterminus.cli import main
+
+    for flag in ("--dry-run", "--explain"):
+        config = AppConfig(
+            **(_config(tmp_path / flag.replace("--", "")).__dict__ | {"auto_execute_safe": True})
+        )
+        _validator, executor = _install_main_dependencies(monkeypatch, config)
+        monkeypatch.setattr("builtins.input", Mock(side_effect=AssertionError("no confirmation")))
+
+        code = main([flag, "pwd"])
+
+        assert code == 0
+        executor.run.assert_not_called()
+        payload = _read_audit_payload(config.audit_log_path)
+        assert payload["confirmation_result"] in {"skipped_dry_run", "skipped_explain"}
+        assert payload["auto_execute_safe_eligible"] is None
+
+
 def test_execute_mode_prints_truncation_notice_when_output_truncated(
     monkeypatch, tmp_path: Path, capsys
 ) -> None:

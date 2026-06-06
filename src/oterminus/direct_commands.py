@@ -37,7 +37,6 @@ def detect_direct_command(
             mode=ProposalMode.STRUCTURED,
             command_family="project_health",
             arguments=project_health_arguments,
-            command=command,
             summary="Run direct command: project_health",
             explanation=(
                 "Input already matches a curated project health command, so it will be validated "
@@ -87,7 +86,6 @@ def detect_direct_command(
             mode=ProposalMode.STRUCTURED,
             command_family=command_family,
             arguments=arguments,
-            command=command,
             summary=f"Run direct command: {spec.name}",
             explanation=(
                 "Input already looks like a shell command, so it will be validated locally and "

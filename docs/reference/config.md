@@ -1,7 +1,8 @@
 # Configuration Reference
 
-OTerminus reads a small set of runtime settings from environment variables and a user config JSON
-file. The implementation in `src/oterminus/config.py` is the source of truth for supported keys.
+OTerminus reads a small set of runtime settings from exported environment variables, a local `.env`
+file, and a user config JSON file. The implementation in `src/oterminus/config.py` is the source of
+truth for supported keys.
 
 ## Supported settings
 
@@ -24,6 +25,7 @@ file. The implementation in `src/oterminus/config.py` is the source of truth for
 | Failure explanations enabled | `OTERMINUS_EXPLAIN_FAILURES` | Not supported | `false` | Opt-in local Ollama failure explanations for non-zero exits only. Suggested next actions are never executed automatically. |
 | Failure explanation max chars | `OTERMINUS_FAILURE_EXPLANATION_MAX_CHARS` | Not supported | `4000` | Positive integer. Bounds each redacted stdout/stderr snippet sent to the configured local Ollama model. |
 | Command-pack profile preset | `OTERMINUS_COMMAND_PROFILE` | Not supported | Unset | Optional preset for command-pack availability (`beginner`, `safe`, `developer`, `power`). Unset preserves existing behavior. |
+| Safe auto-execute | `OTERMINUS_AUTO_EXECUTE_SAFE` | Not supported | `false` | Environment-only opt-in. Uses the standard boolean parser. Only validated, warning-free, local read-only structured proposals from direct detection or the deterministic local planner may skip confirmation. |
 
 ## Environment variables
 
@@ -45,9 +47,26 @@ Supported `OTERMINUS_*` variables are:
 - `OTERMINUS_EXPLAIN_FAILURES`
 - `OTERMINUS_FAILURE_EXPLANATION_MAX_CHARS`
 - `OTERMINUS_COMMAND_PROFILE`
+- `OTERMINUS_AUTO_EXECUTE_SAFE`
 
 `OTERMINUS_MODEL` is not currently implemented. Set the persisted `model` field in the user config
 file, or let first-run setup write it after you choose from installed Ollama models.
+
+## Local `.env`
+
+When OTerminus starts, it reads `OTERMINUS_*` keys from a `.env` file in the current working
+directory. Exported shell environment variables take precedence over `.env` values.
+
+Supported `.env` syntax is intentionally small:
+
+```dotenv
+OTERMINUS_AUTO_EXECUTE_SAFE=true
+export OTERMINUS_AUDIT_REDACT=true
+OTERMINUS_HISTORY_PATH="~/.oterminus/history.jsonl"
+```
+
+Blank lines and `#` comments are ignored. Values may be unquoted, single-quoted, or double-quoted.
+There is no variable interpolation.
 
 ## User config file
 
@@ -73,9 +92,10 @@ used only when `OTERMINUS_AUDIT_LOG_PATH` is unset.
 
 Precedence depends on the setting:
 
-1. Environment variables are used first for settings that support an environment variable.
-2. The user config file is used for persisted settings that support a JSON field.
-3. Built-in defaults are used when neither of the above provides a usable value.
+1. Exported environment variables are used first for settings that support an environment variable.
+2. Local `.env` values are used next for `OTERMINUS_*` environment settings.
+3. The user config file is used for persisted settings that support a JSON field.
+4. Built-in defaults are used when none of the above provides a usable value.
 
 In practice:
 
@@ -83,7 +103,8 @@ In practice:
   `audit_log_path`, then `~/.oterminus/audit.jsonl`.
 - `model` is user-config only; there is no environment override.
 - timeout, policy, allowed roots, audit enabled/redaction, history settings, failure-explanation
-  settings, and output limits are environment-only and fall back directly to defaults.
+  settings, safe auto-execute, and output limits are environment-only and fall back directly to
+  defaults.
 - malformed, missing, unreadable, or non-object user config JSON is ignored and defaults are used
   where applicable.
 
@@ -112,6 +133,7 @@ export OTERMINUS_HISTORY_ENABLED=false
 export OTERMINUS_HISTORY_PATH=~/.oterminus/history.jsonl
 export OTERMINUS_HISTORY_LIMIT=100
 export OTERMINUS_HISTORY_REDACT=true
+export OTERMINUS_AUTO_EXECUTE_SAFE=false
 export OTERMINUS_EXPLAIN_FAILURES=false
 export OTERMINUS_FAILURE_EXPLANATION_MAX_CHARS=4000
 ```
@@ -148,7 +170,28 @@ This means explicit disabled packs always disable additional packs and never re-
 
 All disabled packs are removed from planner, route, completion, and REPL discovery context. The validator remains authoritative: disabled commands are rejected before execution even if a user types a direct command or a planner proposes one. This is separate from capability IDs and does not change policy mode or confirmation.
 
-### Examples
+## Safe auto-execute (opt-in)
+
+`OTERMINUS_AUTO_EXECUTE_SAFE=false` by default. When explicitly set to `true`, OTerminus may skip
+the interactive confirmation prompt only for a validated structured command that satisfies every
+safe auto-execute rule.
+
+```bash
+export OTERMINUS_AUTO_EXECUTE_SAFE=true
+```
+
+The preview is still printed first, and validator/policy checks still run. Eligible proposals must
+come from direct-command detection or the deterministic local planner, must be accepted with exact
+`safe` risk, must have no warnings or rejection reasons, must resolve to an enabled and
+platform-supported normally executable command spec, and must be local-only. Network-touching
+commands, write or dangerous commands, experimental proposals, Ollama-planned proposals,
+project-health commands, archive extraction or creation, history reruns, dry-run, and explain mode
+never qualify.
+
+When confirmation is skipped, audit records use
+`confirmation_result: "skipped_auto_execute_safe"` and include bounded auto-execute decision fields.
+
+## Command pack examples
 
 ```bash
 # Restrictive starter preset.

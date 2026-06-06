@@ -13,6 +13,7 @@ from enum import Enum
 
 from oterminus.ambiguity import AmbiguityResult, detect_ambiguity
 from oterminus.audit import AuditEvent, AuditLogger
+from oterminus.auto_execute import evaluate_safe_auto_execute
 from oterminus.commands import get_command_spec, supported_base_commands, supported_capabilities
 from oterminus.discovery import (
     render_capabilities,
@@ -48,6 +49,10 @@ LOGGER = logging.getLogger("oterminus")
 PLANNER_SKIP_DIRECT_COMMAND = "direct_command"
 PLANNER_SKIP_AMBIGUITY_BLOCKED = "ambiguity_blocked"
 PLANNER_SKIP_LOCAL_PLANNER = "local_planner"
+PROPOSAL_ORIGIN_DIRECT_COMMAND = "direct_command"
+PROPOSAL_ORIGIN_LOCAL_PLANNER = "local_planner"
+PROPOSAL_ORIGIN_OLLAMA_PLANNER = "ollama_planner"
+PROPOSAL_ORIGIN_UNKNOWN = "unknown"
 
 
 class RunMode(str, Enum):
@@ -143,12 +148,14 @@ def handle_request(
     disabled_pack_ids: frozenset[str] | None = None,
     failure_explainer: FailureExplainer | None = None,
     failure_explainer_factory: Callable[[], FailureExplainer] | None = None,
+    auto_execute_safe: bool = False,
 ) -> int:
     started_at = datetime.now(tz=timezone.utc)
     request_started = time.perf_counter()
     timings_ms: dict[str, int] = {}
     event = AuditEvent.start(user_input=request)
     event.rerun_source_history_id = rerun_source_history_id
+    event.auto_execute_safe_enabled = auto_execute_safe
     LOGGER.info("request=%s", request)
     history_item = session_history.start(request) if session_history is not None else None
 
@@ -194,6 +201,9 @@ def handle_request(
     proposal = detect_direct_command(request, disabled_pack_ids=effective_disabled_pack_ids)
     timings_ms["direct_command_detection_ms"] = _duration_ms_from_counter(direct_detection_started)
     is_direct_command = proposal is not None
+    proposal_origin = (
+        PROPOSAL_ORIGIN_DIRECT_COMMAND if is_direct_command else PROPOSAL_ORIGIN_UNKNOWN
+    )
     event.direct_command_detected = is_direct_command
     event.planner_invoked = False
     event.planner_skipped = is_direct_command
@@ -245,6 +255,7 @@ def handle_request(
             timings_ms["local_planner_ms"] = _duration_ms_from_counter(local_planner_started)
             if local_match is not None:
                 proposal = local_match.proposal
+                proposal_origin = PROPOSAL_ORIGIN_LOCAL_PLANNER
                 event.planner_invoked = False
                 event.planner_skipped = True
                 event.planner_skip_reason = PLANNER_SKIP_LOCAL_PLANNER
@@ -261,6 +272,7 @@ def handle_request(
                 event.planner_skip_reason = None
                 planner_started = time.perf_counter()
                 proposal = planner.plan(request)
+                proposal_origin = PROPOSAL_ORIGIN_OLLAMA_PLANNER
                 timings_ms["planner_ms"] = _duration_ms_from_counter(planner_started)
         elif debug_trace:
             print("[trace] fast_path=direct_command planner=skipped")
@@ -278,6 +290,7 @@ def handle_request(
 
     event.proposal_mode = proposal.mode.value
     event.command_family = proposal.command_family
+    event.proposal_origin = proposal_origin
     if history_item is not None:
         history_item.proposal_mode = proposal.mode.value
         history_item.command_family = proposal.command_family
@@ -361,8 +374,33 @@ def handle_request(
         _persist_if_needed()
         return 0
 
-    confirmed = ask_confirmation(confirmation_level(proposal.mode, validation.risk_level))
-    event.confirmation_result = "confirmed" if confirmed else "cancelled"
+    command_spec = get_command_spec(proposal.command_family) if proposal.command_family else None
+    auto_execute_decision = evaluate_safe_auto_execute(
+        enabled=auto_execute_safe,
+        run_mode=run_mode,
+        proposal=proposal,
+        validation=validation,
+        proposal_origin=proposal_origin,
+        command_spec=command_spec,
+        rerun_source_history_id=rerun_source_history_id,
+        disabled_pack_ids=effective_disabled_pack_ids,
+    )
+    event.auto_execute_safe_eligible = auto_execute_decision.eligible
+    event.auto_execute_safe_reason = auto_execute_decision.reason
+    if auto_execute_decision.eligible:
+        print(
+            "Safe auto-execute is enabled. Confirmation skipped for this validated "
+            "read-only command."
+        )
+        confirmed = True
+        event.confirmation_result = "skipped_auto_execute_safe"
+        if debug_trace:
+            print(f"[trace] confirmation=skipped_auto_execute_safe origin={proposal_origin}")
+    else:
+        if debug_trace and auto_execute_safe:
+            print(f"[trace] auto_execute_safe=ineligible reason={auto_execute_decision.reason}")
+        confirmed = ask_confirmation(confirmation_level(proposal.mode, validation.risk_level))
+        event.confirmation_result = "confirmed" if confirmed else "cancelled"
     command = validation.rendered_command
     LOGGER.info("confirmed=%s command=%s", confirmed, command)
     if debug_trace:
@@ -515,6 +553,7 @@ def repl(
     disabled_pack_ids: frozenset[str] | None = None,
     failure_explainer: FailureExplainer | None = None,
     failure_explainer_factory: Callable[[], FailureExplainer] | None = None,
+    auto_execute_safe: bool = False,
 ) -> int:
     print("oterminus REPL. Type 'help' for guidance, 'exit' or 'quit' to leave.")
     session_history = SessionHistory()
@@ -574,6 +613,7 @@ def repl(
             persistent_store=persistent_store,
             failure_explainer=failure_explainer,
             failure_explainer_factory=failure_explainer_factory,
+            auto_execute_safe=auto_execute_safe,
         )
         if history_response is not None:
             if isinstance(history_response, str):
@@ -605,6 +645,7 @@ def repl(
             disabled_pack_ids=disabled_pack_ids,
             failure_explainer=failure_explainer,
             failure_explainer_factory=failure_explainer_factory,
+            auto_execute_safe=auto_execute_safe,
         )
 
 
@@ -702,6 +743,7 @@ def handle_repl_history_command(
     persistent_store: PersistentHistoryStore | None = None,
     failure_explainer: FailureExplainer | None = None,
     failure_explainer_factory: Callable[[], FailureExplainer] | None = None,
+    auto_execute_safe: bool = False,
 ) -> str | None:
     lowered = request.lower().strip()
     if lowered == "history":
@@ -750,6 +792,7 @@ def handle_repl_history_command(
             persistent_store=persistent_store,
             failure_explainer=failure_explainer,
             failure_explainer_factory=failure_explainer_factory,
+            auto_execute_safe=auto_execute_safe,
         )
         return ""
     return None
@@ -885,6 +928,7 @@ def main(argv: list[str] | None = None) -> int:
             disabled_pack_ids=validator.policy.disabled_command_packs,
             failure_explainer=failure_explainer,
             failure_explainer_factory=failure_explainer_factory,
+            auto_execute_safe=bool(getattr(config, "auto_execute_safe", False)),
         )
     return repl(
         get_planner,
@@ -898,6 +942,7 @@ def main(argv: list[str] | None = None) -> int:
         disabled_pack_ids=validator.policy.disabled_command_packs,
         failure_explainer=failure_explainer,
         failure_explainer_factory=failure_explainer_factory,
+        auto_execute_safe=bool(getattr(config, "auto_execute_safe", False)),
     )
 
 

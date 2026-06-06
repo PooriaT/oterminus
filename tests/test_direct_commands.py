@@ -25,7 +25,7 @@ def test_detect_direct_command_for_new_curated_family() -> None:
     assert proposal is not None
     assert proposal.mode == ProposalMode.STRUCTURED
     assert proposal.command_family == "open"
-    assert proposal.command == "open ."
+    assert proposal.command is None
 
 
 def test_detect_direct_command_for_process_family() -> None:

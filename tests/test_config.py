@@ -1,6 +1,101 @@
 from pathlib import Path
 
-from oterminus.config import load_config
+import pytest
+
+from oterminus.config import get_user_config_path, load_config
+
+
+@pytest.fixture(autouse=True)
+def _isolate_dotenv_cwd(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.chdir(tmp_path)
+
+
+def test_load_config_auto_execute_safe_defaults_to_false(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(tmp_path / "config.json"))
+    monkeypatch.delenv("OTERMINUS_AUTO_EXECUTE_SAFE", raising=False)
+
+    config = load_config()
+
+    assert config.auto_execute_safe is False
+
+
+@pytest.mark.parametrize("raw", ["true", "1", "yes", "on", "TRUE"])
+def test_load_config_auto_execute_safe_true_values(monkeypatch, tmp_path: Path, raw: str) -> None:
+    monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(tmp_path / "config.json"))
+    monkeypatch.setenv("OTERMINUS_AUTO_EXECUTE_SAFE", raw)
+
+    config = load_config()
+
+    assert config.auto_execute_safe is True
+
+
+@pytest.mark.parametrize("raw", ["false", "0", "no", "off", "FALSE"])
+def test_load_config_auto_execute_safe_false_values(monkeypatch, tmp_path: Path, raw: str) -> None:
+    monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(tmp_path / "config.json"))
+    monkeypatch.setenv("OTERMINUS_AUTO_EXECUTE_SAFE", raw)
+
+    config = load_config()
+
+    assert config.auto_execute_safe is False
+
+
+def test_load_config_auto_execute_safe_invalid_value_falls_back_to_false(
+    monkeypatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(tmp_path / "config.json"))
+    monkeypatch.setenv("OTERMINUS_AUTO_EXECUTE_SAFE", "sometimes")
+
+    config = load_config()
+
+    assert config.auto_execute_safe is False
+
+
+def test_load_config_reads_auto_execute_safe_from_local_dotenv(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(tmp_path / "config.json"))
+    monkeypatch.delenv("OTERMINUS_AUTO_EXECUTE_SAFE", raising=False)
+    (tmp_path / ".env").write_text("OTERMINUS_AUTO_EXECUTE_SAFE=true\n", encoding="utf-8")
+
+    config = load_config()
+
+    assert config.auto_execute_safe is True
+
+
+def test_load_config_exported_env_overrides_local_dotenv(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(tmp_path / "config.json"))
+    monkeypatch.setenv("OTERMINUS_AUTO_EXECUTE_SAFE", "false")
+    (tmp_path / ".env").write_text("OTERMINUS_AUTO_EXECUTE_SAFE=true\n", encoding="utf-8")
+
+    config = load_config()
+
+    assert config.auto_execute_safe is False
+
+
+def test_load_config_accepts_export_and_quoted_dotenv_values(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(tmp_path / "config.json"))
+    monkeypatch.delenv("OTERMINUS_AUTO_EXECUTE_SAFE", raising=False)
+    (tmp_path / ".env").write_text(
+        "\n# local overrides\nexport OTERMINUS_AUTO_EXECUTE_SAFE='true'\n",
+        encoding="utf-8",
+    )
+
+    config = load_config()
+
+    assert config.auto_execute_safe is True
+
+
+def test_dotenv_can_set_user_config_path(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("OTERMINUS_CONFIG_PATH", raising=False)
+    config_path = tmp_path / "custom-config.json"
+    (tmp_path / ".env").write_text(
+        f"OTERMINUS_CONFIG_PATH={config_path}\n",
+        encoding="utf-8",
+    )
+
+    assert get_user_config_path() == config_path
 
 
 def test_load_config_audit_path_from_env(monkeypatch, tmp_path: Path) -> None:
