@@ -1367,6 +1367,59 @@ def test_handle_request_disabled_direct_command_still_hits_validator_via_planner
     executor.run.assert_not_called()
 
 
+def test_handle_request_forwards_explicit_disabled_packs_to_direct_detection(monkeypatch) -> None:
+    from oterminus import cli as cli_module
+    from oterminus.direct_commands import detect_direct_command as real_detect_direct_command
+    from oterminus.policies import PolicyConfig
+    from oterminus.validator import Validator
+
+    captured_disabled_pack_ids: list[frozenset[str] | None] = []
+
+    def recording_detect_direct_command(
+        request: str,
+        *,
+        disabled_pack_ids: frozenset[str] | None = None,
+        platform_id: str | None = None,
+    ):
+        captured_disabled_pack_ids.append(disabled_pack_ids)
+        return real_detect_direct_command(
+            request,
+            disabled_pack_ids=disabled_pack_ids,
+            platform_id=platform_id,
+        )
+
+    monkeypatch.setattr(cli_module, "detect_direct_command", recording_detect_direct_command)
+
+    planner = Mock()
+    planner.plan.return_value = Proposal(
+        action_type=ActionType.SHELL_COMMAND,
+        mode=ProposalMode.EXPERIMENTAL,
+        command_family="ps",
+        command="ps -Af",
+        summary="show processes",
+        explanation="show processes",
+        risk_level=RiskLevel.SAFE,
+        needs_confirmation=True,
+        notes=[],
+    )
+    validator = Validator(PolicyConfig(disabled_command_packs=frozenset({"process"})))
+    executor = Mock()
+
+    code = cli_module.handle_request(
+        "ps -Af",
+        planner,
+        validator,
+        executor,
+        run_mode=RunMode.DRY_RUN,
+        disabled_pack_ids=frozenset({"process"}),
+    )
+
+    assert code == 3
+    assert captured_disabled_pack_ids == [frozenset({"process"})]
+    planner.plan.assert_called_once()
+    executor.run.assert_not_called()
+
+
 def test_handle_request_explicit_disabled_packs_does_not_require_validator_policy() -> None:
     from oterminus.cli import handle_request
 
