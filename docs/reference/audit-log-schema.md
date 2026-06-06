@@ -17,6 +17,8 @@ Audit logs are newline-delimited JSON objects (JSONL), one event per handled req
 - `planner_invoked` (bool)
 - `planner_skipped` (bool)
 - `planner_skip_reason` (nullable string; e.g. `direct_command`, `ambiguity_blocked`)
+- `proposal_origin` (nullable string; e.g. `direct_command`, `local_planner`, `ollama_planner`,
+  `unknown`)
 - `routed_category` (nullable string)
 - `proposal_mode` (nullable string)
 - `command_family` (nullable string)
@@ -26,7 +28,11 @@ Audit logs are newline-delimited JSON objects (JSONL), one event per handled req
 - `warnings` (string array)
 - `rejection_reasons` (string array)
 - `confirmation_result` (nullable string; includes statuses such as `confirmed`, `cancelled`,
-  `skipped_dry_run`, `skipped_explain`, `not_prompted_rejected`, and `blocked_ambiguous`)
+  `skipped_auto_execute_safe`, `skipped_dry_run`, `skipped_explain`,
+  `not_prompted_rejected`, and `blocked_ambiguous`)
+- `auto_execute_safe_enabled` (bool)
+- `auto_execute_safe_eligible` (nullable bool)
+- `auto_execute_safe_reason` (nullable bounded string reason code)
 - `execution_exit_code` (nullable int)
 - `stdout_truncated` (bool)
 - `stderr_truncated` (bool)
@@ -76,6 +82,21 @@ When a REPL user invokes `rerun <history_id>`, OTerminus reprocesses the origina
 request event. The new event sets `rerun_source_history_id` to the source history entry ID. Normal
 validation/policy/confirmation rules still apply.
 
+## Safe auto-execute outcomes
+
+When `OTERMINUS_AUTO_EXECUTE_SAFE=true` and an execute-mode request qualifies, OTerminus still
+records the previewed/validated command metadata and sets:
+
+- `confirmation_result: "skipped_auto_execute_safe"`
+- `auto_execute_safe_enabled: true`
+- `auto_execute_safe_eligible: true`
+- `auto_execute_safe_reason: "eligible"`
+- `proposal_origin` to the direct or local-planner source
+
+Ineligible execute-mode requests keep the normal confirmation flow and may record
+`auto_execute_safe_eligible: false` with a bounded reason code. Dry-run and explain mode do not use
+safe auto-execution and keep `skipped_dry_run` or `skipped_explain` outcomes.
+
 ## Redaction
 
 When audit redaction is enabled (the default), text and argv fields are passed through redaction helpers before
@@ -98,13 +119,17 @@ When audit is disabled, tail and clear commands do not create a new log file.
   "direct_command_detected": false,
   "routed_category": "metadata_inspect",
   "proposal_mode": "structured",
+  "proposal_origin": "local_planner",
   "command_family": "df",
   "rendered_command": "df -h",
   "argv": ["df", "-h"],
   "validation_accepted": true,
   "warnings": [],
   "rejection_reasons": [],
-  "confirmation_result": "confirmed",
+  "confirmation_result": "skipped_auto_execute_safe",
+  "auto_execute_safe_enabled": true,
+  "auto_execute_safe_eligible": true,
+  "auto_execute_safe_reason": "eligible",
   "execution_exit_code": 0,
   "duration_ms": 73
 }

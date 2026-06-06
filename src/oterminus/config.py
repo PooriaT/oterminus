@@ -18,12 +18,14 @@ _COMMAND_PROFILE_DISABLED_PACKS: dict[str, frozenset[str]] = {
     "developer": frozenset({"dangerous", "network"}),
     "power": frozenset({"dangerous"}),
 }
+_DOTENV_FILENAME = ".env"
 
 
 @dataclass(frozen=True)
 class AppConfig:
     timeout_seconds: int = 60
     policy: PolicyConfig = field(default_factory=PolicyConfig)
+    auto_execute_safe: bool = False
     model: str | None = None
     audit_log_path: Path = field(default_factory=lambda: Path.home() / ".oterminus" / "audit.jsonl")
     audit_enabled: bool = True
@@ -38,7 +40,7 @@ class AppConfig:
 
 
 def get_user_config_path() -> Path:
-    override = os.getenv("OTERMINUS_CONFIG_PATH")
+    override = _env_value("OTERMINUS_CONFIG_PATH", _load_dotenv_values())
     if override:
         return Path(override).expanduser()
     return Path.home() / ".oterminus" / "config.json"
@@ -70,43 +72,57 @@ def save_user_config(payload: dict[str, Any]) -> None:
 
 
 def load_config() -> AppConfig:
-    timeout_seconds = int(os.getenv("OTERMINUS_TIMEOUT_SECONDS", "60"))
-    mode = RiskLevel(os.getenv("OTERMINUS_POLICY_MODE", RiskLevel.WRITE.value))
-    allow_dangerous = os.getenv("OTERMINUS_ALLOW_DANGEROUS", "false").lower() == "true"
-    roots = os.getenv("OTERMINUS_ALLOWED_ROOTS", "")
+    dotenv_values = _load_dotenv_values()
+    timeout_seconds = int(_env_value("OTERMINUS_TIMEOUT_SECONDS", dotenv_values, "60"))
+    mode = RiskLevel(_env_value("OTERMINUS_POLICY_MODE", dotenv_values, RiskLevel.WRITE.value))
+    allow_dangerous = (
+        _env_value("OTERMINUS_ALLOW_DANGEROUS", dotenv_values, "false").lower() == "true"
+    )
+    roots = _env_value("OTERMINUS_ALLOWED_ROOTS", dotenv_values, "")
     allowed_roots = [root for root in roots.split(":") if root]
 
     user_config = load_user_config()
     model = user_config.get("model")
     if not isinstance(model, str) or not model.strip():
         model = None
-    configured_audit_path = os.getenv("OTERMINUS_AUDIT_LOG_PATH")
+    configured_audit_path = _env_value("OTERMINUS_AUDIT_LOG_PATH", dotenv_values)
     if not configured_audit_path:
         configured_audit_path = user_config.get("audit_log_path")
     if isinstance(configured_audit_path, str) and configured_audit_path.strip():
         audit_log_path = Path(configured_audit_path).expanduser()
     else:
         audit_log_path = Path.home() / ".oterminus" / "audit.jsonl"
-    audit_enabled = _env_flag("OTERMINUS_AUDIT_ENABLED", default=True)
-    audit_redact = _env_flag("OTERMINUS_AUDIT_REDACT", default=True)
-    history_enabled = _env_flag("OTERMINUS_HISTORY_ENABLED", default=False)
-    history_limit = int(os.getenv("OTERMINUS_HISTORY_LIMIT", "100"))
-    history_path_raw = os.getenv("OTERMINUS_HISTORY_PATH")
+    audit_enabled = _env_flag("OTERMINUS_AUDIT_ENABLED", default=True, dotenv_values=dotenv_values)
+    audit_redact = _env_flag("OTERMINUS_AUDIT_REDACT", default=True, dotenv_values=dotenv_values)
+    history_enabled = _env_flag(
+        "OTERMINUS_HISTORY_ENABLED", default=False, dotenv_values=dotenv_values
+    )
+    history_limit = int(_env_value("OTERMINUS_HISTORY_LIMIT", dotenv_values, "100"))
+    history_path_raw = _env_value("OTERMINUS_HISTORY_PATH", dotenv_values)
     history_path = (
         Path(history_path_raw).expanduser()
         if history_path_raw
         else Path.home() / ".oterminus" / "history.jsonl"
     )
-    history_redact = _env_flag("OTERMINUS_HISTORY_REDACT", default=audit_redact)
-    max_output_chars = _positive_int_env("OTERMINUS_MAX_OUTPUT_CHARS", default=20000)
-    explain_failures = _env_flag("OTERMINUS_EXPLAIN_FAILURES", default=False)
-    failure_explanation_max_chars = _positive_int_env(
-        "OTERMINUS_FAILURE_EXPLANATION_MAX_CHARS", default=4000
+    history_redact = _env_flag(
+        "OTERMINUS_HISTORY_REDACT", default=audit_redact, dotenv_values=dotenv_values
     )
-    command_profile = _parse_command_profile(os.getenv("OTERMINUS_COMMAND_PROFILE"))
+    max_output_chars = _positive_int_env(
+        "OTERMINUS_MAX_OUTPUT_CHARS", default=20000, dotenv_values=dotenv_values
+    )
+    explain_failures = _env_flag(
+        "OTERMINUS_EXPLAIN_FAILURES", default=False, dotenv_values=dotenv_values
+    )
+    failure_explanation_max_chars = _positive_int_env(
+        "OTERMINUS_FAILURE_EXPLANATION_MAX_CHARS", default=4000, dotenv_values=dotenv_values
+    )
+    auto_execute_safe = _env_flag(
+        "OTERMINUS_AUTO_EXECUTE_SAFE", default=False, dotenv_values=dotenv_values
+    )
+    command_profile = _parse_command_profile(_env_value("OTERMINUS_COMMAND_PROFILE", dotenv_values))
     profile_disabled_command_packs = _disabled_packs_for_profile(command_profile)
     disabled_command_packs = _parse_disabled_command_packs(
-        os.getenv("OTERMINUS_DISABLED_COMMAND_PACKS", "")
+        _env_value("OTERMINUS_DISABLED_COMMAND_PACKS", dotenv_values, "")
     )
     disabled_command_packs = profile_disabled_command_packs | disabled_command_packs
 
@@ -118,6 +134,7 @@ def load_config() -> AppConfig:
             allowed_roots=allowed_roots,
             disabled_command_packs=disabled_command_packs,
         ),
+        auto_execute_safe=auto_execute_safe,
         model=model,
         audit_log_path=audit_log_path,
         audit_enabled=audit_enabled,
@@ -132,8 +149,19 @@ def load_config() -> AppConfig:
     )
 
 
-def _env_flag(name: str, *, default: bool) -> bool:
+def _env_value(
+    name: str, dotenv_values: dict[str, str] | None = None, default: str | None = None
+) -> str | None:
     raw = os.getenv(name)
+    if raw is not None:
+        return raw
+    if dotenv_values is not None and name in dotenv_values:
+        return dotenv_values[name]
+    return default
+
+
+def _env_flag(name: str, *, default: bool, dotenv_values: dict[str, str] | None = None) -> bool:
+    raw = _env_value(name, dotenv_values)
     if raw is None:
         return default
     normalized = raw.strip().lower()
@@ -181,8 +209,10 @@ def _disabled_packs_for_profile(profile: str | None) -> frozenset[str]:
     return _COMMAND_PROFILE_DISABLED_PACKS[profile]
 
 
-def _positive_int_env(name: str, *, default: int) -> int:
-    raw = os.getenv(name)
+def _positive_int_env(
+    name: str, *, default: int, dotenv_values: dict[str, str] | None = None
+) -> int:
+    raw = _env_value(name, dotenv_values)
     if raw is None:
         return default
     try:
@@ -190,3 +220,43 @@ def _positive_int_env(name: str, *, default: int) -> int:
     except ValueError:
         return default
     return value if value >= 1 else default
+
+
+def _load_dotenv_values(path: Path | None = None) -> dict[str, str]:
+    dotenv_path = path or Path.cwd() / _DOTENV_FILENAME
+    try:
+        lines = dotenv_path.read_text(encoding="utf-8").splitlines()
+    except FileNotFoundError:
+        return {}
+    except OSError:
+        return {}
+
+    values: dict[str, str] = {}
+    for line in lines:
+        parsed = _parse_dotenv_line(line)
+        if parsed is None:
+            continue
+        key, value = parsed
+        if key.startswith("OTERMINUS_"):
+            values[key] = value
+    return values
+
+
+def _parse_dotenv_line(line: str) -> tuple[str, str] | None:
+    stripped = line.strip()
+    if not stripped or stripped.startswith("#"):
+        return None
+    if stripped.startswith("export "):
+        stripped = stripped[7:].lstrip()
+    if "=" not in stripped:
+        return None
+    key, value = stripped.split("=", maxsplit=1)
+    key = key.strip()
+    if not key or not key.replace("_", "").isalnum() or key[0].isdigit():
+        return None
+    value = value.strip()
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
+        value = value[1:-1]
+    elif "#" in value:
+        value = value.split("#", maxsplit=1)[0].rstrip()
+    return key, value

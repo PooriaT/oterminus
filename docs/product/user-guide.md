@@ -253,11 +253,30 @@ You can enter supported command families directly (for example `ls -la`, `cd src
 
 Direct commands skip LLM planning when local direct-command detection succeeds. They still pass
 through validator + policy gates and show a preview before any execution. In normal execute mode,
-they still require confirmation.
+they require confirmation by default.
 
 Network direct commands are detected only for exact constrained forms: `ping -c <count> <host>`,
 `curl -I <http-or-https-url>`, `dig <domain>`, and `nslookup <domain>`. Broad network commands
 cannot bypass validation through the direct-command path.
+
+If you explicitly enable safe auto-execute, some warning-free local read-only direct commands can
+skip the confirmation prompt after preview:
+
+```bash
+export OTERMINUS_AUTO_EXECUTE_SAFE=true
+```
+
+You can also put the same key in a `.env` file in the directory where you start OTerminus:
+
+```dotenv
+OTERMINUS_AUTO_EXECUTE_SAFE=true
+```
+
+Exported shell values override `.env` values.
+
+This is not a general `yes` mode. Network commands, write or dangerous commands, experimental
+commands, commands with warnings, project-health commands, archive extraction/creation, and reruns
+still require confirmation.
 
 ### Natural-language requests
 
@@ -314,6 +333,54 @@ Previews show the proposal mode so you can understand how OTerminus will handle 
   structured arguments yet. It is still strictly validated and requires stronger confirmation.
 
 If validation or policy checks fail, OTerminus does not ask for execution confirmation.
+
+## Safe auto-execute (optional)
+
+By default, OTerminus prompts before execute-mode commands run. Users who prefer a faster workflow
+for narrowly safe read-only commands can opt in with:
+
+```bash
+export OTERMINUS_AUTO_EXECUTE_SAFE=true
+```
+
+or with a local `.env` file:
+
+```dotenv
+OTERMINUS_AUTO_EXECUTE_SAFE=true
+```
+
+When enabled, OTerminus still performs the normal lifecycle first: direct detection or planning,
+validation, policy checks, and deterministic preview rendering. Only after the preview is printed
+can the runtime skip confirmation, and only when every safe auto-execute rule passes.
+
+Eligible proposals must be:
+
+- structured
+- accepted by validation
+- exact `safe` risk
+- warning-free and rejection-free
+- rendered to a non-empty command and argv
+- backed by an enabled, platform-supported, normally executable command spec
+- produced by direct-command detection or the deterministic local planner
+- local-only
+
+These requests never qualify:
+
+- network-touching commands such as `ping`, `curl`, `dig`, and `nslookup`
+- write or dangerous commands
+- commands with warnings
+- experimental proposals
+- Ollama-planned proposals
+- project-health commands
+- archive extraction or creation (`tar -xf`, `unzip ... -d`, `tar -czf`, `zip -r`)
+- history reruns
+- dry-run and explain mode
+- commands whose registry metadata cannot be resolved, whose pack is disabled, or whose platform is
+  unsupported
+
+When confirmation is skipped, OTerminus prints a concise notice and audit logs record
+`confirmation_result: "skipped_auto_execute_safe"`. Verbose mode also prints a trace line such as
+`[trace] confirmation=skipped_auto_execute_safe origin=direct_command`.
 
 ## Safety/inspection modes
 
@@ -385,7 +452,8 @@ History commands:
   explicit confirmation before execution).
 
 `rerun` does not execute previously rendered command text directly, and cannot bypass policy gates
-for rejected, ambiguous, cancelled, dry-run, or explain-only outcomes.
+for rejected, ambiguous, cancelled, dry-run, or explain-only outcomes. Reruns never qualify for safe
+auto-execute.
 
 History output and persisted history files may include command text, local paths, and execution
 context. Persisted history does not store stdout/stderr, full failure output, or raw planner
@@ -442,6 +510,10 @@ Redaction is enabled by default (`OTERMINUS_AUDIT_REDACT=true`). Audit events st
 truncation metadata and exit codes, not full stdout/stderr. Even with redaction, logs may still
 contain local paths, command context, and validation decisions, so review before sharing publicly.
 
+If safe auto-execute skips a confirmation prompt, audit events include the bounded decision fields
+`auto_execute_safe_enabled`, `auto_execute_safe_eligible`, `auto_execute_safe_reason`, and
+`proposal_origin`, plus `confirmation_result: "skipped_auto_execute_safe"`.
+
 ## Safety expectations
 
 - OTerminus may block ambiguous broad/destructive natural-language requests before planning and
@@ -450,6 +522,8 @@ contain local paths, command context, and validation decisions, so review before
   policy checks.
 - Unsupported flags, operators, redirection/pipeline chains, and disallowed paths are rejected.
 - Experimental mode is a constrained fallback and requires stronger confirmation.
+- Safe auto-execute is disabled by default and applies only to validated, warning-free, local
+  read-only structured commands from direct detection or the deterministic local planner.
 - Commands that fail validation or policy checks are never executed.
 
 ## Network diagnostics
@@ -457,7 +531,7 @@ contain local paths, command context, and validation decisions, so review before
 OTerminus is local-first by default. The `network_diagnostics` capability is intentionally small and
 read-only, but it still contacts external hosts and may reveal your IP address, DNS query, target
 host, or other network metadata. Preview/help text shows the network warning, and execution still
-requires confirmation.
+requires confirmation. Network commands never qualify for safe auto-execute.
 
 Supported operations:
 
@@ -605,4 +679,4 @@ deploy/publish operations, and arbitrary `poetry run ...` commands.
 These operations may execute local project code and tooling. This capability is not arbitrary shell
 support or arbitrary Poetry command support.
 
-OTerminus also has a conservative deterministic local planner for a small set of clear natural-language requests (for example: `show current directory`, `show files`, `show disk usage`). This fast path only builds structured proposals; it never executes directly and still requires validation, preview, and confirmation.
+OTerminus also has a conservative deterministic local planner for a small set of clear natural-language requests (for example: `show current directory`, `show files`, `show disk usage`). This fast path only builds structured proposals; it never executes directly and still requires validation, preview, and confirmation policy.

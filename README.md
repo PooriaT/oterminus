@@ -1,7 +1,8 @@
 # OTerminus
 
 OTerminus is a local, safety-first terminal assistant. It turns natural-language requests into a
-**single proposed shell action**, shows a preview, and executes only after explicit confirmation.
+**single proposed shell action**, shows a preview, and by default executes only after explicit
+confirmation.
 
 ## Why OTerminus exists
 
@@ -11,7 +12,8 @@ provide a practical middle ground:
 - capability-first command support (curated workflows, not full shell emulation)
 - deterministic rendering for structured command families
 - explicit policy + validation gates before execution
-- confirmation before every execution path
+- confirmation before execution by default, with an opt-in narrow exception for validated local
+  read-only structured commands
 - local-first observability through JSONL audit logs
 
 ## Core safety promise
@@ -24,7 +26,7 @@ OTerminus is designed around an inspect-and-confirm execution contract:
 4. plan proposals in a structured-first format
 5. validate and policy-check the command
 6. show a deterministic preview
-7. require explicit user confirmation before execution
+7. require explicit user confirmation before execution by default
 
 Direct shell commands are not blocked by natural-language ambiguity heuristics; they still go through
 validation and policy checks. Ambiguous natural-language requests stop before planning and execution
@@ -32,6 +34,21 @@ and suggest safer read-only inspections. See the [user guide](docs/product/user-
 [request lifecycle](docs/architecture/request-lifecycle.md) for details.
 
 If ambiguity handling, validation, or policy checks block a request, OTerminus does not execute.
+
+Users may explicitly enable a narrowly constrained safe auto-execute policy for validated,
+warning-free, local read-only structured commands:
+
+```bash
+export OTERMINUS_AUTO_EXECUTE_SAFE=true
+```
+
+Alternatively, put `OTERMINUS_AUTO_EXECUTE_SAFE=true` in a `.env` file in the directory where you
+start OTerminus. Exported shell variables override `.env` values.
+
+The preview, validator, and policy checks still run first. Only direct-command detection and the
+deterministic local planner can qualify. Network commands, warnings, write/dangerous risk,
+experimental proposals, Ollama-planned proposals, project-health commands, archive extraction or
+creation, and history reruns still require confirmation.
 
 ## Quick install and setup
 
@@ -150,7 +167,8 @@ Examples inside REPL:
 ### One-shot and diagnostics modes
 
 - One-shot requests such as `oterminus "show disk usage for this folder"` plan, validate,
-  preview, and then require confirmation before execution.
+  preview, and then require confirmation before execution unless the explicit safe auto-execute
+  environment setting is enabled and the validated proposal qualifies.
 - `--dry-run` and `--explain` are mutually exclusive one-shot inspection flags for requests. Both
   validate and preview without confirmation or execution; explain mode also describes command choice,
   relevant flags/arguments, risk, and policy interpretation.
@@ -227,4 +245,4 @@ request.
 - Optional local persistent REPL history is available via `OTERMINUS_HISTORY_ENABLED=true`; reruns still go through normal validation + confirmation.
 - Audit logs and persistent history are local JSONL files; redaction is enabled by default, but review logs/history before sharing. See the [audit schema](docs/reference/audit-log-schema.md) and [configuration reference](docs/reference/config.md).
 
-For a small set of deterministic natural-language requests, OTerminus can skip Ollama by producing a local structured proposal before normal validation and confirmation.
+For a small set of deterministic natural-language requests, OTerminus can skip Ollama by producing a local structured proposal before normal validation and confirmation policy.

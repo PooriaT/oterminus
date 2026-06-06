@@ -30,7 +30,9 @@ flowchart TD
   J --> K{Run mode}
   K -->|dry-run/explain| K1[Skip confirmation and execution]
   K1 --> N[Audit log event]
-  K -->|execute| L[User confirmation]
+  K -->|execute| AE{Safe auto-execute eligible?}
+  AE -->|yes| M[Executor]
+  AE -->|no| L[User confirmation]
   L -->|cancel| L1[Stop]
   L -->|confirm| M[Executor]
   M --> N[Audit log event]
@@ -55,8 +57,8 @@ command family invocation, OTerminus skips LLM planning and builds a direct prop
 as `chmod +x run.sh` and `rm -rf build` are not intercepted as ambiguous natural language.
 
 Direct proposals still continue through proposal parsing, structured rendering when available,
-validation, policy checks, preview, and confirmation in execute mode. In `--dry-run` or `--explain`
-one-shot mode, direct proposals do not require Ollama if direct detection succeeds.
+validation, policy checks, preview, and confirmation policy in execute mode. In `--dry-run` or
+`--explain` one-shot mode, direct proposals do not require Ollama if direct detection succeeds.
 
 ### 3) Ambiguity handling
 
@@ -106,8 +108,17 @@ Validator enforces:
 
 OTerminus renders preview details (command, mode, risk, warnings/rejections).
 
-The normal execute mode requires explicit confirmation after a successful preview. Experimental mode
-uses very-strong confirmation text. Failed validation or policy checks stop before execution.
+The normal execute mode requires explicit confirmation after a successful preview by default.
+Experimental mode uses very-strong confirmation text. Failed validation or policy checks stop before
+execution.
+
+If `OTERMINUS_AUTO_EXECUTE_SAFE=true`, OTerminus evaluates a narrow local policy after preview and
+after dry-run/explain have already returned. The confirmation prompt may be skipped only for
+validated, warning-free, structured, exact-`safe` commands from direct detection or the deterministic
+local planner. Ollama-planned proposals, experimental proposals, network-touching commands, write or
+dangerous commands, project-health commands, archive extraction/creation, commands with warnings,
+history reruns, dry-run, and explain mode never qualify. The executor still runs only after the
+preview has been printed.
 
 One-shot `--dry-run` and `--explain` modes still use direct detection and, for specific
 natural-language requests, planning, validation, policy checks, and preview rendering. Ambiguous
@@ -122,7 +133,7 @@ Executor runs command argv via subprocess, with special local handling for `cd` 
 ### 10) Audit logging
 
 When enabled, OTerminus writes a JSONL event with request lifecycle fields (routing, mode,
-validation, confirmation, exit code, duration). Ambiguous requests record the ambiguity outcome and
+validation, confirmation result or safe auto-execute skip, exit code, duration). Ambiguous requests record the ambiguity outcome and
 `blocked_ambiguous` status without planner, validation, confirmation, or execution fields. Dry-run
 and explain requests record skipped execution status instead of an execution exit code.
 
@@ -137,9 +148,10 @@ for the current process session and do not execute shell commands.
 
 `rerun <history_id>` does not shortcut execution. It submits the original user input back into the
 same request lifecycle described above, including ambiguity handling, planning/direct detection,
-validation/policy, preview, and explicit execute confirmation.
+validation/policy, preview, and explicit execute confirmation. Reruns are never eligible for safe
+auto-execute, even when the original request would otherwise qualify.
 
-- After routing, OTerminus attempts a deterministic local planner for a small set of unambiguous requests. If it matches, Ollama is skipped and the same validation/preview/confirmation flow continues.
+- After routing, OTerminus attempts a deterministic local planner for a small set of unambiguous requests. If it matches, Ollama is skipped and the same validation/preview/confirmation policy flow continues.
 
 
 ### Timing observability

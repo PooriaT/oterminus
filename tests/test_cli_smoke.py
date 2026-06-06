@@ -480,6 +480,60 @@ def test_main_uses_selected_model(monkeypatch) -> None:
     assert planner_client.call_args.kwargs == {"model": "llama3.2:latest"}
 
 
+def test_main_passes_auto_execute_safe_to_one_shot_handler(monkeypatch) -> None:
+    from oterminus.cli import main
+
+    config = Mock()
+    config.policy = Mock()
+    config.timeout_seconds = 30
+    config.audit_log_path = Path("/tmp/oterminus-audit.jsonl")
+    config.audit_enabled = False
+    config.audit_redact = True
+    config.auto_execute_safe = True
+    captured: dict[str, object] = {}
+
+    monkeypatch.setattr("oterminus.cli.configure_logging", lambda verbose: None)
+    monkeypatch.setattr("oterminus.cli.load_config", lambda: config)
+    monkeypatch.setattr("oterminus.cli.Validator", lambda policy: Mock())
+    monkeypatch.setattr("oterminus.cli.Executor", lambda timeout_seconds: Mock())
+
+    def fake_handle_request(*_args, **kwargs) -> int:
+        captured.update(kwargs)
+        return 0
+
+    monkeypatch.setattr("oterminus.cli.handle_request", fake_handle_request)
+
+    assert main(["pwd"]) == 0
+    assert captured["auto_execute_safe"] is True
+
+
+def test_main_passes_auto_execute_safe_to_repl(monkeypatch) -> None:
+    from oterminus.cli import main
+
+    config = Mock()
+    config.policy = Mock()
+    config.timeout_seconds = 30
+    config.audit_log_path = Path("/tmp/oterminus-audit.jsonl")
+    config.audit_enabled = False
+    config.audit_redact = True
+    config.auto_execute_safe = True
+    captured: dict[str, object] = {}
+
+    monkeypatch.setattr("oterminus.cli.configure_logging", lambda verbose: None)
+    monkeypatch.setattr("oterminus.cli.load_config", lambda: config)
+    monkeypatch.setattr("oterminus.cli.Validator", lambda policy: Mock())
+    monkeypatch.setattr("oterminus.cli.Executor", lambda timeout_seconds: Mock())
+
+    def fake_repl(*_args, **kwargs) -> int:
+        captured.update(kwargs)
+        return 0
+
+    monkeypatch.setattr("oterminus.cli.repl", fake_repl)
+
+    assert main(["--verbose"]) == 0
+    assert captured["auto_execute_safe"] is True
+
+
 def test_render_audit_status_disabled() -> None:
     output = render_audit_status(audit_logger=None, enabled=False)
 
@@ -1934,6 +1988,27 @@ def test_repl_passes_persistent_store_to_handle_request(monkeypatch) -> None:
 
     assert code == 0
     assert captured["persistent_store"] is store
+
+
+def test_repl_passes_auto_execute_safe_to_handle_request(monkeypatch) -> None:
+    from oterminus.cli import repl
+
+    captured: dict[str, object] = {}
+
+    monkeypatch.setattr("oterminus.cli.create_prompt_session", lambda: (None, "plain_input"))
+    answers = iter(["pwd", "exit"])
+    monkeypatch.setattr("builtins.input", lambda _: next(answers))
+
+    def fake_handle_request(*_args, **kwargs) -> int:
+        captured.update(kwargs)
+        return 0
+
+    monkeypatch.setattr("oterminus.cli.handle_request", fake_handle_request)
+
+    code = repl(Mock(), Mock(), Mock(), auto_execute_safe=True)
+
+    assert code == 0
+    assert captured["auto_execute_safe"] is True
 
 
 def test_main_explain_failures_does_not_require_startup_before_request_handling(

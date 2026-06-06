@@ -9,9 +9,11 @@ When enabled, each request lifecycle writes one JSON line with fields covering:
 - request metadata
 - ambiguity outcome for blocked natural-language requests
 - planner fast-path diagnostics (`planner_invoked`, `planner_skipped`, `planner_skip_reason`)
+- proposal origin (`direct_command`, `local_planner`, `ollama_planner`, or `unknown`)
 - routing and proposal decisions when planning continues
 - validation outcome and reasons/warnings
 - confirmation result or lifecycle stop status
+- safe auto-execute decision metadata when evaluated
 - execution exit code and timing
 - stage-level latency metrics (`timings_ms`) to show where time was spent and whether planner was skipped
 - execution output truncation metadata (flags and character counts), without storing raw stdout/stderr
@@ -29,6 +31,11 @@ Audit configuration:
 - `OTERMINUS_AUDIT_LOG_PATH`
 - `OTERMINUS_AUDIT_REDACT`
 
+When safe auto-execute skips a prompt, audit uses
+`confirmation_result: "skipped_auto_execute_safe"` plus bounded fields for whether the feature was
+enabled, whether the proposal was eligible, the reason code, and proposal origin. Audit still does
+not store command stdout/stderr.
+
 ## Audit privacy
 
 With redaction enabled (default), likely secret material is masked in command/request/reason fields
@@ -37,8 +44,9 @@ and argv before JSONL writes. Audit events store stdout/stderr truncation metada
 ## Runtime diagnostics
 
 - `--verbose` prints concise trace lines for fast-path/planner decisions, routing, proposal,
-  validation, and confirmation (for example: `fast_path=direct_command planner=skipped` and
-  `planner=invoked`)
+  validation, auto-execute eligibility, and confirmation (for example:
+  `fast_path=direct_command planner=skipped`, `planner=invoked`, and
+  `confirmation=skipped_auto_execute_safe origin=direct_command`)
 - `audit status` reports current audit settings and path
 - `audit tail [n]` prints recent local audit events without executing a request
 - `audit clear` requires explicit confirmation before clearing the local audit log
