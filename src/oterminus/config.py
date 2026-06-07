@@ -21,6 +21,7 @@ from pydantic import (
 from oterminus.commands import available_pack_ids
 from oterminus.models import RiskLevel
 from oterminus.policies import PolicyConfig
+from oterminus.terminal_style import ColorMode
 
 CURRENT_USER_CONFIG_SCHEMA_VERSION = 1
 PositiveConfigInt = Annotated[int, Field(strict=True, gt=0)]
@@ -82,6 +83,7 @@ class UserConfig(BaseModel):
     auto_execute_safe: StrictBool = False
     timeout_seconds: PositiveConfigInt = 60
     max_output_chars: PositiveConfigInt = 20000
+    color_mode: ColorMode = ColorMode.AUTO
 
     audit_enabled: StrictBool = True
     audit_redact: StrictBool = True
@@ -186,6 +188,7 @@ def safe_default_user_config() -> UserConfig:
         model=None,
         timeout_seconds=60,
         max_output_chars=20000,
+        color_mode=ColorMode.AUTO,
         audit_log_path=None,
         history_path=None,
         history_limit=100,
@@ -219,6 +222,7 @@ class AppConfig:
     history_limit: int = 100
     history_redact: bool = True
     max_output_chars: int = 20000
+    color_mode: ColorMode = ColorMode.AUTO
     explain_failures: bool = False
     failure_explanation_max_chars: int = 4000
 
@@ -475,6 +479,7 @@ def resolve_config() -> ResolvedConfig:
         default=20000,
         fallback_on_invalid=True,
     )
+    color_mode, sources["color_mode"] = _resolve_color_mode(dotenv_values, user_config)
     explain_failures, sources["explain_failures"] = _resolve_flag(
         "explain_failures",
         "OTERMINUS_EXPLAIN_FAILURES",
@@ -526,6 +531,7 @@ def resolve_config() -> ResolvedConfig:
             history_limit=history_limit,
             history_redact=history_redact,
             max_output_chars=max_output_chars,
+            color_mode=color_mode,
             explain_failures=explain_failures,
             failure_explanation_max_chars=failure_explanation_max_chars,
         ),
@@ -682,6 +688,20 @@ def _resolve_history_redact(
     return audit_redact, ConfigValueSource.DERIVED
 
 
+def _resolve_color_mode(
+    dotenv_values: dict[str, str], user_config: UserConfig | None
+) -> tuple[ColorMode, ConfigValueSource]:
+    raw = _raw_value("OTERMINUS_COLOR", dotenv_values)
+    if raw is not None:
+        parsed = _parse_color_mode(raw.value)
+        if parsed is None:
+            return ColorMode.AUTO, ConfigValueSource.DEFAULT
+        return parsed, raw.source
+    if _user_has_field(user_config, "color_mode"):
+        return user_config.color_mode, ConfigValueSource.USER_CONFIG
+    return ColorMode.AUTO, ConfigValueSource.DEFAULT
+
+
 def _env_value(
     name: str, dotenv_values: dict[str, str] | None = None, default: str | None = None
 ) -> str | None:
@@ -739,6 +759,16 @@ def _parse_command_profile(raw: str | None) -> str | None:
         )
         raise ValueError(msg)
     return normalized
+
+
+def _parse_color_mode(raw: str | None) -> ColorMode | None:
+    if raw is None:
+        return None
+    normalized = raw.strip().lower()
+    try:
+        return ColorMode(normalized)
+    except ValueError:
+        return None
 
 
 def _disabled_packs_for_profile(profile: str | None) -> frozenset[str]:

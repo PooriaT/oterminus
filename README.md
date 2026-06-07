@@ -153,6 +153,11 @@ history. `oterminus config path` prints the active JSON config path selected by
 `oterminus config`, not `oterminus --config`, so `--config` remains available for a future
 alternate-path option.
 
+Terminal color policy is configurable with `OTERMINUS_COLOR=auto|always|never` or persisted
+`color_mode`. `NO_COLOR` disables ANSI styling at render time. Machine-oriented output such as
+version, shell completion scripts, `config path`, audit/history records, and command-output
+metadata remains plain.
+
 ### Local development install
 
 ```bash

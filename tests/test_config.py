@@ -18,6 +18,7 @@ from oterminus.config import (
     update_user_config,
 )
 from oterminus.models import RiskLevel
+from oterminus.terminal_style import ColorMode
 
 
 @pytest.fixture(autouse=True)
@@ -296,6 +297,71 @@ def test_load_config_failure_explanation_overrides(monkeypatch, tmp_path: Path) 
     assert config.failure_explanation_max_chars == 123
 
 
+def test_load_config_color_mode_defaults_to_auto(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(tmp_path / "config.json"))
+    monkeypatch.delenv("OTERMINUS_COLOR", raising=False)
+
+    config = load_config()
+
+    assert config.color_mode is ColorMode.AUTO
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ("auto", ColorMode.AUTO),
+        ("always", ColorMode.ALWAYS),
+        ("never", ColorMode.NEVER),
+        ("ALWAYS", ColorMode.ALWAYS),
+    ],
+)
+def test_load_config_color_mode_env_values(
+    monkeypatch, tmp_path: Path, raw: str, expected: ColorMode
+) -> None:
+    monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(tmp_path / "config.json"))
+    monkeypatch.setenv("OTERMINUS_COLOR", raw)
+
+    resolved = resolve_config()
+
+    assert resolved.app_config.color_mode is expected
+    assert resolved.sources["color_mode"] is ConfigValueSource.ENVIRONMENT
+
+
+def test_load_config_color_mode_invalid_env_falls_back_to_auto(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(tmp_path / "config.json"))
+    monkeypatch.setenv("OTERMINUS_COLOR", "sparkles")
+
+    resolved = resolve_config()
+
+    assert resolved.app_config.color_mode is ColorMode.AUTO
+    assert resolved.sources["color_mode"] is ConfigValueSource.DEFAULT
+
+
+def test_dotenv_color_mode_overrides_user_config(monkeypatch, tmp_path: Path) -> None:
+    config_path = tmp_path / "config.json"
+    config_path.write_text('{"color_mode": "never"}', encoding="utf-8")
+    monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(config_path))
+    monkeypatch.delenv("OTERMINUS_COLOR", raising=False)
+    (tmp_path / ".env").write_text("OTERMINUS_COLOR=always\n", encoding="utf-8")
+
+    resolved = resolve_config()
+
+    assert resolved.app_config.color_mode is ColorMode.ALWAYS
+    assert resolved.sources["color_mode"] is ConfigValueSource.DOTENV
+
+
+def test_user_config_color_mode(monkeypatch, tmp_path: Path) -> None:
+    config_path = tmp_path / "config.json"
+    config_path.write_text('{"color_mode": "never"}', encoding="utf-8")
+    monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(config_path))
+    monkeypatch.delenv("OTERMINUS_COLOR", raising=False)
+
+    resolved = resolve_config()
+
+    assert resolved.app_config.color_mode is ColorMode.NEVER
+    assert resolved.sources["color_mode"] is ConfigValueSource.USER_CONFIG
+
+
 def test_read_user_config_missing(monkeypatch, tmp_path: Path) -> None:
     config_path = tmp_path / "missing.json"
     monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(config_path))
@@ -321,6 +387,7 @@ def test_read_user_config_valid_versioned_file(monkeypatch, tmp_path: Path) -> N
                 "allowed_roots": [str(tmp_path)],
                 "timeout_seconds": 12,
                 "max_output_chars": 123,
+                "color_mode": "always",
                 "audit_enabled": False,
                 "audit_redact": False,
                 "audit_log_path": str(tmp_path / "audit.jsonl"),
@@ -344,6 +411,7 @@ def test_read_user_config_valid_versioned_file(monkeypatch, tmp_path: Path) -> N
     assert result.config.command_profile == "developer"
     assert result.config.disabled_command_packs == ["macos", "process"]
     assert result.config.policy_mode is RiskLevel.SAFE
+    assert result.config.color_mode is ColorMode.ALWAYS
     assert result.config.onboarding_completed is False
 
 
@@ -394,6 +462,7 @@ def test_read_user_config_legacy_model_and_audit_path(monkeypatch, tmp_path: Pat
         ('{"policy_mode": "admin"}', UserConfigReadStatus.VALIDATION_ERROR, "policy_mode"),
         ('{"timeout_seconds": 0}', UserConfigReadStatus.VALIDATION_ERROR, "timeout_seconds"),
         ('{"max_output_chars": 0}', UserConfigReadStatus.VALIDATION_ERROR, "max_output_chars"),
+        ('{"color_mode": "sometimes"}', UserConfigReadStatus.VALIDATION_ERROR, "color_mode"),
         ('{"history_limit": 0}', UserConfigReadStatus.VALIDATION_ERROR, "history_limit"),
         (
             '{"failure_explanation_max_chars": 0}',

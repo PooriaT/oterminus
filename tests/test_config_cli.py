@@ -61,6 +61,7 @@ def test_config_init_defaults_creates_safe_valid_config(
     assert payload["command_profile"] == "safe"
     assert payload["policy_mode"] == "write"
     assert payload["auto_execute_safe"] is False
+    assert payload["color_mode"] == "auto"
     assert payload["audit_enabled"] is True
     assert payload["audit_redact"] is True
     assert payload["history_enabled"] is False
@@ -93,6 +94,7 @@ def test_config_init_interactive_runs_wizard(
     assert "Configuration summary" in output
     payload = json.loads(config_path.read_text(encoding="utf-8"))
     assert payload["command_profile"] == "safe"
+    assert payload["color_mode"] == "auto"
     assert payload["model"] == "gemma3:latest"
     assert payload["onboarding_completed"] is True
 
@@ -223,6 +225,7 @@ def test_config_show_reports_sources_and_omits_unrelated_environment(
     assert "timeout_seconds: 42 [source: user config]" in output
     assert "audit_enabled: false [source: environment]" in output
     assert "history_enabled: true [source: .env]" in output
+    assert "color_mode: auto [source: default]" in output
     assert "command_profile: power [source: environment]" in output
     assert "disabled_command_packs: [macos] [source: .env]" in output
     assert "policy.allow_dangerous" in output
