@@ -5,7 +5,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from oterminus.config import AppConfig
+from oterminus.config import AppConfig, load_config as real_load_config
 from oterminus.doctor import CheckResult, DoctorReport, Status, print_report, run_doctor
 from oterminus.version import get_version as real_get_version
 
@@ -230,6 +230,21 @@ def test_doctor_reports_config_parse_failure_instead_of_crashing(
     assert _status_by_name(report, "configured model").status is Status.WARN
     assert _status_by_name(report, "audit log path").status is Status.WARN
     assert _status_by_name(report, "history path").status is Status.WARN
+    assert report.exit_code == 2
+
+
+def test_doctor_reports_invalid_user_config_without_crashing(monkeypatch, tmp_path: Path) -> None:
+    _base_monkeypatches(monkeypatch, tmp_path)
+    config_path = tmp_path / "config.json"
+    config_path.write_text('{"audit_log_path": 123}', encoding="utf-8")
+    monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(config_path))
+    monkeypatch.setattr("oterminus.doctor.load_config", real_load_config)
+
+    report = run_doctor()
+
+    app_config = _status_by_name(report, "app config")
+    assert app_config.status is Status.FAIL
+    assert "audit_log_path" in (app_config.guidance or "")
     assert report.exit_code == 2
 
 

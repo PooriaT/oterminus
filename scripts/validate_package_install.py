@@ -59,6 +59,39 @@ def validate_completion_output(shell: str, proc: subprocess.CompletedProcess[str
         raise SystemExit(1)
 
 
+def validate_config_smoke(oterminus: Path, temp_dir: Path, env: dict[str, str]) -> None:
+    config_path = temp_dir / "config" / "config.json"
+    path_proc = run([str(oterminus), "config", "path"], env=env)
+    if path_proc.stdout.strip() != str(config_path):
+        print(
+            "Unexpected config path output: "
+            f"expected={str(config_path)!r} actual={path_proc.stdout.strip()!r}",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
+    if config_path.exists():
+        print("config path unexpectedly created a file.", file=sys.stderr)
+        raise SystemExit(1)
+
+    run([str(oterminus), "config", "init", "--defaults"], env=env)
+    if not config_path.exists() or not config_path.is_file():
+        print(f"config init did not create {config_path}", file=sys.stderr)
+        raise SystemExit(1)
+    if temp_dir not in config_path.parents:
+        print(f"config init wrote outside the smoke temp directory: {config_path}", file=sys.stderr)
+        raise SystemExit(1)
+
+    validate_proc = run([str(oterminus), "config", "validate"], env=env)
+    if "Status: valid" not in validate_proc.stdout:
+        print(f"Unexpected config validate output: {validate_proc.stdout!r}", file=sys.stderr)
+        raise SystemExit(1)
+
+    show_proc = run([str(oterminus), "config", "show"], env=env)
+    if "Active config path:" not in show_proc.stdout or "Settings:" not in show_proc.stdout:
+        print(f"Unexpected config show output: {show_proc.stdout!r}", file=sys.stderr)
+        raise SystemExit(1)
+
+
 def script_path(bin_dir: Path, name: str) -> Path:
     if sys.platform == "win32":
         return bin_dir / f"{name}.exe"
@@ -132,6 +165,9 @@ def main() -> int:
             return 1
         print("oterminus doctor may exit non-zero when Ollama is unavailable; continuing.")
         run([str(oterminus), "doctor"], check=False, env=env)
+
+        section("Run installed config command smoke checks")
+        validate_config_smoke(oterminus, temp_dir, env)
 
         section("Run installed shell completion smoke checks")
         for shell in ("zsh", "bash", "fish"):

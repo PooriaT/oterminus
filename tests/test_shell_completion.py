@@ -7,7 +7,9 @@ import pytest
 from oterminus.shell_completion import render_shell_completion, supported_shells
 
 EXPECTED_FLAGS = ("--dry-run", "--explain", "--version", "--verbose", "--help")
-EXPECTED_COMMANDS = ("doctor", "version", "completion")
+EXPECTED_COMMANDS = ("doctor", "version", "completion", "config")
+EXPECTED_CONFIG_COMMANDS = ("path", "show", "init", "validate", "edit")
+EXPECTED_CONFIG_INIT_OPTIONS = ("--defaults", "--force")
 EXPECTED_SHELLS = ("zsh", "bash", "fish")
 
 
@@ -97,6 +99,31 @@ def test_render_shell_completion_includes_top_level_commands(shell: str) -> None
 
     for command in EXPECTED_COMMANDS:
         assert command in script
+
+
+@pytest.mark.parametrize("shell", supported_shells())
+def test_render_shell_completion_includes_config_subcommands(shell: str) -> None:
+    script = render_shell_completion(shell)
+
+    for command in EXPECTED_CONFIG_COMMANDS:
+        assert command in script
+
+
+@pytest.mark.parametrize("shell", ("zsh", "bash"))
+def test_render_shell_completion_includes_config_init_options_for_zsh_and_bash(
+    shell: str,
+) -> None:
+    script = render_shell_completion(shell)
+
+    for option in EXPECTED_CONFIG_INIT_OPTIONS:
+        assert option in script
+
+
+def test_render_shell_completion_includes_config_init_options_for_fish() -> None:
+    script = render_shell_completion("fish")
+
+    for option in EXPECTED_CONFIG_INIT_OPTIONS:
+        assert f"-l {option.removeprefix('--')}" in script
 
 
 @pytest.mark.parametrize("shell", ("zsh", "bash"))

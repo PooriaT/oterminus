@@ -94,6 +94,12 @@ you. Direct commands and some deterministic local paths may not need a live mode
 natural-language usage depends on Ollama being installed, running, and having a local model
 available.
 
+On the first bare interactive launch (`oterminus`) with no existing user config file, OTerminus
+offers a concise configuration wizard. The wizard sets safety/privacy defaults and can select an
+installed Ollama model, but model selection is optional and direct commands remain usable without
+Ollama. One-shot requests such as `oterminus "ls -l"`, `--dry-run`, `--explain`, `doctor`,
+`version`, `completion`, and `config` commands do not trigger onboarding.
+
 Upgrade or uninstall the isolated CLI with:
 
 ```bash
@@ -123,6 +129,30 @@ The completion command only prints the script to stdout; it never edits your `.z
 `config.fish`, or other shell startup files automatically. See the
 [shell completion docs](docs/product/shell-completion.md) for manual setup details.
 
+### Configuration management
+
+Use the `oterminus config` namespace to inspect and manage local preferences:
+
+```bash
+oterminus config
+oterminus config path
+oterminus config show
+oterminus config init
+oterminus config init --defaults
+oterminus config validate
+oterminus config edit
+```
+
+These commands do not require Ollama and bypass request planning, validation, execution, audit, and
+history. `oterminus config path` prints the active JSON config path selected by
+`OTERMINUS_CONFIG_PATH`, current-directory `.env`, or the default `~/.oterminus/config.json`.
+`oterminus config init` runs the interactive onboarding wizard when stdin is a TTY. Use
+`oterminus config init --defaults` for non-interactive safe defaults, and
+`oterminus config init --defaults --force` to replace an existing valid file. `config edit` uses
+`$VISUAL`, then `$EDITOR`, and never modifies shell startup files. The namespace is intentionally
+`oterminus config`, not `oterminus --config`, so `--config` remains available for a future
+alternate-path option.
+
 ### Local development install
 
 ```bash
@@ -140,11 +170,14 @@ oterminus "show disk usage for this folder"
 oterminus --dry-run "copy notes.txt to backup/notes.txt"
 oterminus --explain "find processes matching python"
 oterminus doctor
+oterminus config show
 ```
 
 ### Interactive REPL
 
-`oterminus` starts the interactive REPL after startup readiness checks. Use
+`oterminus` starts the interactive REPL. On a first interactive launch without a config file it may
+offer onboarding first, then reload the saved config before creating REPL services. Ollama setup is
+lazy: it is needed only when a request reaches model-based planning or failure explanation. Use
 `poetry run oterminus` when working from a local development checkout.
 
 Examples inside REPL:

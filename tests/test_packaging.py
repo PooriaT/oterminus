@@ -54,6 +54,22 @@ def test_validate_package_install_checks_cli_version(monkeypatch, tmp_path: Path
             return subprocess.CompletedProcess(cmd, 0, stdout="0.1.1\n", stderr="")
         if cmd[-1] in {"--version", "version"}:
             return subprocess.CompletedProcess(cmd, 0, stdout="oterminus 0.1.1\n", stderr="")
+        if cmd[-2:] == ["config", "path"]:
+            assert env is not None
+            return subprocess.CompletedProcess(
+                cmd, 0, stdout=f"{env['OTERMINUS_CONFIG_PATH']}\n", stderr=""
+            )
+        if cmd[-3:] == ["config", "init", "--defaults"]:
+            assert env is not None
+            Path(env["OTERMINUS_CONFIG_PATH"]).parent.mkdir(parents=True, exist_ok=True)
+            Path(env["OTERMINUS_CONFIG_PATH"]).write_text('{"schema_version": 1}\n')
+            return subprocess.CompletedProcess(cmd, 0, stdout="Created config\n", stderr="")
+        if cmd[-2:] == ["config", "validate"]:
+            return subprocess.CompletedProcess(cmd, 0, stdout="Status: valid\n", stderr="")
+        if cmd[-2:] == ["config", "show"]:
+            return subprocess.CompletedProcess(
+                cmd, 0, stdout="Active config path: /tmp/config.json\nSettings:\n", stderr=""
+            )
         if cmd[-2:] == ["completion", "zsh"]:
             return subprocess.CompletedProcess(cmd, 0, stdout="#compdef oterminus\n", stderr="")
         if cmd[-2:] == ["completion", "bash"]:
@@ -71,6 +87,10 @@ def test_validate_package_install_checks_cli_version(monkeypatch, tmp_path: Path
     assert validate_package_install.main() == 0
     assert any(cmd[-1] == "--version" for cmd in recorded)
     assert any(cmd[-1] == "version" for cmd in recorded)
+    assert any(cmd[-2:] == ["config", "path"] for cmd in recorded)
+    assert any(cmd[-3:] == ["config", "init", "--defaults"] for cmd in recorded)
+    assert any(cmd[-2:] == ["config", "validate"] for cmd in recorded)
+    assert any(cmd[-2:] == ["config", "show"] for cmd in recorded)
     assert any(cmd[-2:] == ["completion", "zsh"] for cmd in recorded)
     assert any(cmd[-2:] == ["completion", "bash"] for cmd in recorded)
     assert any(cmd[-2:] == ["completion", "fish"] for cmd in recorded)

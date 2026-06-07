@@ -26,7 +26,8 @@ from oterminus.discovery import (
     render_unknown_help_target,
     render_examples_for_capability,
 )
-from oterminus.config import load_config
+from oterminus.config import ConfigError, UserConfigReadStatus, load_config, read_user_config
+from oterminus.config_cli import run_config_cli
 from oterminus.completion import get_completion_backend_status
 from oterminus.direct_commands import detect_direct_command
 from oterminus.history import PersistentHistoryStore, SessionHistory
@@ -36,6 +37,7 @@ from oterminus.failure_explainer import FailureExplainer
 from oterminus.local_planner import plan_locally
 from oterminus.logging_utils import configure_logging
 from oterminus.ollama_client import OllamaClientError, OllamaPlannerClient
+from oterminus.onboarding import run_onboarding, save_declined_onboarding
 from oterminus.planner import Planner, PlannerError
 from oterminus.setup import SetupError, ensure_startup_ready
 from oterminus.policies import ConfirmationLevel, confirmation_level
@@ -78,6 +80,18 @@ _FLAG_EXPLANATIONS: dict[str, str] = {
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
+    if argv and argv[0].lower() == "config":
+        return argparse.Namespace(
+            request=argv,
+            dry_run=False,
+            explain=False,
+            version=False,
+            verbose=False,
+            cli_mode="config",
+            completion_shell=None,
+            config_argv=argv[1:],
+        )
+
     parser = argparse.ArgumentParser(description="oterminus: local AI terminal assistant")
     parser.add_argument("request", nargs="*", help="Natural-language terminal request")
     group = parser.add_mutually_exclusive_group()
@@ -96,7 +110,10 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     args = parser.parse_args(argv)
     args.cli_mode = _cli_mode_from_request(args.request)
     args.completion_shell = None
-    if args.cli_mode in {"doctor", "version", "completion"} and (args.dry_run or args.explain):
+    args.config_argv = args.request[1:] if args.cli_mode == "config" else None
+    if args.cli_mode in {"doctor", "version", "completion", "config"} and (
+        args.dry_run or args.explain
+    ):
         parser.error(f"{args.cli_mode} cannot be combined with --dry-run or --explain")
     if args.cli_mode == "completion":
         shell_names = supported_shells()
@@ -114,6 +131,8 @@ def _cli_mode_from_request(request: list[str]) -> str:
         return "version"
     if request and request[0].lower() == "completion" and len(request) <= 2:
         return "completion"
+    if request and request[0].lower() == "config":
+        return "config"
     return "request"
 
 
@@ -829,7 +848,7 @@ def run_doctor_cli() -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    args = parse_args(argv or sys.argv[1:])
+    args = parse_args(sys.argv[1:] if argv is None else argv)
     configure_logging(verbose=args.verbose)
     run_mode = _run_mode_from_args(args)
 
@@ -844,7 +863,37 @@ def main(argv: list[str] | None = None) -> int:
     if args.cli_mode == "doctor":
         return run_doctor_cli()
 
-    config = load_config()
+    if args.cli_mode == "config":
+        return run_config_cli(args.config_argv or [])
+
+    if _should_offer_first_run_onboarding(args):
+        read_result = read_user_config()
+        if read_result.status is UserConfigReadStatus.MISSING:
+            print("No OTerminus user configuration was found.")
+            try:
+                answer = input("Run the first-time configuration now? [Y/n] ").strip().lower()
+            except (EOFError, KeyboardInterrupt):
+                print()
+                answer = "n"
+            if answer in {"", "y", "yes"}:
+                onboarding = run_onboarding(existing=None, input_fn=input)
+                if not onboarding.saved:
+                    print(
+                        "Continuing with in-memory safe defaults. Rerun onboarding later with "
+                        "`oterminus config init`."
+                    )
+            elif answer in {"n", "no"}:
+                print("Skipping first-time configuration.")
+                save_declined_onboarding()
+            else:
+                print("Unrecognized answer; skipping first-time configuration.")
+                save_declined_onboarding()
+
+    try:
+        config = load_config()
+    except (ConfigError, ValueError) as exc:
+        print(f"Configuration error: {exc}", file=sys.stderr)
+        return 2
     validator = Validator(config.policy)
     try:
         executor = Executor(
@@ -991,6 +1040,16 @@ def _run_mode_from_args(args: argparse.Namespace) -> RunMode:
     if args.explain:
         return RunMode.EXPLAIN
     return RunMode.EXECUTE
+
+
+def _should_offer_first_run_onboarding(args: argparse.Namespace) -> bool:
+    return (
+        args.cli_mode == "request"
+        and not args.request
+        and not args.dry_run
+        and not args.explain
+        and sys.stdin.isatty()
+    )
 
 
 def render_explanation(

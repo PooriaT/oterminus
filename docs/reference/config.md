@@ -8,24 +8,27 @@ truth for supported keys.
 
 | Setting | Environment variable | User config field | Default | Notes |
 | --- | --- | --- | --- | --- |
-| Execution timeout | `OTERMINUS_TIMEOUT_SECONDS` | Not supported | `60` | Parsed as an integer number of seconds and passed to the executor. |
-| Max execution output chars | `OTERMINUS_MAX_OUTPUT_CHARS` | Not supported | `20000` | Positive integer. Values `<1` or invalid values fall back to `20000`. Applied independently to stdout and stderr after command completion. |
-| Policy mode | `OTERMINUS_POLICY_MODE` | Not supported | `write` | Must be one of `safe`, `write`, or `dangerous`. |
-| Dangerous-operation gate | `OTERMINUS_ALLOW_DANGEROUS` | Not supported | `false` | Only the exact value `true` enables dangerous operations, and only when policy mode is `dangerous`. |
-| Allowed path roots | `OTERMINUS_ALLOWED_ROOTS` | Not supported | Empty list | Colon-separated roots. When set, path operands must resolve under one of these roots. |
-| User config path | `OTERMINUS_CONFIG_PATH` | Environment-only | `~/.oterminus/config.json` | Selects which JSON config file is loaded and saved. |
+| Execution timeout | `OTERMINUS_TIMEOUT_SECONDS` | `timeout_seconds` | `60` | Positive integer number of seconds passed to the executor. |
+| Max execution output chars | `OTERMINUS_MAX_OUTPUT_CHARS` | `max_output_chars` | `20000` | Positive integer. Invalid env values fall back to `20000`. Applied independently to stdout and stderr after command completion. |
+| Policy mode | `OTERMINUS_POLICY_MODE` | `policy_mode` | `write` | Must be one of `safe`, `write`, or `dangerous`. |
+| Dangerous-operation gate | `OTERMINUS_ALLOW_DANGEROUS` | Not supported | `false` | Environment/.env only. It is never persisted and only matters when policy mode is `dangerous`. |
+| Allowed path roots | `OTERMINUS_ALLOWED_ROOTS` | `allowed_roots` | Empty list | Environment form is colon-separated. JSON form is a list of path strings. When set, path operands must resolve under one of these roots. |
+| User config path | `OTERMINUS_CONFIG_PATH` | Environment/.env only | `~/.oterminus/config.json` | Selects which JSON config file is loaded and saved. It cannot be read from the file whose path it selects. |
 | Selected Ollama model | Not supported | `model` | None | Saved during first-run setup. There is currently no supported `OTERMINUS_MODEL` environment override. |
 | Audit log path | `OTERMINUS_AUDIT_LOG_PATH` | `audit_log_path` | `~/.oterminus/audit.jsonl` | Environment value overrides the user config field. |
-| Audit enabled | `OTERMINUS_AUDIT_ENABLED` | Not supported | `true` | Accepts `1`, `true`, `yes`, or `on` as true; `0`, `false`, `no`, or `off` as false. Invalid values keep the default. |
-| Audit redaction | `OTERMINUS_AUDIT_REDACT` | Not supported | `true` | Uses the same boolean parsing as `OTERMINUS_AUDIT_ENABLED`. |
-| Persistent history enabled | `OTERMINUS_HISTORY_ENABLED` | Not supported | `false` | Enables local JSONL history persistence for REPL entries. When false, history is session-only. |
-| Persistent history path | `OTERMINUS_HISTORY_PATH` | Not supported | `~/.oterminus/history.jsonl` | Local JSONL file used when persistent history is enabled. |
-| Persistent history limit | `OTERMINUS_HISTORY_LIMIT` | Not supported | `100` | Maximum number of persisted records loaded into each REPL session. Must be a valid integer in the environment; loaded values are clamped to at least `1` by the history store. |
-| Persistent history redaction | `OTERMINUS_HISTORY_REDACT` | Not supported | Follows `OTERMINUS_AUDIT_REDACT` | Uses the same boolean parsing as `OTERMINUS_AUDIT_ENABLED`; controls redaction before writing history records. |
-| Failure explanations enabled | `OTERMINUS_EXPLAIN_FAILURES` | Not supported | `false` | Opt-in local Ollama failure explanations for non-zero exits only. Suggested next actions are never executed automatically. |
-| Failure explanation max chars | `OTERMINUS_FAILURE_EXPLANATION_MAX_CHARS` | Not supported | `4000` | Positive integer. Bounds each redacted stdout/stderr snippet sent to the configured local Ollama model. |
-| Command-pack profile preset | `OTERMINUS_COMMAND_PROFILE` | Not supported | Unset | Optional preset for command-pack availability (`beginner`, `safe`, `developer`, `power`). Unset preserves existing behavior. |
-| Safe auto-execute | `OTERMINUS_AUTO_EXECUTE_SAFE` | Not supported | `false` | Environment-only opt-in. Uses the standard boolean parser. Only validated, warning-free, local read-only structured proposals from direct detection or the deterministic local planner may skip confirmation. |
+| Audit enabled | `OTERMINUS_AUDIT_ENABLED` | `audit_enabled` | `true` | Accepts `1`, `true`, `yes`, or `on` as true; `0`, `false`, `no`, or `off` as false. Invalid env values keep the default. |
+| Audit redaction | `OTERMINUS_AUDIT_REDACT` | `audit_redact` | `true` | Uses the same boolean parsing as `OTERMINUS_AUDIT_ENABLED`. |
+| Persistent history enabled | `OTERMINUS_HISTORY_ENABLED` | `history_enabled` | `false` | Enables local JSONL history persistence for REPL entries. When false, history is session-only. |
+| Persistent history path | `OTERMINUS_HISTORY_PATH` | `history_path` | `~/.oterminus/history.jsonl` | Local JSONL file used when persistent history is enabled. |
+| Persistent history limit | `OTERMINUS_HISTORY_LIMIT` | `history_limit` | `100` | Maximum number of persisted records loaded into each REPL session. |
+| Persistent history redaction | `OTERMINUS_HISTORY_REDACT` | `history_redact` | Follows effective audit redaction | Controls redaction before writing history records. When unset everywhere, it follows the effective audit-redaction setting. |
+| Failure explanations enabled | `OTERMINUS_EXPLAIN_FAILURES` | `explain_failures` | `false` | Opt-in local Ollama failure explanations for non-zero exits only. Suggested next actions are never executed automatically. |
+| Failure explanation max chars | `OTERMINUS_FAILURE_EXPLANATION_MAX_CHARS` | `failure_explanation_max_chars` | `4000` | Positive integer. Bounds each redacted stdout/stderr snippet sent to the configured local Ollama model. |
+| Command-pack profile preset | `OTERMINUS_COMMAND_PROFILE` | `command_profile` | Unset | Optional preset for command-pack availability (`beginner`, `safe`, `developer`, `power`). Unset preserves existing behavior. |
+| Explicit disabled command packs | `OTERMINUS_DISABLED_COMMAND_PACKS` | `disabled_command_packs` | Empty list | Environment form is comma-separated. JSON form is a list of pack IDs. Explicit packs are unioned with profile-disabled packs. |
+| Safe auto-execute | `OTERMINUS_AUTO_EXECUTE_SAFE` | `auto_execute_safe` | `false` | Uses the standard boolean parser. Only validated, warning-free, local read-only structured proposals from direct detection or the deterministic local planner may skip confirmation. |
+| Schema version | Not supported | `schema_version` | `1` | Current persistent user-config schema version. Missing legacy files are normalized in memory as version 1. |
+| Onboarding state | Not supported | `onboarding_completed` | `false` | Reserved for first-run onboarding. Existing legacy config files without a schema version are treated as completed in memory. |
 
 ## Environment variables
 
@@ -80,13 +83,101 @@ Supported persistent fields:
 
 ```json
 {
+  "schema_version": 1,
+  "onboarding_completed": false,
   "model": "gemma4",
-  "audit_log_path": "~/.oterminus/audit.jsonl"
+  "command_profile": "developer",
+  "disabled_command_packs": ["macos"],
+  "policy_mode": "write",
+  "allowed_roots": ["/workspace"],
+  "auto_execute_safe": false,
+  "timeout_seconds": 60,
+  "max_output_chars": 20000,
+  "audit_enabled": true,
+  "audit_redact": true,
+  "audit_log_path": "~/.oterminus/audit.jsonl",
+  "history_enabled": false,
+  "history_path": "~/.oterminus/history.jsonl",
+  "history_limit": 100,
+  "history_redact": true,
+  "explain_failures": false,
+  "failure_explanation_max_chars": 4000
 }
 ```
 
-The `model` field is the selected local Ollama model. The `audit_log_path` field is optional and is
-used only when `OTERMINUS_AUDIT_LOG_PATH` is unset.
+The user config is validated with a versioned schema. Unknown fields, malformed JSON, non-object
+JSON, unsupported future schema versions, invalid enum values, non-boolean booleans, blank model
+names, invalid pack IDs, and non-positive integer values are configuration errors. OTerminus reports
+a concise error and exits non-zero instead of silently discarding the bad value.
+
+Existing legacy files such as `{"model": "gemma4"}` or
+`{"model": "gemma4", "audit_log_path": "~/.oterminus/audit.jsonl"}` remain supported. When a file
+exists without `schema_version`, OTerminus normalizes it in memory as schema version 1 and treats
+`onboarding_completed` as true unless the file explicitly contains a supported value. Missing config
+files are different: they have no completion state and use runtime defaults.
+
+The config file is local preference storage, not secret storage. Do not put tokens, passwords, or
+other secrets in it.
+
+## Config commands
+
+Use `oterminus config` for configuration management. This namespace is intentionally not
+`oterminus --config`; the flag shape is reserved for a possible future alternate-config-path option.
+All config commands bypass the normal request lifecycle and do not require Ollama.
+
+| Command | Behavior |
+| --- | --- |
+| `oterminus config` | Prints concise help for config subcommands and exits successfully. |
+| `oterminus config path` | Prints only the active config path. Respects exported `OTERMINUS_CONFIG_PATH` and current-directory `.env`; does not create the file. |
+| `oterminus config show` | Shows the active path, existence, schema version when valid, effective settings, and per-setting source (`environment`, `.env`, `user config`, `default`, or `derived`). |
+| `oterminus config init` | Runs the interactive onboarding wizard when stdin is a TTY. Existing valid config values are used as defaults and only wizard-managed fields are revised after summary confirmation. |
+| `oterminus config init --defaults` | Creates safe non-interactive defaults and prints the path. Existing files are not overwritten. Required for non-TTY initialization. |
+| `oterminus config init --defaults --force` | Replaces an existing valid config with safe defaults. Invalid existing files are preserved and must be repaired or moved first. |
+| `oterminus config validate` | Validates only the active persistent file. Missing, malformed, unsupported, unreadable, or schema-invalid files exit non-zero. |
+| `oterminus config edit` | Opens the config with `$VISUAL`, then `$EDITOR`. If missing, safe defaults are created first. After a successful editor exit, the file is validated; invalid edits are preserved. |
+
+Safe defaults mark onboarding completed, use the `safe` command profile, keep policy mode at
+`write`, leave dangerous permission out of the file, disable safe auto-execute, history, and
+failure explanations, and enable audit logging plus redaction. `config edit` parses the editor with
+argv semantics, preserves arguments such as `code --wait`, never uses `shell=True`, does not guess
+an editor, does not open a browser, and does not modify shell startup files.
+
+To recover from an invalid config, run `oterminus config validate` for the field-level error, then
+edit the file manually or with `VISUAL=... oterminus config edit`. If the file is not worth
+repairing, move it aside and run `oterminus config init --defaults`.
+
+## First-run onboarding
+
+Automatic onboarding appears only for a bare interactive `oterminus` launch when stdin is a TTY and
+the persistent config file does not exist. It does not appear for one-shot requests, `--dry-run`,
+`--explain`, `doctor`, `version`, `completion`, any `config` command, existing config files, legacy
+config files, or non-interactive stdin. One-shot direct commands are not gated by onboarding and can
+still detect, validate, preview, confirm, and execute without Ollama.
+
+Run the wizard later with:
+
+```bash
+oterminus config init
+```
+
+The wizard-managed fields and first-run defaults are:
+
+| Field | Default | Notes |
+| --- | --- | --- |
+| `command_profile` | `safe` | Choose `beginner`, `safe`, `developer`, or `power`. The prompt describes disabled packs using the command registry/profile mapping. |
+| `auto_execute_safe` | `false` | Applies only to narrowly eligible validated local read-only commands from direct detection or the deterministic local planner. Network, write, dangerous, experimental, warning-bearing, Ollama-planned, project-health, archive-mutation, and rerun requests do not qualify. |
+| `audit_enabled` | `true` | Audit logs remain local and do not store full stdout/stderr, but may contain paths and command context. Review before sharing. |
+| `audit_redact` | `true` | Kept safe even if audit logging is disabled. |
+| `history_enabled` | `false` | Persisted history may include commands, local paths, and execution context. Reruns still require validation and confirmation. |
+| `history_redact` | `true` | Kept safe even if persistent history is disabled. |
+| `explain_failures` | `false` | When enabled, redacted/truncated command output may be sent to the configured local Ollama model after non-zero exits. Suggested next actions are never executed automatically. |
+| `model` | Not configured | Optional. If Ollama is unavailable or no models are installed, onboarding saves non-model preferences and model setup can happen later. |
+
+Before saving, onboarding prints a summary with the selected profile, auto-execute state, audit and
+history settings, failure-explanation state, selected model or `not configured`, and target config
+path. Declining the final summary does not write changes. When rerun against an existing valid
+config, the wizard preserves unmanaged fields such as numeric limits, paths, allowed roots, policy
+mode, and explicit disabled packs. On successful save it sets `onboarding_completed` to `true`.
 
 ## Precedence behavior
 
@@ -103,10 +194,13 @@ In practice:
   `audit_log_path`, then `~/.oterminus/audit.jsonl`.
 - `model` is user-config only; there is no environment override.
 - timeout, policy, allowed roots, audit enabled/redaction, history settings, failure-explanation
-  settings, safe auto-execute, and output limits are environment-only and fall back directly to
+  settings, safe auto-execute, command profiles, disabled packs, and output limits follow
+  environment, `.env`, user config, default precedence.
+- `OTERMINUS_CONFIG_PATH` is environment/.env only.
+- `OTERMINUS_ALLOW_DANGEROUS` is environment/.env only and is rejected if persisted.
+- `history_redact`, when absent from all sources, follows the effective audit-redaction setting.
+- invalid persisted values are reported as configuration errors; missing config files simply use
   defaults.
-- malformed, missing, unreadable, or non-object user config JSON is ignored and defaults are used
-  where applicable.
 
 Audit management commands (`audit status`, `audit tail [n]`, and `audit clear`) read this active
 configuration. If `OTERMINUS_AUDIT_ENABLED=false`, tail/clear report disabled state and do not
@@ -163,10 +257,13 @@ Set `OTERMINUS_DISABLED_COMMAND_PACKS` to a comma-separated list of pack IDs (fo
 
 Precedence rule:
 
-1. Resolve profile disabled packs (if `OTERMINUS_COMMAND_PROFILE` is set).
-2. Apply `OTERMINUS_DISABLED_COMMAND_PACKS` as additional disabled packs.
+1. Resolve profile disabled packs from `OTERMINUS_COMMAND_PROFILE`, `.env`, or user config.
+2. Resolve explicit disabled packs from `OTERMINUS_DISABLED_COMMAND_PACKS`, `.env`, or user config.
+3. Union profile-disabled packs with explicit disabled packs.
 
-This means explicit disabled packs always disable additional packs and never re-enable profile-disabled packs.
+When an explicit environment or `.env` disabled-pack list is present, it replaces the persisted
+explicit list before the union is calculated. Explicit disabled packs always disable additional
+packs and never re-enable profile-disabled packs.
 
 All disabled packs are removed from planner, route, completion, and REPL discovery context. The validator remains authoritative: disabled commands are rejected before execution even if a user types a direct command or a planner proposes one. This is separate from capability IDs and does not change policy mode or confirmation.
 
