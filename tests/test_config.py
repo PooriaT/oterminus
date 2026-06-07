@@ -327,9 +327,7 @@ def test_load_config_color_mode_env_values(
     assert resolved.sources["color_mode"] is ConfigValueSource.ENVIRONMENT
 
 
-def test_load_config_color_mode_invalid_env_falls_back_to_auto(
-    monkeypatch, tmp_path: Path
-) -> None:
+def test_load_config_color_mode_invalid_env_falls_back_to_auto(monkeypatch, tmp_path: Path) -> None:
     monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(tmp_path / "config.json"))
     monkeypatch.setenv("OTERMINUS_COLOR", "sparkles")
 
