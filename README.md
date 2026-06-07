@@ -123,6 +123,27 @@ The completion command only prints the script to stdout; it never edits your `.z
 `config.fish`, or other shell startup files automatically. See the
 [shell completion docs](docs/product/shell-completion.md) for manual setup details.
 
+### Configuration management
+
+Use the `oterminus config` namespace to inspect and manage local preferences:
+
+```bash
+oterminus config
+oterminus config path
+oterminus config show
+oterminus config init --defaults
+oterminus config validate
+oterminus config edit
+```
+
+These commands do not require Ollama and bypass request planning, validation, execution, audit, and
+history. `oterminus config path` prints the active JSON config path selected by
+`OTERMINUS_CONFIG_PATH`, current-directory `.env`, or the default `~/.oterminus/config.json`.
+`oterminus config init` creates safe defaults and will not overwrite an existing file unless
+`--force` is used for an existing valid config. `config edit` uses `$VISUAL`, then `$EDITOR`, and
+never modifies shell startup files. The namespace is intentionally `oterminus config`, not
+`oterminus --config`, so `--config` remains available for a future alternate-path option.
+
 ### Local development install
 
 ```bash
@@ -140,6 +161,7 @@ oterminus "show disk usage for this folder"
 oterminus --dry-run "copy notes.txt to backup/notes.txt"
 oterminus --explain "find processes matching python"
 oterminus doctor
+oterminus config show
 ```
 
 ### Interactive REPL

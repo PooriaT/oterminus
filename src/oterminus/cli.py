@@ -27,6 +27,7 @@ from oterminus.discovery import (
     render_examples_for_capability,
 )
 from oterminus.config import ConfigError, load_config
+from oterminus.config_cli import run_config_cli
 from oterminus.completion import get_completion_backend_status
 from oterminus.direct_commands import detect_direct_command
 from oterminus.history import PersistentHistoryStore, SessionHistory
@@ -78,6 +79,18 @@ _FLAG_EXPLANATIONS: dict[str, str] = {
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
+    if argv and argv[0].lower() == "config":
+        return argparse.Namespace(
+            request=argv,
+            dry_run=False,
+            explain=False,
+            version=False,
+            verbose=False,
+            cli_mode="config",
+            completion_shell=None,
+            config_argv=argv[1:],
+        )
+
     parser = argparse.ArgumentParser(description="oterminus: local AI terminal assistant")
     parser.add_argument("request", nargs="*", help="Natural-language terminal request")
     group = parser.add_mutually_exclusive_group()
@@ -96,7 +109,10 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     args = parser.parse_args(argv)
     args.cli_mode = _cli_mode_from_request(args.request)
     args.completion_shell = None
-    if args.cli_mode in {"doctor", "version", "completion"} and (args.dry_run or args.explain):
+    args.config_argv = args.request[1:] if args.cli_mode == "config" else None
+    if args.cli_mode in {"doctor", "version", "completion", "config"} and (
+        args.dry_run or args.explain
+    ):
         parser.error(f"{args.cli_mode} cannot be combined with --dry-run or --explain")
     if args.cli_mode == "completion":
         shell_names = supported_shells()
@@ -114,6 +130,8 @@ def _cli_mode_from_request(request: list[str]) -> str:
         return "version"
     if request and request[0].lower() == "completion" and len(request) <= 2:
         return "completion"
+    if request and request[0].lower() == "config":
+        return "config"
     return "request"
 
 
@@ -843,6 +861,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.cli_mode == "doctor":
         return run_doctor_cli()
+
+    if args.cli_mode == "config":
+        return run_config_cli(args.config_argv or [])
 
     try:
         config = load_config()

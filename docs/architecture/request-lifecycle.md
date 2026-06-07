@@ -4,7 +4,13 @@ This is the central execution flow for OTerminus. The order is deliberate: OTerm
 shell commands before applying natural-language ambiguity heuristics. Only non-direct,
 natural-language requests are checked for ambiguity before capability routing and planner calls.
 
-Before request handling begins, OTerminus resolves runtime configuration into `AppConfig`.
+Before request handling begins, OTerminus handles command namespaces that are explicitly outside
+the request lifecycle. `version`, `completion`, and `doctor` exit through their own paths. The
+`oterminus config` namespace also exits before runtime request setup; `config path`, `show`, `init`,
+`validate`, and `edit` do not construct the validator, executor, planner, audit logger, or history
+store, do not run startup readiness checks, do not contact Ollama, and do not start the REPL.
+
+For normal request handling, OTerminus resolves runtime configuration into `AppConfig`.
 Resolution applies exported environment variables, current-directory `.env`, validated user config,
 and built-in defaults in that order for supported settings. The persistent user config is a
 schema-versioned JSON preference file; invalid JSON, unknown fields, unsupported schema versions, or
@@ -14,10 +20,11 @@ only.
 
 ```mermaid
 flowchart TD
-  Z[Resolve AppConfig] --> A[User input]
-  A --> A1{CLI diagnostics mode?}
-  A1 -->|doctor| A2[Run doctor checks and exit]
-  A1 -->|request| B[Direct command detection]
+  A[CLI argv] --> A0{Early CLI mode?}
+  A0 -->|version/completion/config| A3[Print or manage local metadata and exit]
+  A0 -->|doctor| A2[Run doctor checks and exit]
+  A0 -->|request| Z[Resolve AppConfig]
+  Z --> B[Direct command detection]
   B --> C{Direct command?}
   C -->|yes| C1[Build direct proposal]
   C -->|no| D[Ambiguity detection]

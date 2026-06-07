@@ -137,6 +137,31 @@ overrides, with precedence: exported environment, `.env`, user config, then buil
 `OTERMINUS_ALLOW_DANGEROUS` is environment/.env only and is not accepted in the persistent config.
 The config file is not secret storage.
 
+Manage this file with the dedicated config namespace:
+
+```bash
+oterminus config
+oterminus config path
+oterminus config show
+oterminus config init --defaults
+oterminus config validate
+oterminus config edit
+```
+
+These commands are local configuration tools. They do not require Ollama, do not start the REPL, and
+do not enter request routing, planning, validation, confirmation, execution, audit writing, or
+history writing. The management interface is `oterminus config` rather than `oterminus --config` so
+that a future global `--config <path>` option can still mean "run with this alternate config file."
+
+`config path` prints only the active path and does not create the file. `config show` displays
+effective values and sources without dumping unrelated environment values. `config init` creates
+safe non-interactive defaults; `--defaults` is the explicit automation form, and `--force` replaces
+an existing valid config with those defaults. Invalid existing files are preserved so you can repair
+or move them. `config validate` checks only the persistent file and suggests `config init` when it
+is missing. `config edit` creates defaults first if needed, then launches `$VISUAL` or `$EDITOR`
+with the config path appended; if no editor is configured, it prints the path and manual-edit
+guidance. Editor commands are parsed as argv, not through a shell.
+
 ## Doctor troubleshooting
 
 Run `oterminus doctor` after a PyPI or `pipx` install and after changing Ollama, config, audit, or

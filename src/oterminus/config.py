@@ -281,10 +281,10 @@ def update_user_config(**updates: object) -> UserConfig:
     return updated
 
 
-def save_user_config(config: UserConfig) -> None:
+def save_user_config(config: UserConfig, *, include_none: bool = False) -> None:
     explicit_fields = set(config.model_fields_set)
     explicit_fields.add("schema_version")
-    payload = config.model_dump(mode="json", include=explicit_fields, exclude_none=True)
+    payload = config.model_dump(mode="json", include=explicit_fields, exclude_none=not include_none)
     payload["schema_version"] = CURRENT_USER_CONFIG_SCHEMA_VERSION
     UserConfig.model_validate(payload)
     path = get_user_config_path()
