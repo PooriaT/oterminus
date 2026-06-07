@@ -158,6 +158,26 @@ def test_config_init_force_refuses_invalid_existing_file(
     assert config_path.read_text(encoding="utf-8") == original
 
 
+def test_config_init_defaults_reports_write_failure_without_traceback(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    config_path = tmp_path / "config.json"
+    monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(config_path))
+
+    def fail_save(*_: object, **__: object) -> None:
+        raise PermissionError("permission denied")
+
+    monkeypatch.setattr("oterminus.config_cli.save_user_config", fail_save)
+
+    code = run_config_cli(["init", "--defaults"])
+
+    output = capsys.readouterr().out
+    assert code == 2
+    assert "Config init failed: Unable to write safe default config: permission denied" in output
+    assert f"Path: {config_path}" in output
+    assert "Traceback" not in output
+
+
 def test_config_validate_valid_missing_and_invalid(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -252,6 +272,29 @@ def test_config_edit_missing_editor_creates_defaults_and_prints_manual_guidance(
     assert config_path.exists()
     assert "No editor configured" in output
     assert str(config_path) in output
+
+
+def test_config_edit_auto_create_reports_write_failure_without_traceback(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    config_path = tmp_path / "config.json"
+    monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(config_path))
+
+    def fail_save(*_: object, **__: object) -> None:
+        raise PermissionError("permission denied")
+
+    monkeypatch.setattr("oterminus.config_cli.save_user_config", fail_save)
+
+    code = run_config_cli(["edit"], run_editor=Mock(side_effect=AssertionError("no editor")))
+
+    output = capsys.readouterr().out
+    assert code == 2
+    assert (
+        "Config edit failed during initialization: "
+        "Unable to write safe default config: permission denied"
+    ) in output
+    assert f"Path: {config_path}" in output
+    assert "Traceback" not in output
 
 
 def test_config_edit_preserves_invalid_edits_after_successful_editor(

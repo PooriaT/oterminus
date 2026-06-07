@@ -50,7 +50,10 @@ class ConfigInitService:
             )
 
         config = safe_default_user_config()
-        save_user_config(config, include_none=True)
+        try:
+            save_user_config(config, include_none=True)
+        except OSError as exc:
+            raise ConfigError(path, f"Unable to write safe default config: {exc}") from exc
         return ConfigInitResult(
             path,
             created=existing.status is UserConfigReadStatus.MISSING,
