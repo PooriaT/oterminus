@@ -1,6 +1,7 @@
 import pytest
 
 from oterminus.commands import COMMAND_REGISTRY, NETWORK_TOUCHING_WARNING, command as command_spec
+from oterminus.messages import EXPERIMENTAL_USER_WARNING, EXPERIMENTAL_VERBOSE_EXPLANATION
 from oterminus.models import ActionType, Proposal, ProposalMode, RiskLevel
 from oterminus.policies import PolicyConfig
 from oterminus.structured_commands import StructuredCommandError, parse_raw_command_as_structured
@@ -587,7 +588,7 @@ def test_validator_warns_for_synthetic_network_touching_command(monkeypatch) -> 
 
     assert result.accepted is True
     assert result.warnings == [
-        "Experimental mode stays outside deterministic structured rendering and uses stricter confirmation.",
+        EXPERIMENTAL_USER_WARNING,
         NETWORK_TOUCHING_WARNING,
     ]
 
@@ -612,6 +613,8 @@ def test_validator_warns_for_structured_network_command() -> None:
     assert result.rendered_command == "curl -I https://example.com"
     assert result.argv == ["curl", "-I", "https://example.com"]
     assert NETWORK_TOUCHING_WARNING in result.warnings
+    assert EXPERIMENTAL_USER_WARNING not in result.warnings
+    assert EXPERIMENTAL_VERBOSE_EXPLANATION not in result.warnings
 
 
 @pytest.mark.parametrize(
@@ -1011,10 +1014,8 @@ def test_accept_experimental_command_with_warning() -> None:
 
     assert result.accepted is True
     assert result.risk_level == RiskLevel.SAFE
-    assert any(
-        "Experimental mode stays outside deterministic structured rendering" in warning
-        for warning in result.warnings
-    )
+    assert EXPERIMENTAL_USER_WARNING in result.warnings
+    assert EXPERIMENTAL_VERBOSE_EXPLANATION not in result.warnings
 
 
 def test_structured_command_ignores_legacy_command_text() -> None:
@@ -1054,6 +1055,8 @@ def test_reject_experimental_when_structured_rendering_is_available() -> None:
     )
 
     assert result.accepted is False
+    assert EXPERIMENTAL_USER_WARNING in result.warnings
+    assert EXPERIMENTAL_VERBOSE_EXPLANATION not in result.warnings
     assert any(
         "Experimental mode is not allowed when deterministic structured rendering is available."
         in reason

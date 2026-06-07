@@ -94,6 +94,11 @@ trusting command text. Direct commands may also be normalized into structured ar
 is available. Experimental proposals may carry command text, but they remain constrained by parsing,
 registry, validator, policy, preview, and stronger confirmation.
 
+Normal experimental previews use plain user-facing wording:
+`Experimental command: this was not rendered from typed structured arguments. Review it carefully before running.`
+Verbose previews may add the architecture diagnostic:
+`Experimental mode stays outside deterministic structured rendering and uses stricter confirmation.`
+
 Some trusted direct commands may remain experimental when the typed schema cannot represent the
 user's argv exactly. For example, `ls -ltrh` is detected locally, skips Ollama planning, preserves
 `["ls", "-ltrh"]`, and reaches validation with direct-command origin. Natural-language requests such
@@ -115,8 +120,8 @@ Validator enforces:
 OTerminus renders preview details (command, mode, risk, warnings/rejections).
 
 The normal execute mode requires explicit confirmation after a successful preview by default.
-Experimental mode uses very-strong confirmation text. Failed validation or policy checks stop before
-execution.
+Experimental mode uses very-strong confirmation text and requires the exact phrase
+`EXECUTE EXPERIMENTAL`. Failed validation or policy checks stop before execution.
 
 If `OTERMINUS_AUTO_EXECUTE_SAFE=true`, OTerminus evaluates a narrow local policy after preview and
 after dry-run/explain have already returned. The confirmation prompt may be skipped only for

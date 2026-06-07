@@ -17,6 +17,7 @@ from oterminus.commands import (
     get_pack_for_command,
     is_command_supported_on_platform,
 )
+from oterminus.messages import EXPERIMENTAL_USER_WARNING
 from oterminus.models import Proposal, ProposalMode, RiskLevel, ValidationResult
 from oterminus.policies import PolicyConfig, is_risk_allowed
 from oterminus.structured_commands import (
@@ -108,10 +109,7 @@ class Validator:
                 reasons.extend(shell_issues)
 
                 if proposal.mode == ProposalMode.EXPERIMENTAL:
-                    warnings.append(
-                        "Experimental mode stays outside deterministic structured rendering and "
-                        "uses stricter confirmation."
-                    )
+                    warnings.append(EXPERIMENTAL_USER_WARNING)
                     try:
                         parsed_structured = parse_raw_command_as_structured(command)
                     except StructuredCommandError:

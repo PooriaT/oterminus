@@ -281,6 +281,21 @@ This is not a general `yes` mode. Network commands, write or dangerous commands,
 commands, commands with warnings, project-health commands, archive extraction/creation, and reruns
 still require confirmation.
 
+### Experimental fallback
+
+Structured mode is preferred because OTerminus renders the command from typed arguments. Experimental
+mode is a constrained fallback for supported commands that cannot yet be represented that way.
+
+When a preview says:
+
+```text
+Experimental command: this was not rendered from typed structured arguments. Review it carefully before running.
+```
+
+review the exact rendered command before approving it. Experimental proposals require the exact
+confirmation phrase `EXECUTE EXPERIMENTAL` and are never eligible for safe auto-execution, even when
+the command is read-only.
+
 ### Natural-language requests
 
 You can ask for tasks like:
@@ -524,7 +539,9 @@ If safe auto-execute skips a confirmation prompt, audit events include the bound
 - Direct shell commands are not intercepted as ambiguous; they still go through validation and
   policy checks.
 - Unsupported flags, operators, redirection/pipeline chains, and disallowed paths are rejected.
-- Experimental mode is a constrained fallback and requires stronger confirmation.
+- Experimental mode is a constrained fallback for commands outside typed structured rendering;
+  review the exact command and type `EXECUTE EXPERIMENTAL` to run it.
+- Experimental proposals are never eligible for safe auto-execution.
 - Safe auto-execute is disabled by default and applies only to validated, warning-free, local
   read-only structured commands from direct detection or the deterministic local planner.
 - Commands that fail validation or policy checks are never executed.

@@ -93,6 +93,12 @@ authoritative for both structured and experimental proposals, including direct c
 LLM planning. Direct shell commands are not intercepted by natural-language ambiguity detection;
 they continue to this validation and policy path.
 
+Experimental validation emits the user-facing preview warning:
+`Experimental command: this was not rendered from typed structured arguments. Review it carefully before running.`
+Verbose previews may additionally show the architecture diagnostic:
+`Experimental mode stays outside deterministic structured rendering and uses stricter confirmation.`
+The diagnostic is not a normal validation warning.
+
 ## Rejection behavior
 
 If validation fails:
