@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from unittest.mock import Mock
 
@@ -7,7 +8,11 @@ import pytest
 
 from oterminus.config import AppConfig, load_config as real_load_config
 from oterminus.doctor import CheckResult, DoctorReport, Status, print_report, run_doctor
+from oterminus.terminal_style import TerminalStyle
 from oterminus.version import get_version as real_get_version
+
+
+ANSI_RE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
 
 
 def _base_monkeypatches(monkeypatch, tmp_path: Path) -> None:
@@ -484,6 +489,37 @@ def test_print_report_groups_checks_and_guidance(capsys) -> None:
     assert "FAIL  ollama CLI" in output
     assert "Install Ollama." in output
     assert "Summary: 4 checks, 1 failed, 1 warnings" in output
+
+
+def test_print_report_styles_statuses_and_summary_when_enabled(capsys) -> None:
+    report = DoctorReport(
+        results=(
+            CheckResult("pass check", Status.PASS, "ok"),
+            CheckResult("warn check", Status.WARN, "careful", guidance="Review config."),
+            CheckResult("fail check", Status.FAIL, "broken", guidance="Fix it.", critical=True),
+        )
+    )
+
+    print_report(report, style=TerminalStyle(color_enabled=True))
+
+    output = capsys.readouterr().out
+    assert ANSI_RE.search(output)
+    assert "PASS" in output
+    assert "WARN" in output
+    assert "FAIL" in output
+    assert "Review config." in output
+    assert "Summary: 3 checks, 1 failed, 1 warnings" in output
+
+
+def test_print_report_disabled_style_is_plain(capsys) -> None:
+    report = DoctorReport(results=(CheckResult("pass check", Status.PASS, "ok"),))
+
+    print_report(report, style=TerminalStyle(color_enabled=False))
+
+    output = capsys.readouterr().out
+    assert not ANSI_RE.search(output)
+    assert "PASS  pass check" in output
+    assert "Summary: 1 checks, 0 failed, 0 warnings" in output
 
 
 @pytest.mark.parametrize(

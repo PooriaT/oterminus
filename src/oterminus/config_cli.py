@@ -258,6 +258,7 @@ def _show_config() -> int:
         ("auto_execute_safe", app.auto_execute_safe, resolved.sources.get("auto_execute_safe")),
         ("timeout_seconds", app.timeout_seconds, resolved.sources.get("timeout_seconds")),
         ("max_output_chars", app.max_output_chars, resolved.sources.get("max_output_chars")),
+        ("color_mode", app.color_mode.value, resolved.sources.get("color_mode")),
         ("audit_enabled", app.audit_enabled, resolved.sources.get("audit_enabled")),
         ("audit_redact", app.audit_redact, resolved.sources.get("audit_redact")),
         ("audit_log_path", app.audit_log_path, resolved.sources.get("audit_log_path")),

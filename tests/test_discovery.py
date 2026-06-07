@@ -1,3 +1,5 @@
+import re
+
 from oterminus.commands import NETWORK_TOUCHING_WARNING
 from oterminus.discovery import (
     render_capabilities,
@@ -5,7 +7,12 @@ from oterminus.discovery import (
     render_command_help,
     render_commands,
     render_examples,
+    render_help,
 )
+from oterminus.terminal_style import TerminalStyle
+
+
+ANSI_RE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
 
 
 def test_command_help_exposes_network_touching_warning() -> None:
@@ -71,3 +78,33 @@ def test_discovery_help_for_disabled_targets_returns_unknown() -> None:
         "network_diagnostics", disabled_pack_ids=disabled
     )
     assert "Unknown command family" in render_command_help("ping", disabled_pack_ids=disabled)
+
+
+def test_discovery_outputs_style_owned_labels_when_enabled() -> None:
+    style = TerminalStyle(color_enabled=True)
+
+    outputs = [
+        render_help(style=style),
+        render_capabilities(style=style),
+        render_commands(style=style),
+        render_examples(style=style),
+        render_capability_help("filesystem_inspection", style=style),
+        render_command_help("ls", style=style),
+    ]
+
+    for output in outputs:
+        assert ANSI_RE.search(output)
+    assert "Capabilities:" in outputs[1]
+    assert "filesystem_inspection" in outputs[1]
+    assert "Command family:" in outputs[5]
+    assert "Risk level:" in outputs[5]
+
+
+def test_discovery_disabled_style_outputs_plain_text() -> None:
+    style = TerminalStyle(color_enabled=False)
+
+    output = render_capabilities(style=style)
+
+    assert not ANSI_RE.search(output)
+    assert "Capabilities:" in output
+    assert "filesystem_inspection" in output

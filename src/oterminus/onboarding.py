@@ -125,6 +125,7 @@ def run_onboarding(
         history_enabled=history_enabled,
         history_redact=history_redact,
         explain_failures=explain_failures,
+        color_mode=base.color_mode,
         model=model,
     )
     target_path = get_user_config_path()
