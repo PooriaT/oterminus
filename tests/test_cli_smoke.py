@@ -20,6 +20,7 @@ from oterminus.cli import (
 from oterminus.models import ActionType, Proposal, ProposalMode, RiskLevel, ValidationResult
 from oterminus.ollama_client import parse_ollama_list_output
 from oterminus.policies import ConfirmationLevel
+from oterminus.setup import OllamaModelStatus
 
 
 def test_parse_args_one_shot() -> None:
@@ -199,6 +200,7 @@ def test_main_doctor_runs_diagnostics_without_repl_or_startup(monkeypatch) -> No
 def test_main_config_dispatches_before_request_lifecycle(monkeypatch, tmp_path, capsys) -> None:
     from oterminus.cli import main
 
+    monkeypatch.chdir(tmp_path)
     config_path = tmp_path / "config.json"
     monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(config_path))
     monkeypatch.setattr("oterminus.cli.configure_logging", lambda verbose: None)
@@ -254,6 +256,141 @@ def test_main_repl_defers_startup_until_planner_is_needed(monkeypatch) -> None:
 
     assert code == 0
     setup_check.assert_not_called()
+
+
+def test_first_interactive_repl_launch_runs_onboarding_and_reloads_config(
+    monkeypatch, tmp_path: Path
+) -> None:
+    from oterminus.cli import main
+
+    monkeypatch.chdir(tmp_path)
+    config_path = tmp_path / "config.json"
+    monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(config_path))
+    for name in (
+        "OTERMINUS_COMMAND_PROFILE",
+        "OTERMINUS_AUTO_EXECUTE_SAFE",
+        "OTERMINUS_AUDIT_ENABLED",
+        "OTERMINUS_AUDIT_REDACT",
+        "OTERMINUS_HISTORY_ENABLED",
+        "OTERMINUS_HISTORY_REDACT",
+        "OTERMINUS_EXPLAIN_FAILURES",
+        "OTERMINUS_DISABLED_COMMAND_PACKS",
+    ):
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setattr("oterminus.cli.sys.stdin", type("TTY", (), {"isatty": lambda self: True})())
+    monkeypatch.setattr("oterminus.cli.configure_logging", lambda verbose: None)
+    monkeypatch.setattr(
+        "oterminus.onboarding.get_ollama_model_status",
+        lambda: OllamaModelStatus(True, True, ("gemma3:latest",)),
+    )
+    answers = iter(["y", "power", "y", "n", "y", "n", "n", "1", ""])
+    captured: dict[str, object] = {}
+
+    def fake_validator(policy):
+        captured["disabled_packs"] = policy.disabled_command_packs
+        return Mock(policy=policy)
+
+    def fake_history(path, *, enabled, limit, redact):
+        captured["history_enabled"] = enabled
+        captured["history_redact"] = redact
+        return Mock(load=Mock(return_value=[]))
+
+    monkeypatch.setattr("builtins.input", lambda _: next(answers))
+    monkeypatch.setattr("oterminus.cli.Validator", fake_validator)
+    monkeypatch.setattr("oterminus.cli.Executor", lambda **kwargs: Mock())
+    monkeypatch.setattr("oterminus.cli.PersistentHistoryStore", fake_history)
+    monkeypatch.setattr("oterminus.cli.repl", lambda *_args, **_kwargs: 0)
+    monkeypatch.setattr(
+        "oterminus.cli.ensure_startup_ready",
+        Mock(side_effect=AssertionError("startup should remain lazy")),
+    )
+
+    code = main([])
+
+    assert code == 0
+    payload = json.loads(config_path.read_text(encoding="utf-8"))
+    assert payload["command_profile"] == "power"
+    assert payload["auto_execute_safe"] is True
+    assert payload["audit_enabled"] is False
+    assert payload["audit_redact"] is True
+    assert payload["history_enabled"] is True
+    assert payload["history_redact"] is False
+    assert payload["model"] == "gemma3:latest"
+    assert captured["disabled_packs"] == frozenset({"dangerous"})
+    assert captured["history_enabled"] is True
+    assert captured["history_redact"] is False
+
+
+def test_first_interactive_repl_decline_saves_completion_and_does_not_repeat(
+    monkeypatch, tmp_path: Path, capsys
+) -> None:
+    from oterminus.cli import main
+
+    monkeypatch.chdir(tmp_path)
+    config_path = tmp_path / "config.json"
+    monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(config_path))
+    monkeypatch.setattr("oterminus.cli.sys.stdin", type("TTY", (), {"isatty": lambda self: True})())
+    monkeypatch.setattr("oterminus.cli.configure_logging", lambda verbose: None)
+    monkeypatch.setattr("oterminus.cli.repl", lambda *_args, **_kwargs: 0)
+    monkeypatch.setattr(
+        "oterminus.onboarding.get_ollama_model_status",
+        Mock(side_effect=AssertionError("decline must not contact Ollama")),
+    )
+    monkeypatch.setattr("builtins.input", Mock(return_value="n"))
+
+    assert main([]) == 0
+    output = capsys.readouterr().out
+    payload = json.loads(config_path.read_text(encoding="utf-8"))
+    assert "Skipping first-time configuration" in output
+    assert payload["onboarding_completed"] is True
+    assert payload["command_profile"] == "safe"
+
+    monkeypatch.setattr("builtins.input", Mock(side_effect=AssertionError("no repeated prompt")))
+    assert main([]) == 0
+
+
+def test_one_shot_request_does_not_trigger_onboarding_even_with_tty(
+    monkeypatch, tmp_path: Path
+) -> None:
+    from oterminus.cli import main
+
+    monkeypatch.chdir(tmp_path)
+    config_path = tmp_path / "config.json"
+    monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(config_path))
+    monkeypatch.setattr("oterminus.cli.sys.stdin", type("TTY", (), {"isatty": lambda self: True})())
+    monkeypatch.setattr("oterminus.cli.configure_logging", lambda verbose: None)
+    monkeypatch.setattr(
+        "oterminus.cli.run_onboarding",
+        Mock(side_effect=AssertionError("one-shot must not run onboarding")),
+    )
+    monkeypatch.setattr(
+        "oterminus.cli.ensure_startup_ready",
+        Mock(side_effect=AssertionError("direct command should not need Ollama")),
+    )
+    monkeypatch.setattr("builtins.input", Mock(side_effect=AssertionError("dry-run")))
+
+    assert main(["--dry-run", "pwd"]) == 0
+    assert not config_path.exists()
+
+
+@pytest.mark.parametrize("argv", (["doctor"], ["version"], ["--version"], ["completion", "zsh"], ["config", "path"]))
+def test_special_commands_do_not_trigger_automatic_onboarding(
+    monkeypatch, tmp_path: Path, argv: list[str]
+) -> None:
+    from oterminus.cli import main
+
+    config_path = tmp_path / "config.json"
+    monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(config_path))
+    monkeypatch.setattr("oterminus.cli.sys.stdin", type("TTY", (), {"isatty": lambda self: True})())
+    monkeypatch.setattr("oterminus.cli.configure_logging", lambda verbose: None)
+    monkeypatch.setattr(
+        "oterminus.cli.run_onboarding",
+        Mock(side_effect=AssertionError("special command must not run onboarding")),
+    )
+    monkeypatch.setattr("oterminus.cli.run_doctor_cli", Mock(return_value=0))
+
+    assert main(argv) == 0
+    assert not config_path.exists()
 
 
 def test_main_repl_passes_global_run_mode(monkeypatch) -> None:

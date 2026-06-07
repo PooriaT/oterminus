@@ -4,12 +4,12 @@ import argparse
 import os
 import shlex
 import subprocess
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 
 from oterminus.config import (
-    CURRENT_USER_CONFIG_SCHEMA_VERSION,
     ConfigError,
     ConfigValueSource,
     UserConfig,
@@ -18,10 +18,11 @@ from oterminus.config import (
     get_user_config_path,
     read_user_config,
     resolve_config,
+    safe_default_user_config,
     save_user_config,
     _load_dotenv_values,
 )
-from oterminus.models import RiskLevel
+from oterminus.onboarding import run_onboarding
 
 
 CONFIG_COMMANDS: tuple[str, ...] = ("path", "show", "init", "validate", "edit")
@@ -58,30 +59,6 @@ class ConfigInitService:
         )
 
 
-def safe_default_user_config() -> UserConfig:
-    return UserConfig(
-        schema_version=CURRENT_USER_CONFIG_SCHEMA_VERSION,
-        onboarding_completed=True,
-        command_profile="safe",
-        policy_mode=RiskLevel.WRITE,
-        disabled_command_packs=[],
-        allowed_roots=[],
-        auto_execute_safe=False,
-        audit_enabled=True,
-        audit_redact=True,
-        history_enabled=False,
-        history_redact=True,
-        explain_failures=False,
-        model=None,
-        timeout_seconds=60,
-        max_output_chars=20000,
-        audit_log_path=None,
-        history_path=None,
-        history_limit=100,
-        failure_explanation_max_chars=4000,
-    )
-
-
 def parse_config_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog="oterminus config",
@@ -100,7 +77,7 @@ def parse_config_args(argv: list[str]) -> argparse.Namespace:
     init_parser.add_argument(
         "--force",
         action="store_true",
-        help="Replace an existing valid config with safe defaults.",
+        help="With --defaults, replace an existing valid config with safe defaults.",
     )
     subparsers.add_parser("validate", help="Validate the active config file.")
     subparsers.add_parser("edit", help="Open the active config in $VISUAL or $EDITOR.")
@@ -116,6 +93,8 @@ def run_config_cli(
     *,
     init_service: ConfigInitService | None = None,
     run_editor: Callable[..., subprocess.CompletedProcess[object]] = subprocess.run,
+    input_fn: Callable[[str], str] = input,
+    stdin_isatty: Callable[[], bool] | None = None,
 ) -> int:
     args = parse_config_args(argv)
     command = args.config_command
@@ -129,7 +108,13 @@ def run_config_cli(
     if command == "show":
         return _show_config()
     if command == "init":
-        return _init_config(force=args.force, service=service)
+        return _init_config(
+            defaults=args.defaults,
+            force=args.force,
+            service=service,
+            input_fn=input_fn,
+            stdin_isatty=stdin_isatty or sys.stdin.isatty,
+        )
     if command == "validate":
         return _validate_config()
     if command == "edit":
@@ -143,7 +128,37 @@ def print_config_help() -> None:
     parse_config_args([])
 
 
-def _init_config(*, force: bool, service: ConfigInitService) -> int:
+def _init_config(
+    *,
+    defaults: bool,
+    force: bool,
+    service: ConfigInitService,
+    input_fn: Callable[[str], str],
+    stdin_isatty: Callable[[], bool],
+) -> int:
+    if not defaults:
+        if force:
+            print("Use `oterminus config init --defaults --force` to replace with defaults.")
+            print("Bare `oterminus config init` runs the interactive onboarding wizard.")
+            return 2
+        if not stdin_isatty():
+            print("Interactive config init requires a TTY.")
+            print("Use `oterminus config init --defaults` for non-interactive safe defaults.")
+            return 1
+        result = read_user_config()
+        if result.status is UserConfigReadStatus.MISSING:
+            existing = None
+        elif result.status is UserConfigReadStatus.VALID:
+            existing = result.config
+        else:
+            print(f"Config init failed: existing config is invalid ({result.status.value}).")
+            if result.error is not None:
+                print(f"Error: {result.error.reason}")
+            print(f"Path: {result.path}")
+            return 2
+        onboarding = run_onboarding(existing=existing, input_fn=input_fn)
+        return 0 if onboarding.saved else 1
+
     try:
         result = service.create_safe_defaults(force=force)
     except ConfigError as exc:
@@ -158,7 +173,7 @@ def _init_config(*, force: bool, service: ConfigInitService) -> int:
         print(f"Created config: {result.path}")
         return 0
     print(f"Config already exists; not overwritten: {result.path}")
-    print("Use `oterminus config init --force` to replace a valid config with safe defaults.")
+    print("Use `oterminus config init --defaults --force` to replace a valid config with safe defaults.")
     return 1
 
 

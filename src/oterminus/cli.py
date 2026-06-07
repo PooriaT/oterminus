@@ -26,7 +26,7 @@ from oterminus.discovery import (
     render_unknown_help_target,
     render_examples_for_capability,
 )
-from oterminus.config import ConfigError, load_config
+from oterminus.config import ConfigError, UserConfigReadStatus, load_config, read_user_config
 from oterminus.config_cli import run_config_cli
 from oterminus.completion import get_completion_backend_status
 from oterminus.direct_commands import detect_direct_command
@@ -37,6 +37,7 @@ from oterminus.failure_explainer import FailureExplainer
 from oterminus.local_planner import plan_locally
 from oterminus.logging_utils import configure_logging
 from oterminus.ollama_client import OllamaClientError, OllamaPlannerClient
+from oterminus.onboarding import run_onboarding, save_declined_onboarding
 from oterminus.planner import Planner, PlannerError
 from oterminus.setup import SetupError, ensure_startup_ready
 from oterminus.policies import ConfirmationLevel, confirmation_level
@@ -847,7 +848,7 @@ def run_doctor_cli() -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    args = parse_args(argv or sys.argv[1:])
+    args = parse_args(sys.argv[1:] if argv is None else argv)
     configure_logging(verbose=args.verbose)
     run_mode = _run_mode_from_args(args)
 
@@ -864,6 +865,29 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.cli_mode == "config":
         return run_config_cli(args.config_argv or [])
+
+    if _should_offer_first_run_onboarding(args):
+        read_result = read_user_config()
+        if read_result.status is UserConfigReadStatus.MISSING:
+            print("No OTerminus user configuration was found.")
+            try:
+                answer = input("Run the first-time configuration now? [Y/n] ").strip().lower()
+            except (EOFError, KeyboardInterrupt):
+                print()
+                answer = "n"
+            if answer in {"", "y", "yes"}:
+                onboarding = run_onboarding(existing=None, input_fn=input)
+                if not onboarding.saved:
+                    print(
+                        "Continuing with in-memory safe defaults. Rerun onboarding later with "
+                        "`oterminus config init`."
+                    )
+            elif answer in {"n", "no"}:
+                print("Skipping first-time configuration.")
+                save_declined_onboarding()
+            else:
+                print("Unrecognized answer; skipping first-time configuration.")
+                save_declined_onboarding()
 
     try:
         config = load_config()
@@ -1016,6 +1040,14 @@ def _run_mode_from_args(args: argparse.Namespace) -> RunMode:
     if args.explain:
         return RunMode.EXPLAIN
     return RunMode.EXECUTE
+
+
+def _should_offer_first_run_onboarding(args: argparse.Namespace) -> bool:
+    return (
+        args.cli_mode == "request"
+        and not args.request
+        and sys.stdin.isatty()
+    )
 
 
 def render_explanation(

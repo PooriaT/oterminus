@@ -5,6 +5,12 @@ outside this request-planning path: it runs diagnostics and exits before routing
 Before routing, OTerminus first checks for direct commands and then applies ambiguity detection to
 non-direct natural-language requests.
 
+First-run onboarding is also outside request planning. It is offered only for a bare interactive
+REPL launch with missing persistent config and interactive stdin, then effective config is reloaded
+before REPL services are built. One-shot direct commands, one-shot natural-language requests,
+`--dry-run`, `--explain`, `doctor`, `version`, `completion`, and `config` commands do not run the
+wizard and cannot be blocked by missing onboarding.
+
 ## Lifecycle before routing
 
 Routing is reached only after two earlier checks:

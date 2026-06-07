@@ -7,6 +7,7 @@ import pytest
 
 from oterminus.config import CURRENT_USER_CONFIG_SCHEMA_VERSION, read_user_config
 from oterminus.config_cli import run_config_cli
+from oterminus.setup import OllamaModelStatus
 
 
 @pytest.fixture(autouse=True)
@@ -70,7 +71,33 @@ def test_config_init_defaults_creates_safe_valid_config(
     assert read_user_config().config is not None
 
 
-def test_config_init_preserves_existing_valid_file_without_force(
+def test_config_init_interactive_runs_wizard(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    config_path = tmp_path / "config.json"
+    monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(config_path))
+    monkeypatch.setattr(
+        "oterminus.onboarding.get_ollama_model_status",
+        lambda: OllamaModelStatus(True, True, ("gemma3:latest",)),
+    )
+    answers = iter(["", "", "", "", "", "", "1", ""])
+
+    code = run_config_cli(
+        ["init"],
+        input_fn=lambda _: next(answers),
+        stdin_isatty=lambda: True,
+    )
+
+    output = capsys.readouterr().out
+    assert code == 0
+    assert "Configuration summary" in output
+    payload = json.loads(config_path.read_text(encoding="utf-8"))
+    assert payload["command_profile"] == "safe"
+    assert payload["model"] == "gemma3:latest"
+    assert payload["onboarding_completed"] is True
+
+
+def test_config_init_non_tty_requires_defaults(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     config_path = tmp_path / "config.json"
@@ -78,6 +105,22 @@ def test_config_init_preserves_existing_valid_file_without_force(
     monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(config_path))
 
     code = run_config_cli(["init"])
+
+    assert code == 1
+    output = capsys.readouterr().out
+    assert "requires a TTY" in output
+    assert "--defaults" in output
+    assert json.loads(config_path.read_text(encoding="utf-8"))["model"] == "gemma4"
+
+
+def test_config_init_defaults_preserves_existing_valid_file_without_force(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    config_path = tmp_path / "config.json"
+    config_path.write_text('{"schema_version": 1, "model": "gemma4"}\n', encoding="utf-8")
+    monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(config_path))
+
+    code = run_config_cli(["init", "--defaults"])
 
     assert code == 1
     assert "not overwritten" in capsys.readouterr().out
@@ -91,7 +134,7 @@ def test_config_init_force_replaces_existing_valid_file(
     config_path.write_text('{"schema_version": 1, "model": "gemma4"}\n', encoding="utf-8")
     monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(config_path))
 
-    code = run_config_cli(["init", "--force"])
+    code = run_config_cli(["init", "--defaults", "--force"])
 
     payload = json.loads(config_path.read_text(encoding="utf-8"))
     assert code == 0
@@ -107,7 +150,7 @@ def test_config_init_force_refuses_invalid_existing_file(
     config_path.write_text(original, encoding="utf-8")
     monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(config_path))
 
-    code = run_config_cli(["init", "--force"])
+    code = run_config_cli(["init", "--defaults", "--force"])
 
     output = capsys.readouterr().out
     assert code == 2

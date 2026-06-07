@@ -127,6 +127,31 @@ that clearly so you can fix the local model setup before natural-language planni
 If no model is configured yet, OTerminus shows installed models and prompts you to choose one. The
 selection is saved in `~/.oterminus/config.json` (or `OTERMINUS_CONFIG_PATH` if set).
 
+On the first bare interactive launch (`oterminus`) when the persistent config file does not exist
+and stdin is a TTY, OTerminus offers a first-time configuration wizard. The wizard does not run for
+one-shot requests, `--dry-run`, `--explain`, `doctor`, `version`, `completion`, `config` commands,
+or non-interactive stdin. Declining onboarding saves safe defaults with
+`onboarding_completed: true`, explains that you can rerun it with `oterminus config init`, and then
+continues into the REPL. If that save fails, OTerminus continues with in-memory safe defaults and
+may ask again next time because the completion state could not be persisted.
+
+The wizard asks only high-value first-run questions:
+
+- command profile, default `safe`
+- safe auto-execute, default disabled
+- audit logging, default enabled
+- audit redaction, default enabled
+- persistent history, default disabled
+- persistent-history redaction, default enabled
+- local Ollama failure explanations, default disabled
+- optional Ollama model selection when installed models are discoverable
+
+Ollama is optional during configuration. If the CLI is missing, the service is unavailable, or no
+models are installed, onboarding saves the non-model preferences and leaves model setup for later.
+Direct commands and deterministic local planner paths remain usable without a configured model.
+Advanced settings such as numeric limits, paths, allowed roots, policy mode, and explicit disabled
+packs stay editable in the JSON config file.
+
 The user config file is validated JSON with `schema_version: 1`. It can persist local preferences
 such as the selected model, command profile, disabled command packs, policy mode, allowed roots,
 audit/history paths, output limits, and reserved onboarding state. Existing legacy files with only
@@ -143,7 +168,9 @@ Manage this file with the dedicated config namespace:
 oterminus config
 oterminus config path
 oterminus config show
+oterminus config init
 oterminus config init --defaults
+oterminus config init --defaults --force
 oterminus config validate
 oterminus config edit
 ```
@@ -154,13 +181,14 @@ history writing. The management interface is `oterminus config` rather than `ote
 that a future global `--config <path>` option can still mean "run with this alternate config file."
 
 `config path` prints only the active path and does not create the file. `config show` displays
-effective values and sources without dumping unrelated environment values. `config init` creates
-safe non-interactive defaults; `--defaults` is the explicit automation form, and `--force` replaces
-an existing valid config with those defaults. Invalid existing files are preserved so you can repair
-or move them. `config validate` checks only the persistent file and suggests `config init` when it
-is missing. `config edit` creates defaults first if needed, then launches `$VISUAL` or `$EDITOR`
-with the config path appended; if no editor is configured, it prints the path and manual-edit
-guidance. Editor commands are parsed as argv, not through a shell.
+effective values and sources without dumping unrelated environment values. Bare `config init` runs
+the interactive onboarding wizard when stdin is a TTY. In non-interactive use, run
+`config init --defaults` to create safe defaults without prompting; add `--force` to replace an
+existing valid config with those defaults. Invalid existing files are preserved so you can repair or
+move them. `config validate` checks only the persistent file and suggests `config init` when it is
+missing. `config edit` creates defaults first if needed, then launches `$VISUAL` or `$EDITOR` with
+the config path appended; if no editor is configured, it prints the path and manual-edit guidance.
+Editor commands are parsed as argv, not through a shell.
 
 ## Doctor troubleshooting
 
@@ -225,9 +253,11 @@ automatic install-time or runtime mutation.
 
 ## Model selection behavior
 
-- First run: choose from discovered local models.
+- First interactive onboarding: optionally choose from discovered local models.
 - Later runs: saved model is reused.
 - If saved model is missing: OTerminus warns and asks for a new selection.
+- If onboarding skipped model selection or Ollama was unavailable, model setup can happen later when
+  a model-planned request needs it, or by rerunning `oterminus config init`.
 
 ## Running OTerminus
 
@@ -249,6 +279,11 @@ REPL mode starts an interactive session. Requests entered in the REPL follow the
 one-shot requests: direct-command detection, natural-language ambiguity handling when applicable,
 planning for specific natural-language requests, validation, preview, confirmation, execution, and
 audit logging.
+
+On a first interactive launch with no config file, onboarding may run before the REPL starts.
+One-shot requests are never blocked by onboarding: direct commands still load built-in or existing
+effective config, detect locally, validate, preview, follow confirmation policy, and execute if
+confirmed without requiring Ollama.
 
 REPL built-ins include (all local, deterministic, and backed by command-registry metadata; they do not call Ollama):
 
