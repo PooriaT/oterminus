@@ -211,7 +211,9 @@ def test_main_config_dispatches_before_request_lifecycle(monkeypatch, tmp_path, 
     monkeypatch.setattr("oterminus.cli.Validator", Mock(side_effect=AssertionError("no validator")))
     monkeypatch.setattr("oterminus.cli.Executor", Mock(side_effect=AssertionError("no executor")))
     monkeypatch.setattr("oterminus.cli.Planner", Mock(side_effect=AssertionError("no planner")))
-    monkeypatch.setattr("oterminus.cli.route_request", Mock(side_effect=AssertionError("no router")))
+    monkeypatch.setattr(
+        "oterminus.cli.route_request", Mock(side_effect=AssertionError("no router"))
+    )
     monkeypatch.setattr(
         "oterminus.cli.detect_ambiguity", Mock(side_effect=AssertionError("no ambiguity"))
     )

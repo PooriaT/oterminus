@@ -59,9 +59,7 @@ def validate_completion_output(shell: str, proc: subprocess.CompletedProcess[str
         raise SystemExit(1)
 
 
-def validate_config_smoke(
-    oterminus: Path, temp_dir: Path, env: dict[str, str]
-) -> None:
+def validate_config_smoke(oterminus: Path, temp_dir: Path, env: dict[str, str]) -> None:
     config_path = temp_dir / "config" / "config.json"
     path_proc = run([str(oterminus), "config", "path"], env=env)
     if path_proc.stdout.strip() != str(config_path):
