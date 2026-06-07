@@ -3,8 +3,9 @@ from __future__ import annotations
 import json
 
 from oterminus.messages import EXPERIMENTAL_USER_WARNING, EXPERIMENTAL_VERBOSE_EXPLANATION
-from oterminus.models import Proposal, ProposalMode, ValidationResult
+from oterminus.models import Proposal, ProposalMode, RiskLevel, ValidationResult
 from oterminus.policies import ConfirmationLevel, confirmation_level
+from oterminus.terminal_style import StyleToken, TerminalStyle
 
 _DIRECT_DEBUG_NOTE_PREFIXES = (
     "Detected as a direct shell command;",
@@ -18,15 +19,20 @@ def render_preview(
     *,
     verbose: bool = False,
     direct_command: bool = False,
+    style: TerminalStyle | None = None,
 ) -> str:
     if direct_command and not verbose:
-        return _render_direct_preview(proposal, validation)
+        return _render_direct_preview(proposal, validation, style=style)
 
-    return _render_detailed_preview(proposal, validation, verbose=verbose)
+    return _render_detailed_preview(proposal, validation, verbose=verbose, style=style)
 
 
 def _render_detailed_preview(
-    proposal: Proposal, validation: ValidationResult, *, verbose: bool
+    proposal: Proposal,
+    validation: ValidationResult,
+    *,
+    verbose: bool,
+    style: TerminalStyle | None,
 ) -> str:
     level = confirmation_level(proposal.mode, validation.risk_level)
     header = (
@@ -35,26 +41,32 @@ def _render_detailed_preview(
         else "--- oterminus proposal ---"
     )
     lines = [
-        header,
+        _style(style, StyleToken.HEADING, header),
         f"Summary      : {proposal.summary}",
-        f"Mode         : {proposal.mode.value}",
-        f"Experimental : {'yes' if proposal.is_experimental else 'no'}",
-        f"Risk level   : {validation.risk_level.value}",
+        f"Mode         : {_style_mode(style, proposal.mode)}",
+        f"Experimental : {_style_experimental_marker(style, proposal.is_experimental)}",
+        f"Risk level   : {_style_risk(style, validation.risk_level)}",
         f"Explanation  : {proposal.explanation}",
-        f"Confirmation : {_format_confirmation_level(level)}",
+        f"Confirmation : {_style_confirmation(style, level)}",
     ]
 
     command = validation.rendered_command or proposal.command
     if command is not None:
-        lines.insert(3, f"Command      : {command}")
+        lines.insert(3, f"Command      : {_style(style, StyleToken.COMMAND, command)}")
 
     if proposal.command_family is not None:
         lines.insert(
-            3 if proposal.command is None else 4, f"Command fam. : {proposal.command_family}"
+            3 if proposal.command is None else 4,
+            f"Command fam. : {_style(style, StyleToken.DETAIL, proposal.command_family)}",
         )
 
     if proposal.mode == ProposalMode.STRUCTURED and proposal.command:
-        lines.append(f"Legacy cmd   : {proposal.command} (deprecated in structured mode)")
+        lines.append(
+            "Legacy cmd   : "
+            + _style(style, StyleToken.COMMAND, proposal.command)
+            + " "
+            + _style(style, StyleToken.MUTED, "(deprecated in structured mode)")
+        )
 
     if proposal.arguments:
         formatted = json.dumps(proposal.arguments, indent=2, sort_keys=True)
@@ -73,39 +85,41 @@ def _render_detailed_preview(
     ):
         display_notes.append(EXPERIMENTAL_VERBOSE_EXPLANATION)
     if display_notes:
-        lines.append("Notes        : " + "; ".join(display_notes))
+        lines.append("Notes        : " + _style_join(style, StyleToken.MUTED, display_notes))
 
     display_warnings = _display_warnings(proposal, validation.warnings)
     if display_warnings:
-        lines.append("Warnings     : " + "; ".join(display_warnings))
+        lines.append("Warnings     : " + _style_join(style, StyleToken.WARNING, display_warnings))
 
     if validation.reasons:
-        lines.append("Rejections   : " + "; ".join(validation.reasons))
+        lines.append("Rejections   : " + _style_join(style, StyleToken.ERROR, validation.reasons))
 
     return "\n".join(lines)
 
 
-def _render_direct_preview(proposal: Proposal, validation: ValidationResult) -> str:
+def _render_direct_preview(
+    proposal: Proposal, validation: ValidationResult, *, style: TerminalStyle | None
+) -> str:
     command = validation.rendered_command or proposal.command or "(unavailable)"
     lines = [
-        "--- command preview ---",
-        f"Command: {command}",
-        f"Risk: {validation.risk_level.value}",
+        _style(style, StyleToken.HEADING, "--- command preview ---"),
+        f"Command: {_style(style, StyleToken.COMMAND, command)}",
+        f"Risk: {_style_risk(style, validation.risk_level)}",
     ]
     level = confirmation_level(proposal.mode, validation.risk_level)
     if level == ConfirmationLevel.VERY_STRONG:
-        lines.append(f"Confirmation: {_format_confirmation_level(level)}")
+        lines.append(f"Confirmation: {_style_confirmation(style, level)}")
 
     display_notes = _display_notes(proposal.notes, include_debug=False)
     if display_notes:
-        lines.append("Notes: " + "; ".join(display_notes))
+        lines.append("Notes: " + _style_join(style, StyleToken.MUTED, display_notes))
 
     display_warnings = _display_warnings(proposal, validation.warnings)
     if display_warnings:
-        lines.append("Warnings: " + "; ".join(display_warnings))
+        lines.append("Warnings: " + _style_join(style, StyleToken.WARNING, display_warnings))
 
     if validation.reasons:
-        lines.append("Rejections: " + "; ".join(validation.reasons))
+        lines.append("Rejections: " + _style_join(style, StyleToken.ERROR, validation.reasons))
 
     return "\n".join(lines)
 
@@ -114,6 +128,44 @@ def _format_confirmation_level(level: ConfirmationLevel) -> str:
     if level == ConfirmationLevel.VERY_STRONG:
         return "very strong; type EXECUTE EXPERIMENTAL to run"
     return level.value
+
+
+def _style(style: TerminalStyle | None, token: StyleToken, text: str) -> str:
+    if style is None:
+        return text
+    return style.apply(token, text)
+
+
+def _style_join(style: TerminalStyle | None, token: StyleToken, messages: list[str]) -> str:
+    return "; ".join(_style(style, token, message) for message in messages)
+
+
+def _style_risk(style: TerminalStyle | None, risk_level: RiskLevel) -> str:
+    token = {
+        RiskLevel.SAFE: StyleToken.RISK_SAFE,
+        RiskLevel.WRITE: StyleToken.RISK_WRITE,
+        RiskLevel.DANGEROUS: StyleToken.RISK_DANGEROUS,
+    }[risk_level]
+    return _style(style, token, risk_level.value)
+
+
+def _style_confirmation(style: TerminalStyle | None, level: ConfirmationLevel) -> str:
+    token = {
+        ConfirmationLevel.STANDARD: StyleToken.CONFIRMATION_STANDARD,
+        ConfirmationLevel.STRONG: StyleToken.CONFIRMATION_STRONG,
+        ConfirmationLevel.VERY_STRONG: StyleToken.CONFIRMATION_VERY_STRONG,
+    }[level]
+    return _style(style, token, _format_confirmation_level(level))
+
+
+def _style_mode(style: TerminalStyle | None, mode: ProposalMode) -> str:
+    token = StyleToken.WARNING if mode == ProposalMode.EXPERIMENTAL else StyleToken.DETAIL
+    return _style(style, token, mode.value)
+
+
+def _style_experimental_marker(style: TerminalStyle | None, is_experimental: bool) -> str:
+    token = StyleToken.WARNING if is_experimental else StyleToken.DETAIL
+    return _style(style, token, "yes" if is_experimental else "no")
 
 
 def _display_notes(notes: list[str], *, include_debug: bool) -> list[str]:
@@ -172,10 +224,10 @@ def _normalize_message(message: str) -> str:
     return " ".join(message.strip().lower().split())
 
 
-def render_failure_explanation(explanation) -> str:
+def render_failure_explanation(explanation, *, style: TerminalStyle | None = None) -> str:
     lines = [
-        "\n--- failure explanation ---",
-        f"Command: {explanation.command}",
+        "\n" + _style(style, StyleToken.HEADING, "--- failure explanation ---"),
+        f"Command: {_style(style, StyleToken.COMMAND, explanation.command)}",
         f"Exit code: {explanation.exit_code}",
         f"Likely cause: {explanation.likely_cause}",
         f"stderr summary: {explanation.stderr_summary}",

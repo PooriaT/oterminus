@@ -1,15 +1,20 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
-from unittest.mock import Mock
+from unittest.mock import ANY, Mock
 
 import pytest
 
 from oterminus.config import AppConfig
 from oterminus.models import ActionType, Proposal, ProposalMode, RiskLevel
 from oterminus.policies import PolicyConfig
+from oterminus.terminal_style import ColorMode
 from oterminus.validator import ProposalOrigin, Validator
+
+
+ANSI_RE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
 
 
 def _config(tmp_path: Path, *, audit_enabled: bool = True) -> AppConfig:
@@ -84,7 +89,7 @@ def test_doctor_command_is_diagnostics_only(monkeypatch) -> None:
 
     assert code == 2
     run_doctor.assert_called_once_with()
-    print_report.assert_called_once_with(report)
+    print_report.assert_called_once_with(report, style=ANY)
 
 
 @pytest.mark.parametrize(
@@ -456,6 +461,79 @@ def test_execute_mode_prints_truncation_notice_when_output_truncated(
     assert code == 0
     output = capsys.readouterr().out
     assert "[oterminus] stdout truncated to 4 characters." in output
+
+
+def test_colored_lifecycle_output_does_not_store_ansi_in_audit(
+    monkeypatch, tmp_path: Path, capsys
+) -> None:
+    from oterminus.cli import main
+
+    config = AppConfig(**(_config(tmp_path).__dict__ | {"color_mode": ColorMode.ALWAYS}))
+    _validator, executor = _install_main_dependencies(monkeypatch, config)
+    monkeypatch.delenv("NO_COLOR", raising=False)
+    monkeypatch.setattr(
+        "oterminus.cli.ensure_startup_ready",
+        Mock(side_effect=AssertionError("direct dry-run should not require Ollama")),
+    )
+    monkeypatch.setattr("builtins.input", Mock(side_effect=AssertionError("no confirmation")))
+
+    code = main(["--dry-run", "ls"])
+
+    assert code == 0
+    output = capsys.readouterr().out
+    assert ANSI_RE.search(output)
+    executor.run.assert_not_called()
+    raw_audit = config.audit_log_path.read_text(encoding="utf-8")
+    assert not ANSI_RE.search(raw_audit)
+    payload = json.loads(raw_audit)
+    assert payload["rendered_command"] == "ls ."
+
+
+def test_colored_execution_keeps_subprocess_stdout_pass_through(
+    monkeypatch, tmp_path: Path, capsys
+) -> None:
+    from oterminus.cli import main
+
+    config = AppConfig(**(_config(tmp_path).__dict__ | {"color_mode": ColorMode.ALWAYS}))
+    _validator, executor = _install_main_dependencies(monkeypatch, config)
+    executor.run.return_value.stdout = "plain subprocess output\n"
+    executor.run.return_value.stderr = ""
+    executor.run.return_value.stdout_truncated = False
+    executor.run.return_value.stderr_truncated = False
+    monkeypatch.delenv("NO_COLOR", raising=False)
+    monkeypatch.setattr(
+        "oterminus.cli.ensure_startup_ready",
+        Mock(side_effect=AssertionError("direct command should not need Ollama")),
+    )
+    monkeypatch.setattr("builtins.input", Mock(return_value="y"))
+
+    code = main(["ls"])
+
+    assert code == 0
+    output = capsys.readouterr().out
+    assert ANSI_RE.search(output)
+    assert "plain subprocess output\n" in output
+    assert "plain subprocess output\x1b" not in output
+
+
+def test_machine_oriented_commands_stay_plain_with_color_forced(monkeypatch, capsys) -> None:
+    from oterminus.cli import main
+
+    monkeypatch.setenv("OTERMINUS_COLOR", "always")
+    monkeypatch.setattr("oterminus.cli.configure_logging", lambda verbose: None)
+
+    assert main(["--version"]) == 0
+    version_output = capsys.readouterr().out
+    assert not ANSI_RE.search(version_output)
+
+    assert main(["version"]) == 0
+    version_command_output = capsys.readouterr().out
+    assert not ANSI_RE.search(version_command_output)
+
+    assert main(["completion", "bash"]) == 0
+    completion_output = capsys.readouterr().out
+    assert not ANSI_RE.search(completion_output)
+    assert "complete -F _oterminus_completion oterminus" in completion_output
 
 
 def test_repl_documented_built_ins_are_handled_without_ollama_or_execution(

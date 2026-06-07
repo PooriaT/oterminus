@@ -154,9 +154,20 @@ history. `oterminus config path` prints the active JSON config path selected by
 alternate-path option.
 
 Terminal color policy is configurable with `OTERMINUS_COLOR=auto|always|never` or persisted
-`color_mode`. `NO_COLOR` disables ANSI styling at render time. Machine-oriented output such as
-version, shell completion scripts, `config path`, audit/history records, and command-output
-metadata remains plain.
+`color_mode`:
+
+```bash
+export OTERMINUS_COLOR=auto
+export OTERMINUS_COLOR=always
+export OTERMINUS_COLOR=never
+NO_COLOR=1 oterminus
+```
+
+Colors are semantic and supplementary: previews, diagnostics, discovery/help output, lifecycle
+messages, and the REPL prompt keep visible labels even without color. `auto` disables styling when
+output is redirected, and `NO_COLOR` disables ANSI styling at render time. Command stdout/stderr,
+version output, shell completion scripts, `config path`, audit/history records, and JSON or other
+machine-oriented output remain plain.
 
 ### Local development install
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import inspect
 import logging
 import subprocess
 import sys
@@ -44,6 +45,7 @@ from oterminus.policies import ConfirmationLevel, confirmation_level
 from oterminus.renderer import render_failure_explanation, render_preview
 from oterminus.router import route_request
 from oterminus.shell_completion import render_shell_completion, supported_shells
+from oterminus.terminal_style import ColorMode, StyleToken, TerminalStyle, make_terminal_style
 from oterminus.validator import ProposalOrigin, Validator
 from oterminus.version import format_version
 
@@ -136,15 +138,18 @@ def _cli_mode_from_request(request: list[str]) -> str:
     return "request"
 
 
-def ask_confirmation(level: ConfirmationLevel) -> bool:
+def ask_confirmation(level: ConfirmationLevel, *, style: TerminalStyle | None = None) -> bool:
     if level == ConfirmationLevel.VERY_STRONG:
         prompt = "Type EXECUTE EXPERIMENTAL to proceed: "
+        prompt_token = StyleToken.CONFIRMATION_VERY_STRONG
     elif level == ConfirmationLevel.STRONG:
         prompt = "Type EXECUTE to proceed: "
+        prompt_token = StyleToken.CONFIRMATION_STRONG
     else:
         prompt = "Run command? [y/N]: "
+        prompt_token = StyleToken.CONFIRMATION_STANDARD
 
-    answer = input(prompt).strip()
+    answer = input(_style(style, prompt_token, prompt)).strip()
     if level == ConfirmationLevel.VERY_STRONG:
         return answer == "EXECUTE EXPERIMENTAL"
     if level == ConfirmationLevel.STRONG:
@@ -168,6 +173,7 @@ def handle_request(
     failure_explainer: FailureExplainer | None = None,
     failure_explainer_factory: Callable[[], FailureExplainer] | None = None,
     auto_execute_safe: bool = False,
+    style: TerminalStyle | None = None,
 ) -> int:
     started_at = datetime.now(tz=timezone.utc)
     request_started = time.perf_counter()
@@ -249,7 +255,7 @@ def handle_request(
                 event.planner_skip_reason = PLANNER_SKIP_AMBIGUITY_BLOCKED
                 if debug_trace:
                     print("[trace] fast_path=ambiguity_blocked planner=skipped")
-                print(render_ambiguity_response(ambiguity))
+                print(render_ambiguity_response(ambiguity, style=style))
                 if history_item is not None:
                     history_item.execution_status = "blocked_ambiguous"
                 event.confirmation_result = "blocked_ambiguous"
@@ -301,7 +307,7 @@ def handle_request(
         elif debug_trace:
             print("[trace] fast_path=direct_command planner=skipped")
     except (PlannerError, OllamaClientError, SetupError) as exc:
-        print(f"Planning failed: {exc}")
+        print(_style(style, StyleToken.ERROR, f"Planning failed: {exc}"))
         if history_item is not None:
             history_item.execution_status = "planner_error"
         event.confirmation_result = "planner_error"
@@ -337,6 +343,14 @@ def handle_request(
         history_item.validation = validation
     print(
         render_preview(proposal, validation, verbose=debug_trace, direct_command=is_direct_command)
+        if style is None
+        else render_preview(
+            proposal,
+            validation,
+            verbose=debug_trace,
+            direct_command=is_direct_command,
+            style=style,
+        )
     )
     if debug_trace:
         if is_direct_command:
@@ -355,7 +369,11 @@ def handle_request(
         if run_mode == RunMode.EXPLAIN:
             print(
                 render_explanation(
-                    proposal, validation, selected_mode=run_mode, direct_command=is_direct_command
+                    proposal,
+                    validation,
+                    selected_mode=run_mode,
+                    direct_command=is_direct_command,
+                    style=style,
                 )
             )
         if history_item is not None:
@@ -369,7 +387,13 @@ def handle_request(
         return 3
 
     if run_mode == RunMode.DRY_RUN:
-        print("Dry-run mode: execution skipped after successful planning and validation.")
+        print(
+            _style(
+                style,
+                StyleToken.WARNING,
+                "Dry-run mode: execution skipped after successful planning and validation.",
+            )
+        )
         LOGGER.info("dry_run_skipped_execution command=%s", validation.rendered_command)
         if history_item is not None:
             history_item.execution_status = "skipped_dry_run"
@@ -384,7 +408,11 @@ def handle_request(
     if run_mode == RunMode.EXPLAIN:
         print(
             render_explanation(
-                proposal, validation, selected_mode=run_mode, direct_command=is_direct_command
+                proposal,
+                validation,
+                selected_mode=run_mode,
+                direct_command=is_direct_command,
+                style=style,
             )
         )
         LOGGER.info("explain_mode_skipped_execution command=%s", validation.rendered_command)
@@ -413,8 +441,12 @@ def handle_request(
     event.auto_execute_safe_reason = auto_execute_decision.reason
     if auto_execute_decision.eligible:
         print(
-            "Safe auto-execute is enabled. Confirmation skipped for this validated "
-            "read-only command."
+            _style(
+                style,
+                StyleToken.SUCCESS,
+                "Safe auto-execute is enabled. Confirmation skipped for this validated "
+                "read-only command.",
+            )
         )
         confirmed = True
         event.confirmation_result = "skipped_auto_execute_safe"
@@ -423,14 +455,16 @@ def handle_request(
     else:
         if debug_trace and auto_execute_safe:
             print(f"[trace] auto_execute_safe=ineligible reason={auto_execute_decision.reason}")
-        confirmed = ask_confirmation(confirmation_level(proposal.mode, validation.risk_level))
+        confirmed = ask_confirmation(
+            confirmation_level(proposal.mode, validation.risk_level), style=style
+        )
         event.confirmation_result = "confirmed" if confirmed else "cancelled"
     command = validation.rendered_command
     LOGGER.info("confirmed=%s command=%s", confirmed, command)
     if debug_trace:
         print(f"[trace] confirmation={event.confirmation_result}")
     if not confirmed:
-        print("Cancelled.")
+        print(_style(style, StyleToken.WARNING, "Cancelled."))
         if history_item is not None:
             history_item.execution_status = "cancelled"
         event.duration_ms = _duration_ms_since(started_at)
@@ -441,7 +475,13 @@ def handle_request(
         return 0
 
     if command is None or not validation.argv:
-        print("Proposal cannot be executed because it could not be rendered into a safe command.")
+        print(
+            _style(
+                style,
+                StyleToken.ERROR,
+                "Proposal cannot be executed because it could not be rendered into a safe command.",
+            )
+        )
         if history_item is not None:
             history_item.execution_status = "not_executable"
         event.duration_ms = _duration_ms_since(started_at)
@@ -456,7 +496,11 @@ def handle_request(
         result = executor.run(validation.argv, display_command=command)
         timings_ms["execution_ms"] = _duration_ms_from_counter(execution_started)
     except subprocess.TimeoutExpired:
-        print(f"Execution timed out after {executor.timeout_seconds}s.")
+        print(
+            _style(
+                style, StyleToken.ERROR, f"Execution timed out after {executor.timeout_seconds}s."
+            )
+        )
         if history_item is not None:
             history_item.execution_status = "timed_out"
             history_item.exit_code = 124
@@ -467,7 +511,7 @@ def handle_request(
         _write_audit_event(audit_logger, event)
         return 124
     except (OSError, subprocess.SubprocessError) as exc:
-        print(f"Execution failed: {exc}")
+        print(_style(style, StyleToken.ERROR, f"Execution failed: {exc}"))
         if history_item is not None:
             history_item.execution_status = "execution_failed"
             history_item.exit_code = 1
@@ -478,7 +522,7 @@ def handle_request(
         _write_audit_event(audit_logger, event)
         return 1
     except KeyboardInterrupt:
-        print("Execution interrupted.")
+        print(_style(style, StyleToken.WARNING, "Execution interrupted."))
         if history_item is not None:
             history_item.execution_status = "interrupted"
             history_item.exit_code = 130
@@ -505,17 +549,30 @@ def handle_request(
         _write_audit_event(audit_logger, event)
         return result.returncode
 
-    print("\n--- execution output ---")
+    print("\n" + _style(style, StyleToken.HEADING, "--- execution output ---"))
     if result.stdout:
         print(result.stdout, end="" if result.stdout.endswith("\n") else "\n")
     max_output_chars = getattr(executor, "max_output_chars", 20000)
     if bool(getattr(result, "stdout_truncated", False)):
-        print(f"[oterminus] stdout truncated to {max_output_chars} characters.")
+        print(
+            _style(
+                style,
+                StyleToken.WARNING,
+                f"[oterminus] stdout truncated to {max_output_chars} characters.",
+            )
+        )
     if result.stderr:
         print(result.stderr, end="" if result.stderr.endswith("\n") else "\n")
     if bool(getattr(result, "stderr_truncated", False)):
-        print(f"[oterminus] stderr truncated to {max_output_chars} characters.")
-    print(f"Exit code: {result.returncode}")
+        print(
+            _style(
+                style,
+                StyleToken.WARNING,
+                f"[oterminus] stderr truncated to {max_output_chars} characters.",
+            )
+        )
+    exit_token = StyleToken.SUCCESS if result.returncode == 0 else StyleToken.ERROR
+    print(_style(style, exit_token, f"Exit code: {result.returncode}"))
 
     if result.returncode != 0 and (
         failure_explainer is not None or failure_explainer_factory is not None
@@ -535,7 +592,7 @@ def handle_request(
                 event.failure_explanation_generated = True
                 event.failure_suggested_next_action = explanation.suggested_next_action
                 event.failure_stderr_summary = explanation.stderr_summary
-                print(render_failure_explanation(explanation))
+                print(render_failure_explanation(explanation, style=style))
         except Exception as exc:  # noqa: BLE001
             event.failure_explanation_error = str(exc)
 
@@ -578,8 +635,15 @@ def repl(
     failure_explainer: FailureExplainer | None = None,
     failure_explainer_factory: Callable[[], FailureExplainer] | None = None,
     auto_execute_safe: bool = False,
+    style: TerminalStyle | None = None,
 ) -> int:
-    print("oterminus REPL. Type 'help' for guidance, 'exit' or 'quit' to leave.")
+    print(
+        _style(
+            style,
+            StyleToken.HEADING,
+            "oterminus REPL. Type 'help' for guidance, 'exit' or 'quit' to leave.",
+        )
+    )
     session_history = SessionHistory()
     if persistent_store is not None:
         for item in persistent_store.load():
@@ -605,7 +669,7 @@ def repl(
 
     while True:
         try:
-            request = read_repl_input(prompt_session).strip()
+            request = read_repl_input(prompt_session, style=style).strip()
         except (EOFError, KeyboardInterrupt):
             print()
             return 0
@@ -621,7 +685,7 @@ def repl(
             print(audit_response)
             continue
         discovery_response = handle_repl_discovery_command(
-            request, disabled_pack_ids=effective_disabled_pack_ids
+            request, disabled_pack_ids=effective_disabled_pack_ids, style=style
         )
         if discovery_response is not None:
             print(discovery_response)
@@ -638,6 +702,7 @@ def repl(
             failure_explainer=failure_explainer,
             failure_explainer_factory=failure_explainer_factory,
             auto_execute_safe=auto_execute_safe,
+            style=style,
         )
         if history_response is not None:
             if isinstance(history_response, str):
@@ -670,6 +735,7 @@ def repl(
             failure_explainer=failure_explainer,
             failure_explainer_factory=failure_explainer_factory,
             auto_execute_safe=auto_execute_safe,
+            style=style,
         )
 
 
@@ -689,9 +755,19 @@ def create_prompt_session(
     return PromptSession(completer=completer), backend_name
 
 
-def read_repl_input(prompt_session: object | None) -> str:
+def read_repl_input(prompt_session: object | None, *, style: TerminalStyle | None = None) -> str:
     if prompt_session is None:
-        return input("oterminus> ")
+        return input(_style(style, StyleToken.COMMAND, "oterminus> "))
+    if style is not None and style.color_enabled:
+        try:
+            from prompt_toolkit.styles import Style as PromptToolkitStyle
+
+            return prompt_session.prompt(
+                [("class:oterminus.prompt", "oterminus> ")],
+                style=PromptToolkitStyle.from_dict({"oterminus.prompt": "ansicyan bold"}),
+            )
+        except (ImportError, TypeError):
+            pass
     return prompt_session.prompt("oterminus> ")
 
 
@@ -708,11 +784,12 @@ def handle_repl_discovery_command(
     *,
     disabled_pack_ids: frozenset[str] | None = None,
     platform_id: str | None = None,
+    style: TerminalStyle | None = None,
 ) -> str | None:
     lowered = request.lower().strip()
 
     if lowered == "help":
-        return render_help()
+        return render_help(style=style)
 
     if lowered == "version":
         return format_version()
@@ -721,36 +798,42 @@ def handle_repl_discovery_command(
     capability_map = {capability.capability_id: capability for capability in capabilities}
 
     if lowered == "capabilities":
-        return render_capabilities(disabled_pack_ids=disabled_pack_ids, platform_id=platform_id)
+        return render_capabilities(
+            disabled_pack_ids=disabled_pack_ids, platform_id=platform_id, style=style
+        )
 
     if lowered == "commands":
-        return render_commands(disabled_pack_ids=disabled_pack_ids, platform_id=platform_id)
+        return render_commands(
+            disabled_pack_ids=disabled_pack_ids, platform_id=platform_id, style=style
+        )
 
     if lowered == "examples":
-        return render_examples(disabled_pack_ids=disabled_pack_ids, platform_id=platform_id)
+        return render_examples(
+            disabled_pack_ids=disabled_pack_ids, platform_id=platform_id, style=style
+        )
 
     if lowered.startswith("examples "):
         target = lowered.split(maxsplit=1)[1]
         if target not in capability_map:
-            return render_unknown_help_target(target)
+            return render_unknown_help_target(target, style=style)
         return render_examples_for_capability(
-            target, disabled_pack_ids=disabled_pack_ids, platform_id=platform_id
+            target, disabled_pack_ids=disabled_pack_ids, platform_id=platform_id, style=style
         )
 
     if lowered == "help capabilities":
-        return render_help_capabilities()
+        return render_help_capabilities(style=style)
 
     if lowered.startswith("help "):
         target = lowered.split(maxsplit=1)[1]
         if target in capability_map:
             return render_capability_help(
-                target, disabled_pack_ids=disabled_pack_ids, platform_id=platform_id
+                target, disabled_pack_ids=disabled_pack_ids, platform_id=platform_id, style=style
             )
         if target in supported_base_commands(disabled_pack_ids, platform_id):
             return render_command_help(
-                target, disabled_pack_ids=disabled_pack_ids, platform_id=platform_id
+                target, disabled_pack_ids=disabled_pack_ids, platform_id=platform_id, style=style
             )
-        return render_unknown_help_target(target)
+        return render_unknown_help_target(target, style=style)
 
     return None
 
@@ -768,6 +851,7 @@ def handle_repl_history_command(
     failure_explainer: FailureExplainer | None = None,
     failure_explainer_factory: Callable[[], FailureExplainer] | None = None,
     auto_execute_safe: bool = False,
+    style: TerminalStyle | None = None,
 ) -> str | None:
     lowered = request.lower().strip()
     if lowered == "history":
@@ -792,7 +876,7 @@ def handle_repl_history_command(
             if _looks_like_history_id(explain_target):
                 return "Usage: explain <history_id> | explain <request>"
             return None
-        return _render_history_explanation(session_history, history_id)
+        return _render_history_explanation(session_history, history_id, style=style)
 
     if lowered.startswith("rerun "):
         history_id = _parse_positive_int(lowered.split(maxsplit=1)[1])
@@ -817,12 +901,15 @@ def handle_repl_history_command(
             failure_explainer=failure_explainer,
             failure_explainer_factory=failure_explainer_factory,
             auto_execute_safe=auto_execute_safe,
+            style=style,
         )
         return ""
     return None
 
 
-def _render_history_explanation(session_history: SessionHistory, history_id: int) -> str:
+def _render_history_explanation(
+    session_history: SessionHistory, history_id: int, *, style: TerminalStyle | None = None
+) -> str:
     history_item = session_history.find(history_id)
     if history_item is None:
         return f"History id {history_id} not found."
@@ -838,13 +925,29 @@ def _render_history_explanation(session_history: SessionHistory, history_id: int
         history_item.validation,
         selected_mode=RunMode.EXPLAIN,
         direct_command=history_item.direct_command_detected,
+        style=style,
     )
 
 
 def run_doctor_cli() -> int:
     report = run_doctor()
-    print_report(report)
+    style = make_terminal_style(color_mode=ColorMode.AUTO, stream=sys.stdout)
+    if _callable_accepts_style(print_report):
+        print_report(report, style=style)
+    else:
+        print_report(report)
     return report.exit_code
+
+
+def _callable_accepts_style(func: Callable[..., object]) -> bool:
+    try:
+        signature = inspect.signature(func)
+    except (TypeError, ValueError):
+        return True
+    return "style" in signature.parameters or any(
+        parameter.kind is inspect.Parameter.VAR_KEYWORD
+        for parameter in signature.parameters.values()
+    )
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -894,6 +997,7 @@ def main(argv: list[str] | None = None) -> int:
     except (ConfigError, ValueError) as exc:
         print(f"Configuration error: {exc}", file=sys.stderr)
         return 2
+    style = make_terminal_style(color_mode=config.color_mode, stream=sys.stdout)
     validator = Validator(config.policy)
     try:
         executor = Executor(
@@ -983,6 +1087,7 @@ def main(argv: list[str] | None = None) -> int:
             failure_explainer=failure_explainer,
             failure_explainer_factory=failure_explainer_factory,
             auto_execute_safe=bool(getattr(config, "auto_execute_safe", False)),
+            style=style,
         )
     return repl(
         get_planner,
@@ -997,6 +1102,7 @@ def main(argv: list[str] | None = None) -> int:
         failure_explainer=failure_explainer,
         failure_explainer_factory=failure_explainer_factory,
         auto_execute_safe=bool(getattr(config, "auto_execute_safe", False)),
+        style=style,
     )
 
 
@@ -1053,19 +1159,24 @@ def _should_offer_first_run_onboarding(args: argparse.Namespace) -> bool:
 
 
 def render_explanation(
-    proposal, validation, *, selected_mode: RunMode, direct_command: bool
+    proposal,
+    validation,
+    *,
+    selected_mode: RunMode,
+    direct_command: bool,
+    style: TerminalStyle | None = None,
 ) -> str:
     command = validation.rendered_command or proposal.command or "(unavailable)"
     family = proposal.command_family or "(unknown)"
     spec = get_command_spec(family) if proposal.command_family else None
     lines = [
-        "--- oterminus explanation ---",
-        f"Selected mode : {selected_mode.value}",
-        f"Proposal mode : {proposal.mode.value}",
+        _style(style, StyleToken.HEADING, "--- oterminus explanation ---"),
+        f"Selected mode : {_style(style, StyleToken.DETAIL, selected_mode.value)}",
+        f"Proposal mode : {_style(style, StyleToken.DETAIL, proposal.mode.value)}",
         f"Direct input  : {'yes' if direct_command else 'no'}",
-        f"Command family: {family}",
-        f"Rendered cmd  : {command}",
-        f"Risk level    : {validation.risk_level.value}",
+        f"Command family: {_style(style, StyleToken.COMMAND, family)}",
+        f"Rendered cmd  : {_style(style, StyleToken.COMMAND, command)}",
+        f"Risk level    : {_style(style, _risk_style_token(validation.risk_level), validation.risk_level.value)}",
     ]
     if spec is not None:
         lines.append(f"Family domain : {spec.capability_id} ({spec.capability_label})")
@@ -1075,7 +1186,10 @@ def render_explanation(
         lines.append("Flags         : " + "; ".join(flag_notes))
 
     if validation.warnings:
-        lines.append("Warnings      : " + "; ".join(validation.warnings))
+        lines.append(
+            "Warnings      : "
+            + "; ".join(_style(style, StyleToken.WARNING, item) for item in validation.warnings)
+        )
 
     if validation.accepted:
         lines.append("Policy        : Allowed by current policy checks.")
@@ -1083,10 +1197,28 @@ def render_explanation(
     else:
         lines.append("Policy        : Blocked by current policy checks.")
         if validation.reasons:
-            lines.append("Rejections    : " + "; ".join(validation.reasons))
+            lines.append(
+                "Rejections    : "
+                + "; ".join(_style(style, StyleToken.ERROR, item) for item in validation.reasons)
+            )
         lines.append("Execution     : Not executable due to validation failure.")
 
     return "\n".join(lines)
+
+
+def _style(style: TerminalStyle | None, token: StyleToken, text: str) -> str:
+    if style is None:
+        return text
+    return style.apply(token, text)
+
+
+def _risk_style_token(risk_level) -> StyleToken:
+    risk_value = getattr(risk_level, "value", str(risk_level))
+    if risk_value == "safe":
+        return StyleToken.RISK_SAFE
+    if risk_value == "write":
+        return StyleToken.RISK_WRITE
+    return StyleToken.RISK_DANGEROUS
 
 
 def _describe_flags(argv: list[str]) -> list[str]:
@@ -1202,14 +1334,16 @@ def clear_audit_log(audit_logger: AuditLogger | None, *, enabled: bool) -> str:
     return f"Cleared audit log at {path}."
 
 
-def render_ambiguity_response(result: AmbiguityResult) -> str:
-    lines = ["This request is ambiguous."]
+def render_ambiguity_response(
+    result: AmbiguityResult, *, style: TerminalStyle | None = None
+) -> str:
+    lines = [_style(style, StyleToken.WARNING, "This request is ambiguous.")]
     if result.reason:
         lines.append(f"Reason: {result.reason}")
-    lines.append("Safer inspections I can do instead:")
+    lines.append(_style(style, StyleToken.HEADING, "Safer inspections I can do instead:"))
     lines.extend(f"- {option}" for option in result.suggested_safe_options)
     if result.follow_up_questions:
-        lines.append("Helpful clarifying questions:")
+        lines.append(_style(style, StyleToken.HEADING, "Helpful clarifying questions:"))
         lines.extend(f"- {question}" for question in result.follow_up_questions)
     return "\n".join(lines)
 

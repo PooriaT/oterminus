@@ -163,10 +163,22 @@ then built-in defaults. `OTERMINUS_ALLOW_DANGEROUS` is environment/.env only and
 the persistent config. The config file is not secret storage.
 
 Terminal color policy is controlled by `OTERMINUS_COLOR` or the persisted `color_mode` field:
-`auto` enables future semantic styling only for capable TTY output, `always` also allows redirected
-output, and `never` disables it. `NO_COLOR` disables ANSI styling at render time even when the
-resolved mode is `always`. The current foundation keeps shell completion scripts, version output,
-config path output, audit/history records, and stored command-output metadata plain.
+`auto` enables semantic styling only for capable TTY output, `always` also allows redirected
+output, and `never` disables it.
+
+```bash
+export OTERMINUS_COLOR=auto
+export OTERMINUS_COLOR=always
+export OTERMINUS_COLOR=never
+NO_COLOR=1 oterminus
+```
+
+Colors are semantic and supplementary. Preview labels such as `Risk level`, `Warnings`,
+`Rejections`, and `Confirmation` remain visible without color, as do doctor status labels such as
+`PASS`, `WARN`, and `FAIL`. `NO_COLOR` disables ANSI styling at render time even when the resolved
+mode is `always`; auto mode disables color when output is redirected. Command stdout/stderr is never
+recolored, shell completion and version output remain plain, and audit/history files do not contain
+ANSI styling.
 
 Manage this file with the dedicated config namespace:
 
@@ -320,7 +332,8 @@ Doctor mode is diagnostic-only. It prints readiness and integrity checks, includ
 selected model, Python runtime, install context, Ollama CLI/service/model availability,
 audit/history paths, registry, eval fixture, and developer-tool status where applicable. It exits
 with the doctor report status and does not start the REPL, execute a request, or invoke the Ollama
-planner.
+planner. In color-enabled terminals, status labels and section headings use semantic colors while
+the literal `PASS`, `WARN`, and `FAIL` labels remain visible.
 
 ### Direct commands
 

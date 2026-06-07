@@ -25,9 +25,11 @@ and built-in defaults in that order for supported settings. The persistent user 
 schema-versioned JSON preference file; invalid JSON, unknown fields, unsupported schema versions, or
 invalid security-relevant values fail startup with a bounded configuration error instead of being
 silently ignored. `OTERMINUS_CONFIG_PATH` and `OTERMINUS_ALLOW_DANGEROUS` remain environment/.env
-only. Terminal color mode is resolved as configuration, but `NO_COLOR` is applied at render time and
-ANSI styling must not enter audit events, history records, subprocess output metadata, shell
-completion scripts, or other machine-oriented command output.
+only. Terminal color mode is resolved as configuration, and one terminal style object is threaded
+through OTerminus-owned preview, prompt, lifecycle, discovery/help, and diagnostic rendering.
+`NO_COLOR` is applied at render time. ANSI styling must not enter audit events, history records,
+subprocess stdout/stderr or their metadata, shell completion scripts, generated references, JSON
+output, or other machine-oriented command output.
 
 ```mermaid
 flowchart TD

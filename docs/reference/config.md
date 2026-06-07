@@ -209,17 +209,29 @@ In practice:
 
 ## Terminal Styling
 
-`color_mode` controls whether future semantic terminal styling may emit ANSI escape sequences.
-This foundation is intentionally small and dependency-free; it does not add Rich or Colorama.
+`color_mode` controls whether semantic terminal styling may emit ANSI escape sequences. The styling
+layer is intentionally small and dependency-free; it does not add Rich or Colorama.
 
 - `auto`: enable styling only for TTY output when `TERM` is not `dumb` and `NO_COLOR` is unset.
 - `always`: enable styling even when stdout/stderr is redirected, unless `NO_COLOR` is set.
 - `never`: never emit ANSI styling.
 
-When styling is disabled, the terminal style layer returns the exact original text. Shell completion
-scripts, version output, `config path`, JSON-oriented config output, audit/history records, and
-subprocess stdout/stderr metadata remain plain. This foundation does not broadly color previews,
-doctor output, discovery/help, lifecycle messages, or the REPL prompt.
+```bash
+export OTERMINUS_COLOR=auto
+export OTERMINUS_COLOR=always
+export OTERMINUS_COLOR=never
+NO_COLOR=1 oterminus
+```
+
+Colors are semantic and supplementary. OTerminus-owned previews, confirmation prompts, lifecycle
+messages, doctor output, discovery/help output, and the REPL prompt may use color, but text labels
+remain visible in every mode. When styling is disabled, the terminal style layer returns the exact
+original text.
+
+Shell completion scripts, version output, `config path`, JSON-oriented config output,
+audit/history records, and subprocess stdout/stderr metadata remain plain. OTerminus does not
+recolor command stdout/stderr, and serialized audit/history files do not contain ANSI escape
+sequences.
 
 Audit management commands (`audit status`, `audit tail [n]`, and `audit clear`) read this active
 configuration. If `OTERMINUS_AUDIT_ENABLED=false`, tail/clear report disabled state and do not
