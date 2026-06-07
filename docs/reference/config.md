@@ -119,6 +119,33 @@ files are different: they have no completion state and use runtime defaults.
 The config file is local preference storage, not secret storage. Do not put tokens, passwords, or
 other secrets in it.
 
+## Config commands
+
+Use `oterminus config` for configuration management. This namespace is intentionally not
+`oterminus --config`; the flag shape is reserved for a possible future alternate-config-path option.
+All config commands bypass the normal request lifecycle and do not require Ollama.
+
+| Command | Behavior |
+| --- | --- |
+| `oterminus config` | Prints concise help for config subcommands and exits successfully. |
+| `oterminus config path` | Prints only the active config path. Respects exported `OTERMINUS_CONFIG_PATH` and current-directory `.env`; does not create the file. |
+| `oterminus config show` | Shows the active path, existence, schema version when valid, effective settings, and per-setting source (`environment`, `.env`, `user config`, `default`, or `derived`). |
+| `oterminus config init` | Creates safe non-interactive defaults and prints the path. Existing files are not overwritten. |
+| `oterminus config init --defaults` | Explicit automation form for safe defaults; retained for future onboarding changes. |
+| `oterminus config init --force` | Replaces an existing valid config with safe defaults. Invalid existing files are preserved and must be repaired or moved first. |
+| `oterminus config validate` | Validates only the active persistent file. Missing, malformed, unsupported, unreadable, or schema-invalid files exit non-zero. |
+| `oterminus config edit` | Opens the config with `$VISUAL`, then `$EDITOR`. If missing, safe defaults are created first. After a successful editor exit, the file is validated; invalid edits are preserved. |
+
+Safe defaults mark onboarding completed, use the `safe` command profile, keep policy mode at
+`write`, leave dangerous permission out of the file, disable safe auto-execute, history, and
+failure explanations, and enable audit logging plus redaction. `config edit` parses the editor with
+argv semantics, preserves arguments such as `code --wait`, never uses `shell=True`, does not guess
+an editor, does not open a browser, and does not modify shell startup files.
+
+To recover from an invalid config, run `oterminus config validate` for the field-level error, then
+edit the file manually or with `VISUAL=... oterminus config edit`. If the file is not worth
+repairing, move it aside and run `oterminus config init --defaults`.
+
 ## Precedence behavior
 
 Precedence depends on the setting:

@@ -36,6 +36,21 @@ def test_parse_args_doctor_mode() -> None:
     assert args.explain is False
 
 
+def test_parse_args_config_mode() -> None:
+    args = parse_args(["config", "init", "--force"])
+
+    assert args.request == ["config", "init", "--force"]
+    assert args.cli_mode == "config"
+    assert args.config_argv == ["init", "--force"]
+
+
+def test_parse_args_rejects_dry_run_config_request() -> None:
+    with pytest.raises(SystemExit) as exc_info:
+        parse_args(["--dry-run", "config", "path"])
+
+    assert exc_info.value.code == 2
+
+
 def test_parse_args_rejects_doctor_with_dry_run() -> None:
     with pytest.raises(SystemExit) as exc_info:
         parse_args(["doctor", "--dry-run"])
@@ -179,6 +194,48 @@ def test_main_doctor_runs_diagnostics_without_repl_or_startup(monkeypatch) -> No
 
     assert code == 2
     doctor_cli.assert_called_once_with()
+
+
+def test_main_config_dispatches_before_request_lifecycle(monkeypatch, tmp_path, capsys) -> None:
+    from oterminus.cli import main
+
+    config_path = tmp_path / "config.json"
+    monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(config_path))
+    monkeypatch.setattr("oterminus.cli.configure_logging", lambda verbose: None)
+    monkeypatch.setattr("oterminus.cli.load_config", Mock(side_effect=AssertionError("no config")))
+    monkeypatch.setattr(
+        "oterminus.cli.ensure_startup_ready",
+        Mock(side_effect=AssertionError("no Ollama startup check")),
+    )
+    monkeypatch.setattr("oterminus.cli.repl", Mock(side_effect=AssertionError("no REPL")))
+    monkeypatch.setattr("oterminus.cli.Validator", Mock(side_effect=AssertionError("no validator")))
+    monkeypatch.setattr("oterminus.cli.Executor", Mock(side_effect=AssertionError("no executor")))
+    monkeypatch.setattr("oterminus.cli.Planner", Mock(side_effect=AssertionError("no planner")))
+    monkeypatch.setattr(
+        "oterminus.cli.route_request", Mock(side_effect=AssertionError("no router"))
+    )
+    monkeypatch.setattr(
+        "oterminus.cli.detect_ambiguity", Mock(side_effect=AssertionError("no ambiguity"))
+    )
+    monkeypatch.setattr(
+        "oterminus.cli.handle_request", Mock(side_effect=AssertionError("no request handling"))
+    )
+    monkeypatch.setattr(
+        "oterminus.cli.AuditLogger", Mock(side_effect=AssertionError("no audit logger"))
+    )
+    monkeypatch.setattr(
+        "oterminus.cli.PersistentHistoryStore",
+        Mock(side_effect=AssertionError("no history store")),
+    )
+    monkeypatch.setattr(
+        "oterminus.cli.OllamaPlannerClient", Mock(side_effect=AssertionError("no Ollama client"))
+    )
+
+    code = main(["config", "path"])
+
+    assert code == 0
+    assert capsys.readouterr().out == f"{config_path}\n"
+    assert not config_path.exists()
 
 
 def test_main_repl_defers_startup_until_planner_is_needed(monkeypatch) -> None:
