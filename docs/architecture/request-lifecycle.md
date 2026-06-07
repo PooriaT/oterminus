@@ -4,9 +4,18 @@ This is the central execution flow for OTerminus. The order is deliberate: OTerm
 shell commands before applying natural-language ambiguity heuristics. Only non-direct,
 natural-language requests are checked for ambiguity before capability routing and planner calls.
 
+Before request handling begins, OTerminus resolves runtime configuration into `AppConfig`.
+Resolution applies exported environment variables, current-directory `.env`, validated user config,
+and built-in defaults in that order for supported settings. The persistent user config is a
+schema-versioned JSON preference file; invalid JSON, unknown fields, unsupported schema versions, or
+invalid security-relevant values fail startup with a bounded configuration error instead of being
+silently ignored. `OTERMINUS_CONFIG_PATH` and `OTERMINUS_ALLOW_DANGEROUS` remain environment/.env
+only.
+
 ```mermaid
 flowchart TD
-  A[User input] --> A1{CLI diagnostics mode?}
+  Z[Resolve AppConfig] --> A[User input]
+  A --> A1{CLI diagnostics mode?}
   A1 -->|doctor| A2[Run doctor checks and exit]
   A1 -->|request| B[Direct command detection]
   B --> C{Direct command?}

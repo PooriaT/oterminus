@@ -45,7 +45,7 @@ def test_model_selection_flow(monkeypatch, tmp_path) -> None:
 
     assert selected == "llama3.2:latest"
     saved = json.loads(config_path.read_text(encoding="utf-8"))
-    assert saved["model"] == "llama3.2:latest"
+    assert saved == {"model": "llama3.2:latest", "schema_version": 1}
 
 
 def test_config_persistence_skips_prompt_when_model_is_valid(monkeypatch, tmp_path) -> None:
