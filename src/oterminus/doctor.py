@@ -12,6 +12,7 @@ from oterminus.commands import COMMAND_PACKS, COMMAND_REGISTRY, current_platform
 from oterminus.config import AppConfig, get_user_config_path, load_config
 from oterminus.evals import load_eval_cases
 from oterminus.setup import check_ollama_installed, check_ollama_running, get_available_models
+from oterminus.terminal_style import StyleToken, TerminalStyle
 from oterminus.version import _LOCAL_VERSION, get_version
 
 
@@ -129,8 +130,8 @@ def run_doctor() -> DoctorReport:
     return DoctorReport(results=tuple(results))
 
 
-def print_report(report: DoctorReport) -> None:
-    print("oterminus doctor")
+def print_report(report: DoctorReport, *, style: TerminalStyle | None = None) -> None:
+    print(_style(style, StyleToken.HEADING, "oterminus doctor"))
     printed: set[int] = set()
     for group_name, check_names in _REPORT_GROUPS:
         group_results = [
@@ -141,29 +142,49 @@ def print_report(report: DoctorReport) -> None:
         if not group_results:
             continue
         print()
-        print(f"{group_name}:")
+        print(_style(style, StyleToken.HEADING, f"{group_name}:"))
         for index, item in group_results:
             printed.add(index)
-            _print_check_result(item)
+            _print_check_result(item, style=style)
 
     remaining = [(index, item) for index, item in enumerate(report.results) if index not in printed]
     if remaining:
         print()
-        print("Other:")
+        print(_style(style, StyleToken.HEADING, "Other:"))
         for _index, item in remaining:
-            _print_check_result(item)
+            _print_check_result(item, style=style)
 
     total = len(report.results)
     failed = sum(1 for item in report.results if item.status is Status.FAIL)
     warned = sum(1 for item in report.results if item.status is Status.WARN)
     print()
-    print(f"Summary: {total} checks, {failed} failed, {warned} warnings")
+    summary_token = (
+        StyleToken.ERROR if failed else StyleToken.WARNING if warned else StyleToken.SUCCESS
+    )
+    print(
+        _style(style, summary_token, f"Summary: {total} checks, {failed} failed, {warned} warnings")
+    )
 
 
-def _print_check_result(item: CheckResult) -> None:
-    print(f"  {item.status.value:<5} {item.name}: {item.message}")
+def _print_check_result(item: CheckResult, *, style: TerminalStyle | None = None) -> None:
+    print(f"  {_style_status(style, item.status):<5} {item.name}: {item.message}")
     if item.status is not Status.PASS and item.guidance:
-        print(f"        ↳ {item.guidance}")
+        print(f"        {_style(style, StyleToken.MUTED, '↳ ' + item.guidance)}")
+
+
+def _style(style: TerminalStyle | None, token: StyleToken, text: str) -> str:
+    if style is None:
+        return text
+    return style.apply(token, text)
+
+
+def _style_status(style: TerminalStyle | None, status: Status) -> str:
+    token = {
+        Status.PASS: StyleToken.SUCCESS,
+        Status.WARN: StyleToken.WARNING,
+        Status.FAIL: StyleToken.ERROR,
+    }[status]
+    return _style(style, token, status.value)
 
 
 def _check_oterminus_version() -> CheckResult:

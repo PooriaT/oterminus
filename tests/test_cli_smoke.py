@@ -1,4 +1,5 @@
 import json
+import re
 from pathlib import Path
 from unittest.mock import Mock
 
@@ -13,6 +14,7 @@ from oterminus.cli import (
     handle_repl_discovery_command,
     handle_repl_history_command,
     parse_args,
+    read_repl_input,
     render_audit_status,
     render_audit_tail,
     clear_audit_log,
@@ -21,6 +23,10 @@ from oterminus.models import ActionType, Proposal, ProposalMode, RiskLevel, Vali
 from oterminus.ollama_client import parse_ollama_list_output
 from oterminus.policies import ConfirmationLevel
 from oterminus.setup import OllamaModelStatus
+from oterminus.terminal_style import TerminalStyle
+
+
+ANSI_RE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
 
 
 def test_parse_args_one_shot() -> None:
@@ -1388,6 +1394,63 @@ def test_ask_confirmation_standard_and_strong_are_unchanged(monkeypatch) -> None
 
     monkeypatch.setattr("builtins.input", lambda _: "EXECUTE EXPERIMENTAL")
     assert ask_confirmation(ConfirmationLevel.STRONG) is False
+
+
+def test_ask_confirmation_styles_prompt_without_changing_token(monkeypatch) -> None:
+    prompts: list[str] = []
+
+    def fake_input(prompt: str) -> str:
+        prompts.append(prompt)
+        return "EXECUTE"
+
+    monkeypatch.setattr("builtins.input", fake_input)
+
+    assert ask_confirmation(ConfirmationLevel.STRONG, style=TerminalStyle(True)) is True
+    assert ANSI_RE.search(prompts[0])
+    assert "Type EXECUTE to proceed: " in prompts[0]
+
+
+def test_read_repl_input_passes_prompt_toolkit_style_when_enabled() -> None:
+    prompt_session = Mock()
+    prompt_session.prompt.return_value = "help"
+
+    assert read_repl_input(prompt_session, style=TerminalStyle(True)) == "help"
+
+    args, kwargs = prompt_session.prompt.call_args
+    assert args[0] == [("class:oterminus.prompt", "oterminus> ")]
+    assert "style" in kwargs
+
+
+def test_read_repl_input_remains_plain_when_color_disabled() -> None:
+    prompt_session = Mock()
+    prompt_session.prompt.return_value = "help"
+
+    assert read_repl_input(prompt_session, style=TerminalStyle(False)) == "help"
+
+    prompt_session.prompt.assert_called_once_with("oterminus> ")
+
+
+def test_plain_repl_input_fallback_accepts_styled_prompt(monkeypatch) -> None:
+    prompts: list[str] = []
+
+    def fake_input(prompt: str) -> str:
+        prompts.append(prompt)
+        return "help"
+
+    monkeypatch.setattr("builtins.input", fake_input)
+
+    assert read_repl_input(None, style=TerminalStyle(True)) == "help"
+    assert ANSI_RE.search(prompts[0])
+    assert "oterminus> " in prompts[0]
+
+
+def test_repl_discovery_command_can_style_help_output() -> None:
+    output = handle_repl_discovery_command("capabilities", style=TerminalStyle(True))
+
+    assert output is not None
+    assert ANSI_RE.search(output)
+    assert "Capabilities:" in output
+    assert "filesystem_inspection" in output
 
 
 def test_handle_request_writes_structured_audit_log(monkeypatch, tmp_path: Path) -> None:

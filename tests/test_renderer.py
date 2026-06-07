@@ -1,6 +1,12 @@
+import re
+
 from oterminus.models import ActionType, Proposal, ProposalMode, RiskLevel, ValidationResult
 from oterminus.messages import EXPERIMENTAL_USER_WARNING, EXPERIMENTAL_VERBOSE_EXPLANATION
 from oterminus.renderer import render_preview
+from oterminus.terminal_style import TerminalStyle
+
+
+ANSI_RE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
 
 
 def test_render_includes_sections() -> None:
@@ -307,3 +313,103 @@ def test_render_direct_command_non_verbose_keeps_safety_warnings() -> None:
     assert EXPERIMENTAL_VERBOSE_EXPLANATION not in text
     assert "Dangerous recursive deletion requested." in text
     assert "Refusing to run recursive delete outside allowed roots." in text
+
+
+def test_render_preview_colored_mode_styles_oterminus_owned_parts() -> None:
+    proposal = Proposal(
+        action_type=ActionType.SHELL_COMMAND,
+        mode=ProposalMode.EXPERIMENTAL,
+        command_family="rm",
+        command="rm -rf tmp",
+        summary="Remove tmp",
+        explanation="Experimental fallback",
+        risk_level=RiskLevel.DANGEROUS,
+        needs_confirmation=True,
+        notes=["User-facing note"],
+    )
+    validation = ValidationResult(
+        accepted=False,
+        risk_level=RiskLevel.DANGEROUS,
+        warnings=["Dangerous recursive deletion requested."],
+        reasons=["Refusing recursive delete."],
+        rendered_command="rm -rf tmp",
+        argv=["rm", "-rf", "tmp"],
+    )
+
+    text = render_preview(proposal, validation, style=TerminalStyle(color_enabled=True))
+
+    assert ANSI_RE.search(text)
+    assert "Risk level   :" in text
+    assert "dangerous" in text
+    assert "Warnings     :" in text
+    assert "Rejections   :" in text
+    assert "Confirmation :" in text
+    assert "EXECUTE EXPERIMENTAL" in text
+
+
+def test_render_preview_disabled_style_has_no_ansi_and_keeps_labels() -> None:
+    proposal = Proposal(
+        action_type=ActionType.SHELL_COMMAND,
+        mode=ProposalMode.STRUCTURED,
+        command_family="mkdir",
+        arguments={"path": "logs", "parents": False},
+        command="mkdir logs",
+        summary="Create logs",
+        explanation="Structured command proposal",
+        risk_level=RiskLevel.WRITE,
+        needs_confirmation=True,
+        notes=[],
+    )
+    validation = ValidationResult(
+        accepted=True,
+        risk_level=RiskLevel.WRITE,
+        rendered_command="mkdir logs",
+        argv=["mkdir", "logs"],
+    )
+
+    text = render_preview(proposal, validation, style=TerminalStyle(color_enabled=False))
+
+    assert not ANSI_RE.search(text)
+    assert "Command      : mkdir logs" in text
+    assert "Risk level   : write" in text
+    assert "Confirmation :" in text
+
+
+def test_render_direct_preview_colored_mode_stays_concise() -> None:
+    proposal = Proposal(
+        action_type=ActionType.SHELL_COMMAND,
+        mode=ProposalMode.STRUCTURED,
+        command_family="ls",
+        arguments={
+            "path": ".",
+            "long": False,
+            "human_readable": False,
+            "all": False,
+            "recursive": False,
+        },
+        command="ls",
+        summary="Run direct command: ls",
+        explanation="Input already looks like a shell command.",
+        risk_level=RiskLevel.SAFE,
+        needs_confirmation=True,
+        notes=[],
+    )
+    validation = ValidationResult(
+        accepted=True,
+        risk_level=RiskLevel.SAFE,
+        rendered_command="ls .",
+        argv=["ls", "."],
+    )
+
+    text = render_preview(
+        proposal,
+        validation,
+        direct_command=True,
+        style=TerminalStyle(color_enabled=True),
+    )
+
+    assert ANSI_RE.search(text)
+    assert "--- command preview ---" in text
+    assert "Command:" in text
+    assert "Risk:" in text
+    assert "Summary" not in text
