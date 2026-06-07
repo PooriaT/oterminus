@@ -33,6 +33,12 @@ _COMMAND_PROFILE_DISABLED_PACKS: dict[str, frozenset[str]] = {
     "developer": frozenset({"dangerous", "network"}),
     "power": frozenset({"dangerous"}),
 }
+_COMMAND_PROFILE_DESCRIPTIONS: dict[str, str] = {
+    "beginner": "Most restrictive; disables advanced and higher-risk command packs.",
+    "safe": "Balanced default; keeps local inspection tools and disables riskier packs.",
+    "developer": "Enables most local developer workflows while keeping dangerous and network packs off.",
+    "power": "Broadest normal profile; only the dangerous pack stays disabled.",
+}
 _DOTENV_FILENAME = ".env"
 
 
@@ -161,6 +167,42 @@ class UserConfig(BaseModel):
         if not stripped:
             raise ValueError("path fields must be nonblank strings when provided.")
         return stripped
+
+
+def safe_default_user_config() -> UserConfig:
+    return UserConfig(
+        schema_version=CURRENT_USER_CONFIG_SCHEMA_VERSION,
+        onboarding_completed=True,
+        command_profile="safe",
+        policy_mode=RiskLevel.WRITE,
+        disabled_command_packs=[],
+        allowed_roots=[],
+        auto_execute_safe=False,
+        audit_enabled=True,
+        audit_redact=True,
+        history_enabled=False,
+        history_redact=True,
+        explain_failures=False,
+        model=None,
+        timeout_seconds=60,
+        max_output_chars=20000,
+        audit_log_path=None,
+        history_path=None,
+        history_limit=100,
+        failure_explanation_max_chars=4000,
+    )
+
+
+def supported_command_profiles() -> tuple[str, ...]:
+    return tuple(_COMMAND_PROFILE_DISABLED_PACKS)
+
+
+def command_profile_description(profile: str) -> str:
+    return _COMMAND_PROFILE_DESCRIPTIONS[profile]
+
+
+def disabled_packs_for_command_profile(profile: str | None) -> frozenset[str]:
+    return _disabled_packs_for_profile(profile)
 
 
 @dataclass(frozen=True)

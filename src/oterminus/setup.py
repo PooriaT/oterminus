@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import shutil
 import subprocess
+from dataclasses import dataclass
 from typing import Callable
 
 from oterminus.config import UserConfig, load_user_config, merge_user_config, save_user_config
@@ -10,6 +11,14 @@ from oterminus.ollama_client import OllamaClientError, parse_ollama_list_output
 
 class SetupError(RuntimeError):
     pass
+
+
+@dataclass(frozen=True)
+class OllamaModelStatus:
+    cli_installed: bool
+    service_available: bool
+    models: tuple[str, ...] = ()
+    error: str | None = None
 
 
 def check_ollama_installed() -> bool:
@@ -37,6 +46,30 @@ def get_available_models() -> list[str]:
         raise OllamaClientError(message)
 
     return parse_ollama_list_output(result.stdout)
+
+
+def get_ollama_model_status() -> OllamaModelStatus:
+    if not check_ollama_installed():
+        return OllamaModelStatus(
+            cli_installed=False,
+            service_available=False,
+            error="Ollama CLI was not found on PATH.",
+        )
+    if not check_ollama_running():
+        return OllamaModelStatus(
+            cli_installed=True,
+            service_available=False,
+            error="Ollama is installed but the service is not available.",
+        )
+    try:
+        models = tuple(get_available_models())
+    except OllamaClientError as exc:
+        return OllamaModelStatus(
+            cli_installed=True,
+            service_available=False,
+            error=str(exc),
+        )
+    return OllamaModelStatus(cli_installed=True, service_available=True, models=models)
 
 
 def load_config() -> UserConfig | None:

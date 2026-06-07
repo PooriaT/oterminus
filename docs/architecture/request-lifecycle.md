@@ -10,6 +10,15 @@ the request lifecycle. `version`, `completion`, and `doctor` exit through their 
 `validate`, and `edit` do not construct the validator, executor, planner, audit logger, or history
 store, do not run startup readiness checks, do not contact Ollama, and do not start the REPL.
 
+For a bare interactive launch, OTerminus inspects persistent config state before constructing
+runtime services. If stdin is interactive and the config file is missing, it offers first-run
+onboarding. Accepting runs the wizard, optionally selects an installed Ollama model, saves after a
+summary confirmation, and then reloads effective config before the validator, executor, audit
+logger, history store, and REPL are created. Declining saves safe defaults with
+`onboarding_completed: true` and continues. Onboarding is not offered for one-shot requests,
+`--dry-run`, `--explain`, `doctor`, `version`, `completion`, `config` commands, existing config
+files, legacy config files, or non-interactive stdin.
+
 For normal request handling, OTerminus resolves runtime configuration into `AppConfig`.
 Resolution applies exported environment variables, current-directory `.env`, validated user config,
 and built-in defaults in that order for supported settings. The persistent user config is a
@@ -23,7 +32,11 @@ flowchart TD
   A[CLI argv] --> A0{Early CLI mode?}
   A0 -->|version/completion/config| A3[Print or manage local metadata and exit]
   A0 -->|doctor| A2[Run doctor checks and exit]
-  A0 -->|request| Z[Resolve AppConfig]
+  A0 -->|bare interactive| O0{Missing config and TTY?}
+  O0 -->|yes| O1[Offer onboarding]
+  O1 --> Z
+  O0 -->|no| Z
+  A0 -->|one-shot request| Z[Resolve AppConfig]
   Z --> B[Direct command detection]
   B --> C{Direct command?}
   C -->|yes| C1[Build direct proposal]
@@ -63,6 +76,8 @@ Input can be:
 
 - the explicit diagnostics command (`doctor`), which runs readiness checks and exits outside the
   normal request planning/execution lifecycle
+- bare interactive launch (`oterminus`), which may offer onboarding before REPL services are
+  constructed when no config file exists
 - natural language (`"find large files here"`)
 - direct command (`"ls -lah"`)
 

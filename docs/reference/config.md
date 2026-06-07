@@ -130,9 +130,9 @@ All config commands bypass the normal request lifecycle and do not require Ollam
 | `oterminus config` | Prints concise help for config subcommands and exits successfully. |
 | `oterminus config path` | Prints only the active config path. Respects exported `OTERMINUS_CONFIG_PATH` and current-directory `.env`; does not create the file. |
 | `oterminus config show` | Shows the active path, existence, schema version when valid, effective settings, and per-setting source (`environment`, `.env`, `user config`, `default`, or `derived`). |
-| `oterminus config init` | Creates safe non-interactive defaults and prints the path. Existing files are not overwritten. |
-| `oterminus config init --defaults` | Explicit automation form for safe defaults; retained for future onboarding changes. |
-| `oterminus config init --force` | Replaces an existing valid config with safe defaults. Invalid existing files are preserved and must be repaired or moved first. |
+| `oterminus config init` | Runs the interactive onboarding wizard when stdin is a TTY. Existing valid config values are used as defaults and only wizard-managed fields are revised after summary confirmation. |
+| `oterminus config init --defaults` | Creates safe non-interactive defaults and prints the path. Existing files are not overwritten. Required for non-TTY initialization. |
+| `oterminus config init --defaults --force` | Replaces an existing valid config with safe defaults. Invalid existing files are preserved and must be repaired or moved first. |
 | `oterminus config validate` | Validates only the active persistent file. Missing, malformed, unsupported, unreadable, or schema-invalid files exit non-zero. |
 | `oterminus config edit` | Opens the config with `$VISUAL`, then `$EDITOR`. If missing, safe defaults are created first. After a successful editor exit, the file is validated; invalid edits are preserved. |
 
@@ -145,6 +145,39 @@ an editor, does not open a browser, and does not modify shell startup files.
 To recover from an invalid config, run `oterminus config validate` for the field-level error, then
 edit the file manually or with `VISUAL=... oterminus config edit`. If the file is not worth
 repairing, move it aside and run `oterminus config init --defaults`.
+
+## First-run onboarding
+
+Automatic onboarding appears only for a bare interactive `oterminus` launch when stdin is a TTY and
+the persistent config file does not exist. It does not appear for one-shot requests, `--dry-run`,
+`--explain`, `doctor`, `version`, `completion`, any `config` command, existing config files, legacy
+config files, or non-interactive stdin. One-shot direct commands are not gated by onboarding and can
+still detect, validate, preview, confirm, and execute without Ollama.
+
+Run the wizard later with:
+
+```bash
+oterminus config init
+```
+
+The wizard-managed fields and first-run defaults are:
+
+| Field | Default | Notes |
+| --- | --- | --- |
+| `command_profile` | `safe` | Choose `beginner`, `safe`, `developer`, or `power`. The prompt describes disabled packs using the command registry/profile mapping. |
+| `auto_execute_safe` | `false` | Applies only to narrowly eligible validated local read-only commands from direct detection or the deterministic local planner. Network, write, dangerous, experimental, warning-bearing, Ollama-planned, project-health, archive-mutation, and rerun requests do not qualify. |
+| `audit_enabled` | `true` | Audit logs remain local and do not store full stdout/stderr, but may contain paths and command context. Review before sharing. |
+| `audit_redact` | `true` | Kept safe even if audit logging is disabled. |
+| `history_enabled` | `false` | Persisted history may include commands, local paths, and execution context. Reruns still require validation and confirmation. |
+| `history_redact` | `true` | Kept safe even if persistent history is disabled. |
+| `explain_failures` | `false` | When enabled, redacted/truncated command output may be sent to the configured local Ollama model after non-zero exits. Suggested next actions are never executed automatically. |
+| `model` | Not configured | Optional. If Ollama is unavailable or no models are installed, onboarding saves non-model preferences and model setup can happen later. |
+
+Before saving, onboarding prints a summary with the selected profile, auto-execute state, audit and
+history settings, failure-explanation state, selected model or `not configured`, and target config
+path. Declining the final summary does not write changes. When rerun against an existing valid
+config, the wizard preserves unmanaged fields such as numeric limits, paths, allowed roots, policy
+mode, and explicit disabled packs. On successful save it sets `onboarding_completed` to `true`.
 
 ## Precedence behavior
 
