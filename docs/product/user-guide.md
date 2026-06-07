@@ -127,6 +127,16 @@ that clearly so you can fix the local model setup before natural-language planni
 If no model is configured yet, OTerminus shows installed models and prompts you to choose one. The
 selection is saved in `~/.oterminus/config.json` (or `OTERMINUS_CONFIG_PATH` if set).
 
+The user config file is validated JSON with `schema_version: 1`. It can persist local preferences
+such as the selected model, command profile, disabled command packs, policy mode, allowed roots,
+audit/history paths, output limits, and reserved onboarding state. Existing legacy files with only
+`model` and optional `audit_log_path` still work and are treated as already onboarded in memory.
+Invalid config JSON or invalid field values stop startup with a concise configuration error instead
+of being ignored. Environment variables and current-directory `.env` values remain available as
+overrides, with precedence: exported environment, `.env`, user config, then built-in defaults.
+`OTERMINUS_ALLOW_DANGEROUS` is environment/.env only and is not accepted in the persistent config.
+The config file is not secret storage.
+
 ## Doctor troubleshooting
 
 Run `oterminus doctor` after a PyPI or `pipx` install and after changing Ollama, config, audit, or
@@ -456,7 +466,7 @@ and controlled by `OTERMINUS_HISTORY_ENABLED` (default `false`).
 - `OTERMINUS_HISTORY_LIMIT` controls how many recent persisted records are loaded into the next REPL
   session (default `100`; the env value must be a valid integer; loaded values are clamped to at least `1`).
 - `OTERMINUS_HISTORY_REDACT` controls redaction before persisted writes and defaults to the current
-  audit-redaction setting (`OTERMINUS_AUDIT_REDACT`) when unset.
+  effective audit-redaction setting when unset everywhere.
 
 History commands:
 
@@ -582,7 +592,8 @@ You can also choose a profile preset with `OTERMINUS_COMMAND_PROFILE`:
 `beginner`, `safe`, `developer`, or `power`. Profiles are convenience presets for disabled packs
 only; policy mode, validation, and confirmation remain authoritative. Disabled packs are hidden from
 autocomplete, planner hints, and discovery output, and disabled commands are rejected before
-execution even when typed directly.
+execution even when typed directly. The same profile and explicit disabled-pack fields can be
+persisted in the user config; exported environment and `.env` values override persisted values.
 
 
 ## Platform-specific commands

@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import shutil
 import subprocess
-from typing import Any, Callable
+from typing import Callable
 
-from oterminus.config import load_user_config, save_user_config
+from oterminus.config import UserConfig, load_user_config, merge_user_config, save_user_config
 from oterminus.ollama_client import OllamaClientError, parse_ollama_list_output
 
 
@@ -39,12 +39,12 @@ def get_available_models() -> list[str]:
     return parse_ollama_list_output(result.stdout)
 
 
-def load_config() -> dict[str, Any]:
+def load_config() -> UserConfig | None:
     return load_user_config()
 
 
-def save_config(payload: dict[str, Any]) -> None:
-    save_user_config(payload)
+def save_config(config: UserConfig) -> None:
+    save_user_config(config)
 
 
 def _choose_model(models: list[str], input_fn: Callable[[str], str]) -> str:
@@ -63,18 +63,18 @@ def _choose_model(models: list[str], input_fn: Callable[[str], str]) -> str:
 
 def run_first_time_setup(models: list[str], input_fn: Callable[[str], str] = input) -> str:
     config = load_config()
-    configured_model = config.get("model")
+    configured_model = config.model if config is not None else None
 
-    if isinstance(configured_model, str) and configured_model in models:
+    if configured_model in models:
         return configured_model
 
-    if isinstance(configured_model, str) and configured_model:
+    if configured_model:
         print(f"Warning: configured model '{configured_model}' is no longer installed.")
 
     selected_model = _choose_model(models, input_fn=input_fn)
-    config["model"] = selected_model
+    updated_config = merge_user_config(config, model=selected_model)
     try:
-        save_config(config)
+        save_config(updated_config)
     except OSError as exc:
         raise SetupError(
             "Failed to save setup configuration. Check write permissions for your config path and try again."

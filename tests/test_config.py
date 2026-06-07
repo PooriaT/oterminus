@@ -1,8 +1,23 @@
+import json
+import os
 from pathlib import Path
 
 import pytest
 
-from oterminus.config import get_user_config_path, load_config
+from oterminus.config import (
+    CURRENT_USER_CONFIG_SCHEMA_VERSION,
+    ConfigError,
+    ConfigValueSource,
+    UserConfig,
+    UserConfigReadStatus,
+    get_user_config_path,
+    load_config,
+    read_user_config,
+    resolve_config,
+    save_user_config,
+    update_user_config,
+)
+from oterminus.models import RiskLevel
 
 
 @pytest.fixture(autouse=True)
@@ -107,7 +122,7 @@ def test_load_config_audit_path_from_env(monkeypatch, tmp_path: Path) -> None:
     assert config.audit_log_path == tmp_path / "audit-lines.jsonl"
 
 
-def test_load_config_invalid_user_audit_path_type_falls_back_to_default(
+def test_load_config_invalid_user_audit_path_type_raises_config_error(
     monkeypatch, tmp_path: Path
 ) -> None:
     config_path = tmp_path / "config.json"
@@ -115,9 +130,8 @@ def test_load_config_invalid_user_audit_path_type_falls_back_to_default(
     monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(config_path))
     monkeypatch.delenv("OTERMINUS_AUDIT_LOG_PATH", raising=False)
 
-    config = load_config()
-
-    assert config.audit_log_path == Path.home() / ".oterminus" / "audit.jsonl"
+    with pytest.raises(ConfigError, match="audit_log_path"):
+        load_config()
 
 
 def test_load_config_audit_controls_default_to_enabled_and_redacted(
@@ -280,3 +294,295 @@ def test_load_config_failure_explanation_overrides(monkeypatch, tmp_path: Path) 
     config = load_config()
     assert config.explain_failures is True
     assert config.failure_explanation_max_chars == 123
+
+
+def test_read_user_config_missing(monkeypatch, tmp_path: Path) -> None:
+    config_path = tmp_path / "missing.json"
+    monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(config_path))
+
+    result = read_user_config()
+
+    assert result.status is UserConfigReadStatus.MISSING
+    assert result.config is None
+    assert result.exists is False
+
+
+def test_read_user_config_valid_versioned_file(monkeypatch, tmp_path: Path) -> None:
+    config_path = tmp_path / "config.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "schema_version": CURRENT_USER_CONFIG_SCHEMA_VERSION,
+                "onboarding_completed": False,
+                "model": "gemma4",
+                "command_profile": "Developer",
+                "disabled_command_packs": ["PROCESS", "macos"],
+                "policy_mode": "safe",
+                "allowed_roots": [str(tmp_path)],
+                "timeout_seconds": 12,
+                "max_output_chars": 123,
+                "audit_enabled": False,
+                "audit_redact": False,
+                "audit_log_path": str(tmp_path / "audit.jsonl"),
+                "history_enabled": True,
+                "history_path": str(tmp_path / "history.jsonl"),
+                "history_limit": 7,
+                "history_redact": False,
+                "explain_failures": True,
+                "failure_explanation_max_chars": 456,
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(config_path))
+
+    result = read_user_config()
+
+    assert result.status is UserConfigReadStatus.VALID
+    assert result.config is not None
+    assert result.config.model == "gemma4"
+    assert result.config.command_profile == "developer"
+    assert result.config.disabled_command_packs == ["macos", "process"]
+    assert result.config.policy_mode is RiskLevel.SAFE
+    assert result.config.onboarding_completed is False
+
+
+def test_read_user_config_legacy_model_only_is_onboarding_complete(
+    monkeypatch, tmp_path: Path
+) -> None:
+    config_path = tmp_path / "config.json"
+    config_path.write_text('{"model": "gemma4"}', encoding="utf-8")
+    monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(config_path))
+
+    result = read_user_config()
+
+    assert result.status is UserConfigReadStatus.VALID
+    assert result.config is not None
+    assert result.config.schema_version == CURRENT_USER_CONFIG_SCHEMA_VERSION
+    assert result.config.model == "gemma4"
+    assert result.config.onboarding_completed is True
+
+
+def test_read_user_config_legacy_model_and_audit_path(monkeypatch, tmp_path: Path) -> None:
+    config_path = tmp_path / "config.json"
+    audit_path = tmp_path / "audit.jsonl"
+    config_path.write_text(
+        json.dumps({"model": "gemma4", "audit_log_path": str(audit_path)}),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(config_path))
+
+    config = load_config()
+
+    assert config.model == "gemma4"
+    assert config.audit_log_path == audit_path
+
+
+@pytest.mark.parametrize(
+    ("payload", "status", "match"),
+    [
+        ("{", UserConfigReadStatus.INVALID_JSON, "Invalid JSON"),
+        ("[]", UserConfigReadStatus.NON_OBJECT_JSON, "JSON object"),
+        ('{"unknown": true}', UserConfigReadStatus.VALIDATION_ERROR, "unknown"),
+        ('{"schema_version": 999}', UserConfigReadStatus.UNSUPPORTED_SCHEMA, "schema_version 999"),
+        ('{"command_profile": "devv"}', UserConfigReadStatus.VALIDATION_ERROR, "command_profile"),
+        (
+            '{"disabled_command_packs": ["notapack"]}',
+            UserConfigReadStatus.VALIDATION_ERROR,
+            "notapack",
+        ),
+        ('{"policy_mode": "admin"}', UserConfigReadStatus.VALIDATION_ERROR, "policy_mode"),
+        ('{"timeout_seconds": 0}', UserConfigReadStatus.VALIDATION_ERROR, "timeout_seconds"),
+        ('{"max_output_chars": 0}', UserConfigReadStatus.VALIDATION_ERROR, "max_output_chars"),
+        ('{"history_limit": 0}', UserConfigReadStatus.VALIDATION_ERROR, "history_limit"),
+        (
+            '{"failure_explanation_max_chars": 0}',
+            UserConfigReadStatus.VALIDATION_ERROR,
+            "failure_explanation_max_chars",
+        ),
+        ('{"audit_log_path": 123}', UserConfigReadStatus.VALIDATION_ERROR, "audit_log_path"),
+        ('{"model": "   "}', UserConfigReadStatus.VALIDATION_ERROR, "model"),
+        ('{"audit_enabled": "false"}', UserConfigReadStatus.VALIDATION_ERROR, "audit_enabled"),
+        (
+            '{"allow_dangerous": true}',
+            UserConfigReadStatus.VALIDATION_ERROR,
+            "allow_dangerous",
+        ),
+    ],
+)
+def test_read_user_config_invalid_values_are_reported(
+    monkeypatch, tmp_path: Path, payload: str, status: UserConfigReadStatus, match: str
+) -> None:
+    config_path = tmp_path / "config.json"
+    config_path.write_text(payload, encoding="utf-8")
+    monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(config_path))
+
+    result = read_user_config()
+
+    assert result.status is status
+    assert result.error is not None
+    assert match in str(result.error)
+
+
+def test_user_config_overrides_defaults(monkeypatch, tmp_path: Path) -> None:
+    config_path = tmp_path / "config.json"
+    config_path.write_text(
+        json.dumps({"timeout_seconds": 42, "policy_mode": "safe", "auto_execute_safe": True}),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(config_path))
+
+    resolved = resolve_config()
+
+    assert resolved.app_config.timeout_seconds == 42
+    assert resolved.app_config.policy.mode is RiskLevel.SAFE
+    assert resolved.app_config.auto_execute_safe is True
+    assert resolved.sources["timeout_seconds"] is ConfigValueSource.USER_CONFIG
+
+
+def test_dotenv_overrides_user_config(monkeypatch, tmp_path: Path) -> None:
+    config_path = tmp_path / "config.json"
+    config_path.write_text('{"timeout_seconds": 42}', encoding="utf-8")
+    monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(config_path))
+    (tmp_path / ".env").write_text("OTERMINUS_TIMEOUT_SECONDS=12\n", encoding="utf-8")
+
+    resolved = resolve_config()
+
+    assert resolved.app_config.timeout_seconds == 12
+    assert resolved.sources["timeout_seconds"] is ConfigValueSource.DOTENV
+
+
+def test_exported_environment_overrides_dotenv(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(tmp_path / "config.json"))
+    monkeypatch.setenv("OTERMINUS_TIMEOUT_SECONDS", "99")
+    (tmp_path / ".env").write_text("OTERMINUS_TIMEOUT_SECONDS=12\n", encoding="utf-8")
+
+    resolved = resolve_config()
+
+    assert resolved.app_config.timeout_seconds == 99
+    assert resolved.sources["timeout_seconds"] is ConfigValueSource.ENVIRONMENT
+
+
+def test_environment_disabled_packs_replace_persisted_explicit_packs_before_profile_union(
+    monkeypatch, tmp_path: Path
+) -> None:
+    config_path = tmp_path / "config.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "command_profile": "developer",
+                "disabled_command_packs": ["process"],
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(config_path))
+    monkeypatch.setenv("OTERMINUS_DISABLED_COMMAND_PACKS", "macos")
+
+    config = load_config()
+
+    assert config.policy.disabled_command_packs == frozenset({"dangerous", "network", "macos"})
+
+
+def test_history_redaction_derived_default_follows_effective_audit_redaction(
+    monkeypatch, tmp_path: Path
+) -> None:
+    config_path = tmp_path / "config.json"
+    config_path.write_text('{"audit_redact": false}', encoding="utf-8")
+    monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(config_path))
+    monkeypatch.delenv("OTERMINUS_HISTORY_REDACT", raising=False)
+
+    resolved = resolve_config()
+
+    assert resolved.app_config.audit_redact is False
+    assert resolved.app_config.history_redact is False
+    assert resolved.sources["history_redact"] is ConfigValueSource.DERIVED
+
+
+def test_environment_allow_dangerous_continues_working(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(tmp_path / "config.json"))
+    monkeypatch.setenv("OTERMINUS_ALLOW_DANGEROUS", "yes")
+
+    config = load_config()
+
+    assert config.policy.allow_dangerous is True
+
+
+def test_save_user_config_writes_formatted_json_and_creates_parent(
+    monkeypatch, tmp_path: Path
+) -> None:
+    config_path = tmp_path / "nested" / "config.json"
+    monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(config_path))
+
+    save_user_config(UserConfig(model="gemma4"))
+
+    payload = config_path.read_text(encoding="utf-8")
+    assert payload.endswith("\n")
+    assert json.loads(payload)["schema_version"] == CURRENT_USER_CONFIG_SCHEMA_VERSION
+    assert json.loads(payload)["model"] == "gemma4"
+    assert oct(os.stat(config_path).st_mode & 0o777) == "0o600"
+
+
+def test_update_user_config_preserves_unrelated_fields(monkeypatch, tmp_path: Path) -> None:
+    config_path = tmp_path / "config.json"
+    config_path.write_text(
+        json.dumps({"model": "old:model", "audit_log_path": str(tmp_path / "audit.jsonl")}),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(config_path))
+
+    updated = update_user_config(model="new:model")
+
+    saved = json.loads(config_path.read_text(encoding="utf-8"))
+    assert updated.model == "new:model"
+    assert saved["audit_log_path"] == str(tmp_path / "audit.jsonl")
+    assert saved["model"] == "new:model"
+
+
+def test_update_user_config_does_not_overwrite_invalid_existing_file(
+    monkeypatch, tmp_path: Path
+) -> None:
+    config_path = tmp_path / "config.json"
+    original = '{"audit_log_path": 123}'
+    config_path.write_text(original, encoding="utf-8")
+    monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(config_path))
+
+    with pytest.raises(ConfigError):
+        update_user_config(model="gemma4")
+
+    assert config_path.read_text(encoding="utf-8") == original
+
+
+def test_save_failure_does_not_corrupt_original(monkeypatch, tmp_path: Path) -> None:
+    config_path = tmp_path / "config.json"
+    config_path.write_text('{"schema_version": 1, "model": "old:model"}\n', encoding="utf-8")
+    monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(config_path))
+
+    def fail_replace(source: str, destination: Path) -> None:
+        raise OSError(f"cannot replace {destination} from {source}")
+
+    monkeypatch.setattr("oterminus.config.os.replace", fail_replace)
+
+    with pytest.raises(OSError):
+        save_user_config(UserConfig(model="new:model"))
+
+    assert json.loads(config_path.read_text(encoding="utf-8"))["model"] == "old:model"
+    assert not list(tmp_path.glob(".config.json.*.tmp"))
+
+
+def test_cli_reports_invalid_user_config_without_traceback(
+    monkeypatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from oterminus.cli import main
+
+    config_path = tmp_path / "config.json"
+    config_path.write_text('{"audit_log_path": 123}', encoding="utf-8")
+    monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(config_path))
+
+    exit_code = main(["list files"])
+
+    captured = capsys.readouterr()
+    assert exit_code == 2
+    assert "Configuration error:" in captured.err
+    assert "audit_log_path" in captured.err
+    assert "Traceback" not in captured.err

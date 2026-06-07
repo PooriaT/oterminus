@@ -26,7 +26,7 @@ from oterminus.discovery import (
     render_unknown_help_target,
     render_examples_for_capability,
 )
-from oterminus.config import load_config
+from oterminus.config import ConfigError, load_config
 from oterminus.completion import get_completion_backend_status
 from oterminus.direct_commands import detect_direct_command
 from oterminus.history import PersistentHistoryStore, SessionHistory
@@ -844,7 +844,11 @@ def main(argv: list[str] | None = None) -> int:
     if args.cli_mode == "doctor":
         return run_doctor_cli()
 
-    config = load_config()
+    try:
+        config = load_config()
+    except (ConfigError, ValueError) as exc:
+        print(f"Configuration error: {exc}", file=sys.stderr)
+        return 2
     validator = Validator(config.policy)
     try:
         executor = Executor(
