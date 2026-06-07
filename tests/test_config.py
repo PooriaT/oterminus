@@ -523,6 +523,35 @@ def test_save_user_config_writes_formatted_json_and_creates_parent(
     assert oct(os.stat(config_path).st_mode & 0o777) == "0o600"
 
 
+def test_save_user_config_does_not_persist_implicit_defaults(monkeypatch, tmp_path: Path) -> None:
+    config_path = tmp_path / "config.json"
+    monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(config_path))
+
+    save_user_config(UserConfig(model="gemma4"))
+
+    assert json.loads(config_path.read_text(encoding="utf-8")) == {
+        "model": "gemma4",
+        "schema_version": CURRENT_USER_CONFIG_SCHEMA_VERSION,
+    }
+
+
+def test_update_user_config_does_not_make_history_redact_explicit_default(
+    monkeypatch, tmp_path: Path
+) -> None:
+    config_path = tmp_path / "config.json"
+    monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(config_path))
+
+    update_user_config(model="gemma4")
+    update_user_config(audit_redact=False)
+    resolved = resolve_config()
+
+    saved = json.loads(config_path.read_text(encoding="utf-8"))
+    assert "history_redact" not in saved
+    assert resolved.app_config.audit_redact is False
+    assert resolved.app_config.history_redact is False
+    assert resolved.sources["history_redact"] is ConfigValueSource.DERIVED
+
+
 def test_update_user_config_preserves_unrelated_fields(monkeypatch, tmp_path: Path) -> None:
     config_path = tmp_path / "config.json"
     config_path.write_text(

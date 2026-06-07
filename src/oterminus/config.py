@@ -262,7 +262,11 @@ def merge_user_config(config: UserConfig | None = None, **updates: object) -> Us
         raise ConfigError(
             get_user_config_path(), "Unknown user config field(s): " + ", ".join(unknown)
         )
-    payload = (config or UserConfig()).model_dump(mode="python")
+    payload = (
+        config.model_dump(mode="python", include=config.model_fields_set)
+        if config is not None
+        else {}
+    )
     payload.update(updates)
     try:
         return UserConfig.model_validate(payload)
@@ -278,9 +282,13 @@ def update_user_config(**updates: object) -> UserConfig:
 
 
 def save_user_config(config: UserConfig) -> None:
-    validated = UserConfig.model_validate(config.model_dump(mode="python"))
+    explicit_fields = set(config.model_fields_set)
+    explicit_fields.add("schema_version")
+    payload = config.model_dump(mode="json", include=explicit_fields, exclude_none=True)
+    payload["schema_version"] = CURRENT_USER_CONFIG_SCHEMA_VERSION
+    UserConfig.model_validate(payload)
     path = get_user_config_path()
-    _atomic_write_json(path, validated.model_dump(mode="json", exclude_none=True))
+    _atomic_write_json(path, payload)
 
 
 def _validate_user_config_payload(payload: dict[str, Any], path: Path) -> UserConfig:
