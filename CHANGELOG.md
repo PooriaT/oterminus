@@ -16,7 +16,7 @@ Use this section for changes merged after the next planned release section has b
 
 ### Internal
 
-## 0.1.3 - Unreleased
+## 0.1.3
 
 Configuration, onboarding, safety-default, and terminal-color release.
 
