@@ -66,17 +66,18 @@ def _read_audit_payload(path: Path) -> dict[str, object]:
     return json.loads(path.read_text(encoding="utf-8").strip())
 
 
-def test_doctor_command_is_diagnostics_only(monkeypatch) -> None:
+def test_doctor_command_is_diagnostics_only(monkeypatch, tmp_path: Path) -> None:
     from oterminus.cli import main
 
     report = type("Report", (), {"results": (), "exit_code": 2})()
     run_doctor = Mock(return_value=report)
     print_report = Mock()
+    config = _config(tmp_path)
 
     monkeypatch.setattr("oterminus.cli.configure_logging", lambda verbose: None)
     monkeypatch.setattr("oterminus.cli.run_doctor", run_doctor)
     monkeypatch.setattr("oterminus.cli.print_report", print_report)
-    monkeypatch.setattr("oterminus.cli.load_config", Mock(side_effect=AssertionError("no config")))
+    monkeypatch.setattr("oterminus.cli.load_config", Mock(return_value=config))
     monkeypatch.setattr("oterminus.cli.repl", Mock(side_effect=AssertionError("no REPL")))
     monkeypatch.setattr("oterminus.cli.Executor", Mock(side_effect=AssertionError("no executor")))
     monkeypatch.setattr("oterminus.cli.Planner", Mock(side_effect=AssertionError("no planner")))
@@ -90,6 +91,70 @@ def test_doctor_command_is_diagnostics_only(monkeypatch) -> None:
     assert code == 2
     run_doctor.assert_called_once_with()
     print_report.assert_called_once_with(report, style=ANY)
+
+
+def test_doctor_honors_env_color_mode_for_redirected_output(
+    monkeypatch, tmp_path: Path, capsys
+) -> None:
+    from oterminus.cli import main
+    from oterminus.doctor import CheckResult, DoctorReport, Status
+
+    report = DoctorReport(results=(CheckResult("check", Status.PASS, "ok"),))
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("OTERMINUS_COLOR", "always")
+    monkeypatch.delenv("NO_COLOR", raising=False)
+    monkeypatch.setattr("oterminus.cli.configure_logging", lambda verbose: None)
+    monkeypatch.setattr("oterminus.cli.run_doctor", Mock(return_value=report))
+
+    assert main(["doctor"]) == 0
+    output = capsys.readouterr().out
+    assert ANSI_RE.search(output)
+    assert "PASS" in output
+
+
+def test_doctor_honors_persisted_color_mode_always_for_redirected_output(
+    monkeypatch, tmp_path: Path, capsys
+) -> None:
+    from oterminus.cli import main
+    from oterminus.doctor import CheckResult, DoctorReport, Status
+
+    config_path = tmp_path / "config.json"
+    config_path.write_text('{"color_mode": "always"}', encoding="utf-8")
+    report = DoctorReport(results=(CheckResult("check", Status.PASS, "ok"),))
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(config_path))
+    monkeypatch.delenv("OTERMINUS_COLOR", raising=False)
+    monkeypatch.delenv("NO_COLOR", raising=False)
+    monkeypatch.setattr("oterminus.cli.configure_logging", lambda verbose: None)
+    monkeypatch.setattr("oterminus.cli.run_doctor", Mock(return_value=report))
+
+    assert main(["doctor"]) == 0
+    output = capsys.readouterr().out
+    assert ANSI_RE.search(output)
+    assert "PASS" in output
+
+
+def test_doctor_honors_persisted_color_mode_never(monkeypatch, tmp_path: Path, capsys) -> None:
+    from oterminus.cli import main
+    from oterminus.doctor import CheckResult, DoctorReport, Status
+
+    config_path = tmp_path / "config.json"
+    config_path.write_text('{"color_mode": "never"}', encoding="utf-8")
+    report = DoctorReport(results=(CheckResult("check", Status.PASS, "ok"),))
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(config_path))
+    monkeypatch.delenv("OTERMINUS_COLOR", raising=False)
+    monkeypatch.delenv("NO_COLOR", raising=False)
+    monkeypatch.setattr("oterminus.cli.configure_logging", lambda verbose: None)
+    monkeypatch.setattr("oterminus.cli.run_doctor", Mock(return_value=report))
+
+    assert main(["doctor"]) == 0
+    output = capsys.readouterr().out
+    assert not ANSI_RE.search(output)
+    assert "PASS  check" in output
 
 
 @pytest.mark.parametrize(

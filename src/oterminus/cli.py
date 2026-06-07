@@ -931,12 +931,20 @@ def _render_history_explanation(
 
 def run_doctor_cli() -> int:
     report = run_doctor()
-    style = make_terminal_style(color_mode=ColorMode.AUTO, stream=sys.stdout)
+    style = _doctor_terminal_style()
     if _callable_accepts_style(print_report):
         print_report(report, style=style)
     else:
         print_report(report)
     return report.exit_code
+
+
+def _doctor_terminal_style() -> TerminalStyle:
+    try:
+        color_mode = load_config().color_mode
+    except (ConfigError, ValueError):
+        color_mode = ColorMode.AUTO
+    return make_terminal_style(color_mode=color_mode, stream=sys.stdout)
 
 
 def _callable_accepts_style(func: Callable[..., object]) -> bool:
