@@ -1046,6 +1046,8 @@ def _should_offer_first_run_onboarding(args: argparse.Namespace) -> bool:
     return (
         args.cli_mode == "request"
         and not args.request
+        and not args.dry_run
+        and not args.explain
         and sys.stdin.isatty()
     )
 

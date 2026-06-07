@@ -373,7 +373,30 @@ def test_one_shot_request_does_not_trigger_onboarding_even_with_tty(
     assert not config_path.exists()
 
 
-@pytest.mark.parametrize("argv", (["doctor"], ["version"], ["--version"], ["completion", "zsh"], ["config", "path"]))
+@pytest.mark.parametrize("argv", (["--dry-run"], ["--explain"]))
+def test_bare_inspection_mode_does_not_trigger_onboarding_with_tty(
+    monkeypatch, tmp_path: Path, argv: list[str]
+) -> None:
+    from oterminus.cli import main
+
+    monkeypatch.chdir(tmp_path)
+    config_path = tmp_path / "config.json"
+    monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(config_path))
+    monkeypatch.setattr("oterminus.cli.sys.stdin", type("TTY", (), {"isatty": lambda self: True})())
+    monkeypatch.setattr("oterminus.cli.configure_logging", lambda verbose: None)
+    monkeypatch.setattr(
+        "oterminus.cli.run_onboarding",
+        Mock(side_effect=AssertionError("inspection mode must not run onboarding")),
+    )
+    monkeypatch.setattr("oterminus.cli.repl", lambda *_args, **_kwargs: 0)
+
+    assert main(argv) == 0
+    assert not config_path.exists()
+
+
+@pytest.mark.parametrize(
+    "argv", (["doctor"], ["version"], ["--version"], ["completion", "zsh"], ["config", "path"])
+)
 def test_special_commands_do_not_trigger_automatic_onboarding(
     monkeypatch, tmp_path: Path, argv: list[str]
 ) -> None:

@@ -148,9 +148,7 @@ def run_onboarding(
     return OnboardingResult(completed=True, saved=True, config=updated)
 
 
-def save_declined_onboarding(
-    *, output_fn: _PrintFn = print
-) -> OnboardingResult:
+def save_declined_onboarding(*, output_fn: _PrintFn = print) -> OnboardingResult:
     config = safe_default_user_config()
     try:
         save_user_config(config, include_none=True)
@@ -171,7 +169,9 @@ def _ask_command_profile(default: str, input_fn: _InputFn, output_fn: _PrintFn) 
     output_fn("Command profiles:")
     for index, profile in enumerate(profiles, start=1):
         disabled = disabled_packs_for_command_profile(profile)
-        disabled_labels = ", ".join(_PACK_LABELS.get(pack_id, pack_id) for pack_id in sorted(disabled))
+        disabled_labels = ", ".join(
+            _PACK_LABELS.get(pack_id, pack_id) for pack_id in sorted(disabled)
+        )
         output_fn(
             f"{index}. {profile} - {command_profile_description(profile)} "
             f"Disabled packs: {disabled_labels or 'none'}."

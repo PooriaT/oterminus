@@ -173,7 +173,9 @@ def _init_config(
         print(f"Created config: {result.path}")
         return 0
     print(f"Config already exists; not overwritten: {result.path}")
-    print("Use `oterminus config init --defaults --force` to replace a valid config with safe defaults.")
+    print(
+        "Use `oterminus config init --defaults --force` to replace a valid config with safe defaults."
+    )
     return 1
 
 

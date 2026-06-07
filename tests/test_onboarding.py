@@ -193,9 +193,7 @@ def test_onboarding_existing_valid_model_is_default(
     result = run_onboarding(
         existing=existing,
         input_fn=lambda _: next(answers),
-        model_status_fn=lambda: OllamaModelStatus(
-            True, True, ("llama3.2:latest", "gemma3:latest")
-        ),
+        model_status_fn=lambda: OllamaModelStatus(True, True, ("llama3.2:latest", "gemma3:latest")),
     )
 
     payload = json.loads(config_path.read_text(encoding="utf-8"))
