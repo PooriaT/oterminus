@@ -10,6 +10,7 @@ truth for supported keys.
 | --- | --- | --- | --- | --- |
 | Execution timeout | `OTERMINUS_TIMEOUT_SECONDS` | `timeout_seconds` | `60` | Positive integer number of seconds passed to the executor. |
 | Max execution output chars | `OTERMINUS_MAX_OUTPUT_CHARS` | `max_output_chars` | `20000` | Positive integer. Invalid env values fall back to `20000`. Applied independently to stdout and stderr after command completion. |
+| Terminal color mode | `OTERMINUS_COLOR` | `color_mode` | `auto` | Must be `auto`, `always`, or `never`. Invalid env values fall back to `auto`; invalid persisted values are config errors. `NO_COLOR` disables ANSI styling at render time even when this is `always`. |
 | Policy mode | `OTERMINUS_POLICY_MODE` | `policy_mode` | `write` | Must be one of `safe`, `write`, or `dangerous`. |
 | Dangerous-operation gate | `OTERMINUS_ALLOW_DANGEROUS` | Not supported | `false` | Environment/.env only. It is never persisted and only matters when policy mode is `dangerous`. |
 | Allowed path roots | `OTERMINUS_ALLOWED_ROOTS` | `allowed_roots` | Empty list | Environment form is colon-separated. JSON form is a list of path strings. When set, path operands must resolve under one of these roots. |
@@ -36,6 +37,7 @@ Supported `OTERMINUS_*` variables are:
 
 - `OTERMINUS_TIMEOUT_SECONDS`
 - `OTERMINUS_MAX_OUTPUT_CHARS`
+- `OTERMINUS_COLOR`
 - `OTERMINUS_POLICY_MODE`
 - `OTERMINUS_ALLOW_DANGEROUS`
 - `OTERMINUS_ALLOWED_ROOTS`
@@ -93,6 +95,7 @@ Supported persistent fields:
   "auto_execute_safe": false,
   "timeout_seconds": 60,
   "max_output_chars": 20000,
+  "color_mode": "auto",
   "audit_enabled": true,
   "audit_redact": true,
   "audit_log_path": "~/.oterminus/audit.jsonl",
@@ -194,13 +197,29 @@ In practice:
   `audit_log_path`, then `~/.oterminus/audit.jsonl`.
 - `model` is user-config only; there is no environment override.
 - timeout, policy, allowed roots, audit enabled/redaction, history settings, failure-explanation
-  settings, safe auto-execute, command profiles, disabled packs, and output limits follow
+  settings, safe auto-execute, command profiles, disabled packs, terminal color mode, and output limits follow
   environment, `.env`, user config, default precedence.
 - `OTERMINUS_CONFIG_PATH` is environment/.env only.
 - `OTERMINUS_ALLOW_DANGEROUS` is environment/.env only and is rejected if persisted.
+- `NO_COLOR` is not a stored config value; when present in the render environment it disables ANSI
+  styling after `color_mode` is resolved.
 - `history_redact`, when absent from all sources, follows the effective audit-redaction setting.
 - invalid persisted values are reported as configuration errors; missing config files simply use
   defaults.
+
+## Terminal Styling
+
+`color_mode` controls whether future semantic terminal styling may emit ANSI escape sequences.
+This foundation is intentionally small and dependency-free; it does not add Rich or Colorama.
+
+- `auto`: enable styling only for TTY output when `TERM` is not `dumb` and `NO_COLOR` is unset.
+- `always`: enable styling even when stdout/stderr is redirected, unless `NO_COLOR` is set.
+- `never`: never emit ANSI styling.
+
+When styling is disabled, the terminal style layer returns the exact original text. Shell completion
+scripts, version output, `config path`, JSON-oriented config output, audit/history records, and
+subprocess stdout/stderr metadata remain plain. This foundation does not broadly color previews,
+doctor output, discovery/help, lifecycle messages, or the REPL prompt.
 
 Audit management commands (`audit status`, `audit tail [n]`, and `audit clear`) read this active
 configuration. If `OTERMINUS_AUDIT_ENABLED=false`, tail/clear report disabled state and do not
@@ -218,6 +237,7 @@ variables.
 
 ```bash
 export OTERMINUS_POLICY_MODE=write
+export OTERMINUS_COLOR=auto
 export OTERMINUS_ALLOW_DANGEROUS=false
 export OTERMINUS_ALLOWED_ROOTS=/workspace:/tmp/safe-area
 export OTERMINUS_AUDIT_LOG_PATH=~/.oterminus/audit.jsonl
