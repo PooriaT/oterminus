@@ -252,6 +252,15 @@ def test_validator_accepts_open_on_darwin(monkeypatch) -> None:
     assert result.accepted is True
 
 
+def test_validator_accepts_open_reveal_on_darwin(monkeypatch) -> None:
+    monkeypatch.setattr("oterminus.commands.registry.sys.platform", "darwin")
+    validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))
+    result = validator.validate(make_proposal("open -R ."))
+
+    assert result.accepted is True
+    assert result.argv == ["open", "-R", "."]
+
+
 @pytest.mark.parametrize(
     ("command", "expected_risk"),
     [

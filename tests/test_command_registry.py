@@ -13,6 +13,7 @@ from oterminus.commands import (
     direct_supported_base_commands,
     get_commands_by_capability,
     get_command_spec,
+    get_enabled_command_spec,
     is_normal_executable_spec,
     is_planned_metadata_only_spec,
     looks_like_direct_invocation,
@@ -282,9 +283,22 @@ def test_capability_summary_for_prompt_can_mark_network_touching(monkeypatch) ->
 
 def test_platform_normalization() -> None:
     assert normalize_platform_id("darwin") == "darwin"
+    assert normalize_platform_id("macos") == "darwin"
     assert normalize_platform_id("linux") == "linux"
     assert normalize_platform_id("linux2") == "linux"
     assert normalize_platform_id("win32") == "windows"
+
+
+def test_macos_command_pack_is_enabled_only_on_darwin() -> None:
+    darwin_capabilities = {
+        cap.capability_id for cap in supported_capabilities(platform_id="darwin")
+    }
+    linux_capabilities = {cap.capability_id for cap in supported_capabilities(platform_id="linux")}
+
+    assert "macos_desktop" in darwin_capabilities
+    assert "macos_desktop" not in linux_capabilities
+    assert get_enabled_command_spec("open", platform_id="darwin") is not None
+    assert get_enabled_command_spec("open", platform_id="linux") is None
 
 
 def test_project_health_capability_metadata() -> None:
