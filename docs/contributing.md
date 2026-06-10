@@ -89,6 +89,18 @@ Git repository state, filesystem contents, a real installed wheel, or subprocess
 the same deterministic fixture path, so no Ollama service/model/network call is required for the
 regression gate. See [Evals](architecture/evals.md) for fixture organization and format details.
 
+## CI coverage
+
+The main CI workflow keeps Ubuntu as the full regression gate. It runs the complete pytest suite,
+Ruff lint and format checks, deterministic evals, generated command-reference checks, docs link
+checks, a strict MkDocs build, and `scripts/validate_package_install.py`.
+
+CI also runs a separate macOS Python 3.13 platform smoke lane. That job is intentionally narrower:
+it exercises platform-aware command registry behavior, direct-command detection, validator behavior,
+shell completion/config tests, Ruff linting, and installed CLI smoke validation on a real macOS
+runner. The macOS smoke lane does not require Ollama, local models, or natural-language planning,
+and it does not publish packages or run release workflows.
+
 ## Documentation rules
 
 Update `/docs` in the same PR when you change behavior, architecture, command support,

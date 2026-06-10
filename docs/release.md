@@ -92,6 +92,12 @@ oterminus-evals
 
 ## Workflow map
 
+- **Main CI workflow:** `.github/workflows/ci.yml`
+  - trigger: pull requests and pushes to `main`
+  - Ubuntu job is the full regression gate
+  - macOS job is a focused platform smoke lane for platform-aware registry behavior and installed
+    CLI basics
+  - does **not** publish to TestPyPI or PyPI
 - **TestPyPI validation workflow:** `.github/workflows/publish-testpypi.yml`
   - trigger: manual `workflow_dispatch`
   - does **not** run on pull requests
@@ -169,10 +175,12 @@ uses temporary paths for smoke-check config, audit, and history files and does n
 It is not the primary end-user install path; users should install released packages from PyPI with
 `pipx install oterminus` or, when `pipx` is unavailable, `python -m pip install oterminus`.
 
-The main CI workflow runs the same package validation command after the normal tests, lint, evals,
-generated docs checks, docs link checks, and strict docs build. The production release workflow runs
-it before uploading artifacts for PyPI publishing. The TestPyPI workflow still verifies the exact
-published version by installing it back from TestPyPI after publish.
+The main CI workflow runs the same package validation command in the Ubuntu full regression gate
+after the normal tests, lint, evals, generated docs checks, docs link checks, and strict docs build.
+Its macOS smoke lane also runs the package validation command to verify installed CLI basics on a
+real macOS runner without requiring Ollama or publishing artifacts. The production release workflow
+runs package validation before uploading artifacts for PyPI publishing. The TestPyPI workflow still
+verifies the exact published version by installing it back from TestPyPI after publish.
 
 ## Post-release user install verification
 
