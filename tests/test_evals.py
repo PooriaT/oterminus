@@ -171,6 +171,10 @@ def test_expanded_newer_capability_cases_pass_without_ollama() -> None:
         "git-reject-push-structured",
         "project-health-reject-ruff-format-write-direct",
         "direct-git-status-short",
+        "local-grep-search-todo-src",
+        "local-git-last-5-commits",
+        "local-process-find-python",
+        "local-file-identify-readme",
     }
     selected = [case for case in fixtures if case.id in required_ids]
 

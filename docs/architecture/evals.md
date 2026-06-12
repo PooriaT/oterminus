@@ -34,7 +34,7 @@ Files are organized by capability or behavior:
 | `ambiguity.json` | Ambiguity gates and specific requests that must not be stopped as ambiguous. |
 | `archive_inspection.json` | Archive list, extract, create, and archive-specific rejection behavior. |
 | `direct_commands.json` | Shell-like inputs accepted directly without LLM planning. |
-| `fast_path_local_planner.json` | Deterministic local-planner matches and no-match fallback behavior. |
+| `fast_path_local_planner.json` | Deterministic local-planner matches, including safe filesystem/text/process/Git inspection recipes, and no-match fallback behavior. |
 | `filesystem_inspection.json` | Read-only filesystem inspection commands and planner proposals. |
 | `filesystem_mutation.json` | Guarded filesystem write operations. |
 | `git_inspection.json` | Read-only Git status, branch, log, and diff operations. |
@@ -131,6 +131,11 @@ Choose the fixture file by the capability or behavior under test:
   boundaries or protects public installation, CLI entry-point readiness, dry-run/explain previews,
   deterministic local planner first-use prompts, ambiguity lifecycle, or planner-fixture validation
   that should remain available without Ollama.
+- Put accepted deterministic natural-language local-planner recipes in
+  `fast_path_local_planner.json` without a `planner_proposal`. The eval runner must satisfy those
+  cases through direct detection, ambiguity handling, or `plan_locally`; otherwise it fails before
+  any mocked planner payload can be used. Include expected structured mode, command family, risk,
+  acceptance, rendered command, and argv.
 - Put vague user requests that must stop before planning in `ambiguity.json`; omit
   `planner_proposal` and set `expected_ambiguity_detected` plus a reason substring. Add a
   non-ambiguous contrast case when a nearby specific request should continue into planning.
