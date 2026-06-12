@@ -49,8 +49,11 @@ flowchart TD
   E -->|yes| E1[Show safer inspection options]
   E1 --> N
   E -->|no| F[Capability router]
-  F --> G[Planner JSON proposal]
+  F --> LP{Deterministic local planner match?}
+  LP -->|yes| LP1[Build local structured proposal]
+  LP -->|no| G[Planner JSON proposal]
   G --> P[Parse Proposal schema]
+  LP1 --> P
   C1 --> P
   P --> S{Structured support suitable?}
   S -->|yes| S1[Structured mode: command_family + arguments]
@@ -113,7 +116,20 @@ options. They also record planner skip diagnostics with `planner_invoked: false`
 A deterministic router classifies the request into categories like `filesystem_inspect`,
 `filesystem_mutate`, `text_search`, `process_inspect`, etc.
 
-### 5) Planner + parsing
+### 5) Deterministic local planner
+
+After routing, OTerminus attempts a deterministic local-planner fast path for a small set of
+explicit, reviewable rules. The local planner produces structured proposals only; it never emits
+experimental command text and never executes directly.
+
+The planner helper foundation is conservative. It normalizes request text, rejects unsafe shell
+syntax, and supports only simple parameter extraction for future explicit rules: local path tokens,
+base-10 positive integers, and simple search terms. Ambiguous or unsafe values fail closed by
+returning no local match. The shared proposal builder respects disabled command packs and
+platform-specific command availability through registry metadata, then lets structured argument
+validation remain the final authority.
+
+### 6) Planner + parsing
 
 Planner asks Ollama for JSON output and validates it against the `Proposal` schema. The schema
 supports only two first-class modes: `structured` and `experimental`.
@@ -122,7 +138,7 @@ Planner and parser prefer structured mode when command family + arguments can be
 deterministically. Experimental mode is used only when structured support is unavailable or
 unsuitable for a constrained single-command proposal.
 
-### 6) Structured or experimental proposal handling
+### 7) Structured or experimental proposal handling
 
 For structured proposals, Python renders final command strings/argv from typed arguments instead of
 trusting command text. Direct commands may also be normalized into structured arguments when a parser
@@ -140,7 +156,7 @@ user's argv exactly. For example, `ls -ltrh` is detected locally, skips Ollama p
 as "show files sorted by modification time" still go through the local planner or Ollama planner and
 can only produce typed structured arguments.
 
-### 7) Validation and policy
+### 8) Validation and policy
 
 Validator enforces:
 
@@ -150,7 +166,7 @@ Validator enforces:
 - path safety checks (including allowed roots)
 - risk + policy mode compatibility
 
-### 8) Preview and run mode
+### 9) Preview and run mode
 
 OTerminus renders preview details (command, mode, risk, warnings/rejections).
 
@@ -172,18 +188,18 @@ natural-language requests stop earlier in every run mode. Dry-run and explain in
 confirmation and execution after successful validation. The REPL `dry-run <request>` and
 `explain <request>` built-ins provide the same inspection behavior inside an interactive session.
 
-### 9) Execution
+### 10) Execution
 
 Executor runs command argv via subprocess, with special local handling for `cd` and `clear`.
 
-### 10) Audit logging
+### 11) Audit logging
 
 When enabled, OTerminus writes a JSONL event with request lifecycle fields (routing, mode,
 validation, confirmation result or safe auto-execute skip, exit code, duration). Ambiguous requests record the ambiguity outcome and
 `blocked_ambiguous` status without planner, validation, confirmation, or execution fields. Dry-run
 and explain requests record skipped execution status instead of an execution exit code.
 
-### 11) Evals and tests
+### 12) Evals and tests
 
 Deterministic fixture evals and unit tests assert lifecycle invariants and prevent regressions.
 
@@ -196,9 +212,6 @@ for the current process session and do not execute shell commands.
 same request lifecycle described above, including ambiguity handling, planning/direct detection,
 validation/policy, preview, and explicit execute confirmation. Reruns are never eligible for safe
 auto-execute, even when the original request would otherwise qualify.
-
-- After routing, OTerminus attempts a deterministic local planner for a small set of unambiguous requests. If it matches, Ollama is skipped and the same validation/preview/confirmation policy flow continues.
-
 
 ### Timing observability
 

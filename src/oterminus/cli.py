@@ -221,9 +221,14 @@ def handle_request(
         if disabled_pack_ids is not None
         else getattr(getattr(validator, "policy", None), "disabled_command_packs", frozenset())
     )
+    platform_id: str | None = None
 
     direct_detection_started = time.perf_counter()
-    proposal = detect_direct_command(request, disabled_pack_ids=effective_disabled_pack_ids)
+    proposal = detect_direct_command(
+        request,
+        disabled_pack_ids=effective_disabled_pack_ids,
+        platform_id=platform_id,
+    )
     timings_ms["direct_command_detection_ms"] = _duration_ms_from_counter(direct_detection_started)
     is_direct_command = proposal is not None
     proposal_origin = (
@@ -266,7 +271,11 @@ def handle_request(
                 _persist_if_needed()
                 return 0
             route_started = time.perf_counter()
-            route = route_request(request, disabled_pack_ids=effective_disabled_pack_ids)
+            route = route_request(
+                request,
+                disabled_pack_ids=effective_disabled_pack_ids,
+                platform_id=platform_id,
+            )
             timings_ms["routing_ms"] = _duration_ms_from_counter(route_started)
             event.routed_category = route.category
             if history_item is not None:
@@ -279,6 +288,7 @@ def handle_request(
                 request,
                 route,
                 disabled_pack_ids=effective_disabled_pack_ids,
+                platform_id=platform_id,
             )
             timings_ms["local_planner_ms"] = _duration_ms_from_counter(local_planner_started)
             if local_match is not None:

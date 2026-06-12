@@ -182,7 +182,7 @@ def _evaluate_case_on_platform(
             return EvalResult(case_id=case.id, passed=False, mismatches=mismatches)
 
         route = route_request(case.user_input, platform_id=case.platform_id)
-        local_match = plan_locally(case.user_input, route)
+        local_match = plan_locally(case.user_input, route, platform_id=case.platform_id)
         if local_match is not None:
             proposal = local_match.proposal
             proposal_origin = ProposalOrigin.LOCAL_PLANNER
