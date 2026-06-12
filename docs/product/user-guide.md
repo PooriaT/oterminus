@@ -789,4 +789,23 @@ deploy/publish operations, and arbitrary `poetry run ...` commands.
 These operations may execute local project code and tooling. This capability is not arbitrary shell
 support or arbitrary Poetry command support.
 
-OTerminus also has a conservative deterministic local planner for a small set of clear natural-language requests (for example: `show current directory`, `show files`, `show disk usage`). This fast path only builds structured proposals; it never executes directly and still requires validation, preview, and confirmation policy.
+OTerminus also has a conservative deterministic local planner for a narrow set of clear
+natural-language inspection requests. These can skip Ollama by building structured proposals for
+safe local commands such as:
+
+- filesystem inspection: `show hidden files`, `show detailed files`,
+  `show file info for README.md`, `identify README.md`
+- text inspection: `show README.md`, `show first 20 lines of README.md`,
+  `show last 50 lines of app.log`, `count lines in README.md`, `search TODO in src`
+- process inspection: `show running processes`, `find python processes`
+- Git inspection: `show current branch`, `show last 5 commits`, `show changed files`,
+  `show git diff summary`
+
+This fast path only builds structured proposals; it never emits arbitrary shell text and never
+executes directly. Validation, deterministic preview rendering, policy checks, command-pack
+availability, platform restrictions, and confirmation policy still apply. Disabled packs disable
+their corresponding local recipes. Unsafe shell syntax such as pipelines, redirection, command
+substitution, multiline values, wildcard paths, URL-like paths, flag-like paths, broad filesystem
+roots, zero or negative line counts, and Git/process mutation phrases are not supported by these
+natural-language recipes. Network, write, dangerous, archive mutation, and broad project-health
+expansion requests are outside this deterministic local-planner set.

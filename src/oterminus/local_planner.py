@@ -65,7 +65,16 @@ def plan_locally(
             platform_id=platform_id,
         )
 
-    if text in {"show files with details", "list files with sizes"}:
+    if text in {"show hidden files", "show all files"}:
+        return _build_match(
+            "show_hidden_files",
+            "ls",
+            {"path": ".", "long": False, "human_readable": False, "all": True},
+            disabled_pack_ids,
+            platform_id=platform_id,
+        )
+
+    if text in {"show detailed files", "show files with details", "list files with sizes"}:
         return _build_match(
             "show_files_detailed",
             "ls",
@@ -73,6 +82,12 @@ def plan_locally(
             disabled_pack_ids,
             platform_id=platform_id,
         )
+
+    filesystem_match = _plan_filesystem_recipe(
+        request, text, disabled_pack_ids, platform_id=platform_id
+    )
+    if filesystem_match is not None:
+        return filesystem_match
 
     if (
         route
@@ -99,6 +114,14 @@ def plan_locally(
             platform_id=platform_id,
         )
 
+    process_match = _plan_process_recipe(request, text, disabled_pack_ids, platform_id=platform_id)
+    if process_match is not None:
+        return process_match
+
+    text_match = _plan_text_recipe(request, text, disabled_pack_ids, platform_id=platform_id)
+    if text_match is not None:
+        return text_match
+
     if (
         route
         and route.category == "git_inspection"
@@ -116,6 +139,10 @@ def plan_locally(
             platform_id=platform_id,
         )
 
+    git_match = _plan_git_recipe(request, text, disabled_pack_ids, platform_id=platform_id)
+    if git_match is not None:
+        return git_match
+
     if route and route.category == "project_health":
         operation = _project_health_operation(text)
         if operation is not None:
@@ -130,9 +157,224 @@ def plan_locally(
     return None
 
 
+def _plan_filesystem_recipe(
+    request: str,
+    text: str,
+    disabled_pack_ids: frozenset[str],
+    *,
+    platform_id: str | None,
+) -> LocalPlannerMatch | None:
+    if match := _match_request(request, r"^(?:show file info|show metadata) for (?P<path>\S+)$"):
+        path = _parse_local_path_token(match.group("path"))
+        if path is None:
+            return None
+        return _build_match(
+            "show_file_info",
+            "stat",
+            {"path": path},
+            disabled_pack_ids,
+            platform_id=platform_id,
+        )
+
+    if match := _match_request(request, r"^identify(?: file)? (?P<path>\S+)$"):
+        path = _parse_local_path_token(match.group("path"))
+        if path is None:
+            return None
+        return _build_match(
+            "identify_file",
+            "file",
+            {"paths": [path]},
+            disabled_pack_ids,
+            platform_id=platform_id,
+        )
+
+    return None
+
+
+def _plan_text_recipe(
+    request: str,
+    text: str,
+    disabled_pack_ids: frozenset[str],
+    *,
+    platform_id: str | None,
+) -> LocalPlannerMatch | None:
+    if match := _match_request(request, r"^show first (?P<count>\S+) lines of (?P<path>\S+)$"):
+        count = _parse_positive_integer(match.group("count"))
+        path = _parse_local_file_path_token(match.group("path"))
+        if count is None or path is None:
+            return None
+        return _build_match(
+            "show_first_lines",
+            "head",
+            {"paths": [path], "lines": count},
+            disabled_pack_ids,
+            platform_id=platform_id,
+        )
+
+    if match := _match_request(request, r"^show last (?P<count>\S+) lines of (?P<path>\S+)$"):
+        count = _parse_positive_integer(match.group("count"))
+        path = _parse_local_file_path_token(match.group("path"))
+        if count is None or path is None:
+            return None
+        return _build_match(
+            "show_last_lines",
+            "tail",
+            {"paths": [path], "lines": count},
+            disabled_pack_ids,
+            platform_id=platform_id,
+        )
+
+    if match := _match_request(request, r"^count (?P<kind>lines|words) in (?P<path>\S+)$"):
+        path = _parse_local_file_path_token(match.group("path"))
+        if path is None:
+            return None
+        kind = match.group("kind").lower()
+        return _build_match(
+            f"count_{kind}",
+            "wc",
+            {"paths": [path], kind: True},
+            disabled_pack_ids,
+            platform_id=platform_id,
+        )
+
+    if match := _match_request(
+        request,
+        r"^(?:search|find) (?P<term>\"[^\"]+\"|'[^']+'|\S+) in (?P<path>\S+)$",
+    ):
+        term = _parse_search_term(match.group("term"))
+        path = _parse_local_path_token(match.group("path"))
+        if term is None or path is None:
+            return None
+        return _build_match(
+            "search_fixed_text",
+            "grep",
+            {
+                "pattern": term,
+                "paths": [path],
+                "fixed_strings": True,
+                "recursive": _should_search_recursively(path),
+                "line_number": True,
+            },
+            disabled_pack_ids,
+            platform_id=platform_id,
+        )
+
+    if match := _match_request(request, r"^(?:show file|show|print) (?P<path>\S+)$"):
+        path = _parse_local_file_path_token(match.group("path"))
+        if path is None:
+            return None
+        return _build_match(
+            "show_file_contents",
+            "cat",
+            {"paths": [path]},
+            disabled_pack_ids,
+            platform_id=platform_id,
+        )
+
+    return None
+
+
+def _plan_process_recipe(
+    request: str,
+    text: str,
+    disabled_pack_ids: frozenset[str],
+    *,
+    platform_id: str | None,
+) -> LocalPlannerMatch | None:
+    if text in {"show running processes", "show all processes", "show processes"}:
+        return _build_match(
+            "show_running_processes",
+            "ps",
+            {"all_processes": True},
+            disabled_pack_ids,
+            platform_id=platform_id,
+        )
+
+    if match := _match_request(
+        request,
+        r"^(?:find (?P<term_a>\S+) processes|find process (?P<term_b>\S+)|find processes matching (?P<term_c>\S+))$",
+    ):
+        term = _parse_search_term(
+            match.group("term_a") or match.group("term_b") or match.group("term_c")
+        )
+        if term is None:
+            return None
+        return _build_match(
+            "find_process",
+            "pgrep",
+            {"pattern": term, "full_command": True, "list_names": True},
+            disabled_pack_ids,
+            platform_id=platform_id,
+        )
+
+    return None
+
+
+def _plan_git_recipe(
+    request: str,
+    text: str,
+    disabled_pack_ids: frozenset[str],
+    *,
+    platform_id: str | None,
+) -> LocalPlannerMatch | None:
+    if text in {"show current branch", "show current git branch", "what branch am i on"}:
+        return _build_match(
+            "show_current_branch",
+            "git",
+            {"operation": "branch_current"},
+            disabled_pack_ids,
+            platform_id=platform_id,
+        )
+
+    if text in {"show recent commits", "show recent git commits"}:
+        return _build_match(
+            "show_recent_commits",
+            "git",
+            {"operation": "log_oneline", "count": 10},
+            disabled_pack_ids,
+            platform_id=platform_id,
+        )
+
+    if match := _match_request(request, r"^show last (?P<count>\S+) commits$"):
+        count = _parse_positive_integer(match.group("count"), max_value=100)
+        if count is None:
+            return None
+        return _build_match(
+            "show_last_commits",
+            "git",
+            {"operation": "log_oneline", "count": count},
+            disabled_pack_ids,
+            platform_id=platform_id,
+        )
+
+    if text == "show changed files":
+        return _build_match(
+            "show_changed_files",
+            "git",
+            {"operation": "diff_name_only"},
+            disabled_pack_ids,
+            platform_id=platform_id,
+        )
+
+    if text == "show git diff summary":
+        return _build_match(
+            "show_git_diff_summary",
+            "git",
+            {"operation": "diff_stat"},
+            disabled_pack_ids,
+            platform_id=platform_id,
+        )
+
+    return None
+
+
 def _normalize_request(request: str) -> str:
     lowered = request.strip().lower()
     return re.sub(r"\s+", " ", lowered)
+
+
+def _match_request(request: str, pattern: str) -> re.Match[str] | None:
+    return re.fullmatch(pattern, request.strip(), flags=re.IGNORECASE)
 
 
 def _build_match(
@@ -205,6 +447,15 @@ def _parse_local_path_token(value: str) -> str | None:
     return path
 
 
+def _parse_local_file_path_token(value: str) -> str | None:
+    path = _parse_local_path_token(value)
+    if path is None:
+        return None
+    if path in {".", "./"} or Path(path).suffix == "":
+        return None
+    return path
+
+
 def _parse_positive_integer(value: str, *, max_value: int | None = None) -> int | None:
     stripped = value.strip()
     if not _INTEGER_RE.fullmatch(stripped):
@@ -235,6 +486,10 @@ def _parse_search_term(value: str) -> str | None:
     if "'" in term or '"' in term:
         return None
     return term
+
+
+def _should_search_recursively(path: str) -> bool:
+    return path in {".", "./"} or Path(path).suffix == ""
 
 
 def _strip_simple_quotes(value: str) -> str | None:

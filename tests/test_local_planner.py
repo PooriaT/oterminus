@@ -8,7 +8,24 @@ from oterminus.local_planner import (
     _parse_search_term,
     plan_locally,
 )
+from oterminus.models import RiskLevel
+from oterminus.policies import PolicyConfig
 from oterminus.router import route_request
+from oterminus.validator import ProposalOrigin, Validator
+
+
+def _local_match(request: str):
+    match = plan_locally(request, route_request(request))
+    assert match is not None, request
+    return match
+
+
+def _assert_local_arguments(request: str, command_family: str, arguments: dict) -> None:
+    match = _local_match(request)
+    assert match.proposal.command_family == command_family
+    assert match.proposal.arguments == arguments
+    assert match.proposal.mode == "structured"
+    assert match.proposal.needs_confirmation is True
 
 
 def test_local_planner_normalizes_whitespace_and_case() -> None:
@@ -143,12 +160,179 @@ def test_local_planner_maps_files_with_sizes() -> None:
     }
 
 
+def test_local_planner_maps_filesystem_inspection_recipes() -> None:
+    cases = {
+        "show hidden files": (
+            "ls",
+            {
+                "path": ".",
+                "long": False,
+                "human_readable": False,
+                "all": True,
+                "recursive": False,
+            },
+        ),
+        "show all files": (
+            "ls",
+            {
+                "path": ".",
+                "long": False,
+                "human_readable": False,
+                "all": True,
+                "recursive": False,
+            },
+        ),
+        "show detailed files": (
+            "ls",
+            {
+                "path": ".",
+                "long": True,
+                "human_readable": True,
+                "all": False,
+                "recursive": False,
+            },
+        ),
+        "show file info for README.md": (
+            "stat",
+            {"path": "README.md", "dereference": False, "verbose": False},
+        ),
+        "show metadata for README.md": (
+            "stat",
+            {"path": "README.md", "dereference": False, "verbose": False},
+        ),
+        "identify README.md": ("file", {"paths": ["README.md"], "brief": False}),
+        "identify file README.md": ("file", {"paths": ["README.md"], "brief": False}),
+    }
+
+    for request, (command_family, arguments) in cases.items():
+        _assert_local_arguments(request, command_family, arguments)
+
+
+def test_local_planner_disabled_filesystem_pack_blocks_filesystem_recipes() -> None:
+    disabled = frozenset({"filesystem"})
+
+    for request in (
+        "show hidden files",
+        "show detailed files",
+        "show file info for README.md",
+        "identify README.md",
+    ):
+        match = plan_locally(
+            request,
+            route_request(request, disabled_pack_ids=disabled),
+            disabled_pack_ids=disabled,
+        )
+        assert match is None, request
+
+
 def test_local_planner_maps_disk_usage_folder() -> None:
     match = plan_locally(
         "show disk usage for this folder", route_request("show disk usage for this folder")
     )
     assert match is not None
     assert match.proposal.command_family == "du"
+
+
+def test_local_planner_maps_text_inspection_recipes() -> None:
+    grep_src_arguments = {
+        "pattern": "TODO",
+        "paths": ["src"],
+        "ignore_case": False,
+        "line_number": True,
+        "fixed_strings": True,
+        "recursive": True,
+        "files_with_matches": False,
+        "max_count": None,
+    }
+    cases = {
+        "show README.md": ("cat", {"paths": ["README.md"]}),
+        "show file README.md": ("cat", {"paths": ["README.md"]}),
+        "print README.md": ("cat", {"paths": ["README.md"]}),
+        "show first 20 lines of README.md": (
+            "head",
+            {"paths": ["README.md"], "lines": 20, "bytes": None},
+        ),
+        "show last 50 lines of app.log": (
+            "tail",
+            {"paths": ["app.log"], "lines": 50, "bytes": None},
+        ),
+        "count lines in README.md": (
+            "wc",
+            {"paths": ["README.md"], "lines": True, "words": False, "bytes": False},
+        ),
+        "count words in README.md": (
+            "wc",
+            {"paths": ["README.md"], "lines": False, "words": True, "bytes": False},
+        ),
+        "search TODO in src": ("grep", grep_src_arguments),
+        'search "TODO" in src': ("grep", grep_src_arguments),
+        "find TODO in README.md": (
+            "grep",
+            {
+                "pattern": "TODO",
+                "paths": ["README.md"],
+                "ignore_case": False,
+                "line_number": True,
+                "fixed_strings": True,
+                "recursive": False,
+                "files_with_matches": False,
+                "max_count": None,
+            },
+        ),
+    }
+
+    for request, (command_family, arguments) in cases.items():
+        _assert_local_arguments(request, command_family, arguments)
+
+
+def test_local_planner_disabled_text_pack_blocks_text_recipes() -> None:
+    disabled = frozenset({"text"})
+
+    for request in (
+        "show README.md",
+        "show first 20 lines of README.md",
+        "show last 50 lines of app.log",
+        "count lines in README.md",
+        "search TODO in src",
+    ):
+        match = plan_locally(
+            request,
+            route_request(request, disabled_pack_ids=disabled),
+            disabled_pack_ids=disabled,
+        )
+        assert match is None, request
+
+
+def test_local_planner_maps_process_inspection_recipes() -> None:
+    for request in ("show running processes", "show all processes", "show processes"):
+        _assert_local_arguments(
+            request,
+            "ps",
+            {"all_processes": True, "full_format": False, "user": None, "pid": None},
+        )
+
+    for request in (
+        "find python processes",
+        "find process python",
+        "find processes matching python",
+    ):
+        _assert_local_arguments(
+            request,
+            "pgrep",
+            {"pattern": "python", "full_command": True, "list_names": True, "user": None},
+        )
+
+
+def test_local_planner_disabled_process_pack_blocks_process_recipes() -> None:
+    disabled = frozenset({"process"})
+
+    for request in ("show running processes", "find python processes"):
+        match = plan_locally(
+            request,
+            route_request(request, disabled_pack_ids=disabled),
+            disabled_pack_ids=disabled,
+        )
+        assert match is None, request
 
 
 def test_local_planner_respects_disabled_git_pack() -> None:
@@ -158,6 +342,21 @@ def test_local_planner_respects_disabled_git_pack() -> None:
         disabled_pack_ids=frozenset({"git"}),
     )
     assert match is None
+
+
+def test_local_planner_maps_git_inspection_recipes() -> None:
+    cases = {
+        "show current branch": ("git", {"operation": "branch_current", "count": 10}),
+        "show current git branch": ("git", {"operation": "branch_current", "count": 10}),
+        "what branch am i on": ("git", {"operation": "branch_current", "count": 10}),
+        "show recent commits": ("git", {"operation": "log_oneline", "count": 10}),
+        "show last 5 commits": ("git", {"operation": "log_oneline", "count": 5}),
+        "show changed files": ("git", {"operation": "diff_name_only", "count": 10}),
+        "show git diff summary": ("git", {"operation": "diff_stat", "count": 10}),
+    }
+
+    for request, (command_family, arguments) in cases.items():
+        _assert_local_arguments(request, command_family, arguments)
 
 
 def test_local_planner_respects_beginner_profile_disabled_packs() -> None:
@@ -208,3 +407,51 @@ def test_local_planner_unsafe_requests_fall_back() -> None:
     assert plan_locally("delete junk", route_request("delete junk")) is None
     assert plan_locally("install dependencies", route_request("install dependencies")) is None
     assert plan_locally("format the code", route_request("format the code")) is None
+
+
+def test_local_planner_recipe_unsafe_requests_fall_back() -> None:
+    requests = (
+        "show first 20 lines of README.md && whoami",
+        "search TODO in src | cat",
+        "count lines in https://example.com",
+        "show / files",
+        "find -rf processes",
+        "show last -5 lines of app.log",
+        "show first 0 lines of README.md",
+        "delete README.md",
+        "move README.md to backup",
+        "git reset hard",
+        "git clean everything",
+    )
+
+    for request in requests:
+        assert plan_locally(request, route_request(request)) is None, request
+
+
+def test_local_planner_validator_accepts_and_renders_new_structured_recipes() -> None:
+    validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))
+    expected = {
+        "show first 20 lines of README.md": (
+            "head -n 20 README.md",
+            ["head", "-n", "20", "README.md"],
+        ),
+        "search TODO in src": (
+            "grep -F -n -r TODO src",
+            ["grep", "-F", "-n", "-r", "TODO", "src"],
+        ),
+        "show last 5 commits": (
+            "git log --oneline -n 5",
+            ["git", "log", "--oneline", "-n", "5"],
+        ),
+        "find python processes": ("pgrep -f -l python", ["pgrep", "-f", "-l", "python"]),
+        "identify README.md": ("file README.md", ["file", "README.md"]),
+    }
+
+    for request, (rendered_command, argv) in expected.items():
+        match = _local_match(request)
+        validation = validator.validate(match.proposal, origin=ProposalOrigin.LOCAL_PLANNER)
+
+        assert validation.accepted is True
+        assert validation.risk_level == RiskLevel.SAFE
+        assert validation.rendered_command == rendered_command
+        assert validation.argv == argv

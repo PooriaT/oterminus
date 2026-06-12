@@ -81,6 +81,125 @@
     ]
   },
   {
+    "id": "local-head-first-20-readme",
+    "user_input": "show first 20 lines of README.md",
+    "expected_mode": "structured",
+    "expected_command_family": "head",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "head -n 20 README.md",
+    "expected_argv": [
+      "head",
+      "-n",
+      "20",
+      "README.md"
+    ]
+  },
+  {
+    "id": "local-tail-last-50-app-log",
+    "user_input": "show last 50 lines of app.log",
+    "expected_mode": "structured",
+    "expected_command_family": "tail",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "tail -n 50 app.log",
+    "expected_argv": [
+      "tail",
+      "-n",
+      "50",
+      "app.log"
+    ]
+  },
+  {
+    "id": "local-wc-count-lines-readme",
+    "user_input": "count lines in README.md",
+    "expected_mode": "structured",
+    "expected_command_family": "wc",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "wc -l README.md",
+    "expected_argv": [
+      "wc",
+      "-l",
+      "README.md"
+    ]
+  },
+  {
+    "id": "local-grep-search-todo-src",
+    "user_input": "search TODO in src",
+    "expected_mode": "structured",
+    "expected_command_family": "grep",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "grep -F -n -r TODO src",
+    "expected_argv": [
+      "grep",
+      "-F",
+      "-n",
+      "-r",
+      "TODO",
+      "src"
+    ]
+  },
+  {
+    "id": "local-git-current-branch",
+    "user_input": "show current branch",
+    "expected_mode": "structured",
+    "expected_command_family": "git",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "git branch --show-current",
+    "expected_argv": [
+      "git",
+      "branch",
+      "--show-current"
+    ]
+  },
+  {
+    "id": "local-git-last-5-commits",
+    "user_input": "show last 5 commits",
+    "expected_mode": "structured",
+    "expected_command_family": "git",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "git log --oneline -n 5",
+    "expected_argv": [
+      "git",
+      "log",
+      "--oneline",
+      "-n",
+      "5"
+    ]
+  },
+  {
+    "id": "local-process-find-python",
+    "user_input": "find python processes",
+    "expected_mode": "structured",
+    "expected_command_family": "pgrep",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "pgrep -f -l python",
+    "expected_argv": [
+      "pgrep",
+      "-f",
+      "-l",
+      "python"
+    ]
+  },
+  {
+    "id": "local-file-identify-readme",
+    "user_input": "identify README.md",
+    "expected_mode": "structured",
+    "expected_command_family": "file",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "file README.md",
+    "expected_argv": [
+      "file",
+      "README.md"
+    ]
+  },
+  {
     "id": "local-ambiguous-clean-folder",
     "user_input": "clean this folder",
     "expected_ambiguity_detected": true,

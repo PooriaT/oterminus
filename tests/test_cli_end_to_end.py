@@ -440,6 +440,28 @@ def test_auto_execute_safe_local_planner_command_skips_confirmation(
     assert payload["proposal_origin"] == "local_planner"
 
 
+def test_auto_execute_safe_new_local_planner_recipe_skips_ollama(
+    monkeypatch, tmp_path: Path
+) -> None:
+    from oterminus.cli import main
+
+    config = AppConfig(**(_config(tmp_path).__dict__ | {"auto_execute_safe": True}))
+    _validator, executor = _install_main_dependencies(monkeypatch, config)
+    monkeypatch.setattr(
+        "oterminus.cli.ensure_startup_ready",
+        Mock(side_effect=AssertionError("local planner recipe should not need Ollama")),
+    )
+    monkeypatch.setattr("builtins.input", Mock(side_effect=AssertionError("no confirmation")))
+
+    code = main(["identify", "README.md"])
+
+    assert code == 0
+    executor.run.assert_called_once_with(["file", "README.md"], display_command="file README.md")
+    payload = _read_audit_payload(config.audit_log_path)
+    assert payload["confirmation_result"] == "skipped_auto_execute_safe"
+    assert payload["proposal_origin"] == "local_planner"
+
+
 def test_auto_execute_safe_network_command_still_calls_confirmation(
     monkeypatch, tmp_path: Path
 ) -> None:

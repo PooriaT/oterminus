@@ -122,12 +122,24 @@ After routing, OTerminus attempts a deterministic local-planner fast path for a 
 explicit, reviewable rules. The local planner produces structured proposals only; it never emits
 experimental command text and never executes directly.
 
+Current recipes cover high-frequency safe inspection requests for filesystems (`ls`, `du`, `df`,
+`stat`, `file`), text (`cat`, `head`, `tail`, `grep`, `wc`), processes (`ps`, `pgrep`), and
+read-only Git (`status`, current branch, one-line logs, diff stats, changed file names), plus the
+existing curated current-directory, clear-screen, and project-health checks. Examples include
+`show hidden files`, `show first 20 lines of README.md`, `search TODO in src`,
+`find python processes`, and `show last 5 commits`.
+
 The planner helper foundation is conservative. It normalizes request text, rejects unsafe shell
-syntax, and supports only simple parameter extraction for future explicit rules: local path tokens,
+syntax, and supports only simple parameter extraction for explicit rules: local path tokens,
 base-10 positive integers, and simple search terms. Ambiguous or unsafe values fail closed by
 returning no local match. The shared proposal builder respects disabled command packs and
 platform-specific command availability through registry metadata, then lets structured argument
 validation remain the final authority.
+
+The local planner does not handle network, write, dangerous, archive mutation, process mutation, Git
+mutation, or broad project-health expansion requests. It also does not accept natural-language
+recipes containing shell operators, pipelines, redirection, command substitution, wildcard paths,
+URL-like paths, broad roots, or zero/negative line counts.
 
 ### 6) Planner + parsing
 
