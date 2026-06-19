@@ -61,7 +61,7 @@ def validate_completion_output(shell: str, proc: subprocess.CompletedProcess[str
 
 def validate_config_smoke(oterminus: Path, temp_dir: Path, env: dict[str, str]) -> None:
     config_path = temp_dir / "config" / "config.json"
-    path_proc = run([str(oterminus), "config", "path"], env=env)
+    path_proc = run([str(oterminus), "config", "path"], cwd=temp_dir, env=env)
     if path_proc.stdout.strip() != str(config_path):
         print(
             "Unexpected config path output: "
@@ -73,7 +73,7 @@ def validate_config_smoke(oterminus: Path, temp_dir: Path, env: dict[str, str]) 
         print("config path unexpectedly created a file.", file=sys.stderr)
         raise SystemExit(1)
 
-    run([str(oterminus), "config", "init", "--defaults"], env=env)
+    run([str(oterminus), "config", "init", "--defaults"], cwd=temp_dir, env=env)
     if not config_path.exists() or not config_path.is_file():
         print(f"config init did not create {config_path}", file=sys.stderr)
         raise SystemExit(1)
@@ -81,12 +81,27 @@ def validate_config_smoke(oterminus: Path, temp_dir: Path, env: dict[str, str]) 
         print(f"config init wrote outside the smoke temp directory: {config_path}", file=sys.stderr)
         raise SystemExit(1)
 
-    validate_proc = run([str(oterminus), "config", "validate"], env=env)
+    get_before_proc = run([str(oterminus), "config", "get", "color_mode"], cwd=temp_dir, env=env)
+    if get_before_proc.stdout.strip() != "color_mode=auto":
+        print(f"Unexpected config get output: {get_before_proc.stdout!r}", file=sys.stderr)
+        raise SystemExit(1)
+
+    run([str(oterminus), "config", "set", "color_mode", "never"], cwd=temp_dir, env=env)
+    if not config_path.exists() or temp_dir not in config_path.parents:
+        print(f"config set wrote outside the smoke temp directory: {config_path}", file=sys.stderr)
+        raise SystemExit(1)
+
+    get_after_proc = run([str(oterminus), "config", "get", "color_mode"], cwd=temp_dir, env=env)
+    if get_after_proc.stdout.strip() != "color_mode=never":
+        print(f"config get did not reflect set value: {get_after_proc.stdout!r}", file=sys.stderr)
+        raise SystemExit(1)
+
+    validate_proc = run([str(oterminus), "config", "validate"], cwd=temp_dir, env=env)
     if "Status: valid" not in validate_proc.stdout:
         print(f"Unexpected config validate output: {validate_proc.stdout!r}", file=sys.stderr)
         raise SystemExit(1)
 
-    show_proc = run([str(oterminus), "config", "show"], env=env)
+    show_proc = run([str(oterminus), "config", "show"], cwd=temp_dir, env=env)
     if "Active config path:" not in show_proc.stdout or "Settings:" not in show_proc.stdout:
         print(f"Unexpected config show output: {show_proc.stdout!r}", file=sys.stderr)
         raise SystemExit(1)
@@ -100,6 +115,7 @@ def script_path(bin_dir: Path, name: str) -> Path:
 
 def smoke_env(td: Path) -> dict[str, str]:
     env = os.environ.copy()
+    env.pop("OTERMINUS_COLOR", None)
     env["OTERMINUS_CONFIG_PATH"] = str(td / "config" / "config.json")
     env["OTERMINUS_AUDIT_LOG_PATH"] = str(td / "audit" / "audit.jsonl")
     env["OTERMINUS_HISTORY_PATH"] = str(td / "history" / "history.jsonl")

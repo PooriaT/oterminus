@@ -51,6 +51,16 @@ def test_parse_args_config_mode() -> None:
     assert args.config_argv == ["init", "--force"]
 
 
+def test_parse_args_config_get_and_set_modes() -> None:
+    get_args = parse_args(["config", "get", "color_mode"])
+    set_args = parse_args(["config", "set", "color_mode", "never"])
+
+    assert get_args.cli_mode == "config"
+    assert get_args.config_argv == ["get", "color_mode"]
+    assert set_args.cli_mode == "config"
+    assert set_args.config_argv == ["set", "color_mode", "never"]
+
+
 def test_parse_args_rejects_dry_run_config_request() -> None:
     with pytest.raises(SystemExit) as exc_info:
         parse_args(["--dry-run", "config", "path"])

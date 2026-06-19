@@ -166,8 +166,9 @@ The script will:
 3. install the local wheel
 4. verify `import oterminus`
 5. run CLI smoke checks: `oterminus --help`, `oterminus --version`, `oterminus version`,
-   `oterminus doctor`, `oterminus completion zsh`, `oterminus completion bash`,
-   `oterminus completion fish`, and `oterminus-evals`
+   `oterminus doctor`, config path/init/get/set/validate/show against a temporary config path,
+   `oterminus completion zsh`, `oterminus completion bash`, `oterminus completion fish`, and
+   `oterminus-evals`
 
 Notes:
 
