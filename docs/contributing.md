@@ -89,6 +89,13 @@ Git repository state, filesystem contents, a real installed wheel, or subprocess
 the same deterministic fixture path, so no Ollama service/model/network call is required for the
 regression gate. See [Evals](architecture/evals.md) for fixture organization and format details.
 
+## Dogfooding findings
+
+Use the [Dogfooding playbook](dogfooding-playbook.md) before turning real unsupported or surprising
+requests into issues, eval fixtures, docs examples, local-planner follow-ups, command-spec changes,
+or bug reports. Dogfooding notes should capture the request pattern and expected behavior, not
+private logs, file contents, audit records, history files, hostnames, tokens, or project details.
+
 ## CI coverage
 
 The main CI workflow keeps Ubuntu as the full regression gate. It runs the complete pytest suite,

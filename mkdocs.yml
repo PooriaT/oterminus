@@ -48,6 +48,7 @@ nav:
       - Audit Log Schema: reference/audit-log-schema.md
   - Contributing:
       - Contributor Workflow: contributing.md
+      - Dogfooding Playbook: dogfooding-playbook.md
       - Release and Publishing: release.md
       - Adding Command Families: adding-command-families.md
   - ADRs:
