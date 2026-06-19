@@ -21,6 +21,9 @@ These evals are not live LLM tests. For planner-path cases, `planner_proposal` s
 planner output payload. The runner parses that payload locally and validates the resulting proposal;
 it does not call Ollama, download a model, or require network access.
 
+For real unsupported requests discovered during dogfooding, sanitize the request first using the
+[Dogfooding playbook](../dogfooding-playbook.md) before creating or changing eval fixtures.
+
 ## Fixture organization
 
 Fixtures live under `evals/cases/*.json`. Each fixture file contains one JSON array, and each array
