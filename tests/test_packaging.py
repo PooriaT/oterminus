@@ -77,6 +77,23 @@ def test_validate_package_install_checks_cli_version(monkeypatch, tmp_path: Path
             return subprocess.CompletedProcess(
                 cmd, 0, stdout="Updated color_mode=never\n", stderr=""
             )
+        if cmd[-3:] == ["config", "reset", "color_mode"]:
+            assert env is not None
+            config_path = Path(env["OTERMINUS_CONFIG_PATH"])
+            config_path.write_text('{"schema_version": 1}\n')
+            return subprocess.CompletedProcess(cmd, 0, stdout="Reset color_mode\n", stderr="")
+        if cmd[-4:] == ["config", "set", "audit_enabled", "false"]:
+            assert env is not None
+            config_path = Path(env["OTERMINUS_CONFIG_PATH"])
+            config_path.write_text('{"schema_version": 1, "audit_enabled": false}\n')
+            return subprocess.CompletedProcess(
+                cmd, 0, stdout="Updated audit_enabled=false\n", stderr=""
+            )
+        if cmd[-3:] == ["config", "reset", "--all-safe"]:
+            assert env is not None
+            config_path = Path(env["OTERMINUS_CONFIG_PATH"])
+            config_path.write_text('{"schema_version": 1}\n')
+            return subprocess.CompletedProcess(cmd, 0, stdout="Reset safe config keys\n", stderr="")
         if cmd[-2:] == ["config", "validate"]:
             return subprocess.CompletedProcess(cmd, 0, stdout="Status: valid\n", stderr="")
         if cmd[-2:] == ["config", "show"]:
@@ -104,6 +121,9 @@ def test_validate_package_install_checks_cli_version(monkeypatch, tmp_path: Path
     assert any(cmd[-3:] == ["config", "init", "--defaults"] for cmd in recorded)
     assert any(cmd[-3:] == ["config", "get", "color_mode"] for cmd in recorded)
     assert any(cmd[-4:] == ["config", "set", "color_mode", "never"] for cmd in recorded)
+    assert any(cmd[-3:] == ["config", "reset", "color_mode"] for cmd in recorded)
+    assert any(cmd[-4:] == ["config", "set", "audit_enabled", "false"] for cmd in recorded)
+    assert any(cmd[-3:] == ["config", "reset", "--all-safe"] for cmd in recorded)
     assert any(cmd[-2:] == ["config", "validate"] for cmd in recorded)
     assert any(cmd[-2:] == ["config", "show"] for cmd in recorded)
     assert any(cmd[-2:] == ["completion", "zsh"] for cmd in recorded)

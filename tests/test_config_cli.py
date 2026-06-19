@@ -572,6 +572,241 @@ def test_config_get_rejects_unsupported_keys(
     assert "schema_version" in output
 
 
+def test_config_reset_removes_persisted_key_and_preserves_unrelated_fields(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    config_path = tmp_path / "config.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "onboarding_completed": True,
+                "model": "gemma4",
+                "color_mode": "never",
+                "audit_enabled": False,
+                "audit_log_path": str(tmp_path / "audit.jsonl"),
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(config_path))
+    monkeypatch.delenv("OTERMINUS_COLOR", raising=False)
+
+    code = run_config_cli(["reset", "color_mode"])
+
+    output = capsys.readouterr().out
+    saved = json.loads(config_path.read_text(encoding="utf-8"))
+    assert code == 0
+    assert f"Reset color_mode in {config_path}" in output
+    assert "color_mode" not in saved
+    assert saved["schema_version"] == CURRENT_USER_CONFIG_SCHEMA_VERSION
+    assert saved["onboarding_completed"] is True
+    assert saved["model"] == "gemma4"
+    assert saved["audit_enabled"] is False
+    assert saved["audit_log_path"] == str(tmp_path / "audit.jsonl")
+    assert run_config_cli(["get", "color_mode"]) == 0
+    assert capsys.readouterr().out == "color_mode=auto\n"
+
+
+def test_config_reset_non_persisted_key_succeeds_without_rewriting(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    config_path = tmp_path / "config.json"
+    original = '{\n  "schema_version": 1,\n  "audit_enabled": false\n}\n'
+    config_path.write_text(original, encoding="utf-8")
+    monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(config_path))
+
+    code = run_config_cli(["reset", "color_mode"])
+
+    output = capsys.readouterr().out
+    assert code == 0
+    assert f"No persisted value for color_mode in {config_path}; nothing to reset." in output
+    assert config_path.read_text(encoding="utf-8") == original
+
+
+def test_config_reset_missing_config_does_not_create_file(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    config_path = tmp_path / "missing.json"
+    monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(config_path))
+
+    code = run_config_cli(["reset", "color_mode"])
+
+    output = capsys.readouterr().out
+    assert code == 0
+    assert "No config file exists" in output
+    assert "color_mode" in output
+    assert not config_path.exists()
+
+
+def test_config_reset_all_safe_missing_config_does_not_create_file(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    config_path = tmp_path / "missing.json"
+    monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(config_path))
+
+    code = run_config_cli(["reset", "--all-safe"])
+
+    output = capsys.readouterr().out
+    assert code == 0
+    assert "No config file exists" in output
+    assert "safe settings" in output
+    assert not config_path.exists()
+
+
+def test_config_reset_rejects_invalid_existing_config_without_overwriting(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    config_path = tmp_path / "config.json"
+    original = '{"audit_log_path": 123}'
+    config_path.write_text(original, encoding="utf-8")
+    monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(config_path))
+
+    code = run_config_cli(["reset", "color_mode"])
+
+    output = capsys.readouterr().out
+    assert code == 2
+    assert "Config reset failed" in output
+    assert "config validate" in output
+    assert config_path.read_text(encoding="utf-8") == original
+
+
+def test_config_reset_all_safe_resets_documented_set_and_preserves_internal_fields(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    config_path = tmp_path / "config.json"
+    payload = {
+        "schema_version": 1,
+        "onboarding_completed": True,
+        "model": "gemma4",
+        "command_profile": "developer",
+        "auto_execute_safe": True,
+        "audit_enabled": False,
+        "audit_redact": False,
+        "history_enabled": True,
+        "history_redact": False,
+        "explain_failures": True,
+        "color_mode": "never",
+        "timeout_seconds": 7,
+        "max_output_chars": 1234,
+        "allowed_roots": [str(tmp_path)],
+        "disabled_command_packs": ["network"],
+        "policy_mode": "safe",
+        "audit_log_path": str(tmp_path / "audit.jsonl"),
+        "history_path": str(tmp_path / "history.jsonl"),
+        "history_limit": 9,
+        "failure_explanation_max_chars": 111,
+    }
+    config_path.write_text(json.dumps(payload), encoding="utf-8")
+    monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(config_path))
+
+    code = run_config_cli(["reset", "--all-safe"])
+
+    output = capsys.readouterr().out
+    saved = json.loads(config_path.read_text(encoding="utf-8"))
+    assert code == 0
+    assert "Reset safe config keys" in output
+    for key in SUPPORTED_MUTABLE_CONFIG_KEYS:
+        assert key not in saved
+        assert key in output
+    assert saved["schema_version"] == CURRENT_USER_CONFIG_SCHEMA_VERSION
+    assert saved["onboarding_completed"] is True
+    assert saved["allowed_roots"] == [str(tmp_path)]
+    assert saved["disabled_command_packs"] == ["network"]
+    assert saved["policy_mode"] == "safe"
+    assert saved["audit_log_path"] == str(tmp_path / "audit.jsonl")
+    assert saved["history_path"] == str(tmp_path / "history.jsonl")
+    assert saved["history_limit"] == 9
+    assert saved["failure_explanation_max_chars"] == 111
+    assert read_user_config().config is not None
+
+
+def test_config_reset_all_safe_with_no_persisted_safe_values_succeeds_without_rewriting(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    config_path = tmp_path / "config.json"
+    original = '{"schema_version": 1, "allowed_roots": ["/tmp"]}\n'
+    config_path.write_text(original, encoding="utf-8")
+    monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(config_path))
+
+    code = run_config_cli(["reset", "--all-safe"])
+
+    output = capsys.readouterr().out
+    assert code == 0
+    assert f"No persisted safe config values in {config_path}; nothing to reset." in output
+    assert config_path.read_text(encoding="utf-8") == original
+
+
+def test_config_reset_reports_override_note_when_environment_still_wins(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    config_path = tmp_path / "config.json"
+    config_path.write_text('{"schema_version": 1, "color_mode": "never"}\n', encoding="utf-8")
+    monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(config_path))
+    monkeypatch.setenv("OTERMINUS_COLOR", "always")
+
+    code = run_config_cli(["reset", "color_mode"])
+
+    output = capsys.readouterr().out
+    assert code == 0
+    assert f"Reset color_mode in {config_path}" in output
+    assert (
+        "Note: effective value is currently overridden by OTERMINUS_COLOR from environment."
+        in output
+    )
+
+
+def test_config_reset_reports_override_note_when_dotenv_still_wins(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    config_path = tmp_path / "config.json"
+    config_path.write_text('{"schema_version": 1, "color_mode": "never"}\n', encoding="utf-8")
+    monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(config_path))
+    monkeypatch.delenv("OTERMINUS_COLOR", raising=False)
+    (tmp_path / ".env").write_text("OTERMINUS_COLOR=always\n", encoding="utf-8")
+
+    code = run_config_cli(["reset", "color_mode"])
+
+    output = capsys.readouterr().out
+    assert code == 0
+    assert "Note: effective value is currently overridden by OTERMINUS_COLOR from .env." in output
+
+
+@pytest.mark.parametrize(
+    "key",
+    [
+        "allow_dangerous",
+        "policy.allow_dangerous",
+        "allowed_roots",
+        "disabled_command_packs",
+        "policy.mode",
+        "audit_log_path",
+        "history_path",
+        "history_limit",
+        "failure_explanation_max_chars",
+        "schema_version",
+        "onboarding_completed",
+    ],
+)
+def test_config_reset_rejects_unsupported_and_dangerous_keys(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    key: str,
+) -> None:
+    config_path = tmp_path / "config.json"
+    monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(config_path))
+
+    code = run_config_cli(["reset", key])
+
+    output = capsys.readouterr().out
+    assert code == 2
+    assert "Unsupported config key" in output
+    if "allow_dangerous" in key:
+        assert "environment-only" in output
+    assert not config_path.exists()
+
+
 def test_config_edit_uses_visual_before_editor_and_preserves_args(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -681,7 +916,14 @@ def test_config_unknown_subcommand_or_invalid_options_exit_nonzero(argv: list[st
 
 @pytest.mark.parametrize(
     "argv",
-    (["get"], ["set", "color_mode"], ["set", "color_mode", "never", "extra"]),
+    (
+        ["get"],
+        ["set", "color_mode"],
+        ["set", "color_mode", "never", "extra"],
+        ["reset"],
+        ["reset", "color_mode", "--all-safe"],
+        ["reset", "color_mode", "extra"],
+    ),
 )
 def test_config_get_set_missing_or_extra_arguments_fail(argv: list[str]) -> None:
     with pytest.raises(SystemExit) as exc_info:
@@ -690,7 +932,7 @@ def test_config_get_set_missing_or_extra_arguments_fail(argv: list[str]) -> None
     assert exc_info.value.code == 2
 
 
-def test_main_config_get_and_set_bypass_request_lifecycle_and_ollama(
+def test_main_config_get_set_and_reset_bypass_request_lifecycle_and_ollama(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     from oterminus.cli import main
@@ -721,7 +963,10 @@ def test_main_config_get_and_set_bypass_request_lifecycle_and_ollama(
 
     assert main(["config", "set", "color_mode", "never"]) == 0
     assert main(["config", "get", "color_mode"]) == 0
+    assert main(["config", "reset", "color_mode"]) == 0
 
-    assert "color_mode=never" in capsys.readouterr().out
-    assert json.loads(config_path.read_text(encoding="utf-8"))["color_mode"] == "never"
+    output = capsys.readouterr().out
+    assert "color_mode=never" in output
+    assert f"Reset color_mode in {config_path}" in output
+    assert "color_mode" not in json.loads(config_path.read_text(encoding="utf-8"))
     assert "allow_dangerous" not in SUPPORTED_MUTABLE_CONFIG_KEYS

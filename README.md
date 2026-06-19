@@ -139,6 +139,8 @@ oterminus config path
 oterminus config show
 oterminus config get color_mode
 oterminus config set color_mode never
+oterminus config reset color_mode
+oterminus config reset --all-safe
 oterminus config init
 oterminus config init --defaults
 oterminus config validate
@@ -155,15 +157,15 @@ history. `oterminus config path` prints the active JSON config path selected by
 `oterminus config`, not `oterminus --config`, so `--config` remains available for a future
 alternate-path option.
 
-Use `oterminus config get <key>` and `oterminus config set <key> <value>` for safe, persistent
-single-setting changes. Supported keys are `model`, `command_profile`, `auto_execute_safe`,
-`audit_enabled`, `audit_redact`, `history_enabled`, `history_redact`, `explain_failures`,
-`color_mode`, `timeout_seconds`, and `max_output_chars`. `config get` prints the effective value
-after environment, `.env`, user config, and default precedence, for example `color_mode=auto`.
-`config set` writes only the user config JSON through the validated schema and atomic save path; it
-does not edit exported environment variables, `.env`, or shell startup files. Environment or `.env`
-values may still override the persisted value, and dangerous execution remains environment-only via
-`OTERMINUS_ALLOW_DANGEROUS`.
+Use `oterminus config get <key>`, `oterminus config set <key> <value>`, and
+`oterminus config reset <key>` for safe single-setting changes. Supported keys are `model`,
+`command_profile`, `auto_execute_safe`, `audit_enabled`, `audit_redact`, `history_enabled`,
+`history_redact`, `explain_failures`, `color_mode`, `timeout_seconds`, and `max_output_chars`.
+`config reset --all-safe` removes persisted values for exactly that same safe set. Reset removes
+values from the user config so effective values fall back through environment, `.env`, and defaults;
+it does not delete the config file or edit exported environment variables, `.env`, or shell startup
+files. Environment or `.env` values may still override the effective value, and dangerous execution
+remains environment-only via `OTERMINUS_ALLOW_DANGEROUS`.
 
 Terminal color policy is configurable with `OTERMINUS_COLOR=auto|always|never` or persisted
 `color_mode`:

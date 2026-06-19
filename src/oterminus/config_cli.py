@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Callable
 
 from oterminus.config import (
+    CURRENT_USER_CONFIG_SCHEMA_VERSION,
     ConfigError,
     ConfigValueSource,
     ResolvedConfig,
@@ -29,14 +30,25 @@ from oterminus.config_settings import (
     DANGEROUS_CONFIG_KEYS,
     SUPPORTED_MUTABLE_CONFIG_KEYS,
     SUPPORTED_MUTABLE_CONFIG_SETTING_BY_KEY,
+    SUPPORTED_RESET_CONFIG_KEYS,
     parse_config_set_value,
 )
 from oterminus.onboarding import run_onboarding
 
 
-CONFIG_COMMANDS: tuple[str, ...] = ("path", "show", "init", "validate", "edit", "get", "set")
+CONFIG_COMMANDS: tuple[str, ...] = (
+    "path",
+    "show",
+    "init",
+    "validate",
+    "edit",
+    "get",
+    "set",
+    "reset",
+)
 CONFIG_INIT_OPTIONS: tuple[str, ...] = ("--defaults", "--force")
 SUPPORTED_MUTABLE_CONFIG_KEYS_TEXT = ", ".join(SUPPORTED_MUTABLE_CONFIG_KEYS)
+SUPPORTED_RESET_CONFIG_KEYS_TEXT = ", ".join(SUPPORTED_RESET_CONFIG_KEYS)
 
 
 @dataclass(frozen=True)
@@ -94,6 +106,17 @@ def parse_config_args(argv: list[str]) -> argparse.Namespace:
     )
     set_parser.add_argument("key", help="Supported config key.")
     set_parser.add_argument("value", help="Value to persist.")
+    reset_parser = subparsers.add_parser(
+        "reset",
+        help="Remove one safe persisted setting or all safe persisted settings.",
+        epilog=f"Supported keys: {SUPPORTED_RESET_CONFIG_KEYS_TEXT}",
+    )
+    reset_parser.add_argument("key", nargs="?", help="Supported config key to reset.")
+    reset_parser.add_argument(
+        "--all-safe",
+        action="store_true",
+        help="Reset all supported safe user-facing settings.",
+    )
     init_parser = subparsers.add_parser("init", help="Create a safe default config.")
     init_parser.add_argument(
         "--defaults",
@@ -109,6 +132,8 @@ def parse_config_args(argv: list[str]) -> argparse.Namespace:
     subparsers.add_parser("edit", help="Open the active config in $VISUAL or $EDITOR.")
 
     args = parser.parse_args(argv)
+    if args.config_command == "reset" and (args.key is None) == (not args.all_safe):
+        reset_parser.error("reset requires exactly one of <key> or --all-safe")
     if args.config_command is None:
         parser.print_help()
     return args
@@ -137,6 +162,8 @@ def run_config_cli(
         return _get_config(args.key)
     if command == "set":
         return _set_config(args.key, args.value)
+    if command == "reset":
+        return _reset_config(args.key, all_safe=args.all_safe)
     if command == "init":
         return _init_config(
             defaults=args.defaults,
@@ -361,6 +388,74 @@ def _set_config(key: str, raw_value: str) -> int:
     return 0
 
 
+def _reset_config(key: str | None, *, all_safe: bool) -> int:
+    if all_safe:
+        keys = SUPPORTED_RESET_CONFIG_KEYS
+    else:
+        assert key is not None
+        if not _is_supported_config_key(key):
+            return 2
+        keys = (key,)
+
+    path = get_user_config_path()
+    result = read_user_config(path)
+    if result.status is UserConfigReadStatus.MISSING:
+        if all_safe:
+            print(
+                f"No config file exists at {path}; safe settings are already using "
+                "effective defaults or overrides."
+            )
+        else:
+            print(
+                f"No config file exists at {path}; {key} is already using the effective "
+                "default or overrides."
+            )
+        _print_reset_override_notes(keys)
+        return 0
+    if result.status is not UserConfigReadStatus.VALID or result.config is None:
+        print(f"Config reset failed: existing config is invalid ({result.status.value}).")
+        if result.error is not None:
+            print(f"Error: {result.error.reason}")
+        print(f"Path: {result.path}")
+        print("Repair the file or run `oterminus config validate` for details.")
+        return 2
+
+    current = result.config
+    explicit_fields = set(current.model_fields_set)
+    keys_to_remove = tuple(key for key in keys if key in explicit_fields)
+    if not keys_to_remove:
+        if all_safe:
+            print(f"No persisted safe config values in {path}; nothing to reset.")
+            _print_reset_override_notes(keys)
+        else:
+            print(f"No persisted value for {key} in {path}; nothing to reset.")
+            _print_reset_override_notes(keys)
+        return 0
+
+    kept_fields = explicit_fields - set(keys_to_remove)
+    kept_fields.add("schema_version")
+    payload = current.model_dump(mode="python", include=kept_fields)
+    payload["schema_version"] = CURRENT_USER_CONFIG_SCHEMA_VERSION
+    try:
+        updated = UserConfig.model_validate(payload)
+        save_user_config(updated, include_none=True)
+    except ConfigError as exc:
+        print(f"Config reset failed: {exc.reason}")
+        print(f"Path: {exc.path}")
+        return 2
+    except OSError as exc:
+        print(f"Config reset failed: Unable to write user config: {exc}")
+        print(f"Path: {path}")
+        return 2
+
+    if all_safe:
+        print(f"Reset safe config keys in {path}: {', '.join(keys_to_remove)}")
+    else:
+        print(f"Reset {keys_to_remove[0]} in {path}")
+    _print_reset_override_notes(keys)
+    return 0
+
+
 def _is_supported_config_key(key: str) -> bool:
     if key in SUPPORTED_MUTABLE_CONFIG_SETTING_BY_KEY:
         return True
@@ -372,6 +467,18 @@ def _is_supported_config_key(key: str) -> bool:
         return False
     print(f"Unsupported config key {key!r}. Supported keys: {SUPPORTED_MUTABLE_CONFIG_KEYS_TEXT}.")
     return False
+
+
+def _print_reset_override_notes(keys: tuple[str, ...]) -> None:
+    try:
+        resolved = resolve_config()
+    except (ConfigError, ValueError) as exc:
+        print(f"Note: effective configuration could not be resolved: {exc}")
+        return
+    for key in keys:
+        note = _format_override_note(key, resolved.sources.get(key))
+        if note is not None:
+            print(note)
 
 
 def _format_config_get_value(key: str, resolved: ResolvedConfig) -> str:

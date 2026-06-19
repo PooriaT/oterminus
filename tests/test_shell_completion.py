@@ -9,8 +9,9 @@ from oterminus.shell_completion import render_shell_completion, supported_shells
 
 EXPECTED_FLAGS = ("--dry-run", "--explain", "--version", "--verbose", "--help")
 EXPECTED_COMMANDS = ("doctor", "version", "completion", "config")
-EXPECTED_CONFIG_COMMANDS = ("path", "show", "init", "validate", "edit", "get", "set")
+EXPECTED_CONFIG_COMMANDS = ("path", "show", "init", "validate", "edit", "get", "set", "reset")
 EXPECTED_CONFIG_INIT_OPTIONS = ("--defaults", "--force")
+EXPECTED_CONFIG_RESET_OPTIONS = ("--all-safe",)
 EXPECTED_SHELLS = ("zsh", "bash", "fish")
 
 
@@ -119,6 +120,19 @@ def test_render_shell_completion_includes_supported_config_keys_only(shell: str)
     assert "allow_dangerous" not in script
     assert "policy.allow_dangerous" not in script
     assert "schema_version" not in script
+
+
+@pytest.mark.parametrize("shell", supported_shells())
+def test_render_shell_completion_includes_reset_supported_keys_and_all_safe(shell: str) -> None:
+    script = render_shell_completion(shell)
+
+    for key in SUPPORTED_MUTABLE_CONFIG_KEYS:
+        assert key in script
+    if shell == "fish":
+        assert "-l all-safe" in script
+    else:
+        for option in EXPECTED_CONFIG_RESET_OPTIONS:
+            assert option in script
 
 
 @pytest.mark.parametrize("shell", ("zsh", "bash"))

@@ -135,6 +135,8 @@ All config commands bypass the normal request lifecycle and do not require Ollam
 | `oterminus config show` | Shows the active path, existence, schema version when valid, effective settings, and per-setting source (`environment`, `.env`, `user config`, `default`, or `derived`). |
 | `oterminus config get <key>` | Prints one supported effective setting as `key=value`. Uses the same precedence as `config show`; output is one plain line with no ANSI styling. |
 | `oterminus config set <key> <value>` | Updates one supported safe setting in the user config JSON. Validates through the user-config schema, preserves unrelated fields, writes atomically, and prints the target path. |
+| `oterminus config reset <key>` | Removes one supported safe setting from the user config JSON so effective resolution falls back to environment, `.env`, then default. Preserves unrelated fields and does not create a missing file. |
+| `oterminus config reset --all-safe` | Removes all supported safe user-facing settings from the user config JSON. Preserves paths, lists, policy mode, schema version, onboarding state, and other advanced fields. |
 | `oterminus config init` | Runs the interactive onboarding wizard when stdin is a TTY. Existing valid config values are used as defaults and only wizard-managed fields are revised after summary confirmation. |
 | `oterminus config init --defaults` | Creates safe non-interactive defaults and prints the path. Existing files are not overwritten. Required for non-TTY initialization. |
 | `oterminus config init --defaults --force` | Replaces an existing valid config with safe defaults. Invalid existing files are preserved and must be repaired or moved first. |
@@ -147,9 +149,9 @@ failure explanations, and enable audit logging plus redaction. `config edit` par
 argv semantics, preserves arguments such as `code --wait`, never uses `shell=True`, does not guess
 an editor, does not open a browser, and does not modify shell startup files.
 
-### Safe get/set keys
+### Safe get/set/reset keys
 
-`config get` and `config set` intentionally support only a small allowlist:
+`config get`, `config set`, and `config reset` intentionally support only a small allowlist:
 
 - `model`
 - `command_profile`
@@ -169,6 +171,25 @@ Unsupported fields include `allow_dangerous`, `policy.allow_dangerous`, `allowed
 schema, and onboarding fields are not casual CLI mutations. Dangerous execution remains
 environment-only with `OTERMINUS_ALLOW_DANGEROUS`; it is never written to the user config and has no
 hidden alias.
+
+`config reset --all-safe` resets exactly the same supported safe set:
+
+- `model`
+- `command_profile`
+- `auto_execute_safe`
+- `audit_enabled`
+- `audit_redact`
+- `history_enabled`
+- `history_redact`
+- `explain_failures`
+- `color_mode`
+- `timeout_seconds`
+- `max_output_chars`
+
+It intentionally preserves `schema_version`, `onboarding_completed`, `allowed_roots`,
+`disabled_command_packs`, `policy_mode`, `audit_log_path`, `history_path`, `history_limit`, and
+`failure_explanation_max_chars`. It does not reset dangerous execution controls, delete the config
+file, edit `.env`, modify shell startup files, or rewrite unrelated JSON fields.
 
 `config get <key>` prints one line:
 
@@ -208,6 +229,20 @@ Accepted `config set` values:
 Updated auto_execute_safe=true in /home/me/.oterminus/config.json
 Note: effective value is currently overridden by OTERMINUS_AUTO_EXECUTE_SAFE from environment.
 ```
+
+`config reset <key>` also writes the user config only. When possible, it removes the persisted key
+instead of writing a default value, so the effective value follows normal precedence:
+
+1. exported environment
+2. current-directory `.env`
+3. default
+
+For example, if the file contains `color_mode: never`, `oterminus config reset color_mode` removes
+only `color_mode` and preserves unrelated fields such as `audit_enabled`, paths, allowed roots,
+disabled packs, and onboarding state. If the config file is missing, reset reports that there is no
+persisted value and does not create a file. If the existing file is invalid, reset refuses to
+overwrite it and suggests `oterminus config validate`. If environment or `.env` still controls the
+same setting after reset, the command prints a note naming that source.
 
 To recover from an invalid config, run `oterminus config validate` for the field-level error, then
 edit the file manually or with `VISUAL=... oterminus config edit`. If the file is not worth

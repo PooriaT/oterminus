@@ -32,6 +32,10 @@ SUPPORTED_MUTABLE_CONFIG_KEYS: tuple[str, ...] = tuple(
 SUPPORTED_MUTABLE_CONFIG_SETTING_BY_KEY: dict[str, ConfigSettingSpec] = {
     spec.key: spec for spec in SUPPORTED_MUTABLE_CONFIG_SETTINGS
 }
+SUPPORTED_RESET_CONFIG_SETTINGS: tuple[ConfigSettingSpec, ...] = SUPPORTED_MUTABLE_CONFIG_SETTINGS
+SUPPORTED_RESET_CONFIG_KEYS: tuple[str, ...] = tuple(
+    spec.key for spec in SUPPORTED_RESET_CONFIG_SETTINGS
+)
 
 DANGEROUS_CONFIG_KEYS: frozenset[str] = frozenset({"allow_dangerous", "policy.allow_dangerous"})
 

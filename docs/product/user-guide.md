@@ -213,15 +213,20 @@ Editor commands are parsed as argv, not through a shell.
 Use `config get <key>` to print a single effective value, such as `color_mode=auto` or
 `auto_execute_safe=false`. It uses normal precedence: exported environment, current-directory
 `.env`, user config, then default. Use `config set <key> <value>` to persist one safe setting in the
-user config only. It never edits `.env`, exported environment variables, or shell startup files, so
-an environment or `.env` value may continue to override what you just saved.
+user config only. Use `config reset <key>` to remove one persisted safe setting so the effective
+value falls back through environment, `.env`, then default. These commands never edit `.env`,
+exported environment variables, or shell startup files, so an environment or `.env` value may
+continue to control the effective value.
 
-`config set` supports `model`, `command_profile`, `auto_execute_safe`, `audit_enabled`,
-`audit_redact`, `history_enabled`, `history_redact`, `explain_failures`, `color_mode`,
-`timeout_seconds`, and `max_output_chars`. Boolean values accept `true`, `false`, `1`, `0`, `yes`,
-`no`, `on`, and `off`. `color_mode` accepts `auto`, `always`, or `never`. `command_profile` accepts
-`beginner`, `safe`, `developer`, or `power`. Positive integer settings must be whole numbers greater
-than zero. Use `none` or `null` to clear a persisted `model`.
+`config get`, `config set`, and `config reset` support `model`, `command_profile`,
+`auto_execute_safe`, `audit_enabled`, `audit_redact`, `history_enabled`, `history_redact`,
+`explain_failures`, `color_mode`, `timeout_seconds`, and `max_output_chars`. Boolean values accept
+`true`, `false`, `1`, `0`, `yes`, `no`, `on`, and `off`. `color_mode` accepts `auto`, `always`, or
+`never`. `command_profile` accepts `beginner`, `safe`, `developer`, or `power`. Positive integer
+settings must be whole numbers greater than zero. Use `none` or `null` to clear a persisted `model`.
+`config reset --all-safe` resets exactly the same safe key set and preserves paths, allowed roots,
+disabled command packs, policy mode, history limits, failure explanation limits, schema version,
+and onboarding state.
 
 Unsupported fields include dangerous execution, paths, lists, schema state, onboarding state, and
 advanced policy fields. In particular, `allow_dangerous` and `policy.allow_dangerous` cannot be

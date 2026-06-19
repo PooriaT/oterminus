@@ -96,6 +96,24 @@ def validate_config_smoke(oterminus: Path, temp_dir: Path, env: dict[str, str]) 
         print(f"config get did not reflect set value: {get_after_proc.stdout!r}", file=sys.stderr)
         raise SystemExit(1)
 
+    run([str(oterminus), "config", "reset", "color_mode"], cwd=temp_dir, env=env)
+    if not config_path.exists() or temp_dir not in config_path.parents:
+        print(
+            f"config reset wrote outside the smoke temp directory: {config_path}", file=sys.stderr
+        )
+        raise SystemExit(1)
+
+    get_reset_proc = run([str(oterminus), "config", "get", "color_mode"], cwd=temp_dir, env=env)
+    if get_reset_proc.stdout.strip() != "color_mode=auto":
+        print(
+            f"config get did not reflect reset value: {get_reset_proc.stdout!r}",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
+
+    run([str(oterminus), "config", "set", "audit_enabled", "false"], cwd=temp_dir, env=env)
+    run([str(oterminus), "config", "reset", "--all-safe"], cwd=temp_dir, env=env)
+
     validate_proc = run([str(oterminus), "config", "validate"], cwd=temp_dir, env=env)
     if "Status: valid" not in validate_proc.stdout:
         print(f"Unexpected config validate output: {validate_proc.stdout!r}", file=sys.stderr)
