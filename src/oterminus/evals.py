@@ -50,9 +50,22 @@ class EvalCase(BaseModel):
         ):
             raise ValueError(
                 "expected_mode, expected_risk_level, and expected_acceptance are required "
-                "unless expected_planner_error_contains is set."
+                "unless expected_planner_error_contains is set or expected_ambiguity_detected "
+                "is true."
             )
         return self
+
+
+class EvalCandidateValidationError(ValueError):
+    def __init__(self, path: Path, messages: list[str]) -> None:
+        self.path = path
+        self.messages = messages
+        super().__init__(self._format())
+
+    def _format(self) -> str:
+        lines = [f"Invalid eval candidate: {self.path}"]
+        lines.extend(f"- {message}" for message in self.messages)
+        return "\n".join(lines)
 
 
 @dataclass(slots=True)
@@ -120,6 +133,75 @@ def load_eval_cases(fixtures_dir: Path) -> list[EvalCase]:
         raise ValueError(f"No eval fixtures found in {fixtures_dir}")
 
     return cases
+
+
+def validate_eval_candidate_file(path: Path) -> list[EvalCase]:
+    if not path.exists():
+        raise EvalCandidateValidationError(path, ["File does not exist."])
+    if not path.is_file():
+        raise EvalCandidateValidationError(path, ["Path must be a JSON file."])
+
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except PermissionError as exc:
+        raise EvalCandidateValidationError(path, ["File is not readable."]) from exc
+    except OSError as exc:
+        raise EvalCandidateValidationError(path, [f"Could not read file: {exc.strerror}."]) from exc
+    except json.JSONDecodeError as exc:
+        raise EvalCandidateValidationError(
+            path,
+            [f"Invalid JSON at line {exc.lineno}, column {exc.colno}: {exc.msg}."],
+        ) from exc
+
+    if not isinstance(payload, list):
+        raise EvalCandidateValidationError(path, ["Root value must be a JSON array."])
+    if not payload:
+        raise EvalCandidateValidationError(path, ["Candidate file must contain at least one case."])
+
+    cases: list[EvalCase] = []
+    seen_ids: dict[str, int] = {}
+    messages: list[str] = []
+
+    for index, raw_case in enumerate(payload):
+        try:
+            case = EvalCase.model_validate(raw_case)
+        except ValidationError as exc:
+            messages.extend(_format_candidate_case_errors(index, exc))
+            continue
+
+        if case.id in seen_ids:
+            messages.append(
+                f"Duplicate case id '{case.id}' at indexes {seen_ids[case.id]} and {index}."
+            )
+        else:
+            seen_ids[case.id] = index
+        cases.append(case)
+
+    if messages:
+        raise EvalCandidateValidationError(path, messages)
+
+    return cases
+
+
+def _format_candidate_case_errors(index: int, exc: ValidationError) -> list[str]:
+    messages: list[str] = []
+    for error in exc.errors():
+        loc = ".".join(str(part) for part in error["loc"])
+        raw_message = str(error["msg"])
+        if raw_message.startswith("Value error, "):
+            raw_message = raw_message.removeprefix("Value error, ")
+        message = _ensure_sentence(raw_message)
+        if loc:
+            messages.append(f"Case at index {index}: {loc}: {message}")
+        else:
+            messages.append(f"Case at index {index}: {message}")
+    return messages
+
+
+def _ensure_sentence(message: str) -> str:
+    if message.endswith((".", "!", "?")):
+        return message
+    return f"{message}."
 
 
 def evaluate_case(case: EvalCase, validator: Validator) -> EvalResult:
@@ -321,17 +403,41 @@ def format_eval_report(results: list[EvalResult], summary: EvalSummary) -> str:
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run deterministic eval fixtures for oterminus.")
-    parser.add_argument(
+    source_group = parser.add_mutually_exclusive_group()
+    source_group.add_argument(
         "--fixtures-dir",
         default=str(default_fixtures_dir()),
         help="Directory containing eval fixture JSON files (default: packaged fixtures)",
     )
-    return parser.parse_args(argv)
+    source_group.add_argument(
+        "--validate-file",
+        help="Validate one contributor-created eval candidate JSON file",
+    )
+    parser.add_argument(
+        "--run",
+        action="store_true",
+        help="Run deterministic evaluation after --validate-file succeeds",
+    )
+    args = parser.parse_args(argv)
+    if args.run and args.validate_file is None:
+        parser.error("--run requires --validate-file")
+    return args
 
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
-    cases = load_eval_cases(Path(args.fixtures_dir))
+    if args.validate_file is not None:
+        try:
+            cases = validate_eval_candidate_file(Path(args.validate_file))
+        except EvalCandidateValidationError as exc:
+            print(exc)
+            return 2
+        if not args.run:
+            print(f"Valid eval candidate: {args.validate_file} ({len(cases)} case(s))")
+            return 0
+    else:
+        cases = load_eval_cases(Path(args.fixtures_dir))
+
     validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))
     results, summary = run_eval_cases(cases, validator)
     print(format_eval_report(results, summary))

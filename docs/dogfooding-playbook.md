@@ -51,7 +51,9 @@ Use the smallest record that preserves the product gap:
   `/path/to/project/example.env`" or "token replaced with `<REDACTED_TOKEN>`."
 - **Reproduction command**: Prefer a command that does not execute the proposed shell action:
   `oterminus --dry-run "..."`, `oterminus --explain "..."`, or
-  `poetry run oterminus-evals --fixtures-dir evals/cases`.
+  `poetry run oterminus-evals --fixtures-dir evals/cases`. For a proposed candidate fixture that
+  has not been committed yet, use
+  `poetry run oterminus-evals --validate-file path/to/candidate.json`.
 
 ## What not to record
 
@@ -163,6 +165,18 @@ Good eval candidates include:
 Tie new fixtures to the existing eval organization in [Evals](architecture/evals.md). Keep fixture
 IDs unique, put cases in the capability or behavior file that owns the boundary, and use
 `planner_proposal` when a natural-language request would otherwise require the live planner.
+
+Before committing a candidate fixture, validate the sanitized JSON locally:
+
+```bash
+poetry run oterminus-evals --validate-file path/to/candidate.json
+poetry run oterminus-evals --validate-file path/to/candidate.json --run
+```
+
+The first command checks JSON shape, `EvalCase` schema, non-empty content, and duplicate IDs within
+the candidate file. The `--run` form additionally runs the deterministic eval path for the candidate
+cases. Neither command calls Ollama, executes shell commands, scrapes audit logs, reads persisted
+history, or requires the candidate file to live under `evals/cases/`.
 
 ## When not to create an eval
 

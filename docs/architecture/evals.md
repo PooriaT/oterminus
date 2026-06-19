@@ -87,6 +87,25 @@ poetry run oterminus-evals --fixtures-dir evals/cases
 A non-zero exit code indicates at least one failing case. The eval command is CI-safe and does not
 require a running Ollama service, local model download, or network access.
 
+## Validating candidate files
+
+Contributors can validate a proposed eval file before moving it into `evals/cases/`:
+
+```bash
+poetry run oterminus-evals --validate-file path/to/candidate.json
+poetry run oterminus-evals --validate-file path/to/candidate.json --run
+```
+
+`--validate-file` checks JSON parsing, root-array shape, `EvalCase` schema validation, non-empty
+content, and duplicate IDs within the candidate file. Candidate files can live anywhere, including a
+temporary directory outside `evals/cases/`. Invalid candidates fail with concise errors that include
+the candidate path and, for case-specific problems, the JSON array index.
+
+By default, candidate validation checks shape only. Add `--run` to evaluate those candidate cases
+through the same deterministic eval path used by the full fixture suite. Both modes are local-only:
+they do not call Ollama, execute shell commands, inspect real project contents, require network
+access, read audit logs, read persisted history, or depend on Git repository state.
+
 ## When to add eval cases
 
 Add or update fixture cases when any of the following change:
