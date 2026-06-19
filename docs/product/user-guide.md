@@ -186,6 +186,8 @@ Manage this file with the dedicated config namespace:
 oterminus config
 oterminus config path
 oterminus config show
+oterminus config get color_mode
+oterminus config set color_mode never
 oterminus config init
 oterminus config init --defaults
 oterminus config init --defaults --force
@@ -207,6 +209,24 @@ move them. `config validate` checks only the persistent file and suggests `confi
 missing. `config edit` creates defaults first if needed, then launches `$VISUAL` or `$EDITOR` with
 the config path appended; if no editor is configured, it prints the path and manual-edit guidance.
 Editor commands are parsed as argv, not through a shell.
+
+Use `config get <key>` to print a single effective value, such as `color_mode=auto` or
+`auto_execute_safe=false`. It uses normal precedence: exported environment, current-directory
+`.env`, user config, then default. Use `config set <key> <value>` to persist one safe setting in the
+user config only. It never edits `.env`, exported environment variables, or shell startup files, so
+an environment or `.env` value may continue to override what you just saved.
+
+`config set` supports `model`, `command_profile`, `auto_execute_safe`, `audit_enabled`,
+`audit_redact`, `history_enabled`, `history_redact`, `explain_failures`, `color_mode`,
+`timeout_seconds`, and `max_output_chars`. Boolean values accept `true`, `false`, `1`, `0`, `yes`,
+`no`, `on`, and `off`. `color_mode` accepts `auto`, `always`, or `never`. `command_profile` accepts
+`beginner`, `safe`, `developer`, or `power`. Positive integer settings must be whole numbers greater
+than zero. Use `none` or `null` to clear a persisted `model`.
+
+Unsupported fields include dangerous execution, paths, lists, schema state, onboarding state, and
+advanced policy fields. In particular, `allow_dangerous` and `policy.allow_dangerous` cannot be
+persisted; dangerous execution remains an environment-only opt-in through
+`OTERMINUS_ALLOW_DANGEROUS`.
 
 ## Doctor troubleshooting
 

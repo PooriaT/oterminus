@@ -7,8 +7,10 @@ natural-language requests are checked for ambiguity before capability routing an
 Before request handling begins, OTerminus handles command namespaces that are explicitly outside
 the request lifecycle. `version`, `completion`, and `doctor` exit through their own paths. The
 `oterminus config` namespace also exits before runtime request setup; `config path`, `show`, `init`,
-`validate`, and `edit` do not construct the validator, executor, planner, audit logger, or history
-store, do not run startup readiness checks, do not contact Ollama, and do not start the REPL.
+`get`, `set`, `validate`, and `edit` do not construct the validator, executor, planner, audit
+logger, or history store, do not run startup readiness checks, do not contact Ollama, and do not
+start the REPL. `config set` writes only the validated user config JSON through the atomic config
+save path; it does not edit `.env`, exported environment variables, or shell startup files.
 
 For a bare interactive launch, OTerminus inspects persistent config state before constructing
 runtime services. If stdin is interactive and the config file is missing, it offers first-run

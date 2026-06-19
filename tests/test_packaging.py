@@ -64,6 +64,19 @@ def test_validate_package_install_checks_cli_version(monkeypatch, tmp_path: Path
             Path(env["OTERMINUS_CONFIG_PATH"]).parent.mkdir(parents=True, exist_ok=True)
             Path(env["OTERMINUS_CONFIG_PATH"]).write_text('{"schema_version": 1}\n')
             return subprocess.CompletedProcess(cmd, 0, stdout="Created config\n", stderr="")
+        if cmd[-3:] == ["config", "get", "color_mode"]:
+            assert env is not None
+            config_path = Path(env["OTERMINUS_CONFIG_PATH"])
+            if config_path.exists() and "never" in config_path.read_text():
+                return subprocess.CompletedProcess(cmd, 0, stdout="color_mode=never\n", stderr="")
+            return subprocess.CompletedProcess(cmd, 0, stdout="color_mode=auto\n", stderr="")
+        if cmd[-4:] == ["config", "set", "color_mode", "never"]:
+            assert env is not None
+            config_path = Path(env["OTERMINUS_CONFIG_PATH"])
+            config_path.write_text('{"schema_version": 1, "color_mode": "never"}\n')
+            return subprocess.CompletedProcess(
+                cmd, 0, stdout="Updated color_mode=never\n", stderr=""
+            )
         if cmd[-2:] == ["config", "validate"]:
             return subprocess.CompletedProcess(cmd, 0, stdout="Status: valid\n", stderr="")
         if cmd[-2:] == ["config", "show"]:
@@ -89,6 +102,8 @@ def test_validate_package_install_checks_cli_version(monkeypatch, tmp_path: Path
     assert any(cmd[-1] == "version" for cmd in recorded)
     assert any(cmd[-2:] == ["config", "path"] for cmd in recorded)
     assert any(cmd[-3:] == ["config", "init", "--defaults"] for cmd in recorded)
+    assert any(cmd[-3:] == ["config", "get", "color_mode"] for cmd in recorded)
+    assert any(cmd[-4:] == ["config", "set", "color_mode", "never"] for cmd in recorded)
     assert any(cmd[-2:] == ["config", "validate"] for cmd in recorded)
     assert any(cmd[-2:] == ["config", "show"] for cmd in recorded)
     assert any(cmd[-2:] == ["completion", "zsh"] for cmd in recorded)
@@ -136,12 +151,14 @@ def test_validate_package_install_rejects_empty_completion_output() -> None:
         validate_package_install.validate_completion_output("zsh", proc)
 
 
-def test_package_validation_smoke_env_uses_temp_paths(tmp_path: Path) -> None:
+def test_package_validation_smoke_env_uses_temp_paths(monkeypatch, tmp_path: Path) -> None:
     module_path = Path(__file__).resolve().parents[1] / "scripts" / "validate_package_install.py"
     spec = spec_from_file_location("validate_package_install", module_path)
     assert spec and spec.loader
     validate_package_install = module_from_spec(spec)
     spec.loader.exec_module(validate_package_install)
+
+    monkeypatch.setenv("OTERMINUS_COLOR", "auto")
 
     env = validate_package_install.smoke_env(tmp_path)
 
@@ -149,6 +166,7 @@ def test_package_validation_smoke_env_uses_temp_paths(tmp_path: Path) -> None:
     assert env["OTERMINUS_AUDIT_LOG_PATH"] == str(tmp_path / "audit" / "audit.jsonl")
     assert env["OTERMINUS_HISTORY_PATH"] == str(tmp_path / "history" / "history.jsonl")
     assert env["OTERMINUS_HISTORY_ENABLED"] == "false"
+    assert "OTERMINUS_COLOR" not in env
 
 
 def test_package_validation_cleans_dist_before_build(monkeypatch, tmp_path: Path) -> None:
