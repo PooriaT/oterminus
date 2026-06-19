@@ -54,8 +54,8 @@ Supported `OTERMINUS_*` variables are:
 - `OTERMINUS_COMMAND_PROFILE`
 - `OTERMINUS_AUTO_EXECUTE_SAFE`
 
-`OTERMINUS_MODEL` is not currently implemented. Set the persisted `model` field in the user config
-file, or let first-run setup write it after you choose from installed Ollama models.
+`OTERMINUS_MODEL` is not currently implemented. Use `oterminus config set model <name>` to persist
+the model, or let first-run setup write it after you choose from installed Ollama models.
 
 ## Local `.env`
 
@@ -133,6 +133,10 @@ All config commands bypass the normal request lifecycle and do not require Ollam
 | `oterminus config` | Prints concise help for config subcommands and exits successfully. |
 | `oterminus config path` | Prints only the active config path. Respects exported `OTERMINUS_CONFIG_PATH` and current-directory `.env`; does not create the file. |
 | `oterminus config show` | Shows the active path, existence, schema version when valid, effective settings, and per-setting source (`environment`, `.env`, `user config`, `default`, or `derived`). |
+| `oterminus config get <key>` | Prints one supported effective setting as `key=value`. Uses the same precedence as `config show`; output is one plain line with no ANSI styling. |
+| `oterminus config set <key> <value>` | Updates one supported safe setting in the user config JSON. Validates through the user-config schema, preserves unrelated fields, writes atomically, and prints the target path. |
+| `oterminus config reset <key>` | Removes one supported safe setting from the user config JSON so effective resolution falls back to environment, `.env`, then default. Preserves unrelated fields and does not create a missing file. |
+| `oterminus config reset --all-safe` | Removes all supported safe user-facing settings from the user config JSON. Preserves paths, lists, policy mode, schema version, onboarding state, and other advanced fields. |
 | `oterminus config init` | Runs the interactive onboarding wizard when stdin is a TTY. Existing valid config values are used as defaults and only wizard-managed fields are revised after summary confirmation. |
 | `oterminus config init --defaults` | Creates safe non-interactive defaults and prints the path. Existing files are not overwritten. Required for non-TTY initialization. |
 | `oterminus config init --defaults --force` | Replaces an existing valid config with safe defaults. Invalid existing files are preserved and must be repaired or moved first. |
@@ -144,6 +148,101 @@ Safe defaults mark onboarding completed, use the `safe` command profile, keep po
 failure explanations, and enable audit logging plus redaction. `config edit` parses the editor with
 argv semantics, preserves arguments such as `code --wait`, never uses `shell=True`, does not guess
 an editor, does not open a browser, and does not modify shell startup files.
+
+### Safe get/set/reset keys
+
+`config get`, `config set`, and `config reset` intentionally support only a small allowlist:
+
+- `model`
+- `command_profile`
+- `auto_execute_safe`
+- `audit_enabled`
+- `audit_redact`
+- `history_enabled`
+- `history_redact`
+- `explain_failures`
+- `color_mode`
+- `timeout_seconds`
+- `max_output_chars`
+
+Unsupported fields include `allow_dangerous`, `policy.allow_dangerous`, `allowed_roots`,
+`disabled_command_packs`, `policy.mode`, `audit_log_path`, `history_path`, `history_limit`,
+`failure_explanation_max_chars`, `schema_version`, and `onboarding_completed`. List, path, policy,
+schema, and onboarding fields are not casual CLI mutations. Dangerous execution remains
+environment-only with `OTERMINUS_ALLOW_DANGEROUS`; it is never written to the user config and has no
+hidden alias.
+
+`config reset --all-safe` resets exactly the same supported safe set:
+
+- `model`
+- `command_profile`
+- `auto_execute_safe`
+- `audit_enabled`
+- `audit_redact`
+- `history_enabled`
+- `history_redact`
+- `explain_failures`
+- `color_mode`
+- `timeout_seconds`
+- `max_output_chars`
+
+It intentionally preserves `schema_version`, `onboarding_completed`, `allowed_roots`,
+`disabled_command_packs`, `policy_mode`, `audit_log_path`, `history_path`, `history_limit`, and
+`failure_explanation_max_chars`. It does not reset dangerous execution controls, delete the config
+file, edit `.env`, modify shell startup files, or rewrite unrelated JSON fields.
+
+`config get <key>` prints one line:
+
+```text
+color_mode=auto
+auto_execute_safe=false
+model=
+```
+
+Booleans are printed as `true` or `false`. Enums are printed as their values, such as
+`color_mode=never` or `command_profile=safe`. When `model` or `command_profile` is unset, the value
+is empty after the equals sign.
+
+`config set <key> <value>` updates only the persistent user config file selected by
+`OTERMINUS_CONFIG_PATH`, current-directory `.env`, or the default path. It does not edit exported
+environment variables, `.env`, shell startup files, audit/history files, or arbitrary JSON fields.
+If the config file is missing, OTerminus creates a minimal schema-versioned file containing the
+changed value. If the existing file is invalid, the command refuses to overwrite it; run
+`oterminus config validate`, repair the file, or move it aside.
+
+Accepted `config set` values:
+
+- `model`: any nonblank string after trimming surrounding whitespace. Use `none` or `null` to clear
+  a persisted model.
+- `command_profile`: `beginner`, `safe`, `developer`, or `power`, case-insensitive and persisted
+  lowercase.
+- Boolean keys: `true`, `false`, `1`, `0`, `yes`, `no`, `on`, or `off`, case-insensitive and
+  persisted as JSON booleans.
+- `color_mode`: `auto`, `always`, or `never`, case-insensitive and persisted lowercase.
+- `timeout_seconds` and `max_output_chars`: positive base-10 integers. Zero, negatives, floats, and
+  non-integers are rejected before writing.
+
+`config set` writes the user config only. If an exported environment variable or current-directory
+`.env` still overrides that field, the command prints a note, for example:
+
+```text
+Updated auto_execute_safe=true in /home/me/.oterminus/config.json
+Note: effective value is currently overridden by OTERMINUS_AUTO_EXECUTE_SAFE from environment.
+```
+
+`config reset <key>` also writes the user config only. When possible, it removes the persisted key
+instead of writing a default value, so the effective value follows normal precedence:
+
+1. exported environment
+2. current-directory `.env`
+3. default
+
+For example, if the file contains `color_mode: never`, `oterminus config reset color_mode` removes
+only `color_mode` and preserves unrelated fields such as `audit_enabled`, paths, allowed roots,
+disabled packs, and onboarding state. If the config file is missing, reset reports that there is no
+persisted value and does not create a file. If the existing file is invalid, reset refuses to
+overwrite it and suggests `oterminus config validate`. If environment or `.env` still controls the
+same setting after reset, the command prints a note naming that source.
 
 To recover from an invalid config, run `oterminus config validate` for the field-level error, then
 edit the file manually or with `VISUAL=... oterminus config edit`. If the file is not worth

@@ -169,9 +169,10 @@ poetry run python scripts/validate_package_install.py
 This contributor/release-maintainer check builds the local `sdist` and `wheel`, installs the wheel
 into a temporary clean virtual environment, verifies `import oterminus`, and runs installed-console
 smoke checks such as `oterminus --help`, `oterminus --version`, `oterminus version`,
-`oterminus doctor`, and `oterminus-evals`. `oterminus doctor` may exit non-zero in CI when Ollama is
-unavailable; the validation still confirms the installed CLI is callable and installable. The script
-uses temporary paths for smoke-check config, audit, and history files and does not publish anything.
+`oterminus doctor`, config path/init/get/set/reset/validate/show checks, shell completion rendering,
+and `oterminus-evals`. `oterminus doctor` may exit non-zero in CI when Ollama is unavailable; the
+validation still confirms the installed CLI is callable and installable. The script uses temporary
+paths for smoke-check config, audit, and history files and does not publish anything.
 It is not the primary end-user install path; users should install released packages from PyPI with
 `pipx install oterminus` or, when `pipx` is unavailable, `python -m pip install oterminus`.
 

@@ -4,7 +4,7 @@ OTerminus supports two separate completion surfaces:
 
 - **Shell-level completion** runs in your outer shell before OTerminus starts. It helps complete the
   `oterminus` command, top-level flags, top-level subcommands, config subcommands, config init
-  options, and completion shell names.
+  options, safe config get/set keys, and completion shell names.
 - **REPL Tab autocomplete** runs inside interactive OTerminus after you start `oterminus`. It helps
   complete REPL built-ins, supported command families, capability IDs, and local filesystem paths.
 
@@ -110,8 +110,14 @@ rm ~/.config/fish/completions/oterminus.fish
 files, source files, or modify shell startup files.
 
 The generated static scripts include top-level `config`, the config subcommands `path`, `show`,
-`init`, `validate`, and `edit`, and the `config init` options `--defaults` and `--force` where the
-shell format can express that context. Completion generation never runs OTerminus dynamically.
+`get`, `set`, `reset`, `init`, `validate`, and `edit`, and the `config init` options `--defaults`
+and `--force` where the shell format can express that context. After `oterminus config get`,
+`oterminus config set`, and `oterminus config reset`, scripts complete only the safe supported keys:
+`model`, `command_profile`, `auto_execute_safe`, `audit_enabled`, `audit_redact`, `history_enabled`,
+`history_redact`, `explain_failures`, `color_mode`, `timeout_seconds`, and `max_output_chars`.
+`oterminus config reset` also completes `--all-safe`. Dangerous or advanced fields such as
+`allow_dangerous`, `policy.allow_dangerous`, `allowed_roots`, schema fields, paths, and list
+settings are not completed. Completion generation never runs OTerminus dynamically.
 
 If completion does not appear after installation, verify that your shell is loading the generated
 file from the location you chose. Shell completion setup is controlled by your shell configuration,
