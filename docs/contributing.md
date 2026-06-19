@@ -89,6 +89,26 @@ Git repository state, filesystem contents, a real installed wheel, or subprocess
 the same deterministic fixture path, so no Ollama service/model/network call is required for the
 regression gate. See [Evals](architecture/evals.md) for fixture organization and format details.
 
+For contributor-created candidate files, validate the sanitized JSON before moving it into
+`evals/cases/`:
+
+```bash
+poetry run oterminus-evals --validate-file path/to/candidate.json
+poetry run oterminus-evals --validate-file path/to/candidate.json --run
+```
+
+The first command checks JSON shape, `EvalCase` schema, non-empty content, and duplicate IDs within
+the candidate file. The `--run` form additionally runs deterministic evaluation for that candidate
+file only. Candidate files can live outside `evals/cases/`; neither mode calls Ollama or executes
+shell commands.
+
+## Dogfooding findings
+
+Use the [Dogfooding playbook](dogfooding-playbook.md) before turning real unsupported or surprising
+requests into issues, eval fixtures, docs examples, local-planner follow-ups, command-spec changes,
+or bug reports. Dogfooding notes should capture the request pattern and expected behavior, not
+private logs, file contents, audit records, history files, hostnames, tokens, or project details.
+
 ## CI coverage
 
 The main CI workflow keeps Ubuntu as the full regression gate. It runs the complete pytest suite,
