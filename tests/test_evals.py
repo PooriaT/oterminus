@@ -315,6 +315,19 @@ def test_validate_eval_candidate_file_rejects_malformed_json(tmp_path: Path) -> 
         validate_eval_candidate_file(candidate)
 
 
+def test_validate_eval_candidate_file_rejects_invalid_utf8(tmp_path: Path) -> None:
+    candidate = tmp_path / "candidate.json"
+    candidate.write_bytes(b'[\xff{"id": "not-utf8"}]')
+
+    with pytest.raises(EvalCandidateValidationError) as exc_info:
+        validate_eval_candidate_file(candidate)
+
+    message = str(exc_info.value)
+    assert f"Invalid eval candidate: {candidate}" in message
+    assert "File must be UTF-8 encoded JSON" in message
+    assert "offset 1" in message
+
+
 def test_validate_eval_candidate_file_rejects_empty_array(tmp_path: Path) -> None:
     candidate = tmp_path / "candidate.json"
     candidate.write_text("[]", encoding="utf-8")
@@ -404,6 +417,19 @@ def test_eval_cli_validate_file_exits_nonzero_for_invalid_candidate(
     output = capsys.readouterr().out
     assert f"Invalid eval candidate: {candidate}" in output
     assert "- Root value must be a JSON array." in output
+
+
+def test_eval_cli_validate_file_exits_nonzero_for_invalid_utf8(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    candidate = tmp_path / "candidate.json"
+    candidate.write_bytes(b"\xff")
+
+    assert main(["--validate-file", str(candidate)]) == 2
+
+    output = capsys.readouterr().out
+    assert f"Invalid eval candidate: {candidate}" in output
+    assert "File must be UTF-8 encoded JSON" in output
 
 
 def test_eval_cli_validate_file_run_evaluates_candidate(

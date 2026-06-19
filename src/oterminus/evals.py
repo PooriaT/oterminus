@@ -147,6 +147,14 @@ def validate_eval_candidate_file(path: Path) -> list[EvalCase]:
         raise EvalCandidateValidationError(path, ["File is not readable."]) from exc
     except OSError as exc:
         raise EvalCandidateValidationError(path, [f"Could not read file: {exc.strerror}."]) from exc
+    except UnicodeDecodeError as exc:
+        raise EvalCandidateValidationError(
+            path,
+            [
+                "File must be UTF-8 encoded JSON; "
+                f"could not decode byte {exc.object[exc.start]:#x} at offset {exc.start}."
+            ],
+        ) from exc
     except json.JSONDecodeError as exc:
         raise EvalCandidateValidationError(
             path,
