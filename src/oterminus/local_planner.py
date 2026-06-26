@@ -172,7 +172,8 @@ def _plan_manual_recipe(
 ) -> LocalPlannerMatch | None:
     if match := _match_request(
         request,
-        r"^(?:show|open) (?:the )?(?:manual|man page|manual page) for (?P<topic>\S+)$",
+        r"^(?:(?:show|sho)(?: me)?|open) (?:the )?(?:manual|man page|manual page) "
+        r"(?:for|of) (?:(?:a|the) command (?:called|named) )?(?P<topic>\S+)$",
     ):
         return _build_manual_match(
             "manual_page_topic",

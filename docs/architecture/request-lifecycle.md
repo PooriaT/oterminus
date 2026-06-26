@@ -146,8 +146,10 @@ URL-like paths, broad roots, or zero/negative line counts.
 
 ### 6) Planner + parsing
 
-Planner asks Ollama for JSON output and validates it against the `Proposal` schema. The schema
-supports only two first-class modes: `structured` and `experimental`.
+Planner asks Ollama for JSON Schema-constrained output and validates the returned JSON against the
+`Proposal` schema. The schema supports only two first-class modes: `structured` and `experimental`.
+If the model returns valid JSON with invalid proposal fields, OTerminus makes one bounded repair
+request and rejects the output if the repaired JSON still fails validation.
 
 Planner and parser prefer structured mode when command family + arguments can be represented
 deterministically. Experimental mode is used only when structured support is unavailable or

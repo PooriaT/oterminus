@@ -10,6 +10,40 @@ class OllamaClientError(RuntimeError):
     pass
 
 
+def proposal_output_schema() -> dict[str, object]:
+    return {
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "action_type": {"type": "string", "enum": ["shell_command"]},
+            "mode": {"type": "string", "enum": ["structured", "experimental"]},
+            "command_family": {"type": ["string", "null"]},
+            "arguments": {"type": ["object", "null"]},
+            "command": {"type": ["string", "null"]},
+            "summary": {"type": "string"},
+            "explanation": {"type": "string"},
+            "risk_level": {
+                "type": ["string", "null"],
+                "enum": ["safe", "write", "dangerous", None],
+            },
+            "needs_confirmation": {"type": "boolean", "enum": [True]},
+            "notes": {"type": "array", "items": {"type": "string"}},
+        },
+        "required": [
+            "action_type",
+            "mode",
+            "command_family",
+            "arguments",
+            "command",
+            "summary",
+            "explanation",
+            "risk_level",
+            "needs_confirmation",
+            "notes",
+        ],
+    }
+
+
 def is_ollama_installed() -> bool:
     return shutil.which("ollama") is not None
 
@@ -19,7 +53,14 @@ class OllamaPlannerClient:
         self.model = model
         self.client = Client(host=host) if host else Client()
 
-    def chat_json(self, system_prompt: str, user_prompt: str) -> str:
+    def chat_json(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        *,
+        output_schema: dict[str, object] | None = None,
+        temperature: float = 0,
+    ) -> str:
         try:
             response = self.client.chat(
                 model=self.model,
@@ -27,7 +68,8 @@ class OllamaPlannerClient:
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt},
                 ],
-                format="json",
+                format=output_schema or "json",
+                options={"temperature": temperature},
             )
         except ResponseError as exc:
             raise OllamaClientError(f"Ollama response error: {exc}") from exc

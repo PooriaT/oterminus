@@ -107,6 +107,17 @@ def route_request(
             )
         )
 
+    if _has_any(text, _MANUAL_PAGE_HINTS):
+        return filtered(
+            RouteResult(
+                category="metadata_inspect",
+                confidence=0.94,
+                reason="Request asks for a local command manual page.",
+                suggested_families=("man",),
+                suggested_capabilities=("system_inspection",),
+            )
+        )
+
     if _has_any(text, _METADATA_HINTS):
         families = _families_for_category("metadata_inspect", text)
         return filtered(
@@ -490,6 +501,13 @@ _METADATA_HINTS = (
     "where is",
     "which",
     "environment variable",
+)
+
+_MANUAL_PAGE_HINTS = (
+    "manual",
+    "manual page",
+    "man page",
+    "command manual",
 )
 
 _PROCESS_INSPECT_HINTS = (

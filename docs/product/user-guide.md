@@ -128,6 +128,18 @@ that clearly so you can fix the local model setup before natural-language planni
 If no model is configured yet, OTerminus shows installed models and prompts you to choose one. The
 selection is saved in `~/.oterminus/config.json` (or `OTERMINUS_CONFIG_PATH` if set).
 
+### Model returned invalid proposal JSON
+
+Some smaller or faster local models may produce valid JSON with invalid proposal values, such as
+putting a command name in `action_type` or `mode`. OTerminus requests a JSON Schema-constrained
+response from Ollama, uses deterministic low-temperature planning, retries one repair attempt, and
+rejects the output if it still does not match the proposal schema.
+
+Schema-constrained output improves formatting reliability, but it does not guarantee semantic
+correctness. OTerminus still validates and previews every proposal before execution. If a model
+repeatedly fails schema validation, try another installed model with
+`oterminus config set model <model>` or run `oterminus doctor`.
+
 On the first bare interactive launch (`oterminus`) when the persistent config file does not exist
 and stdin is a TTY, OTerminus offers a first-time configuration wizard. The wizard does not run for
 one-shot requests, `--dry-run`, `--explain`, `doctor`, `version`, `completion`, `config` commands,

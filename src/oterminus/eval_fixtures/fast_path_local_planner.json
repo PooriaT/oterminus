@@ -80,6 +80,32 @@
     ]
   },
   {
+    "id": "local-man-show-ls-typo",
+    "user_input": "sho me the manual page for ls",
+    "expected_mode": "structured",
+    "expected_command_family": "man",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "man ls",
+    "expected_argv": [
+      "man",
+      "ls"
+    ]
+  },
+  {
+    "id": "local-man-show-ls-command-called",
+    "user_input": "show me the manual page for a command called ls",
+    "expected_mode": "structured",
+    "expected_command_family": "man",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "man ls",
+    "expected_argv": [
+      "man",
+      "ls"
+    ]
+  },
+  {
     "id": "local-man-page-grep",
     "user_input": "show man page for grep",
     "expected_mode": "structured",

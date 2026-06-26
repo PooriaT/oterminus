@@ -15,6 +15,14 @@ def test_route_request_common_buckets() -> None:
     assert route_request("run mkdocs build").category == "project_health"
 
 
+def test_route_request_manual_page_suggests_man() -> None:
+    route = route_request("provide the manual page for ls")
+
+    assert route.category == "metadata_inspect"
+    assert route.suggested_families == ("man",)
+    assert route.suggested_capabilities == ("system_inspection",)
+
+
 def test_route_request_project_health_supported_requests() -> None:
     route = route_request("run the test suite")
 
