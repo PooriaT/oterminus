@@ -269,6 +269,8 @@ def test_validator_accepts_open_reveal_on_darwin(monkeypatch) -> None:
         ("uname -a", RiskLevel.SAFE),
         ("which python3", RiskLevel.SAFE),
         ("env PATH", RiskLevel.SAFE),
+        ("man ls", RiskLevel.SAFE),
+        ("man 1 ls", RiskLevel.SAFE),
         ("df", RiskLevel.SAFE),
         ("df -h .", RiskLevel.SAFE),
         ("cp src.txt dst.txt", RiskLevel.WRITE),
@@ -319,6 +321,15 @@ def test_risk_classification_for_next_wave_structured_families(
         "which",
         "env",
         "env PATH HOME",
+        "man",
+        "man -P cat ls",
+        "man --pager=cat ls",
+        "man --help",
+        "man -k ls",
+        "man 99 ls",
+        "man ./script.sh",
+        "man /bin/ls",
+        "man https://example.com",
         "cp src.txt",
         "mv draft.txt",
         "du --bad .",
@@ -705,6 +716,17 @@ def test_allowed_roots_grep_pattern_file_stdin_sentinel_is_not_treated_as_path()
     )
     result = validator.validate(make_proposal("grep -f - /allowed/input.txt"))
     assert result.accepted is True
+
+
+def test_allowed_roots_does_not_treat_man_topics_as_paths() -> None:
+    validator = Validator(
+        PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False, allowed_roots=["/allowed"])
+    )
+
+    result = validator.validate(make_proposal("man 5 crontab"))
+
+    assert result.accepted is True
+    assert result.argv == ["man", "5", "crontab"]
 
 
 def test_allowed_roots_cp_checks_both_source_and_destination() -> None:

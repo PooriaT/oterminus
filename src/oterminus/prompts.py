@@ -25,6 +25,7 @@ def _format_structured_shapes(structured_families: tuple[str, ...]) -> str:
         ),
         "which": '{"commands": ["python3"], "all_matches": true|false}',
         "env": '{"variable": "PATH"}',
+        "man": '{"topic": "ls", "section": "1"|null}',
         "mkdir": '{"path": "...", "parents": true|false}',
         "chmod": '{"path": "...", "mode": "755"}',
         "find": '{"path": ".", "name": "*.py"}',

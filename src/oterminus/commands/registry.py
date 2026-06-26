@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from collections.abc import Iterable, Sequence
 from pathlib import Path
+import re
 import sys
 
 from .archive import COMMAND_PACK as ARCHIVE_COMMANDS
@@ -406,6 +407,9 @@ def looks_like_direct_invocation(
     if base in {"dig", "nslookup"}:
         return _is_supported_dns_lookup_direct_operands(operands)
 
+    if base == "man":
+        return _is_supported_man_direct_operands(operands)
+
     return len(operands) >= spec.min_operands
 
 
@@ -447,6 +451,32 @@ def _is_supported_curl_direct_operands(operands: list[str]) -> bool:
 
 def _is_supported_dns_lookup_direct_operands(operands: list[str]) -> bool:
     return len(operands) == 1 and not operands[0].startswith("-")
+
+
+def _is_supported_man_direct_operands(operands: list[str]) -> bool:
+    if len(operands) == 1:
+        return _is_manual_topic_operand(operands[0])
+    if len(operands) == 2:
+        return _is_manual_section_operand(operands[0]) and _is_manual_topic_operand(operands[1])
+    return False
+
+
+def _is_manual_section_operand(value: str) -> bool:
+    return value in {"1", "2", "3", "4", "5", "6", "7", "8", "9"}
+
+
+def _is_manual_topic_operand(value: str) -> bool:
+    blocked_fragments = ("$(", "`", "\n", "\r", "\x00", "&&", "||", ";", "|", "<", ">", "&")
+    lowered = value.lower()
+    return (
+        bool(value)
+        and not value.startswith("-")
+        and "://" not in lowered
+        and not lowered.startswith("mailto:")
+        and "/" not in value
+        and not any(fragment in value for fragment in blocked_fragments)
+        and re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]{0,127}", value) is not None
+    )
 
 
 def _is_supported_tar_direct_operands(operands: list[str]) -> bool:

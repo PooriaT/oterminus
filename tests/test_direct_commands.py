@@ -1,3 +1,5 @@
+import pytest
+
 import oterminus.direct_commands as direct_commands
 from oterminus.direct_commands import detect_direct_command
 from oterminus.models import ProposalMode
@@ -42,6 +44,40 @@ def test_detect_direct_command_for_system_family() -> None:
     assert proposal is not None
     assert proposal.mode == ProposalMode.STRUCTURED
     assert proposal.command_family == "whoami"
+
+
+def test_detect_direct_command_for_supported_man_forms() -> None:
+    simple = detect_direct_command("man ls")
+    section = detect_direct_command("man 5 crontab")
+
+    assert simple is not None
+    assert simple.mode == ProposalMode.STRUCTURED
+    assert simple.command_family == "man"
+    assert simple.arguments == {"topic": "ls", "section": None}
+    assert section is not None
+    assert section.mode == ProposalMode.STRUCTURED
+    assert section.command_family == "man"
+    assert section.arguments == {"topic": "crontab", "section": "5"}
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "man",
+        "man -P cat ls",
+        "man --pager=cat ls",
+        "man $(whoami)",
+        "man https://example.com",
+        "man ./script.sh",
+        "man /bin/ls",
+        "man ls | cat",
+        "man --help",
+        "man -k ls",
+        "man 99 ls",
+    ],
+)
+def test_detect_direct_command_rejects_unsupported_man_forms(command: str) -> None:
+    assert detect_direct_command(command) is None
 
 
 def test_detect_direct_command_for_clear() -> None:
@@ -118,6 +154,12 @@ def test_detect_direct_command_falls_back_when_structured_parse_errors(monkeypat
 
 def test_detect_direct_command_respects_disabled_packs() -> None:
     proposal = detect_direct_command("ps -Af", disabled_pack_ids=frozenset({"process"}))
+
+    assert proposal is None
+
+
+def test_detect_direct_command_respects_disabled_system_pack() -> None:
+    proposal = detect_direct_command("man ls", disabled_pack_ids=frozenset({"system"}))
 
     assert proposal is None
 

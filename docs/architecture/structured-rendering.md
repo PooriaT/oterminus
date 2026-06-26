@@ -45,6 +45,11 @@ of relying on experimental fallback.
 4. Validator re-checks rendered output against policy/allowlists.
 5. User sees a preview and must confirm before execution.
 
+For guarded system inspection such as manual-page lookup, structured rendering keeps the surface
+narrow: `man` accepts only a topic token or numeric section plus topic and renders argv such as
+`("man", "5", "crontab")`. Flags, pager customization, URLs, paths, and shell syntax remain outside
+the structured model.
+
 ## Benefits
 
 - deterministic command output

@@ -18,6 +18,7 @@ from oterminus.structured_commands import (
         "uname",
         "which",
         "env",
+        "man",
         "mkdir",
         "chmod",
         "find",
@@ -85,6 +86,8 @@ def test_supported_structured_families_are_curated(command_family: str) -> None:
             "which -a python3",
         ),
         ("env", {"variable": "PATH"}, ("env", "PATH"), "env PATH"),
+        ("man", {"topic": "ls"}, ("man", "ls"), "man ls"),
+        ("man", {"section": "1", "topic": "ls"}, ("man", "1", "ls"), "man 1 ls"),
         (
             "mkdir",
             {"path": "backup", "parents": True},
@@ -419,6 +422,8 @@ def test_render_structured_command(
         ),
         ("which -a python3", "which", {"commands": ["python3"], "all_matches": True}),
         ("env PATH", "env", {"variable": "PATH"}),
+        ("man grep", "man", {"topic": "grep", "section": None}),
+        ("man 5 crontab", "man", {"topic": "crontab", "section": "5"}),
         ("df -h .", "df", {"path": ".", "human_readable": True}),
         ("df", "df", {"path": None, "human_readable": False}),
         (
@@ -711,6 +716,13 @@ def test_structured_archive_creation_rejects_unsafe_source_paths(source_path: st
         "which",
         "env",
         "env PATH HOME",
+        "man",
+        "man --help",
+        "man -k ls",
+        "man -P cat ls",
+        "man --pager=cat ls",
+        "man 99 ls",
+        "man abc ls",
         "df . /tmp",
         "ps -z",
         "pgrep -z python",
@@ -725,6 +737,29 @@ def test_structured_archive_creation_rejects_unsafe_source_paths(source_path: st
 )
 def test_parse_raw_command_as_structured_rejects_invalid_variants(command: str) -> None:
     assert parse_raw_command_as_structured(command) is None
+
+
+@pytest.mark.parametrize(
+    "arguments",
+    [
+        {"topic": ""},
+        {"topic": "-help"},
+        {"topic": "./script.sh"},
+        {"topic": "/bin/ls"},
+        {"topic": "docs/file.md"},
+        {"topic": "https://example.com"},
+        {"topic": "$(whoami)"},
+        {"topic": "ls;whoami"},
+        {"topic": "ls", "section": "abc"},
+        {"topic": "ls", "section": "99"},
+        {"topic": "ls", "section": "-1"},
+        {"topic": "ls", "section": "1;whoami"},
+        {"topic": "ls", "pager": "cat"},
+    ],
+)
+def test_render_structured_man_rejects_unsafe_arguments(arguments: dict[str, object]) -> None:
+    with pytest.raises(StructuredCommandError):
+        render_structured_command("man", arguments)
 
 
 def test_parse_raw_command_as_structured_accepts_guarded_archive_extraction() -> None:

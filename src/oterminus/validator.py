@@ -27,6 +27,7 @@ from oterminus.structured_commands import (
     is_valid_network_host,
     parse_raw_command_as_structured,
     render_structured_command,
+    validate_structured_arguments,
 )
 
 BLOCKED_OPERATOR_TOKENS = {
@@ -366,6 +367,16 @@ class Validator:
                 "Arbitrary flags, shell operators, and non-domain targets are not supported."
             ]
 
+        if spec.name == "man":
+            if _is_supported_man_shape(arguments):
+                return []
+            return [
+                "Only simple local manual lookups are supported: man <topic> or "
+                "man <section> <topic>, where section is 1-9 and topic is a conservative "
+                "manual-page token. Flags, URLs, paths, shell operators, and pager "
+                "customization are not supported."
+            ]
+
         if (
             origin == ProposalOrigin.DIRECT_COMMAND
             and spec.direct_flag_policy == DirectFlagPolicy.SAFE_INSPECTION_PASSTHROUGH
@@ -525,6 +536,9 @@ class Validator:
         return disallowed
 
     def _path_operands(self, spec: CommandSpec, arguments: list[str]) -> list[str]:
+        if spec.path_operand_mode == PathOperandMode.NONE:
+            return []
+
         if spec.path_operand_mode == PathOperandMode.CD:
             if not arguments or arguments == ["-"]:
                 return ["~"] if not arguments else []
@@ -827,6 +841,20 @@ def _is_supported_curl_head_shape(arguments: list[str]) -> bool:
 
 def _is_supported_dns_lookup_shape(arguments: list[str]) -> bool:
     return len(arguments) == 1 and is_valid_network_domain(arguments[0])
+
+
+def _is_supported_man_shape(arguments: list[str]) -> bool:
+    if len(arguments) == 1:
+        structured_arguments = {"topic": arguments[0]}
+    elif len(arguments) == 2:
+        structured_arguments = {"section": arguments[0], "topic": arguments[1]}
+    else:
+        return False
+    try:
+        validate_structured_arguments("man", structured_arguments)
+    except StructuredCommandError:
+        return False
+    return True
 
 
 def _is_supported_tar_inspection_shape(arguments: list[str]) -> bool:
