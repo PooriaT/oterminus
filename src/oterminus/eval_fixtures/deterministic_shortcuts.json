@@ -1,6 +1,6 @@
 [
   {
-    "id": "local-pwd-show-current-directory",
+    "id": "shortcut-pwd-show-current-directory",
     "user_input": "show current directory",
     "expected_mode": "structured",
     "expected_command_family": "pwd",
@@ -12,7 +12,7 @@
     ]
   },
   {
-    "id": "local-pwd-where-am-i",
+    "id": "shortcut-pwd-where-am-i",
     "user_input": "where am i",
     "expected_mode": "structured",
     "expected_command_family": "pwd",
@@ -24,51 +24,45 @@
     ]
   },
   {
-    "id": "local-ls-show-files",
-    "user_input": "show files",
+    "id": "shortcut-pwd-print-working-directory",
+    "user_input": "print working directory",
     "expected_mode": "structured",
-    "expected_command_family": "ls",
+    "expected_command_family": "pwd",
     "expected_risk_level": "safe",
     "expected_acceptance": true,
-    "expected_rendered_command": "ls .",
+    "expected_rendered_command": "pwd",
     "expected_argv": [
-      "ls",
-      "."
+      "pwd"
     ]
   },
   {
-    "id": "local-ls-with-sizes",
-    "user_input": "list files with sizes",
+    "id": "shortcut-clear-screen",
+    "user_input": "clear screen",
     "expected_mode": "structured",
-    "expected_command_family": "ls",
+    "expected_command_family": "clear",
     "expected_risk_level": "safe",
     "expected_acceptance": true,
-    "expected_rendered_command": "ls -l -h .",
+    "expected_rendered_command": "clear",
     "expected_argv": [
-      "ls",
-      "-l",
-      "-h",
-      "."
+      "clear"
     ]
   },
   {
-    "id": "local-du-folder",
-    "user_input": "show disk usage for this folder",
-    "expected_mode": "structured",
-    "expected_command_family": "du",
-    "expected_risk_level": "safe",
-    "expected_acceptance": true,
-    "expected_rendered_command": "du -h -s .",
-    "expected_argv": [
-      "du",
-      "-h",
-      "-s",
-      "."
-    ]
-  },
-  {
-    "id": "local-man-show-ls",
+    "id": "shortcut-no-match-manual-page",
     "user_input": "show manual for ls",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "man",
+      "arguments": {
+        "topic": "ls"
+      },
+      "summary": "show manual page",
+      "explanation": "Planner handles flexible manual-page requests.",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": []
+    },
     "expected_mode": "structured",
     "expected_command_family": "man",
     "expected_risk_level": "safe",
@@ -80,75 +74,24 @@
     ]
   },
   {
-    "id": "local-man-show-ls-typo",
-    "user_input": "sho me the manual page for ls",
-    "expected_mode": "structured",
-    "expected_command_family": "man",
-    "expected_risk_level": "safe",
-    "expected_acceptance": true,
-    "expected_rendered_command": "man ls",
-    "expected_argv": [
-      "man",
-      "ls"
-    ]
-  },
-  {
-    "id": "local-man-show-ls-command-called",
-    "user_input": "show me the manual page for a command called ls",
-    "expected_mode": "structured",
-    "expected_command_family": "man",
-    "expected_risk_level": "safe",
-    "expected_acceptance": true,
-    "expected_rendered_command": "man ls",
-    "expected_argv": [
-      "man",
-      "ls"
-    ]
-  },
-  {
-    "id": "local-man-page-grep",
-    "user_input": "show man page for grep",
-    "expected_mode": "structured",
-    "expected_command_family": "man",
-    "expected_risk_level": "safe",
-    "expected_acceptance": true,
-    "expected_rendered_command": "man grep",
-    "expected_argv": [
-      "man",
-      "grep"
-    ]
-  },
-  {
-    "id": "local-man-section-crontab",
-    "user_input": "show manual section 5 for crontab",
-    "expected_mode": "structured",
-    "expected_command_family": "man",
-    "expected_risk_level": "safe",
-    "expected_acceptance": true,
-    "expected_rendered_command": "man 5 crontab",
-    "expected_argv": [
-      "man",
-      "5",
-      "crontab"
-    ]
-  },
-  {
-    "id": "local-git-status",
-    "user_input": "show git status",
-    "expected_mode": "structured",
-    "expected_command_family": "git",
-    "expected_risk_level": "safe",
-    "expected_acceptance": true,
-    "expected_rendered_command": "git status --short",
-    "expected_argv": [
-      "git",
-      "status",
-      "--short"
-    ]
-  },
-  {
-    "id": "local-head-first-20-readme",
+    "id": "shortcut-no-match-text-lines",
     "user_input": "show first 20 lines of README.md",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "head",
+      "arguments": {
+        "paths": [
+          "README.md"
+        ],
+        "lines": 20
+      },
+      "summary": "show first lines",
+      "explanation": "Planner handles text inspection arguments.",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": []
+    },
     "expected_mode": "structured",
     "expected_command_family": "head",
     "expected_risk_level": "safe",
@@ -162,68 +105,52 @@
     ]
   },
   {
-    "id": "local-tail-last-50-app-log",
-    "user_input": "show last 50 lines of app.log",
+    "id": "shortcut-no-match-process-search",
+    "user_input": "find python processes",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "pgrep",
+      "arguments": {
+        "pattern": "python",
+        "full_command": true,
+        "list_names": true
+      },
+      "summary": "find python processes",
+      "explanation": "Planner handles process search arguments.",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": []
+    },
     "expected_mode": "structured",
-    "expected_command_family": "tail",
+    "expected_command_family": "pgrep",
     "expected_risk_level": "safe",
     "expected_acceptance": true,
-    "expected_rendered_command": "tail -n 50 app.log",
+    "expected_rendered_command": "pgrep -f -l python",
     "expected_argv": [
-      "tail",
-      "-n",
-      "50",
-      "app.log"
-    ]
-  },
-  {
-    "id": "local-wc-count-lines-readme",
-    "user_input": "count lines in README.md",
-    "expected_mode": "structured",
-    "expected_command_family": "wc",
-    "expected_risk_level": "safe",
-    "expected_acceptance": true,
-    "expected_rendered_command": "wc -l README.md",
-    "expected_argv": [
-      "wc",
+      "pgrep",
+      "-f",
       "-l",
-      "README.md"
+      "python"
     ]
   },
   {
-    "id": "local-grep-search-todo-src",
-    "user_input": "search TODO in src",
-    "expected_mode": "structured",
-    "expected_command_family": "grep",
-    "expected_risk_level": "safe",
-    "expected_acceptance": true,
-    "expected_rendered_command": "grep -F -n -r TODO src",
-    "expected_argv": [
-      "grep",
-      "-F",
-      "-n",
-      "-r",
-      "TODO",
-      "src"
-    ]
-  },
-  {
-    "id": "local-git-current-branch",
-    "user_input": "show current branch",
-    "expected_mode": "structured",
-    "expected_command_family": "git",
-    "expected_risk_level": "safe",
-    "expected_acceptance": true,
-    "expected_rendered_command": "git branch --show-current",
-    "expected_argv": [
-      "git",
-      "branch",
-      "--show-current"
-    ]
-  },
-  {
-    "id": "local-git-last-5-commits",
+    "id": "shortcut-no-match-git-history",
     "user_input": "show last 5 commits",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "git",
+      "arguments": {
+        "operation": "log_oneline",
+        "count": 5
+      },
+      "summary": "show last commits",
+      "explanation": "Planner handles Git inspection requests.",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": []
+    },
     "expected_mode": "structured",
     "expected_command_family": "git",
     "expected_risk_level": "safe",
@@ -238,35 +165,7 @@
     ]
   },
   {
-    "id": "local-process-find-python",
-    "user_input": "find python processes",
-    "expected_mode": "structured",
-    "expected_command_family": "pgrep",
-    "expected_risk_level": "safe",
-    "expected_acceptance": true,
-    "expected_rendered_command": "pgrep -f -l python",
-    "expected_argv": [
-      "pgrep",
-      "-f",
-      "-l",
-      "python"
-    ]
-  },
-  {
-    "id": "local-file-identify-readme",
-    "user_input": "identify README.md",
-    "expected_mode": "structured",
-    "expected_command_family": "file",
-    "expected_risk_level": "safe",
-    "expected_acceptance": true,
-    "expected_rendered_command": "file README.md",
-    "expected_argv": [
-      "file",
-      "README.md"
-    ]
-  },
-  {
-    "id": "local-ambiguous-clean-folder",
+    "id": "shortcut-ambiguous-clean-folder",
     "user_input": "clean this folder",
     "expected_ambiguity_detected": true,
     "expected_ambiguity_reason_contains": "clean this folder",
@@ -279,7 +178,7 @@
     ]
   },
   {
-    "id": "local-no-match-install-dependencies",
+    "id": "shortcut-no-match-install-dependencies",
     "user_input": "install dependencies",
     "planner_proposal": {
       "action_type": "shell_command",

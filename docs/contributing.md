@@ -105,9 +105,12 @@ shell commands.
 ## Dogfooding findings
 
 Use the [Dogfooding playbook](dogfooding-playbook.md) before turning real unsupported or surprising
-requests into issues, eval fixtures, docs examples, shortcut follow-ups, command-spec changes,
+requests into issues, eval fixtures, docs examples, planner/schema follow-ups, command-spec changes,
 or bug reports. Dogfooding notes should capture the request pattern and expected behavior, not
 private logs, file contents, audit records, history files, hostnames, tokens, or project details.
+Do not add deterministic shortcuts for broad natural-language phrase coverage. Flexible language
+should be handled through planner prompts, schema-constrained outputs, diagnostics, and mocked
+planner eval fixtures; the shortcut layer is limited to retained fixed utility requests.
 
 ## CI coverage
 

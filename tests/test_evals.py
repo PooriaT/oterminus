@@ -67,10 +67,21 @@ def _ambiguity_case(case_id: str) -> dict[str, object]:
     }
 
 
-def _local_planner_case(case_id: str) -> dict[str, object]:
+def _planner_head_case(case_id: str) -> dict[str, object]:
     return {
         "id": case_id,
         "user_input": "show first 20 lines of README.md",
+        "planner_proposal": {
+            "action_type": "shell_command",
+            "mode": "structured",
+            "command_family": "head",
+            "arguments": {"paths": ["README.md"], "lines": 20},
+            "summary": "show first lines",
+            "explanation": "use head",
+            "risk_level": "safe",
+            "needs_confirmation": True,
+            "notes": [],
+        },
         "expected_mode": "structured",
         "expected_command_family": "head",
         "expected_risk_level": "safe",
@@ -224,10 +235,10 @@ def test_expanded_newer_capability_cases_pass_without_ollama() -> None:
         "git-reject-push-structured",
         "project-health-reject-ruff-format-write-direct",
         "direct-git-status-short",
-        "local-grep-search-todo-src",
-        "local-git-last-5-commits",
-        "local-process-find-python",
-        "local-file-identify-readme",
+        "shortcut-pwd-show-current-directory",
+        "shortcut-no-match-text-lines",
+        "shortcut-no-match-git-history",
+        "shortcut-no-match-process-search",
     }
     selected = [case for case in fixtures if case.id in required_ids]
 
@@ -256,7 +267,7 @@ def test_validate_eval_candidate_file_accepts_valid_multi_case(tmp_path: Path) -
             _minimal_case("candidate-pwd"),
             _planner_case("candidate-planner-find"),
             _ambiguity_case("candidate-ambiguous-clean"),
-            _local_planner_case("candidate-local-head"),
+            _planner_head_case("candidate-planner-head"),
         ],
     )
 
@@ -266,7 +277,7 @@ def test_validate_eval_candidate_file_accepts_valid_multi_case(tmp_path: Path) -
         "candidate-pwd",
         "candidate-planner-find",
         "candidate-ambiguous-clean",
-        "candidate-local-head",
+        "candidate-planner-head",
     ]
 
 

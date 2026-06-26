@@ -128,29 +128,23 @@ reviewable rules. This layer is controlled by `deterministic_shortcuts`; support
 `minimal` (default) and `off`. Shortcuts produce structured proposals only; they never emit
 experimental command text and never execute directly.
 
-Current recipes cover high-frequency safe inspection requests for filesystems (`ls`, `du`, `df`,
-`stat`, `file`), text (`cat`, `head`, `tail`, `grep`, `wc`), processes (`ps`, `pgrep`), and
-read-only Git (`status`, current branch, one-line logs, diff stats, changed file names), plus the
-existing curated current-directory, clear-screen, and project-health checks. Examples include
-`show hidden files`, `show first 20 lines of README.md`, `search TODO in src`,
-`find python processes`, and `show last 5 commits`.
-
-The shortcut helper foundation is conservative. It normalizes request text, rejects unsafe shell
-syntax, and supports only simple parameter extraction for explicit rules: local path tokens,
-base-10 positive integers, and simple search terms. Ambiguous or unsafe values fail closed by
-returning no match. The shared proposal builder respects disabled command packs and
-platform-specific command availability through registry metadata, then lets structured argument
+Current recipes are limited to fixed zero-argument utility shortcuts: current-directory requests
+(`show current directory`, `where am i`, `print working directory`) and clear-screen requests
+(`clear screen`, `clear the screen`). The shared proposal builder respects disabled command packs
+and platform-specific command availability through registry metadata, then lets structured argument
 validation remain the final authority.
 
-The shortcut layer does not handle network, write, dangerous, archive mutation, process mutation, Git
-mutation, or broad project-health expansion requests. It also does not accept natural-language
-recipes containing shell operators, pipelines, redirection, command substitution, wildcard paths,
-URL-like paths, broad roots, or zero/negative line counts.
+The shortcut layer is not a general natural-language parser. It does not extract paths, counts,
+search terms, manual-page topics, process names, Git operations, or project-health operations.
+Natural-language inspection requests such as `show hidden files`, `show first 20 lines of README.md`,
+`find python processes`, and `show last 5 commits` continue to the LLM planner. Direct commands such
+as `ls -l`, `head -n 20 README.md`, and `git status --short` still bypass the LLM through direct
+command detection.
 
 ### 6) LLM planner + parsing
 
-Normal natural-language requests reach the LLM planner unless blocked as ambiguous or matched by an
-enabled deterministic shortcut. The planner asks Ollama for JSON Schema-constrained output and
+Normal natural-language requests reach the LLM planner unless blocked as ambiguous or matched by one
+of the retained deterministic shortcuts. The planner asks Ollama for JSON Schema-constrained output and
 validates the returned JSON against the `Proposal` schema. The schema supports only two first-class
 modes: `structured` and `experimental`. If the model returns valid JSON with invalid proposal
 fields, OTerminus makes one bounded repair request and rejects the output if the repaired JSON still
@@ -175,8 +169,8 @@ Verbose previews may add the architecture diagnostic:
 Some trusted direct commands may remain experimental when the typed schema cannot represent the
 user's argv exactly. For example, `ls -ltrh` is detected locally, skips Ollama planning, preserves
 `["ls", "-ltrh"]`, and reaches validation with direct-command origin. Natural-language requests such
-as "show files sorted by modification time" still go through the deterministic shortcut layer or LLM
-planner and can only produce typed structured arguments.
+as "show files sorted by modification time" still go through the LLM planner and can only produce
+typed structured arguments.
 
 ### 8) Validation and policy
 

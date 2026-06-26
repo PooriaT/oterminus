@@ -117,9 +117,9 @@ def test_release_smoke_deterministic_shortcut_request_skips_ollama_and_execution
     monkeypatch.setattr("oterminus.cli.Planner", Mock(side_effect=AssertionError("no planner")))
     monkeypatch.setattr("builtins.input", Mock(side_effect=AssertionError("no confirmation")))
 
-    assert main(["--dry-run", "show", "files"]) == 0
+    assert main(["--dry-run", "show", "current", "directory"]) == 0
     output = capsys.readouterr().out
-    assert "ls ." in output
+    assert "pwd" in output
     assert "Dry-run mode: execution skipped" in output
     executor.run.assert_not_called()
 

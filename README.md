@@ -309,7 +309,8 @@ request.
 - Optional local persistent REPL history is available via `OTERMINUS_HISTORY_ENABLED=true`; reruns still go through normal validation + confirmation.
 - Audit logs and persistent history are local JSONL files; redaction is enabled by default, but review logs/history before sharing. See the [audit schema](docs/reference/audit-log-schema.md) and [configuration reference](docs/reference/config.md).
 
-For a small set of deterministic natural-language inspection requests, OTerminus can skip Ollama by
-producing a local structured proposal before normal validation and confirmation policy. Examples
-include `show hidden files`, `show first 20 lines of README.md`, `search TODO in src`,
-`find python processes`, and `show current branch`.
+For a tiny set of deterministic utility requests, OTerminus can skip Ollama by producing a local
+structured proposal before normal validation and confirmation policy. The retained shortcuts are
+current-directory requests such as `show current directory` and clear-screen requests such as
+`clear screen`. Broader natural-language inspection requests go through the LLM planner, while typed
+direct commands such as `ls -l`, `man ls`, and `git status --short` remain model-free.

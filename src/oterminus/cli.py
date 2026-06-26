@@ -35,7 +35,7 @@ from oterminus.history import PersistentHistoryStore, SessionHistory
 from oterminus.doctor import print_report, run_doctor
 from oterminus.executor import Executor
 from oterminus.failure_explainer import FailureExplainer
-from oterminus.local_planner import plan_locally
+from oterminus.deterministic_shortcuts import plan_with_deterministic_shortcut
 from oterminus.logging_utils import configure_logging
 from oterminus.ollama_client import OllamaClientError, OllamaPlannerClient
 from oterminus.onboarding import run_onboarding, save_declined_onboarding
@@ -286,11 +286,11 @@ def handle_request(
             if debug_trace:
                 print(f"[trace] route category={route.category} confidence={route.confidence:.2f}")
 
-            local_match = None
+            shortcut_match = None
             shortcut_mode = deterministic_shortcuts.strip().lower()
             if shortcut_mode != "off":
                 deterministic_shortcut_started = time.perf_counter()
-                local_match = plan_locally(
+                shortcut_match = plan_with_deterministic_shortcut(
                     request,
                     route,
                     disabled_pack_ids=effective_disabled_pack_ids,
@@ -299,8 +299,8 @@ def handle_request(
                 timings_ms["deterministic_shortcut_ms"] = _duration_ms_from_counter(
                     deterministic_shortcut_started
                 )
-            if local_match is not None:
-                proposal = local_match.proposal
+            if shortcut_match is not None:
+                proposal = shortcut_match.proposal
                 proposal_origin = PROPOSAL_ORIGIN_DETERMINISTIC_SHORTCUT
                 validation_origin = ProposalOrigin.DETERMINISTIC_SHORTCUT
                 event.planner_invoked = False
@@ -309,7 +309,7 @@ def handle_request(
                 if debug_trace:
                     print(
                         "[trace] proposal_source=deterministic_shortcut "
-                        f"rule={local_match.rule_id} planner=skipped"
+                        f"rule={shortcut_match.rule_id} planner=skipped"
                     )
             else:
                 if debug_trace:
