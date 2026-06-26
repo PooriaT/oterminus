@@ -40,6 +40,7 @@ After `doctor` reports a usable setup, start the interactive app or run one-shot
 ```bash
 oterminus
 oterminus "show disk usage for this folder"
+oterminus "show the man page for grep"
 oterminus --dry-run "copy notes.txt to backup/notes.txt"
 oterminus --explain "find processes matching python"
 ```

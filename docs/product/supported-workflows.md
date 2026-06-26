@@ -48,9 +48,10 @@ Examples:
 
 - inspect user/system identity
 - inspect environment variable values (single variable)
+- inspect local manual pages for commands or sections
 - inspect disk space
 
-Representative families: `clear`, `whoami`, `uname`, `which`, `env`, `df`.
+Representative families: `clear`, `whoami`, `uname`, `which`, `env`, `man`, `df`.
 
 ## Network diagnostics
 

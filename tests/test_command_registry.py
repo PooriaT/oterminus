@@ -62,6 +62,7 @@ def test_existing_commands_remain_available() -> None:
     assert get_command_spec("curl") is not None
     assert get_command_spec("dig") is not None
     assert get_command_spec("nslookup") is not None
+    assert get_command_spec("man") is not None
     assert get_command_spec("project_health") is not None
 
 
@@ -81,6 +82,7 @@ def test_supported_base_commands_includes_curated_entries() -> None:
     assert "curl" in commands
     assert "dig" in commands
     assert "nslookup" in commands
+    assert "man" in commands
 
 
 def test_registry_contains_core_command_metadata() -> None:
@@ -92,6 +94,21 @@ def test_registry_contains_core_command_metadata() -> None:
     assert spec.risk_level == RiskLevel.SAFE
     assert spec.direct_supported is True
     assert spec.network_touching is False
+
+
+def test_registry_contains_guarded_man_metadata() -> None:
+    system_pack = next(pack for pack in COMMAND_PACKS if pack.pack_id == "system")
+    spec = get_command_spec("man")
+
+    assert spec is not None
+    assert spec in system_pack.commands
+    assert spec.category == "system_inspection"
+    assert spec.capability_id == "system_inspection"
+    assert spec.risk_level == RiskLevel.SAFE
+    assert spec.min_operands == 1
+    assert spec.max_operands == 2
+    assert get_enabled_command_spec("man") is spec
+    assert get_enabled_command_spec("man", disabled_pack_ids=frozenset({"system"})) is None
 
 
 def test_command_spec_network_touching_defaults_false() -> None:
@@ -197,6 +214,10 @@ def test_registry_direct_detection_heuristics_match_current_behavior() -> None:
     assert looks_like_direct_invocation("curl", ["-X", "POST", "https://example.com"]) is False
     assert looks_like_direct_invocation("dig", ["example.com"]) is True
     assert looks_like_direct_invocation("dig", ["+short", "example.com"]) is False
+    assert looks_like_direct_invocation("man", ["ls"]) is True
+    assert looks_like_direct_invocation("man", ["1", "ls"]) is True
+    assert looks_like_direct_invocation("man", ["-P", "cat", "ls"]) is False
+    assert looks_like_direct_invocation("man", ["https://example.com"]) is False
 
 
 def test_capability_grouping_and_lookup() -> None:

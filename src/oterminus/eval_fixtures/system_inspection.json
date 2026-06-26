@@ -25,6 +25,20 @@
     ]
   },
   {
+    "id": "direct-man-section-topic",
+    "user_input": "man 5 crontab",
+    "expected_mode": "structured",
+    "expected_command_family": "man",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "man 5 crontab",
+    "expected_argv": [
+      "man",
+      "5",
+      "crontab"
+    ]
+  },
+  {
     "id": "direct-lsof-preserve-and-selector",
     "user_input": "lsof -a -p 1 -c python",
     "expected_mode": "structured",
@@ -62,6 +76,32 @@
     "expected_rendered_command": "env",
     "expected_argv": [
       "env"
+    ]
+  },
+  {
+    "id": "manual-page-pager-flag-rejected",
+    "user_input": "show the ls man page with cat as pager",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "experimental",
+      "command_family": "man",
+      "command": "man -P cat ls",
+      "summary": "show manual page",
+      "explanation": "attempt to customize the manual pager",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "experimental",
+    "expected_command_family": "man",
+    "expected_risk_level": "safe",
+    "expected_acceptance": false,
+    "expected_rendered_command": "man -P cat ls",
+    "expected_argv": [
+      "man",
+      "-P",
+      "cat",
+      "ls"
     ]
   }
 ]

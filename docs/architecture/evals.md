@@ -47,7 +47,7 @@ Files are organized by capability or behavior:
 | `process_inspection.json` | Process listing and matching behavior. |
 | `project_health.json` | Curated project test, lint, format, docs, and eval operations. |
 | `release_smoke.json` | Cross-cutting public install and first-use proposal/validation smoke flows. |
-| `system_inspection.json` | System inspection commands and environment-safety behavior. |
+| `system_inspection.json` | System inspection commands, manual-page lookup, and environment-safety behavior. |
 | `text_inspection.json` | Text/statistical inspection commands. |
 | `unsafe_and_blocked.json` | Shell syntax, dangerous commands, unknown families, and policy blocks. |
 

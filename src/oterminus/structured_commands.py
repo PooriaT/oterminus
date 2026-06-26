@@ -265,6 +265,48 @@ class EnvArguments(_StructuredArgumentsModel):
         return value
 
 
+_MAN_TOPIC_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$")
+_MAN_SECTIONS = frozenset({"1", "2", "3", "4", "5", "6", "7", "8", "9"})
+
+
+def _validate_man_topic(value: str) -> str:
+    blocked_fragments = ("$(", "`", "\n", "\r", "\x00")
+    if any(fragment in value for fragment in blocked_fragments):
+        raise ValueError("topic cannot contain command substitution or control characters.")
+    blocked_operator_fragments = ("&&", "||", ";", "|", "<", ">", "&")
+    if any(fragment in value for fragment in blocked_operator_fragments):
+        raise ValueError("topic cannot contain shell operators.")
+    lowered = value.lower()
+    if "://" in lowered or lowered.startswith("mailto:"):
+        raise ValueError("topic cannot be a URL.")
+    if "/" in value or value in {".", "..", "~"} or value.startswith((".", "~")):
+        raise ValueError("topic cannot be path-like.")
+    if _MAN_TOPIC_RE.fullmatch(value) is None:
+        raise ValueError(
+            "topic must be a conservative manual topic token using letters, digits, '_' or '-'."
+        )
+    return value
+
+
+class ManArguments(_StructuredArgumentsModel):
+    topic: str = Field(min_length=1)
+    section: str | None = None
+
+    @field_validator("topic")
+    @classmethod
+    def validate_topic(cls, value: str) -> str:
+        return _validate_man_topic(value)
+
+    @field_validator("section")
+    @classmethod
+    def validate_section(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        if value not in _MAN_SECTIONS:
+            raise ValueError("section must be one of: 1, 2, 3, 4, 5, 6, 7, 8, 9.")
+        return value
+
+
 class MkdirArguments(_StructuredArgumentsModel):
     path: str = Field(min_length=1)
     parents: bool = False
@@ -727,6 +769,7 @@ STRUCTURED_ARGUMENT_MODELS: dict[str, type[_StructuredArgumentsModel]] = {
     "uname": UnameArguments,
     "which": WhichArguments,
     "env": EnvArguments,
+    "man": ManArguments,
     "mkdir": MkdirArguments,
     "chmod": ChmodArguments,
     "find": FindArguments,
@@ -795,6 +838,7 @@ def parse_argv_as_structured(argv: Sequence[str]) -> tuple[str, dict[str, Any]] 
         "uname": _parse_uname_argv,
         "which": _parse_which_argv,
         "env": _parse_env_argv,
+        "man": _parse_man_argv,
         "mkdir": _parse_mkdir_argv,
         "chmod": _parse_chmod_argv,
         "find": _parse_find_argv,
@@ -911,6 +955,13 @@ def render_structured_command(
 
     if command_family == "env":
         return RenderedCommand(("env", validated.variable))
+
+    if command_family == "man":
+        argv = ["man"]
+        if validated.section is not None:
+            argv.append(validated.section)
+        argv.append(validated.topic)
+        return RenderedCommand(tuple(argv))
 
     if command_family == "mkdir":
         argv = ["mkdir"]
@@ -1255,6 +1306,26 @@ def _parse_env_argv(operands: list[str]) -> dict[str, Any] | None:
     if operands[0].startswith("-"):
         return None
     return {"variable": operands[0]}
+
+
+def _parse_man_argv(operands: list[str]) -> dict[str, Any] | None:
+    if len(operands) == 1:
+        if not _is_parseable_man_topic(operands[0]):
+            return None
+        return {"topic": operands[0]}
+    if len(operands) == 2:
+        if operands[0] not in _MAN_SECTIONS or not _is_parseable_man_topic(operands[1]):
+            return None
+        return {"section": operands[0], "topic": operands[1]}
+    return None
+
+
+def _is_parseable_man_topic(value: str) -> bool:
+    try:
+        _validate_man_topic(value)
+    except ValueError:
+        return False
+    return True
 
 
 def _parse_mkdir_argv(operands: list[str]) -> dict[str, Any] | None:

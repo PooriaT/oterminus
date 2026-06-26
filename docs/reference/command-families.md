@@ -122,6 +122,7 @@
 | `clear` | system_inspection | all | safe | structured | structured (normal executable support) | yes | explicit | no | `clear` | `clear terminal`, `clear screen` | Clears the current terminal screen for a clean session view. |
 | `df` | system_inspection | all | safe | structured | structured (normal executable support) | yes | explicit | no | `df -h` | `disk space` | — |
 | `env` | system_inspection | all | safe | structured | structured (normal executable support) | yes | explicit | no | `env PATH` | `environment variable` | Printing the full environment may include sensitive values; curated mode only allows single-variable lookups. |
+| `man` | system_inspection | all | safe | structured | structured (normal executable support) | yes | explicit | no | `man ls`<br>`man 1 ls` | `manual page`, `man page`, `command manual` | Opens local manual documentation through the system pager. |
 | `uname` | system_inspection | all | safe | structured | structured (normal executable support) | yes | explicit | no | `uname -a` | `system name`, `kernel info` | — |
 | `which` | system_inspection | all | safe | structured | structured (normal executable support) | yes | explicit | no | `which python3` | `find executable` | — |
 | `whoami` | system_inspection | all | safe | structured | structured (normal executable support) | yes | explicit | no | `whoami` | `current user` | — |

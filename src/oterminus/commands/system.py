@@ -64,6 +64,17 @@ COMMAND_PACK: tuple[CommandSpec, ...] = (
         ),
     ),
     command(
+        name="man",
+        category="system_inspection",
+        **SYSTEM_INSPECTION,
+        risk_level=RiskLevel.SAFE,
+        min_operands=1,
+        max_operands=2,
+        examples=("man ls", "man 1 ls"),
+        natural_language_aliases=("manual page", "man page", "command manual"),
+        notes=("Opens local manual documentation through the system pager.",),
+    ),
+    command(
         name="df",
         category="system_inspection",
         **SYSTEM_INSPECTION,
