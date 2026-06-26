@@ -188,7 +188,13 @@ def test_reject_disabled_pack_for_direct_origin_ls_passthrough() -> None:
 
 @pytest.mark.parametrize(
     "origin",
-    [ProposalOrigin.UNKNOWN, ProposalOrigin.OLLAMA_PLANNER, ProposalOrigin.LOCAL_PLANNER],
+    [
+        ProposalOrigin.UNKNOWN,
+        ProposalOrigin.LLM_PLANNER,
+        ProposalOrigin.DETERMINISTIC_SHORTCUT,
+        ProposalOrigin.OLLAMA_PLANNER,
+        ProposalOrigin.LOCAL_PLANNER,
+    ],
 )
 def test_reject_ls_passthrough_without_trusted_direct_origin(origin: ProposalOrigin) -> None:
     validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))

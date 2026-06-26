@@ -1003,7 +1003,7 @@ def test_handle_request_direct_command_default_output_is_concise(monkeypatch, ca
     assert "--- command preview ---" in output
     assert "Command: pwd" in output
     assert "Risk: safe" in output
-    assert "Skipped Ollama planner." not in output
+    assert "Skipped LLM planner." not in output
 
 
 def test_handle_request_dry_run_skips_confirmation_and_execution(capsys) -> None:
@@ -1274,7 +1274,7 @@ def test_handle_request_direct_command_verbose_shows_trace(monkeypatch, capsys) 
 
     assert code == 0
     output = capsys.readouterr().out
-    assert "[trace] fast_path=direct_command planner=skipped" in output
+    assert "[trace] proposal_source=direct_command planner=skipped" in output
     assert "[trace] Validation accepted." in output
 
 
@@ -1341,7 +1341,7 @@ def test_handle_request_ambiguous_verbose_shows_fast_path_trace(capsys) -> None:
 
     assert code == 0
     output = capsys.readouterr().out
-    assert "[trace] fast_path=ambiguity_blocked planner=skipped" in output
+    assert "[trace] proposal_source=unknown planner=skipped reason=ambiguity_blocked" in output
 
 
 def test_handle_request_natural_language_verbose_shows_planner_invoked(monkeypatch, capsys) -> None:
@@ -1378,7 +1378,8 @@ def test_handle_request_natural_language_verbose_shows_planner_invoked(monkeypat
 
     assert code == 0
     output = capsys.readouterr().out
-    assert "[trace] local_planner=no_match planner=invoked" in output
+    assert "[trace] deterministic_shortcut=no_match planner=invoked" in output
+    assert "[trace] proposal_source=llm_planner planner=invoked" in output
 
 
 def test_ask_confirmation_requires_experimental_phrase(monkeypatch) -> None:

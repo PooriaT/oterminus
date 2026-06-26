@@ -104,7 +104,7 @@ def test_release_smoke_direct_inspection_modes_skip_startup_planner_and_executio
     executor.run.assert_not_called()
 
 
-def test_release_smoke_local_planner_request_skips_ollama_and_execution(
+def test_release_smoke_deterministic_shortcut_request_skips_ollama_and_execution(
     monkeypatch, tmp_path: Path, capsys
 ) -> None:
     from oterminus.cli import main
@@ -112,7 +112,7 @@ def test_release_smoke_local_planner_request_skips_ollama_and_execution(
     executor = _install_cli_release_dependencies(monkeypatch, _release_config(tmp_path))
     monkeypatch.setattr(
         "oterminus.cli.ensure_startup_ready",
-        Mock(side_effect=AssertionError("local planner should not need Ollama")),
+        Mock(side_effect=AssertionError("deterministic shortcut should not need Ollama")),
     )
     monkeypatch.setattr("oterminus.cli.Planner", Mock(side_effect=AssertionError("no planner")))
     monkeypatch.setattr("builtins.input", Mock(side_effect=AssertionError("no confirmation")))

@@ -41,6 +41,7 @@ _COMMAND_PROFILE_DESCRIPTIONS: dict[str, str] = {
     "power": "Broadest normal profile; only the dangerous pack stays disabled.",
 }
 _DOTENV_FILENAME = ".env"
+SUPPORTED_DETERMINISTIC_SHORTCUT_MODES = frozenset({"off", "minimal"})
 
 
 class ConfigError(RuntimeError):
@@ -81,6 +82,7 @@ class UserConfig(BaseModel):
     allowed_roots: list[StrictStr] = Field(default_factory=list)
 
     auto_execute_safe: StrictBool = False
+    deterministic_shortcuts: StrictStr = "minimal"
     timeout_seconds: PositiveConfigInt = 60
     max_output_chars: PositiveConfigInt = 20000
     color_mode: ColorMode = ColorMode.AUTO
@@ -160,6 +162,14 @@ class UserConfig(BaseModel):
             raise ValueError("allowed_roots entries must be nonblank strings.")
         return stripped
 
+    @field_validator("deterministic_shortcuts")
+    @classmethod
+    def validate_deterministic_shortcuts(cls, value: str) -> str:
+        normalized = value.strip().lower()
+        if normalized not in SUPPORTED_DETERMINISTIC_SHORTCUT_MODES:
+            raise ValueError("deterministic_shortcuts must be one of: off, minimal.")
+        return normalized
+
     @field_validator("audit_log_path", "history_path")
     @classmethod
     def validate_path_string(cls, value: str | None) -> str | None:
@@ -180,6 +190,7 @@ def safe_default_user_config() -> UserConfig:
         disabled_command_packs=[],
         allowed_roots=[],
         auto_execute_safe=False,
+        deterministic_shortcuts="minimal",
         audit_enabled=True,
         audit_redact=True,
         history_enabled=False,
@@ -213,6 +224,7 @@ class AppConfig:
     timeout_seconds: int = 60
     policy: PolicyConfig = field(default_factory=PolicyConfig)
     auto_execute_safe: bool = False
+    deterministic_shortcuts: str = "minimal"
     model: str | None = None
     audit_log_path: Path = field(default_factory=lambda: Path.home() / ".oterminus" / "audit.jsonl")
     audit_enabled: bool = True
@@ -502,6 +514,9 @@ def resolve_config() -> ResolvedConfig:
         user_config,
         default=False,
     )
+    deterministic_shortcuts, sources["deterministic_shortcuts"] = _resolve_deterministic_shortcuts(
+        dotenv_values, user_config
+    )
     command_profile, sources["command_profile"] = _resolve_command_profile(
         dotenv_values, user_config
     )
@@ -522,6 +537,7 @@ def resolve_config() -> ResolvedConfig:
                 disabled_command_packs=disabled_command_packs,
             ),
             auto_execute_safe=auto_execute_safe,
+            deterministic_shortcuts=deterministic_shortcuts,
             model=model,
             audit_log_path=audit_log_path,
             audit_enabled=audit_enabled,
@@ -663,6 +679,17 @@ def _resolve_command_profile(
     return None, ConfigValueSource.DEFAULT
 
 
+def _resolve_deterministic_shortcuts(
+    dotenv_values: dict[str, str], user_config: UserConfig | None
+) -> tuple[str, ConfigValueSource]:
+    raw = _raw_value("OTERMINUS_DETERMINISTIC_SHORTCUTS", dotenv_values)
+    if raw is not None:
+        return _parse_deterministic_shortcuts(raw.value), raw.source
+    if _user_has_field(user_config, "deterministic_shortcuts"):
+        return user_config.deterministic_shortcuts, ConfigValueSource.USER_CONFIG
+    return "minimal", ConfigValueSource.DEFAULT
+
+
 def _resolve_disabled_packs(
     dotenv_values: dict[str, str], user_config: UserConfig | None
 ) -> tuple[frozenset[str], ConfigValueSource]:
@@ -756,6 +783,18 @@ def _parse_command_profile(raw: str | None) -> str | None:
             + normalized
             + ". Supported profiles: "
             + ", ".join(sorted(_COMMAND_PROFILE_DISABLED_PACKS))
+        )
+        raise ValueError(msg)
+    return normalized
+
+
+def _parse_deterministic_shortcuts(raw: str) -> str:
+    normalized = raw.strip().lower()
+    if normalized not in SUPPORTED_DETERMINISTIC_SHORTCUT_MODES:
+        msg = (
+            "Unknown value for OTERMINUS_DETERMINISTIC_SHORTCUTS: "
+            + normalized
+            + ". Supported values: off, minimal"
         )
         raise ValueError(msg)
     return normalized

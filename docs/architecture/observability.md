@@ -8,8 +8,8 @@ When enabled, each request lifecycle writes one JSON line with fields covering:
 
 - request metadata
 - ambiguity outcome for blocked natural-language requests
-- planner fast-path diagnostics (`planner_invoked`, `planner_skipped`, `planner_skip_reason`)
-- proposal origin (`direct_command`, `local_planner`, `ollama_planner`, or `unknown`)
+- planner skip diagnostics (`planner_invoked`, `planner_skipped`, `planner_skip_reason`)
+- proposal origin (`direct_command`, `deterministic_shortcut`, `llm_planner`, or `unknown`)
 - routing and proposal decisions when planning continues
 - validation outcome and reasons/warnings
 - confirmation result or lifecycle stop status
@@ -43,9 +43,10 @@ and argv before JSONL writes. Audit events store stdout/stderr truncation metada
 
 ## Runtime diagnostics
 
-- `--verbose` prints concise trace lines for fast-path/planner decisions, routing, proposal,
+- `--verbose` prints concise trace lines for source/planner decisions, routing, proposal,
   validation, auto-execute eligibility, and confirmation (for example:
-  `fast_path=direct_command planner=skipped`, `planner=invoked`, and
+  `proposal_source=direct_command planner=skipped`,
+  `deterministic_shortcut=no_match planner=invoked`, and
   `confirmation=skipped_auto_execute_safe origin=direct_command`)
 - `audit status` reports current audit settings and path
 - `audit tail [n]` prints recent local audit events without executing a request
@@ -74,5 +75,7 @@ See [Audit log schema](../reference/audit-log-schema.md) and [Configuration refe
 
 Environment variables often contain credentials. Curated `env` support is constrained to single-variable lookups and validation emits a warning even for accepted lookups. Bare `env` and multi-variable dumps are rejected in curated mode, and users should avoid sharing env output publicly without review.
 
-- `planner_skip_reason` now includes `local_planner` when deterministic local planning produced the proposal.
-- Verbose trace includes `fast_path=local_planner` with a rule id on matches, and `local_planner=no_match planner=invoked` on misses.
+- `planner_skip_reason` includes `deterministic_shortcut` when an enabled deterministic shortcut
+  produced the proposal.
+- Verbose trace includes `proposal_source=deterministic_shortcut` with a rule id on matches, and
+  `deterministic_shortcut=no_match planner=invoked` on misses.

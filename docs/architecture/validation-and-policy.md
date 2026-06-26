@@ -118,10 +118,10 @@ when structured rendering is unavailable or unsuitable.
 
 Safe auto-execute is an explicit opt-in exception to the default prompt. It does not change
 validation or risk computation. It is considered only after a successful preview for execute-mode
-requests and only for direct-detected or deterministic local-planner structured proposals with exact
+requests and only for direct-detected or deterministic-shortcut structured proposals with exact
 `safe` risk, no warnings, no rejection reasons, a rendered command/argv, and an enabled
 platform-supported command spec. Warnings, network metadata, write/dangerous risk, experimental mode,
-Ollama-planned proposals, project health, archive extraction/creation, history reruns, dry-run, and
+LLM-planned proposals, project health, archive extraction/creation, history reruns, dry-run, and
 explain mode all fail closed to the normal confirmation behavior.
 
 Policy mode, allowed roots, command profile, disabled command packs, and safe auto-execute can be

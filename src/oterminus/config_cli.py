@@ -310,6 +310,11 @@ def _show_config() -> int:
             "derived union",
         ),
         ("auto_execute_safe", app.auto_execute_safe, resolved.sources.get("auto_execute_safe")),
+        (
+            "deterministic_shortcuts",
+            app.deterministic_shortcuts,
+            resolved.sources.get("deterministic_shortcuts"),
+        ),
         ("timeout_seconds", app.timeout_seconds, resolved.sources.get("timeout_seconds")),
         ("max_output_chars", app.max_output_chars, resolved.sources.get("max_output_chars")),
         ("color_mode", app.color_mode.value, resolved.sources.get("color_mode")),

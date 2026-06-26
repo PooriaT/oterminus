@@ -471,6 +471,21 @@ def test_config_set_command_profiles(
     assert json.loads(config_path.read_text(encoding="utf-8"))["command_profile"] == raw.lower()
 
 
+@pytest.mark.parametrize("raw", ["off", "minimal", "MINIMAL"])
+def test_config_set_deterministic_shortcuts(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, raw: str
+) -> None:
+    config_path = tmp_path / "config.json"
+    monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(config_path))
+
+    assert run_config_cli(["set", "deterministic_shortcuts", raw]) == 0
+
+    assert (
+        json.loads(config_path.read_text(encoding="utf-8"))["deterministic_shortcuts"]
+        == raw.lower()
+    )
+
+
 @pytest.mark.parametrize("raw", ["1", "42"])
 def test_config_set_positive_integer_values(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path, raw: str
@@ -489,6 +504,10 @@ def test_config_set_positive_integer_values(
         (["set", "auto_execute_safe", "sometimes"], "boolean"),
         (["set", "color_mode", "sparkles"], "color_mode must be one of"),
         (["set", "command_profile", "devv"], "command_profile must be one of"),
+        (
+            ["set", "deterministic_shortcuts", "full"],
+            "deterministic_shortcuts must be one of",
+        ),
         (["set", "timeout_seconds", "0"], "greater than zero"),
         (["set", "timeout_seconds", "-1"], "positive base-10 integer"),
         (["set", "timeout_seconds", "1.5"], "positive base-10 integer"),
@@ -680,6 +699,7 @@ def test_config_reset_all_safe_resets_documented_set_and_preserves_internal_fiel
         "onboarding_completed": True,
         "model": "gemma4",
         "command_profile": "developer",
+        "deterministic_shortcuts": "off",
         "auto_execute_safe": True,
         "audit_enabled": False,
         "audit_redact": False,
