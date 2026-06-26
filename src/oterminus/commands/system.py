@@ -1,6 +1,6 @@
 from oterminus.models import RiskLevel
 
-from .types import CommandSpec, DirectDetectionMode, command
+from .types import CommandSpec, DirectDetectionMode, PathOperandMode, command
 
 SYSTEM_INSPECTION = {
     "capability_id": "system_inspection",
@@ -70,6 +70,7 @@ COMMAND_PACK: tuple[CommandSpec, ...] = (
         risk_level=RiskLevel.SAFE,
         min_operands=1,
         max_operands=2,
+        path_operand_mode=PathOperandMode.NONE,
         examples=("man ls", "man 1 ls"),
         natural_language_aliases=("manual page", "man page", "command manual"),
         notes=("Opens local manual documentation through the system pager.",),

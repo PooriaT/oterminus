@@ -6,6 +6,7 @@ from oterminus.commands import (
     NETWORK_TOUCHING_WARNING,
     DirectFlagPolicy,
     MaturityLevel,
+    PathOperandMode,
     capability_summary_for_prompt,
     command,
     command_maturity_status,
@@ -107,6 +108,7 @@ def test_registry_contains_guarded_man_metadata() -> None:
     assert spec.risk_level == RiskLevel.SAFE
     assert spec.min_operands == 1
     assert spec.max_operands == 2
+    assert spec.path_operand_mode == PathOperandMode.NONE
     assert get_enabled_command_spec("man") is spec
     assert get_enabled_command_spec("man", disabled_pack_ids=frozenset({"system"})) is None
 

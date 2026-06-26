@@ -536,6 +536,9 @@ class Validator:
         return disallowed
 
     def _path_operands(self, spec: CommandSpec, arguments: list[str]) -> list[str]:
+        if spec.path_operand_mode == PathOperandMode.NONE:
+            return []
+
         if spec.path_operand_mode == PathOperandMode.CD:
             if not arguments or arguments == ["-"]:
                 return ["~"] if not arguments else []

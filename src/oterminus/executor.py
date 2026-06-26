@@ -28,12 +28,19 @@ class Executor:
         if args and args[0] == "clear":
             return self._run_clear(rendered_command)
 
+        env = os.environ.copy()
+        if args and args[0] == "man":
+            env["MANPAGER"] = "cat"
+            env["PAGER"] = "cat"
+            env["MANOPT"] = ""
+
         proc = subprocess.run(
             args,
             capture_output=True,
             text=True,
             timeout=self.timeout_seconds,
             check=False,
+            env=env,
         )
         stdout, stdout_truncated = truncate_output(proc.stdout, self.max_output_chars)
         stderr, stderr_truncated = truncate_output(proc.stderr, self.max_output_chars)

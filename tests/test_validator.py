@@ -718,6 +718,17 @@ def test_allowed_roots_grep_pattern_file_stdin_sentinel_is_not_treated_as_path()
     assert result.accepted is True
 
 
+def test_allowed_roots_does_not_treat_man_topics_as_paths() -> None:
+    validator = Validator(
+        PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False, allowed_roots=["/allowed"])
+    )
+
+    result = validator.validate(make_proposal("man 5 crontab"))
+
+    assert result.accepted is True
+    assert result.argv == ["man", "5", "crontab"]
+
+
 def test_allowed_roots_cp_checks_both_source_and_destination() -> None:
     validator = Validator(
         PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False, allowed_roots=["/allowed"])
