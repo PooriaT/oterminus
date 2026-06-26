@@ -147,6 +147,7 @@ no conservative match exists, OTerminus falls back to the Ollama planner.
 The local recipe set covers safe inspection only:
 
 - filesystem inspection through `ls`, `du`, `df`, `stat`, and `file`
+- system inspection through local manual-page lookup with `man`
 - text inspection through `cat`, `head`, `tail`, `grep`, and `wc`
 - process inspection through `ps` and `pgrep`
 - Git inspection through read-only `git` operations
@@ -154,8 +155,8 @@ The local recipe set covers safe inspection only:
   project checks
 
 Representative requests include `show hidden files`, `show first 20 lines of README.md`,
-`search TODO in src`, `find python processes`, `show current branch`, and
-`show git diff summary`.
+`search TODO in src`, `show manual for ls`, `show manual section 5 for crontab`,
+`find python processes`, `show current branch`, and `show git diff summary`.
 
 Local planning is intentionally narrow. Rules are explicit Python checks, not a broad natural
 language parser and not a shell-like parser. The helper foundation used by those rules normalizes
@@ -164,6 +165,9 @@ conservative local path tokens, base-10 positive integers, and simple search ter
 fail-closed: ambiguous numbers, multiline values, command substitution, shell operators,
 redirection, wildcard syntax, URL-like path values, flag-like path values, and broad filesystem
 roots are rejected by the helper or allowed to fall through to the Ollama planner path.
+Manual-page recipes additionally require clear manual-page wording, a conservative topic token, and
+an optional section from `1` through `9`; vague help or explanation requests do not become `man`
+proposals.
 
 Every local-planner match is built through the shared proposal builder. The builder checks registry
 metadata first, so disabled command packs and platform-specific command availability are respected

@@ -37,7 +37,7 @@ Files are organized by capability or behavior:
 | `ambiguity.json` | Ambiguity gates and specific requests that must not be stopped as ambiguous. |
 | `archive_inspection.json` | Archive list, extract, create, and archive-specific rejection behavior. |
 | `direct_commands.json` | Shell-like inputs accepted directly without LLM planning. |
-| `fast_path_local_planner.json` | Deterministic local-planner matches, including safe filesystem/text/process/Git inspection recipes, and no-match fallback behavior. |
+| `fast_path_local_planner.json` | Deterministic local-planner matches, including safe filesystem/system/text/process/Git inspection recipes, and no-match fallback behavior. |
 | `filesystem_inspection.json` | Read-only filesystem inspection commands and planner proposals. |
 | `filesystem_mutation.json` | Guarded filesystem write operations. |
 | `git_inspection.json` | Read-only Git status, branch, log, and diff operations. |
