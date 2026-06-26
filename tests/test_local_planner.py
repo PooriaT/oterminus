@@ -263,6 +263,12 @@ def test_local_planner_maps_disk_usage_folder() -> None:
 def test_local_planner_maps_manual_page_recipes() -> None:
     cases = {
         "show manual for ls": ("man", {"topic": "ls", "section": None}),
+        "show me the manual of ls": ("man", {"topic": "ls", "section": None}),
+        "sho me the manual page for ls": ("man", {"topic": "ls", "section": None}),
+        "show me the manual page for a command called ls": (
+            "man",
+            {"topic": "ls", "section": None},
+        ),
         "show man page for grep": ("man", {"topic": "grep", "section": None}),
         "show the man page for grep": ("man", {"topic": "grep", "section": None}),
         "open man page for tar": ("man", {"topic": "tar", "section": None}),

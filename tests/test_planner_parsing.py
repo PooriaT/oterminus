@@ -1,7 +1,47 @@
+import json
+
 import pytest
 
 from oterminus.models import ActionType, Proposal, ProposalMode
 from oterminus.planner import Planner, PlannerError
+
+
+class _StubClient:
+    def __init__(self, *payloads: str):
+        self.payloads = list(payloads)
+        self.calls: list[dict[str, object]] = []
+
+    def chat_json(
+        self,
+        *,
+        system_prompt: str,
+        user_prompt: str,
+        output_schema: dict[str, object] | None = None,
+    ) -> str:
+        self.calls.append(
+            {
+                "system_prompt": system_prompt,
+                "user_prompt": user_prompt,
+                "output_schema": output_schema,
+            }
+        )
+        return self.payloads.pop(0)
+
+
+def _proposal_payload(**overrides: object) -> str:
+    payload = {
+        "action_type": "shell_command",
+        "mode": "structured",
+        "command_family": "man",
+        "arguments": {"topic": "ls", "section": None},
+        "summary": "show manual",
+        "explanation": "Use the local manual page for ls.",
+        "risk_level": "safe",
+        "needs_confirmation": True,
+        "notes": [],
+    }
+    payload.update(overrides)
+    return json.dumps(payload)
 
 
 def test_proposal_mode_exposes_only_structured_and_experimental() -> None:
@@ -276,3 +316,141 @@ def test_parse_rejects_structured_arguments_in_experimental_mode() -> None:
 def test_parse_invalid_json() -> None:
     with pytest.raises(PlannerError):
         Planner.parse_proposal("not-json")
+
+
+def test_planner_first_call_valid_structured_proposal_passes() -> None:
+    client = _StubClient(_proposal_payload())
+    planner = Planner(client)
+
+    proposal = planner.plan("show me the manual of ls")
+
+    assert proposal.mode == ProposalMode.STRUCTURED
+    assert proposal.command_family == "man"
+    assert proposal.arguments == {"topic": "ls", "section": None}
+    assert len(client.calls) == 1
+    assert client.calls[0]["output_schema"] is not None
+
+
+def test_planner_first_call_valid_experimental_proposal_passes() -> None:
+    client = _StubClient(
+        _proposal_payload(
+            mode="experimental",
+            command_family=None,
+            arguments=None,
+            command="stat -f %z README.md",
+            summary="show exact file size",
+            explanation="Use a single stat command with a custom format.",
+            notes=["Experimental proposal; review before running."],
+        )
+    )
+    planner = Planner(client)
+
+    proposal = planner.plan("show README size in bytes exactly")
+
+    assert proposal.mode == ProposalMode.EXPERIMENTAL
+    assert proposal.command == "stat -f %z README.md"
+    assert len(client.calls) == 1
+
+
+def test_planner_repairs_invalid_action_type_and_mode_once() -> None:
+    invalid = _proposal_payload(
+        action_type="cat",
+        mode="file",
+        command_family=None,
+        arguments=None,
+        command="cat README.md",
+    )
+    repaired = _proposal_payload()
+    client = _StubClient(invalid, repaired)
+    planner = Planner(client)
+
+    proposal = planner.plan("show me the manual of ls")
+
+    assert proposal.mode == ProposalMode.STRUCTURED
+    assert proposal.command_family == "man"
+    assert proposal.arguments == {"topic": "ls", "section": None}
+    assert len(client.calls) == 2
+    repair_prompt = str(client.calls[1]["user_prompt"])
+    assert "Original user request:" in repair_prompt
+    assert "Original planner context:" in repair_prompt
+    assert "show me the manual of ls" in repair_prompt
+    assert "suggested_families=man" in repair_prompt
+    assert "Invalid JSON returned:" in repair_prompt
+    assert "field `action_type`" in repair_prompt
+    assert '"shell_command"' in repair_prompt
+    assert '"structured" or "experimental"' in repair_prompt
+    assert "Every corrected object must include" in repair_prompt
+    assert "Valid structured shape:" in repair_prompt
+
+
+def test_planner_repairs_structured_proposal_missing_command_family() -> None:
+    invalid = json.dumps(
+        {
+            "action_type": "shell_command",
+            "mode": "structured",
+            "summary": "Display manual of ls command",
+            "explanation": "Using cat to show the manual page for ls utility.",
+            "needs_confirmation": False,
+            "notes": ["No alternative command fits better."],
+        }
+    )
+    repaired = _proposal_payload()
+    client = _StubClient(invalid, repaired)
+    planner = Planner(client)
+
+    proposal = planner.plan("show me the manual of ls")
+
+    assert proposal.mode == ProposalMode.STRUCTURED
+    assert proposal.command_family == "man"
+    assert proposal.arguments == {"topic": "ls", "section": None}
+    assert len(client.calls) == 2
+    repair_prompt = str(client.calls[1]["user_prompt"])
+    assert "Structured proposals require command_family" in repair_prompt
+    assert "Valid structured shape:" in repair_prompt
+    assert "needs_confirmation to true" in repair_prompt
+
+
+def test_planner_repairs_false_needs_confirmation() -> None:
+    invalid = _proposal_payload(needs_confirmation=False)
+    repaired = _proposal_payload()
+    client = _StubClient(invalid, repaired)
+    planner = Planner(client)
+
+    proposal = planner.plan("show me the manual of ls")
+
+    assert proposal.needs_confirmation is True
+    assert len(client.calls) == 2
+    repair_prompt = str(client.calls[1]["user_prompt"])
+    assert "field `needs_confirmation`" in repair_prompt
+    assert "needs_confirmation to true" in repair_prompt
+
+
+def test_planner_repair_failure_raises_concise_error() -> None:
+    invalid = _proposal_payload(
+        action_type="cat",
+        mode="file",
+        command_family=None,
+        arguments=None,
+        command="cat README.md",
+    )
+    client = _StubClient(invalid, invalid)
+    planner = Planner(client)
+
+    with pytest.raises(PlannerError) as exc_info:
+        planner.plan("show me the manual of ls")
+
+    message = str(exc_info.value)
+    assert "after one repair attempt" in message
+    assert "Details:" in message
+    assert "field `action_type`" in message
+    assert len(client.calls) == 2
+
+
+def test_planner_malformed_json_fails_without_repair() -> None:
+    client = _StubClient("not-json")
+    planner = Planner(client)
+
+    with pytest.raises(PlannerError, match="Invalid JSON from model"):
+        planner.plan("show me the manual of ls")
+
+    assert len(client.calls) == 1

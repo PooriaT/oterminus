@@ -6,10 +6,22 @@ from oterminus.prompts import build_system_prompt
 class _StubClient:
     def __init__(self, payload: str):
         self.payload = payload
-        self.calls: list[dict[str, str]] = []
+        self.calls: list[dict[str, object]] = []
 
-    def chat_json(self, *, system_prompt: str, user_prompt: str) -> str:
-        self.calls.append({"system_prompt": system_prompt, "user_prompt": user_prompt})
+    def chat_json(
+        self,
+        *,
+        system_prompt: str,
+        user_prompt: str,
+        output_schema: dict[str, object] | None = None,
+    ) -> str:
+        self.calls.append(
+            {
+                "system_prompt": system_prompt,
+                "user_prompt": user_prompt,
+                "output_schema": output_schema,
+            }
+        )
         return self.payload
 
 
@@ -45,6 +57,23 @@ def test_planner_includes_unsupported_router_context() -> None:
     prompt = client.calls[0]["user_prompt"]
     assert "category=unsupported" in prompt
     assert "limitations" in prompt
+
+
+def test_planner_routes_manual_page_requests_to_man() -> None:
+    client = _StubClient(
+        '{"action_type":"shell_command","mode":"structured","command_family":"man",'
+        '"arguments":{"topic":"ls","section":null},"command":null,'
+        '"summary":"show manual","explanation":"display the ls manual page",'
+        '"risk_level":"safe","needs_confirmation":true,"notes":[]}'
+    )
+    planner = Planner(client)
+
+    planner.plan("provide the manual page for ls")
+
+    prompt = client.calls[0]["user_prompt"]
+    assert "category=metadata_inspect" in prompt
+    assert "suggested_families=man" in prompt
+    assert "suggested_capabilities=system_inspection" in prompt
 
 
 def test_planner_route_context_excludes_disabled_profile_capabilities() -> None:

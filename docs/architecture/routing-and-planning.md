@@ -54,9 +54,14 @@ planner. Planner calls Ollama with:
 
 - a system prompt
 - user prompt that includes request + route context + capability summaries
+- a JSON Schema `format` constraint for the required proposal object
+- deterministic low-temperature generation options
 
 Planner parses model JSON into a strict `Proposal` schema. The model is asked to emit only
-`structured` or `experimental` proposals and never executes commands itself.
+`structured` or `experimental` proposals and never executes commands itself. If Ollama returns valid
+JSON that fails the proposal schema, the planner sends one focused repair prompt containing the
+original request, bounded invalid output, and a concise validation summary. The repaired response
+must still pass the same `Proposal` and structured-argument validation before validation or preview.
 
 Capability summaries include network-boundary metadata when any enabled command family is marked
 `network_touching`. The planner prompt instructs the model to preserve that warning in proposal
@@ -86,7 +91,7 @@ before downstream handling.
 Planner errors include:
 
 - invalid JSON from model
-- schema mismatch
+- schema mismatch after one bounded repair attempt
 - invalid structured argument payloads
 
 These become non-execution failures surfaced in CLI.
