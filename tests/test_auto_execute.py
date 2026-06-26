@@ -80,12 +80,14 @@ def test_direct_structured_safe_command_is_eligible() -> None:
     assert _decision().eligible is True
 
 
-def test_local_planner_structured_safe_command_is_eligible() -> None:
-    assert _decision(origin="local_planner").eligible is True
+def test_deterministic_shortcut_structured_safe_command_is_eligible() -> None:
+    assert _decision(origin="deterministic_shortcut").eligible is True
 
 
-@pytest.mark.parametrize("origin", ["ollama_planner", "unknown", "experimental_fallback"])
-def test_only_direct_and_local_origins_are_eligible(origin: str) -> None:
+@pytest.mark.parametrize(
+    "origin", ["llm_planner", "ollama_planner", "unknown", "experimental_fallback"]
+)
+def test_only_direct_and_shortcut_origins_are_eligible(origin: str) -> None:
     decision = _decision(origin=origin)
     assert decision.eligible is False
     assert decision.reason == "proposal_origin"

@@ -66,6 +66,39 @@ def test_load_config_auto_execute_safe_invalid_value_falls_back_to_false(
     assert config.auto_execute_safe is False
 
 
+def test_load_config_deterministic_shortcuts_defaults_to_minimal(
+    monkeypatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(tmp_path / "config.json"))
+    monkeypatch.delenv("OTERMINUS_DETERMINISTIC_SHORTCUTS", raising=False)
+
+    config = load_config()
+
+    assert config.deterministic_shortcuts == "minimal"
+
+
+@pytest.mark.parametrize("raw, expected", [("off", "off"), ("MINIMAL", "minimal")])
+def test_load_config_deterministic_shortcuts_from_env(
+    monkeypatch, tmp_path: Path, raw: str, expected: str
+) -> None:
+    monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(tmp_path / "config.json"))
+    monkeypatch.setenv("OTERMINUS_DETERMINISTIC_SHORTCUTS", raw)
+
+    config = load_config()
+
+    assert config.deterministic_shortcuts == expected
+
+
+def test_load_config_rejects_unknown_deterministic_shortcuts(
+    monkeypatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(tmp_path / "config.json"))
+    monkeypatch.setenv("OTERMINUS_DETERMINISTIC_SHORTCUTS", "full")
+
+    with pytest.raises(ValueError, match="OTERMINUS_DETERMINISTIC_SHORTCUTS"):
+        load_config()
+
+
 def test_load_config_reads_auto_execute_safe_from_local_dotenv(monkeypatch, tmp_path: Path) -> None:
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(tmp_path / "config.json"))

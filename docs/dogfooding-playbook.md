@@ -11,7 +11,7 @@ accepted unexpectedly, or hard to explain. A good dogfooding note should answer:
 - What did they expect?
 - What happened instead?
 - Was the behavior safe, ambiguous, unsupported, rejected, or incorrectly accepted?
-- Should this become an eval case, local-planner follow-up, command-spec change, docs update, bug
+- Should this become an eval case, shortcut follow-up, command-spec change, docs update, bug
   report, or no action?
 
 Sanitize the note before it becomes an issue, eval fixture, documentation example, pull request
@@ -39,12 +39,12 @@ Use the smallest record that preserves the product gap:
   files`, `on macOS`, `with network pack disabled`, or `with safe profile`. Do not include private
   project names unless they are already public.
 - **Expected behavior**: Describe the behavior the contributor expected from OTerminus, not the
-  desired shell side effect. For example, "deterministic local planner should produce
+  desired shell side effect. For example, "deterministic shortcut should produce
   `head -n 20 README.md`" or "ambiguity handling should stop before planning."
 - **Actual behavior**: Summarize the observed behavior without full stdout/stderr. Include the
   preview outcome, rejection reason, ambiguity result, or planner fallback when relevant.
 - **Safety classification**: Pick one classification from the list below.
-- **Suggested follow-up**: Name the likely next artifact: eval case, local-planner recipe,
+- **Suggested follow-up**: Name the likely next artifact: eval case, shortcut recipe,
   command-spec issue, validator/policy issue, docs issue, UX issue, bug/security issue, or no
   action.
 - **Sanitization performed**: Say what was changed, such as "private path replaced with
@@ -137,7 +137,7 @@ The command was rejected because grep path validation failed.
 | --- | --- | --- |
 | `accepted-correctly` | OTerminus accepted the request and the behavior matched the safety model. | Usually no action; consider a docs example if the behavior is useful and underdocumented. |
 | `rejected-correctly` | OTerminus rejected a request that should not run. | Add an eval only when the safety boundary is important and not already covered. |
-| `unsupported-but-safe` | The request is common and safe, but OTerminus does not support it yet. | Create a local-planner recipe issue or command-spec issue, then add eval coverage with the implementation. |
+| `unsupported-but-safe` | The request is common and safe, but OTerminus does not support it yet. | Create a shortcut recipe issue or command-spec issue, then add eval coverage with the implementation. |
 | `ambiguous` | The request is underspecified or broad enough that OTerminus should stop before planning. | Add an ambiguity fixture or improve the user-facing copy. |
 | `unsafe-should-reject` | The request describes behavior that should be blocked, even if support exists nearby. | Create a validator, policy, or safety-boundary eval issue. |
 | `accepted-incorrectly` | OTerminus accepted something it should reject or accepted it with the wrong risk. | Create a bug/security issue with a sanitized reproduction. |
@@ -159,7 +159,7 @@ Good eval candidates include:
 - a supported direct command should remain accepted
 - an unsafe command should remain rejected
 - ambiguity should stop before planning
-- a local-planner recipe should keep producing the same structured proposal
+- a shortcut recipe should keep producing the same structured proposal
 - a mocked planner proposal should validate or reject in a known way
 
 Tie new fixtures to the existing eval organization in [Evals](architecture/evals.md). Keep fixture
@@ -192,7 +192,7 @@ Do not create an eval when the outcome depends on:
 Use another follow-up instead:
 
 - Add or update docs when behavior is correct but confusing.
-- Create a local-planner issue when the request is safe, common, and unsupported.
+- Create a shortcut issue when the request is safe, common, and unsupported.
 - Create a command-spec issue when the command exists but flags or operands are missing.
 - Create a validator/policy issue when the safety boundary is wrong.
 - Create a UX issue when the preview or error message is unclear.
@@ -200,15 +200,15 @@ Use another follow-up instead:
 
 ## Good examples
 
-Safe local-planner candidate:
+Safe shortcut candidate:
 
 ```markdown
 - Request: `show first 20 lines of README.md`
 - Context: text inspection, safe local file path
-- Expected behavior: deterministic local planner should produce `head -n 20 README.md`
+- Expected behavior: deterministic shortcut should produce `head -n 20 README.md`
 - Actual behavior: falls through to planner
 - Safety classification: `unsupported-but-safe`
-- Suggested follow-up: add local-planner recipe and eval case
+- Suggested follow-up: add shortcut recipe and eval case
 - Sanitization performed: path is public/sample path
 - Reproduction command: `oterminus --dry-run "show first 20 lines of README.md"`
 ```

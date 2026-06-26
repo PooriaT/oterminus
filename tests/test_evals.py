@@ -183,7 +183,7 @@ def test_default_fixture_suite_is_capability_split() -> None:
         "ambiguity.json",
         "archive_inspection.json",
         "direct_commands.json",
-        "fast_path_local_planner.json",
+        "deterministic_shortcuts.json",
         "filesystem_inspection.json",
         "filesystem_mutation.json",
         "git_inspection.json",

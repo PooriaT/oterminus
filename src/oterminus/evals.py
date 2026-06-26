@@ -275,7 +275,7 @@ def _evaluate_case_on_platform(
         local_match = plan_locally(case.user_input, route, platform_id=case.platform_id)
         if local_match is not None:
             proposal = local_match.proposal
-            proposal_origin = ProposalOrigin.LOCAL_PLANNER
+            proposal_origin = ProposalOrigin.DETERMINISTIC_SHORTCUT
         else:
             if case.planner_proposal is None:
                 return EvalResult(
@@ -285,7 +285,10 @@ def _evaluate_case_on_platform(
                         *mismatches,
                         EvalMismatch(
                             field="planner_proposal",
-                            expected="fixture with planner_proposal or local-planner match for non-direct input",
+                            expected=(
+                                "fixture with planner_proposal or deterministic shortcut match "
+                                "for non-direct input"
+                            ),
                             actual=None,
                         ),
                     ],
@@ -293,7 +296,7 @@ def _evaluate_case_on_platform(
 
             try:
                 proposal = Planner.parse_proposal(json.dumps(case.planner_proposal))
-                proposal_origin = ProposalOrigin.OLLAMA_PLANNER
+                proposal_origin = ProposalOrigin.LLM_PLANNER
             except PlannerError as exc:
                 if (
                     case.expected_planner_error_contains

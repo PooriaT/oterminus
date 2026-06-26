@@ -16,6 +16,11 @@ class ConfigSettingSpec:
 SUPPORTED_MUTABLE_CONFIG_SETTINGS: tuple[ConfigSettingSpec, ...] = (
     ConfigSettingSpec("model", None, "model"),
     ConfigSettingSpec("command_profile", "OTERMINUS_COMMAND_PROFILE", "command_profile"),
+    ConfigSettingSpec(
+        "deterministic_shortcuts",
+        "OTERMINUS_DETERMINISTIC_SHORTCUTS",
+        "deterministic_shortcuts",
+    ),
     ConfigSettingSpec("auto_execute_safe", "OTERMINUS_AUTO_EXECUTE_SAFE", "bool"),
     ConfigSettingSpec("audit_enabled", "OTERMINUS_AUDIT_ENABLED", "bool"),
     ConfigSettingSpec("audit_redact", "OTERMINUS_AUDIT_REDACT", "bool"),
@@ -58,6 +63,12 @@ def parse_config_set_value(key: str, raw_value: str) -> object:
             raise ValueError(
                 "command_profile must be one of: " + ", ".join(sorted(supported)) + "."
             )
+        return normalized
+
+    if spec.value_kind == "deterministic_shortcuts":
+        normalized = value.lower()
+        if normalized not in {"off", "minimal"}:
+            raise ValueError("deterministic_shortcuts must be one of: off, minimal.")
         return normalized
 
     if spec.value_kind == "bool":

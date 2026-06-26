@@ -45,9 +45,9 @@ export OTERMINUS_AUTO_EXECUTE_SAFE=true
 Alternatively, put `OTERMINUS_AUTO_EXECUTE_SAFE=true` in a `.env` file in the directory where you
 start OTerminus. Exported shell variables override `.env` values.
 
-The preview, validator, and policy checks still run first. Only direct-command detection and the
-deterministic local planner can qualify. Network commands, warnings, write/dangerous risk,
-experimental proposals, Ollama-planned proposals, project-health commands, archive extraction or
+The preview, validator, and policy checks still run first. Only direct-command detection and
+deterministic shortcuts can qualify. Network commands, warnings, write/dangerous risk,
+experimental proposals, LLM-planned proposals, project-health commands, archive extraction or
 creation, and history reruns still require confirmation.
 
 ## Quick install and setup
@@ -238,7 +238,7 @@ Examples inside REPL:
 - `--version` prints the installed package version and exits. It does not start the REPL, run
   doctor/setup checks, or require Ollama; `oterminus version` prints the same diagnostic output.
 - `doctor` is diagnostics-only: it prints readiness checks and exits without starting the REPL,
-  executing a request, or invoking the Ollama planner. It cannot be combined with `--dry-run` or
+  executing a request, or invoking the LLM planner. It cannot be combined with `--dry-run` or
   `--explain`.
 
 ## Proposal modes

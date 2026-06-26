@@ -78,7 +78,7 @@ prefer readable capability or behavior prefixes such as `network-`, `project-hea
 `release-`, `planner-`, or `ambiguity-`. New command-pack work should include representative eval
 coverage for accepted behavior plus focused unsafe, unsupported, and ambiguous cases. Use
 `release_smoke.json` only for cross-cutting public-install or first-use flows such as direct command
-entry, deterministic local planner paths, ambiguity blocking, dry-run/explain preview behavior, or a
+entry, deterministic shortcuts, ambiguity blocking, dry-run/explain preview behavior, or a
 minimal planner-fixture path. Keep capability-specific behavior in its capability file, and cover
 `oterminus --version`, `oterminus version`, and `oterminus doctor` with CLI tests because the eval
 harness does not execute console-script commands.
@@ -105,7 +105,7 @@ shell commands.
 ## Dogfooding findings
 
 Use the [Dogfooding playbook](dogfooding-playbook.md) before turning real unsupported or surprising
-requests into issues, eval fixtures, docs examples, local-planner follow-ups, command-spec changes,
+requests into issues, eval fixtures, docs examples, shortcut follow-ups, command-spec changes,
 or bug reports. Dogfooding notes should capture the request pattern and expected behavior, not
 private logs, file contents, audit records, history files, hostnames, tokens, or project details.
 

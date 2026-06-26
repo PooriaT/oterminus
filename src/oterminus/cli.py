@@ -52,10 +52,10 @@ from oterminus.version import format_version
 LOGGER = logging.getLogger("oterminus")
 PLANNER_SKIP_DIRECT_COMMAND = "direct_command"
 PLANNER_SKIP_AMBIGUITY_BLOCKED = "ambiguity_blocked"
-PLANNER_SKIP_LOCAL_PLANNER = "local_planner"
+PLANNER_SKIP_DETERMINISTIC_SHORTCUT = "deterministic_shortcut"
 PROPOSAL_ORIGIN_DIRECT_COMMAND = "direct_command"
-PROPOSAL_ORIGIN_LOCAL_PLANNER = "local_planner"
-PROPOSAL_ORIGIN_OLLAMA_PLANNER = "ollama_planner"
+PROPOSAL_ORIGIN_DETERMINISTIC_SHORTCUT = "deterministic_shortcut"
+PROPOSAL_ORIGIN_LLM_PLANNER = "llm_planner"
 PROPOSAL_ORIGIN_UNKNOWN = "unknown"
 
 
@@ -173,6 +173,7 @@ def handle_request(
     failure_explainer: FailureExplainer | None = None,
     failure_explainer_factory: Callable[[], FailureExplainer] | None = None,
     auto_execute_safe: bool = False,
+    deterministic_shortcuts: str = "minimal",
     style: TerminalStyle | None = None,
 ) -> int:
     started_at = datetime.now(tz=timezone.utc)
@@ -200,7 +201,7 @@ def handle_request(
             ("direct", "direct_command_detection_ms"),
             ("ambiguity", "ambiguity_detection_ms"),
             ("route", "routing_ms"),
-            ("local_planner", "local_planner_ms"),
+            ("shortcut", "deterministic_shortcut_ms"),
             ("planner", "planner_ms"),
             ("validation", "validation_ms"),
             ("execution", "execution_ms"),
@@ -259,7 +260,7 @@ def handle_request(
                 event.planner_skipped = True
                 event.planner_skip_reason = PLANNER_SKIP_AMBIGUITY_BLOCKED
                 if debug_trace:
-                    print("[trace] fast_path=ambiguity_blocked planner=skipped")
+                    print("[trace] proposal_source=unknown planner=skipped reason=ambiguity_blocked")
                 print(render_ambiguity_response(ambiguity, style=style))
                 if history_item is not None:
                     history_item.execution_status = "blocked_ambiguous"
@@ -283,39 +284,50 @@ def handle_request(
             if debug_trace:
                 print(f"[trace] route category={route.category} confidence={route.confidence:.2f}")
 
-            local_planner_started = time.perf_counter()
-            local_match = plan_locally(
-                request,
-                route,
-                disabled_pack_ids=effective_disabled_pack_ids,
-                platform_id=platform_id,
-            )
-            timings_ms["local_planner_ms"] = _duration_ms_from_counter(local_planner_started)
+            local_match = None
+            shortcut_mode = deterministic_shortcuts.strip().lower()
+            if shortcut_mode != "off":
+                deterministic_shortcut_started = time.perf_counter()
+                local_match = plan_locally(
+                    request,
+                    route,
+                    disabled_pack_ids=effective_disabled_pack_ids,
+                    platform_id=platform_id,
+                )
+                timings_ms["deterministic_shortcut_ms"] = _duration_ms_from_counter(
+                    deterministic_shortcut_started
+                )
             if local_match is not None:
                 proposal = local_match.proposal
-                proposal_origin = PROPOSAL_ORIGIN_LOCAL_PLANNER
-                validation_origin = ProposalOrigin.LOCAL_PLANNER
+                proposal_origin = PROPOSAL_ORIGIN_DETERMINISTIC_SHORTCUT
+                validation_origin = ProposalOrigin.DETERMINISTIC_SHORTCUT
                 event.planner_invoked = False
                 event.planner_skipped = True
-                event.planner_skip_reason = PLANNER_SKIP_LOCAL_PLANNER
+                event.planner_skip_reason = PLANNER_SKIP_DETERMINISTIC_SHORTCUT
                 if debug_trace:
                     print(
-                        f"[trace] fast_path=local_planner rule={local_match.rule_id} planner=skipped"
+                        "[trace] proposal_source=deterministic_shortcut "
+                        f"rule={local_match.rule_id} planner=skipped"
                     )
             else:
                 if debug_trace:
-                    print("[trace] local_planner=no_match planner=invoked")
+                    if shortcut_mode == "off":
+                        print("[trace] deterministic_shortcut=disabled planner=invoked")
+                    else:
+                        print("[trace] deterministic_shortcut=no_match planner=invoked")
                 planner = planner_factory if hasattr(planner_factory, "plan") else planner_factory()
                 event.planner_invoked = True
                 event.planner_skipped = False
                 event.planner_skip_reason = None
                 planner_started = time.perf_counter()
                 proposal = planner.plan(request)
-                proposal_origin = PROPOSAL_ORIGIN_OLLAMA_PLANNER
-                validation_origin = ProposalOrigin.OLLAMA_PLANNER
+                proposal_origin = PROPOSAL_ORIGIN_LLM_PLANNER
+                validation_origin = ProposalOrigin.LLM_PLANNER
                 timings_ms["planner_ms"] = _duration_ms_from_counter(planner_started)
+                if debug_trace:
+                    print("[trace] proposal_source=llm_planner planner=invoked")
         elif debug_trace:
-            print("[trace] fast_path=direct_command planner=skipped")
+            print("[trace] proposal_source=direct_command planner=skipped")
     except (PlannerError, OllamaClientError, SetupError) as exc:
         print(_style(style, StyleToken.ERROR, f"Planning failed: {exc}"))
         if history_item is not None:
@@ -645,6 +657,7 @@ def repl(
     failure_explainer: FailureExplainer | None = None,
     failure_explainer_factory: Callable[[], FailureExplainer] | None = None,
     auto_execute_safe: bool = False,
+    deterministic_shortcuts: str = "minimal",
     style: TerminalStyle | None = None,
 ) -> int:
     print(
@@ -712,6 +725,7 @@ def repl(
             failure_explainer=failure_explainer,
             failure_explainer_factory=failure_explainer_factory,
             auto_execute_safe=auto_execute_safe,
+            deterministic_shortcuts=deterministic_shortcuts,
             style=style,
         )
         if history_response is not None:
@@ -861,6 +875,7 @@ def handle_repl_history_command(
     failure_explainer: FailureExplainer | None = None,
     failure_explainer_factory: Callable[[], FailureExplainer] | None = None,
     auto_execute_safe: bool = False,
+    deterministic_shortcuts: str = "minimal",
     style: TerminalStyle | None = None,
 ) -> str | None:
     lowered = request.lower().strip()
@@ -911,6 +926,7 @@ def handle_repl_history_command(
             failure_explainer=failure_explainer,
             failure_explainer_factory=failure_explainer_factory,
             auto_execute_safe=auto_execute_safe,
+            deterministic_shortcuts=deterministic_shortcuts,
             style=style,
         )
         return ""
@@ -1105,6 +1121,7 @@ def main(argv: list[str] | None = None) -> int:
             failure_explainer=failure_explainer,
             failure_explainer_factory=failure_explainer_factory,
             auto_execute_safe=bool(getattr(config, "auto_execute_safe", False)),
+            deterministic_shortcuts=str(getattr(config, "deterministic_shortcuts", "minimal")),
             style=style,
         )
     return repl(
@@ -1120,6 +1137,7 @@ def main(argv: list[str] | None = None) -> int:
         failure_explainer=failure_explainer,
         failure_explainer_factory=failure_explainer_factory,
         auto_execute_safe=bool(getattr(config, "auto_execute_safe", False)),
+        deterministic_shortcuts=str(getattr(config, "deterministic_shortcuts", "minimal")),
         style=style,
     )
 
