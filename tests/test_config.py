@@ -89,9 +89,7 @@ def test_load_config_deterministic_shortcuts_from_env(
     assert config.deterministic_shortcuts == expected
 
 
-def test_load_config_rejects_unknown_deterministic_shortcuts(
-    monkeypatch, tmp_path: Path
-) -> None:
+def test_load_config_rejects_unknown_deterministic_shortcuts(monkeypatch, tmp_path: Path) -> None:
     monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(tmp_path / "config.json"))
     monkeypatch.setenv("OTERMINUS_DETERMINISTIC_SHORTCUTS", "full")
 

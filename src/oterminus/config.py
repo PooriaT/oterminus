@@ -514,8 +514,8 @@ def resolve_config() -> ResolvedConfig:
         user_config,
         default=False,
     )
-    deterministic_shortcuts, sources["deterministic_shortcuts"] = (
-        _resolve_deterministic_shortcuts(dotenv_values, user_config)
+    deterministic_shortcuts, sources["deterministic_shortcuts"] = _resolve_deterministic_shortcuts(
+        dotenv_values, user_config
     )
     command_profile, sources["command_profile"] = _resolve_command_profile(
         dotenv_values, user_config

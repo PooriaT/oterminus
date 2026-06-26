@@ -260,7 +260,9 @@ def handle_request(
                 event.planner_skipped = True
                 event.planner_skip_reason = PLANNER_SKIP_AMBIGUITY_BLOCKED
                 if debug_trace:
-                    print("[trace] proposal_source=unknown planner=skipped reason=ambiguity_blocked")
+                    print(
+                        "[trace] proposal_source=unknown planner=skipped reason=ambiguity_blocked"
+                    )
                 print(render_ambiguity_response(ambiguity, style=style))
                 if history_item is not None:
                     history_item.execution_status = "blocked_ambiguous"

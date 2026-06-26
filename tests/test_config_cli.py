@@ -480,9 +480,10 @@ def test_config_set_deterministic_shortcuts(
 
     assert run_config_cli(["set", "deterministic_shortcuts", raw]) == 0
 
-    assert json.loads(config_path.read_text(encoding="utf-8"))[
-        "deterministic_shortcuts"
-    ] == raw.lower()
+    assert (
+        json.loads(config_path.read_text(encoding="utf-8"))["deterministic_shortcuts"]
+        == raw.lower()
+    )
 
 
 @pytest.mark.parametrize("raw", ["1", "42"])

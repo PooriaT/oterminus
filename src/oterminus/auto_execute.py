@@ -10,9 +10,7 @@ from oterminus.commands import (
 )
 from oterminus.models import Proposal, ProposalMode, RiskLevel, ValidationResult
 
-ELIGIBLE_PROPOSAL_ORIGINS = frozenset(
-    {"direct_command", "deterministic_shortcut", "local_planner"}
-)
+ELIGIBLE_PROPOSAL_ORIGINS = frozenset({"direct_command", "deterministic_shortcut", "local_planner"})
 ARCHIVE_MUTATION_OPERATIONS = frozenset(
     {"extract_tar", "extract_zip", "create_tar_gz", "create_zip"}
 )
