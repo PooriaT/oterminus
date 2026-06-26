@@ -29,6 +29,8 @@ _BROAD_ROOTS = {
 }
 _LOCAL_PATH_RE = re.compile(r"^[A-Za-z0-9._@%+=:,/.-]+$")
 _INTEGER_RE = re.compile(r"^[1-9][0-9]*$")
+_MAN_TOPIC_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$")
+_MAN_SECTIONS = frozenset({"1", "2", "3", "4", "5", "6", "7", "8", "9"})
 
 
 @dataclass(frozen=True, slots=True)
@@ -82,6 +84,10 @@ def plan_locally(
             disabled_pack_ids,
             platform_id=platform_id,
         )
+
+    man_match = _plan_manual_recipe(request, text, disabled_pack_ids, platform_id=platform_id)
+    if man_match is not None:
+        return man_match
 
     filesystem_match = _plan_filesystem_recipe(
         request, text, disabled_pack_ids, platform_id=platform_id
@@ -155,6 +161,94 @@ def plan_locally(
             )
 
     return None
+
+
+def _plan_manual_recipe(
+    request: str,
+    text: str,
+    disabled_pack_ids: frozenset[str],
+    *,
+    platform_id: str | None,
+) -> LocalPlannerMatch | None:
+    if match := _match_request(
+        request,
+        r"^(?:show|open) (?:the )?(?:manual|man page|manual page) for (?P<topic>\S+)$",
+    ):
+        return _build_manual_match(
+            "manual_page_topic",
+            match.group("topic"),
+            None,
+            disabled_pack_ids,
+            platform_id=platform_id,
+        )
+
+    if match := _match_request(
+        request,
+        r"^(?:manual page|man page) for (?P<topic>\S+)$",
+    ):
+        return _build_manual_match(
+            "manual_page_topic",
+            match.group("topic"),
+            None,
+            disabled_pack_ids,
+            platform_id=platform_id,
+        )
+
+    if match := _match_request(
+        request,
+        r"^what is the (?:manual|man page|manual page) for (?P<topic>\S+)$",
+    ):
+        return _build_manual_match(
+            "manual_page_topic_question",
+            match.group("topic"),
+            None,
+            disabled_pack_ids,
+            platform_id=platform_id,
+        )
+
+    if match := _match_request(
+        request,
+        r"^show (?:the )?(?:manual|man page|manual page) section (?P<section>\S+) for (?P<topic>\S+)$",
+    ):
+        return _build_manual_match(
+            "manual_page_section_before_topic",
+            match.group("topic"),
+            match.group("section"),
+            disabled_pack_ids,
+            platform_id=platform_id,
+        )
+
+    if match := _match_request(
+        request,
+        r"^show (?:the )?(?:manual|man page|manual page) for (?P<topic>\S+) section (?P<section>\S+)$",
+    ):
+        return _build_manual_match(
+            "manual_page_section_after_topic",
+            match.group("topic"),
+            match.group("section"),
+            disabled_pack_ids,
+            platform_id=platform_id,
+        )
+
+    return None
+
+
+def _build_manual_match(
+    rule_id: str,
+    topic_value: str,
+    section_value: str | None,
+    disabled_pack_ids: frozenset[str],
+    *,
+    platform_id: str | None,
+) -> LocalPlannerMatch | None:
+    topic = _parse_manual_topic_token(topic_value)
+    section = _parse_manual_section_token(section_value) if section_value is not None else None
+    if topic is None or (section_value is not None and section is None):
+        return None
+    arguments = {"topic": topic}
+    if section is not None:
+        arguments["section"] = section
+    return _build_match(rule_id, "man", arguments, disabled_pack_ids, platform_id=platform_id)
 
 
 def _plan_filesystem_recipe(
@@ -464,6 +558,30 @@ def _parse_positive_integer(value: str, *, max_value: int | None = None) -> int 
     if max_value is not None and parsed > max_value:
         return None
     return parsed
+
+
+def _parse_manual_topic_token(value: str) -> str | None:
+    topic = _strip_simple_quotes(value.strip())
+    if topic is None:
+        return None
+    if not topic or topic.startswith("-"):
+        return None
+    if _has_unsafe_fragment(topic) or _has_wildcard_fragment(topic) or _looks_like_url(topic):
+        return None
+    if any(char.isspace() for char in topic):
+        return None
+    if "/" in topic or topic in {".", "..", "~"} or topic.startswith((".", "~")):
+        return None
+    if not _MAN_TOPIC_RE.fullmatch(topic):
+        return None
+    return topic
+
+
+def _parse_manual_section_token(value: str) -> str | None:
+    section = value.strip()
+    if section in _MAN_SECTIONS:
+        return section
+    return None
 
 
 def _extract_single_positive_integer(text: str, *, max_value: int | None = None) -> int | None:

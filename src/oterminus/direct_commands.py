@@ -101,6 +101,9 @@ def detect_direct_command(
             notes=notes,
         )
 
+    if base == "man":
+        return None
+
     return Proposal(
         action_type=ActionType.SHELL_COMMAND,
         mode=ProposalMode.EXPERIMENTAL,

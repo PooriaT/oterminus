@@ -40,6 +40,7 @@ After `doctor` reports a usable setup, start the interactive app or run one-shot
 ```bash
 oterminus
 oterminus "show disk usage for this folder"
+oterminus "show the man page for grep"
 oterminus --dry-run "copy notes.txt to backup/notes.txt"
 oterminus --explain "find processes matching python"
 ```
@@ -820,6 +821,8 @@ safe local commands such as:
 
 - filesystem inspection: `show hidden files`, `show detailed files`,
   `show file info for README.md`, `identify README.md`
+- system inspection: `show manual for ls`, `open man page for grep`,
+  `show manual section 5 for crontab`
 - text inspection: `show README.md`, `show first 20 lines of README.md`,
   `show last 50 lines of app.log`, `count lines in README.md`, `search TODO in src`
 - process inspection: `show running processes`, `find python processes`
@@ -832,5 +835,7 @@ availability, platform restrictions, and confirmation policy still apply. Disabl
 their corresponding local recipes. Unsafe shell syntax such as pipelines, redirection, command
 substitution, multiline values, wildcard paths, URL-like paths, flag-like paths, broad filesystem
 roots, zero or negative line counts, and Git/process mutation phrases are not supported by these
-natural-language recipes. Network, write, dangerous, archive mutation, and broad project-health
-expansion requests are outside this deterministic local-planner set.
+natural-language recipes. Manual-page recipes require clear manual-page wording and reject URLs,
+paths, shell syntax, unsupported sections, and pager/flag customization. Network, write, dangerous,
+archive mutation, and broad project-health expansion requests are outside this deterministic
+local-planner set.

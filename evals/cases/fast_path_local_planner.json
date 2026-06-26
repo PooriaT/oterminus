@@ -67,6 +67,46 @@
     ]
   },
   {
+    "id": "local-man-show-ls",
+    "user_input": "show manual for ls",
+    "expected_mode": "structured",
+    "expected_command_family": "man",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "man ls",
+    "expected_argv": [
+      "man",
+      "ls"
+    ]
+  },
+  {
+    "id": "local-man-page-grep",
+    "user_input": "show man page for grep",
+    "expected_mode": "structured",
+    "expected_command_family": "man",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "man grep",
+    "expected_argv": [
+      "man",
+      "grep"
+    ]
+  },
+  {
+    "id": "local-man-section-crontab",
+    "user_input": "show manual section 5 for crontab",
+    "expected_mode": "structured",
+    "expected_command_family": "man",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "man 5 crontab",
+    "expected_argv": [
+      "man",
+      "5",
+      "crontab"
+    ]
+  },
+  {
     "id": "local-git-status",
     "user_input": "show git status",
     "expected_mode": "structured",

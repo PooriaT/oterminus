@@ -48,6 +48,25 @@ def test_executor_clear_uses_internal_terminal_sequence(monkeypatch) -> None:
     assert result.stderr == ""
 
 
+def test_executor_pins_man_pager_environment(monkeypatch) -> None:
+    monkeypatch.setenv("MANPAGER", "sh -c 'echo unsafe'")
+    monkeypatch.setenv("PAGER", "sh -c 'echo unsafe'")
+    monkeypatch.setenv("MANOPT", "-P sh")
+    captured_env = {}
+
+    def fake_run(*args, **kwargs):
+        captured_env.update(kwargs["env"])
+        return SimpleNamespace(returncode=0, stdout="manual text", stderr="")
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    result = Executor(timeout_seconds=2).run(["man", "ls"], display_command="man ls")
+
+    assert result.returncode == 0
+    assert captured_env["MANPAGER"] == "cat"
+    assert captured_env["PAGER"] == "cat"
+    assert captured_env["MANOPT"] == ""
+
+
 def test_executor_truncates_stdout_and_stderr(monkeypatch) -> None:
     def fake_run(*args, **kwargs):
         return SimpleNamespace(returncode=7, stdout="a" * 10, stderr="b" * 9)

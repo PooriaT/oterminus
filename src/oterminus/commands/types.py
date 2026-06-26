@@ -29,6 +29,7 @@ class PathOperandMode(str, Enum):
     DEFAULT = "default"
     CD = "cd"
     FIND = "find"
+    NONE = "none"
 
 
 class MaturityLevel(str, Enum):

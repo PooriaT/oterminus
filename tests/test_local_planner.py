@@ -4,6 +4,7 @@ from oterminus.local_planner import (
     _has_unsafe_fragment,
     _normalize_request,
     _parse_local_path_token,
+    _parse_manual_topic_token,
     _parse_positive_integer,
     _parse_search_term,
     plan_locally,
@@ -89,6 +90,32 @@ def test_local_planner_rejects_invalid_positive_integers() -> None:
     assert _parse_positive_integer("1.5") is None
     assert _parse_positive_integer("101", max_value=100) is None
     assert _extract_single_positive_integer("first 20 lines and 5 files") is None
+
+
+def test_local_planner_parses_conservative_manual_topics() -> None:
+    for value in ("ls", "grep", "git", "gitignore", "ssh_config", "systemd-journald"):
+        assert _parse_manual_topic_token(value) == value
+
+
+def test_local_planner_rejects_unsafe_manual_topics() -> None:
+    rejected = (
+        "",
+        "-P",
+        "https://example.com",
+        "./script.sh",
+        "/bin/ls",
+        "docs/file.md",
+        "ls;whoami",
+        "$(whoami)",
+        "`whoami`",
+        "two words",
+        "README*.md",
+        ".hidden",
+        "~user",
+    )
+
+    for value in rejected:
+        assert _parse_manual_topic_token(value) is None, value
 
 
 def test_local_planner_parses_simple_search_terms() -> None:
@@ -231,6 +258,59 @@ def test_local_planner_maps_disk_usage_folder() -> None:
     )
     assert match is not None
     assert match.proposal.command_family == "du"
+
+
+def test_local_planner_maps_manual_page_recipes() -> None:
+    cases = {
+        "show manual for ls": ("man", {"topic": "ls", "section": None}),
+        "show man page for grep": ("man", {"topic": "grep", "section": None}),
+        "show the man page for grep": ("man", {"topic": "grep", "section": None}),
+        "open man page for tar": ("man", {"topic": "tar", "section": None}),
+        "manual page for git": ("man", {"topic": "git", "section": None}),
+        "what is the manual for git": ("man", {"topic": "git", "section": None}),
+        "show manual section 5 for crontab": ("man", {"topic": "crontab", "section": "5"}),
+        "show man page for crontab section 5": (
+            "man",
+            {"topic": "crontab", "section": "5"},
+        ),
+    }
+
+    for request, (command_family, arguments) in cases.items():
+        _assert_local_arguments(request, command_family, arguments)
+
+
+def test_local_planner_manual_page_recipes_fail_closed() -> None:
+    requests = (
+        "help me with ls",
+        "how do I list files",
+        "explain grep",
+        "what flags should I use for tar",
+        "how do I use chmod",
+        "teach me grep",
+        "show manual for https://example.com",
+        "show manual for ./script.sh",
+        "show manual for /bin/ls",
+        "show manual for docs/file.md",
+        "show manual for ls; whoami",
+        "show manual for $(whoami)",
+        "show manual section abc for ls",
+        "show manual section 99 for ls",
+        "show manual -P cat for ls",
+    )
+
+    for request in requests:
+        assert plan_locally(request, route_request(request)) is None, request
+
+
+def test_local_planner_disabled_system_pack_blocks_manual_page_recipes() -> None:
+    disabled = frozenset({"system"})
+    match = plan_locally(
+        "show manual for ls",
+        route_request("show manual for ls", disabled_pack_ids=disabled),
+        disabled_pack_ids=disabled,
+    )
+
+    assert match is None
 
 
 def test_local_planner_maps_text_inspection_recipes() -> None:
@@ -445,6 +525,11 @@ def test_local_planner_validator_accepts_and_renders_new_structured_recipes() ->
         ),
         "find python processes": ("pgrep -f -l python", ["pgrep", "-f", "-l", "python"]),
         "identify README.md": ("file README.md", ["file", "README.md"]),
+        "show manual for ls": ("man ls", ["man", "ls"]),
+        "show manual section 5 for crontab": (
+            "man 5 crontab",
+            ["man", "5", "crontab"],
+        ),
     }
 
     for request, (rendered_command, argv) in expected.items():
