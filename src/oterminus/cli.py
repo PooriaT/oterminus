@@ -761,6 +761,7 @@ def repl(
             failure_explainer=failure_explainer,
             failure_explainer_factory=failure_explainer_factory,
             auto_execute_safe=auto_execute_safe,
+            deterministic_shortcuts=deterministic_shortcuts,
             style=style,
         )
 

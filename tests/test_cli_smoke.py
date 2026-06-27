@@ -2319,6 +2319,27 @@ def test_repl_passes_auto_execute_safe_to_handle_request(monkeypatch) -> None:
     assert captured["auto_execute_safe"] is True
 
 
+def test_repl_passes_deterministic_shortcuts_to_handle_request(monkeypatch) -> None:
+    from oterminus.cli import repl
+
+    captured: dict[str, object] = {}
+
+    monkeypatch.setattr("oterminus.cli.create_prompt_session", lambda: (None, "plain_input"))
+    answers = iter(["show current directory", "exit"])
+    monkeypatch.setattr("builtins.input", lambda _: next(answers))
+
+    def fake_handle_request(*_args, **kwargs) -> int:
+        captured.update(kwargs)
+        return 0
+
+    monkeypatch.setattr("oterminus.cli.handle_request", fake_handle_request)
+
+    code = repl(Mock(), Mock(), Mock(), deterministic_shortcuts="off")
+
+    assert code == 0
+    assert captured["deterministic_shortcuts"] == "off"
+
+
 def test_main_explain_failures_does_not_require_startup_before_request_handling(
     monkeypatch,
 ) -> None:
