@@ -45,9 +45,9 @@ export OTERMINUS_AUTO_EXECUTE_SAFE=true
 Alternatively, put `OTERMINUS_AUTO_EXECUTE_SAFE=true` in a `.env` file in the directory where you
 start OTerminus. Exported shell variables override `.env` values.
 
-The preview, validator, and policy checks still run first. Only direct-command detection and the
-deterministic local planner can qualify. Network commands, warnings, write/dangerous risk,
-experimental proposals, Ollama-planned proposals, project-health commands, archive extraction or
+The preview, validator, and policy checks still run first. Only direct-command detection and
+deterministic shortcuts can qualify. Network commands, warnings, write/dangerous risk,
+experimental proposals, LLM-planned proposals, project-health commands, archive extraction or
 creation, and history reruns still require confirmation.
 
 ## Quick install and setup
@@ -238,7 +238,7 @@ Examples inside REPL:
 - `--version` prints the installed package version and exits. It does not start the REPL, run
   doctor/setup checks, or require Ollama; `oterminus version` prints the same diagnostic output.
 - `doctor` is diagnostics-only: it prints readiness checks and exits without starting the REPL,
-  executing a request, or invoking the Ollama planner. It cannot be combined with `--dry-run` or
+  executing a request, or invoking the LLM planner. It cannot be combined with `--dry-run` or
   `--explain`.
 
 ## Proposal modes
@@ -309,7 +309,8 @@ request.
 - Optional local persistent REPL history is available via `OTERMINUS_HISTORY_ENABLED=true`; reruns still go through normal validation + confirmation.
 - Audit logs and persistent history are local JSONL files; redaction is enabled by default, but review logs/history before sharing. See the [audit schema](docs/reference/audit-log-schema.md) and [configuration reference](docs/reference/config.md).
 
-For a small set of deterministic natural-language inspection requests, OTerminus can skip Ollama by
-producing a local structured proposal before normal validation and confirmation policy. Examples
-include `show hidden files`, `show first 20 lines of README.md`, `search TODO in src`,
-`find python processes`, and `show current branch`.
+For a tiny set of deterministic utility requests, OTerminus can skip Ollama by producing a local
+structured proposal before normal validation and confirmation policy. The retained shortcuts are
+current-directory requests such as `show current directory` and clear-screen requests such as
+`clear screen`. Broader natural-language inspection requests go through the LLM planner, while typed
+direct commands such as `ls -l`, `man ls`, and `git status --short` remain model-free.

@@ -47,6 +47,34 @@ def _planned_ls_proposal() -> Proposal:
     )
 
 
+def _planned_project_health_proposal() -> Proposal:
+    return Proposal(
+        action_type=ActionType.SHELL_COMMAND,
+        mode=ProposalMode.STRUCTURED,
+        command_family="project_health",
+        arguments={"operation": "run_tests"},
+        summary="run project tests",
+        explanation="Run the configured project test suite.",
+        risk_level=RiskLevel.WRITE,
+        needs_confirmation=True,
+        notes=[],
+    )
+
+
+def _planned_file_identify_proposal() -> Proposal:
+    return Proposal(
+        action_type=ActionType.SHELL_COMMAND,
+        mode=ProposalMode.STRUCTURED,
+        command_family="file",
+        arguments={"paths": ["README.md"]},
+        summary="identify README.md",
+        explanation="Inspect the file type for README.md.",
+        risk_level=RiskLevel.SAFE,
+        needs_confirmation=True,
+        notes=[],
+    )
+
+
 def _install_main_dependencies(monkeypatch, config: AppConfig) -> tuple[Mock, Mock]:
     validator = Mock(wraps=Validator(config.policy))
     executor = Mock()
@@ -337,18 +365,18 @@ def test_direct_ls_passthrough_skips_planner_and_uses_direct_validation_origin(
     assert payload["argv"] == ["ls", "-ltrh"]
 
 
-def test_natural_language_project_health_uses_local_planner_and_requires_confirmation(
+def test_natural_language_project_health_uses_planner_and_requires_confirmation(
     monkeypatch, tmp_path: Path, capsys
 ) -> None:
     from oterminus.cli import main
 
     config = _config(tmp_path)
     validator, executor = _install_main_dependencies(monkeypatch, config)
-    monkeypatch.setattr(
-        "oterminus.cli.ensure_startup_ready",
-        Mock(side_effect=AssertionError("project health local planner should not require Ollama")),
-    )
-    monkeypatch.setattr("oterminus.cli.Planner", Mock(side_effect=AssertionError("no planner")))
+    planner = Mock()
+    planner.plan.return_value = _planned_project_health_proposal()
+    monkeypatch.setattr("oterminus.cli.ensure_startup_ready", Mock(return_value="test-model"))
+    monkeypatch.setattr("oterminus.cli.OllamaPlannerClient", Mock())
+    monkeypatch.setattr("oterminus.cli.Planner", Mock(return_value=planner))
     monkeypatch.setattr("builtins.input", Mock(return_value="n"))
 
     code = main(["run", "tests"])
@@ -357,17 +385,46 @@ def test_natural_language_project_health_uses_local_planner_and_requires_confirm
     output = capsys.readouterr().out
     assert "poetry run pytest" in output
     assert "Cancelled." in output
+    planner.plan.assert_called_once_with("run tests")
     validator.validate.assert_called_once()
+    assert validator.validate.call_args.kwargs["origin"] == ProposalOrigin.LLM_PLANNER
     executor.run.assert_not_called()
     payload = _read_audit_payload(config.audit_log_path)
     assert payload["direct_command_detected"] is False
-    assert payload["planner_invoked"] is False
-    assert payload["planner_skipped"] is True
-    assert payload["planner_skip_reason"] == "local_planner"
+    assert payload["planner_invoked"] is True
+    assert payload["planner_skipped"] is False
+    assert payload["planner_skip_reason"] is None
+    assert payload["proposal_origin"] == "llm_planner"
     assert payload["routed_category"] == "project_health"
     assert payload["command_family"] == "project_health"
     assert payload["confirmation_result"] == "cancelled"
     assert payload["execution_exit_code"] is None
+
+
+def test_deterministic_shortcuts_off_routes_natural_language_to_planner(
+    monkeypatch, tmp_path: Path
+) -> None:
+    from oterminus.cli import main
+
+    config = AppConfig(**(_config(tmp_path).__dict__ | {"deterministic_shortcuts": "off"}))
+    validator, executor = _install_main_dependencies(monkeypatch, config)
+    planner = Mock()
+    planner.plan.return_value = _planned_ls_proposal()
+    monkeypatch.setattr("oterminus.cli.ensure_startup_ready", Mock(return_value="test-model"))
+    monkeypatch.setattr("oterminus.cli.OllamaPlannerClient", Mock())
+    monkeypatch.setattr("oterminus.cli.Planner", Mock(return_value=planner))
+
+    code = main(["--dry-run", "show", "current", "directory"])
+
+    assert code == 0
+    planner.plan.assert_called_once_with("show current directory")
+    validator.validate.assert_called_once()
+    assert validator.validate.call_args.kwargs["origin"] == ProposalOrigin.LLM_PLANNER
+    executor.run.assert_not_called()
+    payload = _read_audit_payload(config.audit_log_path)
+    assert payload["planner_invoked"] is True
+    assert payload["planner_skipped"] is False
+    assert payload["proposal_origin"] == "llm_planner"
 
 
 def test_one_shot_execute_mode_confirmation_runs_executor(monkeypatch, tmp_path: Path) -> None:
@@ -418,7 +475,7 @@ def test_auto_execute_safe_direct_command_skips_confirmation_and_runs_executor(
     assert payload["proposal_origin"] == "direct_command"
 
 
-def test_auto_execute_safe_local_planner_command_skips_confirmation(
+def test_auto_execute_safe_deterministic_shortcut_command_skips_confirmation(
     monkeypatch, tmp_path: Path
 ) -> None:
     from oterminus.cli import main
@@ -427,7 +484,7 @@ def test_auto_execute_safe_local_planner_command_skips_confirmation(
     _validator, executor = _install_main_dependencies(monkeypatch, config)
     monkeypatch.setattr(
         "oterminus.cli.ensure_startup_ready",
-        Mock(side_effect=AssertionError("local planner should not need Ollama")),
+        Mock(side_effect=AssertionError("deterministic shortcut should not need Ollama")),
     )
     monkeypatch.setattr("builtins.input", Mock(side_effect=AssertionError("no confirmation")))
 
@@ -437,29 +494,32 @@ def test_auto_execute_safe_local_planner_command_skips_confirmation(
     executor.run.assert_called_once_with(["pwd"], display_command="pwd")
     payload = _read_audit_payload(config.audit_log_path)
     assert payload["confirmation_result"] == "skipped_auto_execute_safe"
-    assert payload["proposal_origin"] == "local_planner"
+    assert payload["proposal_origin"] == "deterministic_shortcut"
 
 
-def test_auto_execute_safe_new_local_planner_recipe_skips_ollama(
+def test_auto_execute_safe_removed_shortcut_recipe_uses_planner_and_requires_confirmation(
     monkeypatch, tmp_path: Path
 ) -> None:
     from oterminus.cli import main
 
     config = AppConfig(**(_config(tmp_path).__dict__ | {"auto_execute_safe": True}))
     _validator, executor = _install_main_dependencies(monkeypatch, config)
-    monkeypatch.setattr(
-        "oterminus.cli.ensure_startup_ready",
-        Mock(side_effect=AssertionError("local planner recipe should not need Ollama")),
-    )
-    monkeypatch.setattr("builtins.input", Mock(side_effect=AssertionError("no confirmation")))
+    planner = Mock()
+    planner.plan.return_value = _planned_file_identify_proposal()
+    monkeypatch.setattr("oterminus.cli.ensure_startup_ready", Mock(return_value="test-model"))
+    monkeypatch.setattr("oterminus.cli.OllamaPlannerClient", Mock())
+    monkeypatch.setattr("oterminus.cli.Planner", Mock(return_value=planner))
+    monkeypatch.setattr("builtins.input", Mock(return_value="n"))
 
     code = main(["identify", "README.md"])
 
     assert code == 0
-    executor.run.assert_called_once_with(["file", "README.md"], display_command="file README.md")
+    planner.plan.assert_called_once_with("identify README.md")
+    executor.run.assert_not_called()
     payload = _read_audit_payload(config.audit_log_path)
-    assert payload["confirmation_result"] == "skipped_auto_execute_safe"
-    assert payload["proposal_origin"] == "local_planner"
+    assert payload["confirmation_result"] == "cancelled"
+    assert payload["proposal_origin"] == "llm_planner"
+    assert payload["auto_execute_safe_eligible"] is False
 
 
 def test_auto_execute_safe_network_command_still_calls_confirmation(

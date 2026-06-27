@@ -51,6 +51,9 @@ BLOCKED_FRAGMENT_REASONS = {
 
 class ProposalOrigin(str, Enum):
     DIRECT_COMMAND = "direct_command"
+    DETERMINISTIC_SHORTCUT = "deterministic_shortcut"
+    LLM_PLANNER = "llm_planner"
+    # Legacy value retained so older audit/history data and tests can still be interpreted.
     LOCAL_PLANNER = "local_planner"
     OLLAMA_PLANNER = "ollama_planner"
     UNKNOWN = "unknown"

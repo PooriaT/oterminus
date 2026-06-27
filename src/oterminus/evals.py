@@ -12,7 +12,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_valida
 from oterminus.ambiguity import detect_ambiguity
 from oterminus.commands import registry as command_registry
 from oterminus.direct_commands import detect_direct_command
-from oterminus.local_planner import plan_locally
+from oterminus.deterministic_shortcuts import plan_with_deterministic_shortcut
 from oterminus.models import ProposalMode, RiskLevel
 from oterminus.planner import Planner, PlannerError
 from oterminus.policies import PolicyConfig
@@ -272,10 +272,12 @@ def _evaluate_case_on_platform(
             return EvalResult(case_id=case.id, passed=False, mismatches=mismatches)
 
         route = route_request(case.user_input, platform_id=case.platform_id)
-        local_match = plan_locally(case.user_input, route, platform_id=case.platform_id)
-        if local_match is not None:
-            proposal = local_match.proposal
-            proposal_origin = ProposalOrigin.LOCAL_PLANNER
+        shortcut_match = plan_with_deterministic_shortcut(
+            case.user_input, route, platform_id=case.platform_id
+        )
+        if shortcut_match is not None:
+            proposal = shortcut_match.proposal
+            proposal_origin = ProposalOrigin.DETERMINISTIC_SHORTCUT
         else:
             if case.planner_proposal is None:
                 return EvalResult(
@@ -285,7 +287,10 @@ def _evaluate_case_on_platform(
                         *mismatches,
                         EvalMismatch(
                             field="planner_proposal",
-                            expected="fixture with planner_proposal or local-planner match for non-direct input",
+                            expected=(
+                                "fixture with planner_proposal or deterministic shortcut match "
+                                "for non-direct input"
+                            ),
                             actual=None,
                         ),
                     ],
@@ -293,7 +298,7 @@ def _evaluate_case_on_platform(
 
             try:
                 proposal = Planner.parse_proposal(json.dumps(case.planner_proposal))
-                proposal_origin = ProposalOrigin.OLLAMA_PLANNER
+                proposal_origin = ProposalOrigin.LLM_PLANNER
             except PlannerError as exc:
                 if (
                     case.expected_planner_error_contains

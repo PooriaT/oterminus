@@ -27,7 +27,8 @@ truth for supported keys.
 | Failure explanation max chars | `OTERMINUS_FAILURE_EXPLANATION_MAX_CHARS` | `failure_explanation_max_chars` | `4000` | Positive integer. Bounds each redacted stdout/stderr snippet sent to the configured local Ollama model. |
 | Command-pack profile preset | `OTERMINUS_COMMAND_PROFILE` | `command_profile` | Unset | Optional preset for command-pack availability (`beginner`, `safe`, `developer`, `power`). Unset preserves existing behavior. |
 | Explicit disabled command packs | `OTERMINUS_DISABLED_COMMAND_PACKS` | `disabled_command_packs` | Empty list | Environment form is comma-separated. JSON form is a list of pack IDs. Explicit packs are unioned with profile-disabled packs. |
-| Safe auto-execute | `OTERMINUS_AUTO_EXECUTE_SAFE` | `auto_execute_safe` | `false` | Uses the standard boolean parser. Only validated, warning-free, local read-only structured proposals from direct detection or the deterministic local planner may skip confirmation. |
+| Deterministic shortcuts | `OTERMINUS_DETERMINISTIC_SHORTCUTS` | `deterministic_shortcuts` | `minimal` | Must be `off` or `minimal`. Controls the optional shortcut layer between routing metadata and the LLM planner. There is no broad/full mode. |
+| Safe auto-execute | `OTERMINUS_AUTO_EXECUTE_SAFE` | `auto_execute_safe` | `false` | Uses the standard boolean parser. Only validated, warning-free, local read-only structured proposals from direct detection or deterministic shortcuts may skip confirmation. |
 | Schema version | Not supported | `schema_version` | `1` | Current persistent user-config schema version. Missing legacy files are normalized in memory as version 1. |
 | Onboarding state | Not supported | `onboarding_completed` | `false` | Reserved for first-run onboarding. Existing legacy config files without a schema version are treated as completed in memory. |
 
@@ -52,6 +53,7 @@ Supported `OTERMINUS_*` variables are:
 - `OTERMINUS_EXPLAIN_FAILURES`
 - `OTERMINUS_FAILURE_EXPLANATION_MAX_CHARS`
 - `OTERMINUS_COMMAND_PROFILE`
+- `OTERMINUS_DETERMINISTIC_SHORTCUTS`
 - `OTERMINUS_AUTO_EXECUTE_SAFE`
 
 `OTERMINUS_MODEL` is not currently implemented. Use `oterminus config set model <name>` to persist
@@ -89,6 +91,7 @@ Supported persistent fields:
   "onboarding_completed": false,
   "model": "gemma4",
   "command_profile": "developer",
+  "deterministic_shortcuts": "minimal",
   "disabled_command_packs": ["macos"],
   "policy_mode": "write",
   "allowed_roots": ["/workspace"],
@@ -143,11 +146,12 @@ All config commands bypass the normal request lifecycle and do not require Ollam
 | `oterminus config validate` | Validates only the active persistent file. Missing, malformed, unsupported, unreadable, or schema-invalid files exit non-zero. |
 | `oterminus config edit` | Opens the config with `$VISUAL`, then `$EDITOR`. If missing, safe defaults are created first. After a successful editor exit, the file is validated; invalid edits are preserved. |
 
-Safe defaults mark onboarding completed, use the `safe` command profile, keep policy mode at
-`write`, leave dangerous permission out of the file, disable safe auto-execute, history, and
-failure explanations, and enable audit logging plus redaction. `config edit` parses the editor with
-argv semantics, preserves arguments such as `code --wait`, never uses `shell=True`, does not guess
-an editor, does not open a browser, and does not modify shell startup files.
+Safe defaults mark onboarding completed, use the `safe` command profile, keep deterministic
+shortcuts at `minimal`, keep policy mode at `write`, leave dangerous permission out of the file,
+disable safe auto-execute, history, and failure explanations, and enable audit logging plus
+redaction. `config edit` parses the editor with argv semantics, preserves arguments such as
+`code --wait`, never uses `shell=True`, does not guess an editor, does not open a browser, and does
+not modify shell startup files.
 
 ### Safe get/set/reset keys
 
@@ -155,6 +159,7 @@ an editor, does not open a browser, and does not modify shell startup files.
 
 - `model`
 - `command_profile`
+- `deterministic_shortcuts`
 - `auto_execute_safe`
 - `audit_enabled`
 - `audit_redact`
@@ -176,6 +181,7 @@ hidden alias.
 
 - `model`
 - `command_profile`
+- `deterministic_shortcuts`
 - `auto_execute_safe`
 - `audit_enabled`
 - `audit_redact`
@@ -216,6 +222,7 @@ Accepted `config set` values:
   a persisted model.
 - `command_profile`: `beginner`, `safe`, `developer`, or `power`, case-insensitive and persisted
   lowercase.
+- `deterministic_shortcuts`: `off` or `minimal`, case-insensitive and persisted lowercase.
 - Boolean keys: `true`, `false`, `1`, `0`, `yes`, `no`, `on`, or `off`, case-insensitive and
   persisted as JSON booleans.
 - `color_mode`: `auto`, `always`, or `never`, case-insensitive and persisted lowercase.
@@ -267,7 +274,7 @@ The wizard-managed fields and first-run defaults are:
 | Field | Default | Notes |
 | --- | --- | --- |
 | `command_profile` | `safe` | Choose `beginner`, `safe`, `developer`, or `power`. The prompt describes disabled packs using the command registry/profile mapping. |
-| `auto_execute_safe` | `false` | Applies only to narrowly eligible validated local read-only commands from direct detection or the deterministic local planner. Network, write, dangerous, experimental, warning-bearing, Ollama-planned, project-health, archive-mutation, and rerun requests do not qualify. |
+| `auto_execute_safe` | `false` | Applies only to narrowly eligible validated local read-only commands from direct detection or deterministic shortcuts. Network, write, dangerous, experimental, warning-bearing, LLM-planned, project-health, archive-mutation, and rerun requests do not qualify. |
 | `audit_enabled` | `true` | Audit logs remain local and do not store full stdout/stderr, but may contain paths and command context. Review before sharing. |
 | `audit_redact` | `true` | Kept safe even if audit logging is disabled. |
 | `history_enabled` | `false` | Persisted history may include commands, local paths, and execution context. Reruns still require validation and confirmation. |
@@ -296,7 +303,7 @@ In practice:
   `audit_log_path`, then `~/.oterminus/audit.jsonl`.
 - `model` is user-config only; there is no environment override.
 - timeout, policy, allowed roots, audit enabled/redaction, history settings, failure-explanation
-  settings, safe auto-execute, command profiles, disabled packs, terminal color mode, and output limits follow
+  settings, safe auto-execute, deterministic shortcuts, command profiles, disabled packs, terminal color mode, and output limits follow
   environment, `.env`, user config, default precedence.
 - `OTERMINUS_CONFIG_PATH` is environment/.env only.
 - `OTERMINUS_ALLOW_DANGEROUS` is environment/.env only and is rejected if persisted.
@@ -409,10 +416,10 @@ export OTERMINUS_AUTO_EXECUTE_SAFE=true
 ```
 
 The preview is still printed first, and validator/policy checks still run. Eligible proposals must
-come from direct-command detection or the deterministic local planner, must be accepted with exact
+come from direct-command detection or deterministic shortcuts, must be accepted with exact
 `safe` risk, must have no warnings or rejection reasons, must resolve to an enabled and
 platform-supported normally executable command spec, and must be local-only. Network-touching
-commands, write or dangerous commands, experimental proposals, Ollama-planned proposals,
+commands, write or dangerous commands, experimental proposals, LLM-planned proposals,
 project-health commands, archive extraction or creation, history reruns, dry-run, and explain mode
 never qualify.
 

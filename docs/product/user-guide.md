@@ -121,7 +121,7 @@ oterminus doctor
 ```
 
 `doctor` prints the readiness report and exits. It does not start the REPL, execute a request, or
-invoke the Ollama planner. Unlike `--version`, it checks environment readiness such as Ollama
+invoke the LLM planner. Unlike `--version`, it checks environment readiness such as Ollama
 availability. If Ollama is missing, not running, or has no installed model, `doctor` should report
 that clearly so you can fix the local model setup before natural-language planning.
 
@@ -161,7 +161,7 @@ The wizard asks only high-value first-run questions:
 
 Ollama is optional during configuration. If the CLI is missing, the service is unavailable, or no
 models are installed, onboarding saves the non-model preferences and leaves model setup for later.
-Direct commands and deterministic local planner paths remain usable without a configured model.
+Direct commands and deterministic shortcuts remain usable without a configured model.
 Advanced settings such as numeric limits, paths, allowed roots, policy mode, and explicit disabled
 packs stay editable in the JSON config file.
 
@@ -506,7 +506,7 @@ Eligible proposals must be:
 - warning-free and rejection-free
 - rendered to a non-empty command and argv
 - backed by an enabled, platform-supported, normally executable command spec
-- produced by direct-command detection or the deterministic local planner
+- produced by direct-command detection or a deterministic shortcut
 - local-only
 
 These requests never qualify:
@@ -515,7 +515,7 @@ These requests never qualify:
 - write or dangerous commands
 - commands with warnings
 - experimental proposals
-- Ollama-planned proposals
+- LLM-planned proposals
 - project-health commands
 - archive extraction or creation (`tar -xf`, `unzip ... -d`, `tar -czf`, `zip -r`)
 - history reruns
@@ -670,7 +670,7 @@ If safe auto-execute skips a confirmation prompt, audit events include the bound
   review the exact command and type `EXECUTE EXPERIMENTAL` to run it.
 - Experimental proposals are never eligible for safe auto-execution.
 - Safe auto-execute is disabled by default and applies only to validated, warning-free, local
-  read-only structured commands from direct detection or the deterministic local planner.
+  read-only structured commands from direct detection or deterministic shortcuts.
 - Commands that fail validation or policy checks are never executed.
 
 ## Network diagnostics
@@ -817,8 +817,8 @@ operations only and renders exact project-tooling commands:
 - `run_evals` -> `poetry run oterminus-evals`
 
 Clear requests such as `run tests`, `check linting`, `run format check`, `build docs`, and
-`run evals` can be planned deterministically without Ollama. They still only produce a proposal:
-validation, preview, policy checks, and explicit confirmation happen before any execution.
+`run evals` are natural-language planner requests. They still only produce a proposal: validation,
+preview, policy checks, and explicit confirmation happen before any execution.
 
 Unsupported requests include dependency/package management (`poetry add`, `poetry install`,
 `poetry update`, `pip install`, `npm install`, `brew install`), write-formatting (`ruff format .`),
@@ -827,27 +827,15 @@ deploy/publish operations, and arbitrary `poetry run ...` commands.
 These operations may execute local project code and tooling. This capability is not arbitrary shell
 support or arbitrary Poetry command support.
 
-OTerminus also has a conservative deterministic local planner for a narrow set of clear
-natural-language inspection requests. These can skip Ollama by building structured proposals for
-safe local commands such as:
+OTerminus also has conservative deterministic shortcuts for a tiny set of fixed utility requests.
+These can skip Ollama by building structured proposals for:
 
-- filesystem inspection: `show hidden files`, `show detailed files`,
-  `show file info for README.md`, `identify README.md`
-- system inspection: `show manual for ls`, `open man page for grep`,
-  `show manual section 5 for crontab`
-- text inspection: `show README.md`, `show first 20 lines of README.md`,
-  `show last 50 lines of app.log`, `count lines in README.md`, `search TODO in src`
-- process inspection: `show running processes`, `find python processes`
-- Git inspection: `show current branch`, `show last 5 commits`, `show changed files`,
-  `show git diff summary`
+- `show current directory`, `where am i`, `print working directory`
+- `clear screen`, `clear the screen`
 
 This fast path only builds structured proposals; it never emits arbitrary shell text and never
 executes directly. Validation, deterministic preview rendering, policy checks, command-pack
-availability, platform restrictions, and confirmation policy still apply. Disabled packs disable
-their corresponding local recipes. Unsafe shell syntax such as pipelines, redirection, command
-substitution, multiline values, wildcard paths, URL-like paths, flag-like paths, broad filesystem
-roots, zero or negative line counts, and Git/process mutation phrases are not supported by these
-natural-language recipes. Manual-page recipes require clear manual-page wording and reject URLs,
-paths, shell syntax, unsupported sections, and pager/flag customization. Network, write, dangerous,
-archive mutation, and broad project-health expansion requests are outside this deterministic
-local-planner set.
+availability, platform restrictions, and confirmation policy still apply. Flexible natural-language
+requests for filesystems, manual pages, text inspection, processes, Git, and project health go to
+the LLM planner unless they are typed as direct commands such as `ls -l`, `man ls`, or
+`git status --short`.

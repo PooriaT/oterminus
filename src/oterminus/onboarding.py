@@ -53,7 +53,7 @@ def run_onboarding(
         output_fn=output_fn,
         before=(
             "Preview and validation still occur. Network, write, dangerous, experimental, "
-            "warning-bearing, Ollama-planned, project-health, archive-mutation, and rerun "
+            "warning-bearing, LLM-planned, project-health, archive-mutation, and rerun "
             "requests do not qualify."
         ),
     )

@@ -1,7 +1,7 @@
 # Evals
 
 OTerminus ships a deterministic, fixture-based eval harness for regression protection. The eval
-command exercises direct-command detection, ambiguity detection, local planner fast paths, planner
+command exercises direct-command detection, ambiguity detection, deterministic shortcuts, planner
 proposal parsing, structured rendering, validation, and policy acceptance without calling Ollama.
 
 ## What evals cover
@@ -15,7 +15,7 @@ Fixture cases validate:
 - expected rendered command and argv
 - expected planner parse failures (when applicable)
 - expected ambiguity interception (when applicable)
-- deterministic local-planner matches and conservative no-match behavior
+- deterministic shortcut matches and conservative no-match behavior
 
 These evals are not live LLM tests. For planner-path cases, `planner_proposal` supplies the mocked
 planner output payload. The runner parses that payload locally and validates the resulting proposal;
@@ -37,7 +37,7 @@ Files are organized by capability or behavior:
 | `ambiguity.json` | Ambiguity gates and specific requests that must not be stopped as ambiguous. |
 | `archive_inspection.json` | Archive list, extract, create, and archive-specific rejection behavior. |
 | `direct_commands.json` | Shell-like inputs accepted directly without LLM planning. |
-| `fast_path_local_planner.json` | Deterministic local-planner matches, including safe filesystem/system/text/process/Git inspection recipes, and no-match fallback behavior. |
+| `deterministic_shortcuts.json` | Retained deterministic shortcut matches and explicit no-match fallback behavior. |
 | `filesystem_inspection.json` | Read-only filesystem inspection commands and planner proposals. |
 | `filesystem_mutation.json` | Guarded filesystem write operations. |
 | `git_inspection.json` | Read-only Git status, branch, log, and diff operations. |
@@ -126,7 +126,7 @@ boundaries. Keep broad coverage expansion focused; small fixture additions are b
 behavior change that needs regression protection.
 
 Use `release_smoke.json` for small cross-cutting checks that protect public-install and first-use
-behavior across direct commands, deterministic local planner paths, ambiguity blocking, and a minimal
+behavior across direct commands, deterministic shortcuts, ambiguity blocking, and a minimal
 planner-fixture path. These are still proposal/validation evals: they do not execute commands, do not
 call Ollama, and do not inspect a real installed package. Keep command-family behavior in the
 capability-specific fixture files, and use CLI tests for subprocess-style entry-point behavior such
@@ -151,13 +151,14 @@ Choose the fixture file by the capability or behavior under test:
   arbitrary project execution in `unsafe_and_blocked.json`.
 - Put release-smoke cases in `release_smoke.json` only when the behavior crosses capability
   boundaries or protects public installation, CLI entry-point readiness, dry-run/explain previews,
-  deterministic local planner first-use prompts, ambiguity lifecycle, or planner-fixture validation
+  deterministic shortcut first-use prompts, ambiguity lifecycle, or planner-fixture validation
   that should remain available without Ollama.
-- Put accepted deterministic natural-language local-planner recipes in
-  `fast_path_local_planner.json` without a `planner_proposal`. The eval runner must satisfy those
-  cases through direct detection, ambiguity handling, or `plan_locally`; otherwise it fails before
-  any mocked planner payload can be used. Include expected structured mode, command family, risk,
-  acceptance, rendered command, and argv.
+- Put only retained deterministic natural-language shortcuts in `deterministic_shortcuts.json`
+  without a `planner_proposal`. The eval runner must satisfy those cases through direct detection,
+  ambiguity handling, or `plan_with_deterministic_shortcut`; otherwise it fails before any mocked
+  planner payload can be used. Include expected structured mode, command family, risk, acceptance,
+  rendered command, and argv. Do not add broad phrase variants, path/count extraction, manual-page
+  recipes, text inspection recipes, process recipes, Git recipes, or project-health recipes here.
 - Put vague user requests that must stop before planning in `ambiguity.json`; omit
   `planner_proposal` and set `expected_ambiguity_detected` plus a reason substring. Add a
   non-ambiguous contrast case when a nearby specific request should continue into planning.
@@ -169,6 +170,10 @@ or locally installed project tooling. Rejected structured payloads should use
 `expected_planner_error_contains` when schema validation must fail before validator execution;
 rejected command proposals should assert `expected_acceptance: false` and, when deterministic,
 `expected_rendered_command` and `expected_argv`.
+
+If a model fails to produce valid schema output for a natural-language request, add or update
+planner-path fixtures and improve schema/prompt/diagnostic behavior. Do not add deterministic
+shortcut fixtures just to cover phrase variation.
 
 Split eval expansion into a separate PR or issue when one command pack needs broad matrix coverage,
 multiple new fixture files, or exhaustive flag permutations. Prefer 30-60 high-value cases in a

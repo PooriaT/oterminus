@@ -37,8 +37,23 @@
     ]
   },
   {
-    "id": "release-local-list-files",
+    "id": "release-planner-list-files",
     "user_input": "list files",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "ls",
+      "arguments": {
+        "path": ".",
+        "long": false,
+        "human_readable": false
+      },
+      "summary": "list files",
+      "explanation": "Planner handles filesystem inspection requests.",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": []
+    },
     "expected_mode": "structured",
     "expected_command_family": "ls",
     "expected_risk_level": "safe",
@@ -50,8 +65,21 @@
     ]
   },
   {
-    "id": "release-local-disk-usage",
+    "id": "release-planner-disk-usage",
     "user_input": "show disk usage",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "df",
+      "arguments": {
+        "human_readable": true
+      },
+      "summary": "show disk usage",
+      "explanation": "Planner handles disk usage inspection requests.",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": []
+    },
     "expected_mode": "structured",
     "expected_command_family": "df",
     "expected_risk_level": "safe",

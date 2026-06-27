@@ -1,0 +1,202 @@
+[
+  {
+    "id": "shortcut-pwd-show-current-directory",
+    "user_input": "show current directory",
+    "expected_mode": "structured",
+    "expected_command_family": "pwd",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "pwd",
+    "expected_argv": [
+      "pwd"
+    ]
+  },
+  {
+    "id": "shortcut-pwd-where-am-i",
+    "user_input": "where am i",
+    "expected_mode": "structured",
+    "expected_command_family": "pwd",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "pwd",
+    "expected_argv": [
+      "pwd"
+    ]
+  },
+  {
+    "id": "shortcut-pwd-print-working-directory",
+    "user_input": "print working directory",
+    "expected_mode": "structured",
+    "expected_command_family": "pwd",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "pwd",
+    "expected_argv": [
+      "pwd"
+    ]
+  },
+  {
+    "id": "shortcut-clear-screen",
+    "user_input": "clear screen",
+    "expected_mode": "structured",
+    "expected_command_family": "clear",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "clear",
+    "expected_argv": [
+      "clear"
+    ]
+  },
+  {
+    "id": "shortcut-no-match-manual-page",
+    "user_input": "show manual for ls",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "man",
+      "arguments": {
+        "topic": "ls"
+      },
+      "summary": "show manual page",
+      "explanation": "Planner handles flexible manual-page requests.",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "structured",
+    "expected_command_family": "man",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "man ls",
+    "expected_argv": [
+      "man",
+      "ls"
+    ]
+  },
+  {
+    "id": "shortcut-no-match-text-lines",
+    "user_input": "show first 20 lines of README.md",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "head",
+      "arguments": {
+        "paths": [
+          "README.md"
+        ],
+        "lines": 20
+      },
+      "summary": "show first lines",
+      "explanation": "Planner handles text inspection arguments.",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "structured",
+    "expected_command_family": "head",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "head -n 20 README.md",
+    "expected_argv": [
+      "head",
+      "-n",
+      "20",
+      "README.md"
+    ]
+  },
+  {
+    "id": "shortcut-no-match-process-search",
+    "user_input": "find python processes",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "pgrep",
+      "arguments": {
+        "pattern": "python",
+        "full_command": true,
+        "list_names": true
+      },
+      "summary": "find python processes",
+      "explanation": "Planner handles process search arguments.",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "structured",
+    "expected_command_family": "pgrep",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "pgrep -f -l python",
+    "expected_argv": [
+      "pgrep",
+      "-f",
+      "-l",
+      "python"
+    ]
+  },
+  {
+    "id": "shortcut-no-match-git-history",
+    "user_input": "show last 5 commits",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "git",
+      "arguments": {
+        "operation": "log_oneline",
+        "count": 5
+      },
+      "summary": "show last commits",
+      "explanation": "Planner handles Git inspection requests.",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "structured",
+    "expected_command_family": "git",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "git log --oneline -n 5",
+    "expected_argv": [
+      "git",
+      "log",
+      "--oneline",
+      "-n",
+      "5"
+    ]
+  },
+  {
+    "id": "shortcut-ambiguous-clean-folder",
+    "user_input": "clean this folder",
+    "expected_ambiguity_detected": true,
+    "expected_ambiguity_reason_contains": "clean this folder",
+    "expected_ambiguity_safe_options": [
+      "list large files",
+      "list recently modified files",
+      "inspect permissions",
+      "show temporary-looking files",
+      "show project files"
+    ]
+  },
+  {
+    "id": "shortcut-no-match-install-dependencies",
+    "user_input": "install dependencies",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "summary": "Install dependencies",
+      "explanation": "Dependency installation is unsupported.",
+      "mode": "experimental",
+      "command": "poetry install",
+      "risk_level": "write",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "experimental",
+    "expected_risk_level": "dangerous",
+    "expected_acceptance": false,
+    "expected_rendered_command": "poetry install",
+    "expected_argv": [
+      "poetry",
+      "install"
+    ]
+  }
+]

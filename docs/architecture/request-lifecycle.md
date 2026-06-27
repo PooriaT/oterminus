@@ -52,9 +52,9 @@ flowchart TD
   E -->|yes| E1[Show safer inspection options]
   E1 --> N
   E -->|no| F[Capability router]
-  F --> LP{Deterministic local planner match?}
-  LP -->|yes| LP1[Build local structured proposal]
-  LP -->|no| G[Planner JSON proposal]
+  F --> LP{Deterministic shortcut enabled and matched?}
+  LP -->|yes| LP1[Build shortcut structured proposal]
+  LP -->|no| G[LLM planner JSON proposal]
   G --> P[Parse Proposal schema]
   LP1 --> P
   C1 --> P
@@ -118,38 +118,37 @@ options. They also record planner skip diagnostics with `planner_invoked: false`
 
 A deterministic router classifies the request into categories like `filesystem_inspect`,
 `filesystem_mutate`, `text_search`, `process_inspect`, etc.
+Routing is metadata for audit, policy context, and prompt guidance. It is not the planner and does
+not by itself choose a command.
 
-### 5) Deterministic local planner
+### 5) Deterministic shortcuts
 
-After routing, OTerminus attempts a deterministic local-planner fast path for a small set of
-explicit, reviewable rules. The local planner produces structured proposals only; it never emits
-experimental command text and never executes directly.
+After routing, OTerminus may attempt deterministic shortcuts for a small set of explicit,
+reviewable rules. This layer is controlled by `deterministic_shortcuts`; supported values are
+`minimal` (default) and `off`. Shortcuts produce structured proposals only; they never emit
+experimental command text and never execute directly.
 
-Current recipes cover high-frequency safe inspection requests for filesystems (`ls`, `du`, `df`,
-`stat`, `file`), text (`cat`, `head`, `tail`, `grep`, `wc`), processes (`ps`, `pgrep`), and
-read-only Git (`status`, current branch, one-line logs, diff stats, changed file names), plus the
-existing curated current-directory, clear-screen, and project-health checks. Examples include
-`show hidden files`, `show first 20 lines of README.md`, `search TODO in src`,
-`find python processes`, and `show last 5 commits`.
-
-The planner helper foundation is conservative. It normalizes request text, rejects unsafe shell
-syntax, and supports only simple parameter extraction for explicit rules: local path tokens,
-base-10 positive integers, and simple search terms. Ambiguous or unsafe values fail closed by
-returning no local match. The shared proposal builder respects disabled command packs and
-platform-specific command availability through registry metadata, then lets structured argument
+Current recipes are limited to fixed zero-argument utility shortcuts: current-directory requests
+(`show current directory`, `where am i`, `print working directory`) and clear-screen requests
+(`clear screen`, `clear the screen`). The shared proposal builder respects disabled command packs
+and platform-specific command availability through registry metadata, then lets structured argument
 validation remain the final authority.
 
-The local planner does not handle network, write, dangerous, archive mutation, process mutation, Git
-mutation, or broad project-health expansion requests. It also does not accept natural-language
-recipes containing shell operators, pipelines, redirection, command substitution, wildcard paths,
-URL-like paths, broad roots, or zero/negative line counts.
+The shortcut layer is not a general natural-language parser. It does not extract paths, counts,
+search terms, manual-page topics, process names, Git operations, or project-health operations.
+Natural-language inspection requests such as `show hidden files`, `show first 20 lines of README.md`,
+`find python processes`, and `show last 5 commits` continue to the LLM planner. Direct commands such
+as `ls -l`, `head -n 20 README.md`, and `git status --short` still bypass the LLM through direct
+command detection.
 
-### 6) Planner + parsing
+### 6) LLM planner + parsing
 
-Planner asks Ollama for JSON Schema-constrained output and validates the returned JSON against the
-`Proposal` schema. The schema supports only two first-class modes: `structured` and `experimental`.
-If the model returns valid JSON with invalid proposal fields, OTerminus makes one bounded repair
-request and rejects the output if the repaired JSON still fails validation.
+Normal natural-language requests reach the LLM planner unless blocked as ambiguous or matched by one
+of the retained deterministic shortcuts. The planner asks Ollama for JSON Schema-constrained output and
+validates the returned JSON against the `Proposal` schema. The schema supports only two first-class
+modes: `structured` and `experimental`. If the model returns valid JSON with invalid proposal
+fields, OTerminus makes one bounded repair request and rejects the output if the repaired JSON still
+fails validation.
 
 Planner and parser prefer structured mode when command family + arguments can be represented
 deterministically. Experimental mode is used only when structured support is unavailable or
@@ -170,8 +169,8 @@ Verbose previews may add the architecture diagnostic:
 Some trusted direct commands may remain experimental when the typed schema cannot represent the
 user's argv exactly. For example, `ls -ltrh` is detected locally, skips Ollama planning, preserves
 `["ls", "-ltrh"]`, and reaches validation with direct-command origin. Natural-language requests such
-as "show files sorted by modification time" still go through the local planner or Ollama planner and
-can only produce typed structured arguments.
+as "show files sorted by modification time" still go through the LLM planner and can only produce
+typed structured arguments.
 
 ### 8) Validation and policy
 
@@ -194,7 +193,7 @@ Experimental mode uses very-strong confirmation text and requires the exact phra
 If `OTERMINUS_AUTO_EXECUTE_SAFE=true`, OTerminus evaluates a narrow local policy after preview and
 after dry-run/explain have already returned. The confirmation prompt may be skipped only for
 validated, warning-free, structured, exact-`safe` commands from direct detection or the deterministic
-local planner. Ollama-planned proposals, experimental proposals, network-touching commands, write or
+shortcut layer. LLM-planned proposals, experimental proposals, network-touching commands, write or
 dangerous commands, project-health commands, archive extraction/creation, commands with warnings,
 history reruns, dry-run, and explain mode never qualify. The executor still runs only after the
 preview has been printed.

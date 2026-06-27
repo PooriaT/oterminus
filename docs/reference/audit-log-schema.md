@@ -16,9 +16,10 @@ Audit logs are newline-delimited JSON objects (JSONL), one event per handled req
 - `ambiguity_safe_options` (string array)
 - `planner_invoked` (bool)
 - `planner_skipped` (bool)
-- `planner_skip_reason` (nullable string; e.g. `direct_command`, `ambiguity_blocked`)
-- `proposal_origin` (nullable string; e.g. `direct_command`, `local_planner`, `ollama_planner`,
-  `unknown`)
+- `planner_skip_reason` (nullable string; e.g. `direct_command`, `ambiguity_blocked`,
+  `deterministic_shortcut`)
+- `proposal_origin` (nullable string; e.g. `direct_command`, `deterministic_shortcut`,
+  `llm_planner`, `unknown`)
 - `routed_category` (nullable string)
 - `proposal_mode` (nullable string)
 - `command_family` (nullable string)
@@ -57,7 +58,10 @@ When an ambiguous request is blocked, the event records:
 - `planner_skipped: true`
 - `planner_skip_reason: "ambiguity_blocked"`
 
-When a direct command is handled through the local fast path, the event records:
+Planner, validator, confirmation, and executor fields remain unset because the request stops before
+those stages.
+
+When a direct command is handled without the LLM planner, the event records:
 
 - `planner_invoked: false`
 - `planner_skipped: true`
@@ -69,12 +73,17 @@ When a non-ambiguous natural-language request uses the planner:
 - `planner_skipped: false`
 - `planner_skip_reason: null`
 
-Planner, validator, confirmation, and executor fields remain unset because the request stops before
-those stages.
+When a non-ambiguous natural-language request uses an enabled deterministic shortcut:
+
+- `planner_invoked: false`
+- `planner_skipped: true`
+- `planner_skip_reason: "deterministic_shortcut"`
+- `proposal_origin: "deterministic_shortcut"`
 
 `timings_ms` stores local, approximate stage durations (perf-counter based) for observability, such as
-`direct_command_detection_ms`, `ambiguity_detection_ms`, `routing_ms`, `local_planner_ms`, `planner_ms`,
-`validation_ms`, `execution_ms`, and `total_duration_ms`. Skipped stages are omitted.
+`direct_command_detection_ms`, `ambiguity_detection_ms`, `routing_ms`,
+`deterministic_shortcut_ms`, `planner_ms`, `validation_ms`, `execution_ms`, and
+`total_duration_ms`. Skipped stages are omitted.
 
 ## Rerun lineage
 
@@ -91,7 +100,7 @@ records the previewed/validated command metadata and sets:
 - `auto_execute_safe_enabled: true`
 - `auto_execute_safe_eligible: true`
 - `auto_execute_safe_reason: "eligible"`
-- `proposal_origin` to the direct or local-planner source
+- `proposal_origin` to the direct-command or deterministic-shortcut source
 
 Ineligible execute-mode requests keep the normal confirmation flow and may record
 `auto_execute_safe_eligible: false` with a bounded reason code. Dry-run and explain mode do not use
@@ -119,7 +128,7 @@ When audit is disabled, tail and clear commands do not create a new log file.
   "direct_command_detected": false,
   "routed_category": "metadata_inspect",
   "proposal_mode": "structured",
-  "proposal_origin": "local_planner",
+  "proposal_origin": "deterministic_shortcut",
   "command_family": "df",
   "rendered_command": "df -h",
   "argv": ["df", "-h"],
@@ -148,4 +157,5 @@ When enabled, failure explanation sends only redacted/truncated command, stdout,
 
 See [Configuration reference](config.md#failure-explanations-opt-in) for enablement and limits.
 
-- `planner_skip_reason` values: `direct_command`, `ambiguity_blocked`, `local_planner`, or `null` when planner ran.
+- `planner_skip_reason` values: `direct_command`, `ambiguity_blocked`,
+  `deterministic_shortcut`, or `null` when planner ran.
