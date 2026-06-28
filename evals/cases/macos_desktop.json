@@ -19,6 +19,7 @@
       "arguments": {
         "path": "."
       },
+      "command": null,
       "summary": "open current folder",
       "explanation": "open local folder",
       "risk_level": "safe",
@@ -40,6 +41,7 @@
       "arguments": {
         "path": "https://example.com"
       },
+      "command": null,
       "summary": "open url",
       "explanation": "invalid structured path",
       "risk_level": "safe",
@@ -55,6 +57,7 @@
       "action_type": "shell_command",
       "mode": "experimental",
       "command_family": "open",
+      "arguments": null,
       "command": "open .",
       "summary": "open folder",
       "explanation": "experimental fallback",
@@ -81,6 +84,7 @@
       "action_type": "shell_command",
       "mode": "experimental",
       "command_family": "open",
+      "arguments": null,
       "command": "open https://example.com",
       "summary": "open url",
       "explanation": "fallback",

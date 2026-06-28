@@ -32,6 +32,7 @@
       "action_type": "shell_command",
       "mode": "experimental",
       "command_family": "chmod",
+      "arguments": null,
       "command": "chmod u+x ./run.sh",
       "summary": "make script executable",
       "explanation": "use chmod to set executable bit",
@@ -84,15 +85,16 @@
       "action_type": "shell_command",
       "mode": "structured",
       "command_family": "find",
+      "arguments": {
+        "path": "src",
+        "name": "*"
+      },
+      "command": null,
       "summary": "fixture proposal",
       "explanation": "deterministic eval fixture",
       "risk_level": "safe",
       "needs_confirmation": true,
-      "notes": [],
-      "arguments": {
-        "path": "src",
-        "name": "*"
-      }
+      "notes": []
     },
     "expected_ambiguity_detected": false,
     "expected_mode": "structured",
@@ -114,15 +116,16 @@
       "action_type": "shell_command",
       "mode": "structured",
       "command_family": "stat",
+      "arguments": {
+        "path": "run.sh",
+        "verbose": true
+      },
+      "command": null,
       "summary": "fixture proposal",
       "explanation": "deterministic eval fixture",
       "risk_level": "safe",
       "needs_confirmation": true,
-      "notes": [],
-      "arguments": {
-        "path": "run.sh",
-        "verbose": true
-      }
+      "notes": []
     },
     "expected_ambiguity_detected": false,
     "expected_mode": "structured",
@@ -143,15 +146,16 @@
       "action_type": "shell_command",
       "mode": "structured",
       "command_family": "find",
+      "arguments": {
+        "path": "src",
+        "name": "*"
+      },
+      "command": null,
       "summary": "fixture proposal",
       "explanation": "deterministic eval fixture",
       "risk_level": "safe",
       "needs_confirmation": true,
-      "notes": [],
-      "arguments": {
-        "path": "src",
-        "name": "*"
-      }
+      "notes": []
     },
     "expected_ambiguity_detected": false,
     "expected_mode": "structured",

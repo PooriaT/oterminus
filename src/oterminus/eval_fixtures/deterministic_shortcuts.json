@@ -57,6 +57,7 @@
       "arguments": {
         "topic": "ls"
       },
+      "command": null,
       "summary": "show manual page",
       "explanation": "Planner handles flexible manual-page requests.",
       "risk_level": "safe",
@@ -86,6 +87,7 @@
         ],
         "lines": 20
       },
+      "command": null,
       "summary": "show first lines",
       "explanation": "Planner handles text inspection arguments.",
       "risk_level": "safe",
@@ -116,6 +118,7 @@
         "full_command": true,
         "list_names": true
       },
+      "command": null,
       "summary": "find python processes",
       "explanation": "Planner handles process search arguments.",
       "risk_level": "safe",
@@ -145,6 +148,7 @@
         "operation": "log_oneline",
         "count": 5
       },
+      "command": null,
       "summary": "show last commits",
       "explanation": "Planner handles Git inspection requests.",
       "risk_level": "safe",
@@ -182,10 +186,12 @@
     "user_input": "install dependencies",
     "planner_proposal": {
       "action_type": "shell_command",
+      "mode": "experimental",
+      "command_family": null,
+      "arguments": null,
+      "command": "poetry install",
       "summary": "Install dependencies",
       "explanation": "Dependency installation is unsupported.",
-      "mode": "experimental",
-      "command": "poetry install",
       "risk_level": "write",
       "needs_confirmation": true,
       "notes": []

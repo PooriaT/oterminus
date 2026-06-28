@@ -9,6 +9,7 @@
       "arguments": {
         "operation": "run_tests"
       },
+      "command": null,
       "summary": "Run the project test suite",
       "explanation": "Runs the curated project health test operation.",
       "risk_level": "write",
@@ -36,6 +37,7 @@
       "arguments": {
         "operation": "run_tests"
       },
+      "command": null,
       "summary": "Run the project test suite",
       "explanation": "Runs the curated project health test operation.",
       "risk_level": "write",
@@ -63,6 +65,7 @@
       "arguments": {
         "operation": "lint_check"
       },
+      "command": null,
       "summary": "Check linting",
       "explanation": "Runs the curated lint check.",
       "risk_level": "write",
@@ -92,6 +95,7 @@
       "arguments": {
         "operation": "lint_check"
       },
+      "command": null,
       "summary": "Check linting",
       "explanation": "Runs the curated lint check.",
       "risk_level": "write",
@@ -121,6 +125,7 @@
       "arguments": {
         "operation": "format_check"
       },
+      "command": null,
       "summary": "Check formatting",
       "explanation": "Runs formatting check mode.",
       "risk_level": "write",
@@ -151,6 +156,7 @@
       "arguments": {
         "operation": "format_check"
       },
+      "command": null,
       "summary": "Check formatting",
       "explanation": "Runs formatting check mode.",
       "risk_level": "write",
@@ -181,6 +187,7 @@
       "arguments": {
         "operation": "build_docs"
       },
+      "command": null,
       "summary": "Build docs",
       "explanation": "Runs strict docs build.",
       "risk_level": "write",
@@ -210,6 +217,7 @@
       "arguments": {
         "operation": "build_docs"
       },
+      "command": null,
       "summary": "Build docs",
       "explanation": "Runs strict docs build.",
       "risk_level": "write",
@@ -239,6 +247,7 @@
       "arguments": {
         "operation": "run_evals"
       },
+      "command": null,
       "summary": "Run evals",
       "explanation": "Runs curated eval workflow.",
       "risk_level": "write",
@@ -262,6 +271,8 @@
     "planner_proposal": {
       "action_type": "shell_command",
       "mode": "experimental",
+      "command_family": null,
+      "arguments": null,
       "command": "poetry run ruff format .",
       "summary": "format code",
       "explanation": "Unsupported write formatting variant.",
@@ -279,6 +290,8 @@
     "planner_proposal": {
       "action_type": "shell_command",
       "mode": "experimental",
+      "command_family": null,
+      "arguments": null,
       "command": "poetry run ruff format .",
       "summary": "format code",
       "explanation": "Unsupported write formatting variant.",
@@ -296,6 +309,8 @@
     "planner_proposal": {
       "action_type": "shell_command",
       "mode": "experimental",
+      "command_family": null,
+      "arguments": null,
       "command": "poetry install",
       "summary": "install deps",
       "explanation": "Unsupported dependency installation.",
@@ -313,6 +328,8 @@
     "planner_proposal": {
       "action_type": "shell_command",
       "mode": "experimental",
+      "command_family": null,
+      "arguments": null,
       "command": "poetry update",
       "summary": "update deps",
       "explanation": "Unsupported dependency update.",
@@ -330,6 +347,8 @@
     "planner_proposal": {
       "action_type": "shell_command",
       "mode": "experimental",
+      "command_family": null,
+      "arguments": null,
       "command": "poetry add requests",
       "summary": "add dependency",
       "explanation": "Unsupported dependency addition.",
@@ -347,6 +366,8 @@
     "planner_proposal": {
       "action_type": "shell_command",
       "mode": "experimental",
+      "command_family": null,
+      "arguments": null,
       "command": "poetry publish",
       "summary": "publish",
       "explanation": "Unsupported publish request.",
@@ -364,6 +385,8 @@
     "planner_proposal": {
       "action_type": "shell_command",
       "mode": "experimental",
+      "command_family": null,
+      "arguments": null,
       "command": "poetry run custom-task",
       "summary": "run arbitrary Poetry task",
       "explanation": "Unsupported arbitrary Poetry execution.",
@@ -381,6 +404,8 @@
     "planner_proposal": {
       "action_type": "shell_command",
       "mode": "experimental",
+      "command_family": null,
+      "arguments": null,
       "command": "poetry run mkdocs gh-deploy",
       "summary": "deploy docs",
       "explanation": "Unsupported docs deploy.",
@@ -398,6 +423,8 @@
     "planner_proposal": {
       "action_type": "shell_command",
       "mode": "experimental",
+      "command_family": null,
+      "arguments": null,
       "command": "poetry run pytest",
       "summary": "run tests",
       "explanation": "Direct Poetry execution is unsupported.",
@@ -421,6 +448,8 @@
     "planner_proposal": {
       "action_type": "shell_command",
       "mode": "experimental",
+      "command_family": null,
+      "arguments": null,
       "command": "poetry run oterminus-evals",
       "summary": "run evals",
       "explanation": "Direct Poetry execution is unsupported.",
@@ -445,14 +474,15 @@
       "action_type": "shell_command",
       "mode": "structured",
       "command_family": "project_health",
+      "arguments": {
+        "operation": "poetry_run_mypy"
+      },
+      "command": null,
       "summary": "fixture proposal",
       "explanation": "deterministic eval fixture",
       "risk_level": "safe",
       "needs_confirmation": true,
-      "notes": [],
-      "arguments": {
-        "operation": "poetry_run_mypy"
-      }
+      "notes": []
     },
     "expected_planner_error_contains": "operation must be one of"
   },
@@ -463,14 +493,15 @@
       "action_type": "shell_command",
       "mode": "structured",
       "command_family": "project_health",
+      "arguments": {
+        "operation": "poetry_update"
+      },
+      "command": null,
       "summary": "fixture proposal",
       "explanation": "deterministic eval fixture",
       "risk_level": "safe",
       "needs_confirmation": true,
-      "notes": [],
-      "arguments": {
-        "operation": "poetry_update"
-      }
+      "notes": []
     },
     "expected_planner_error_contains": "operation must be one of"
   },
@@ -481,12 +512,13 @@
       "action_type": "shell_command",
       "mode": "experimental",
       "command_family": "poetry",
+      "arguments": null,
+      "command": "poetry run ruff format .",
       "summary": "fixture proposal",
       "explanation": "deterministic eval fixture",
       "risk_level": "safe",
       "needs_confirmation": true,
-      "notes": [],
-      "command": "poetry run ruff format ."
+      "notes": []
     },
     "expected_mode": "experimental",
     "expected_command_family": "poetry",
@@ -508,12 +540,13 @@
       "action_type": "shell_command",
       "mode": "experimental",
       "command_family": "poetry",
+      "arguments": null,
+      "command": "poetry run deploy",
       "summary": "fixture proposal",
       "explanation": "deterministic eval fixture",
       "risk_level": "safe",
       "needs_confirmation": true,
-      "notes": [],
-      "command": "poetry run deploy"
+      "notes": []
     },
     "expected_mode": "experimental",
     "expected_command_family": "poetry",
