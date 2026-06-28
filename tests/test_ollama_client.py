@@ -2,7 +2,13 @@ import pytest
 from ollama import ResponseError
 
 import oterminus.ollama_client as ollama_client
-from oterminus.ollama_client import OllamaClientError, OllamaPlannerClient, proposal_output_schema
+from oterminus.models import ActionType, Proposal, ProposalMode, RiskLevel
+from oterminus.ollama_client import (
+    PLANNER_PROPOSAL_REQUIRED_FIELDS,
+    OllamaClientError,
+    OllamaPlannerClient,
+    proposal_output_schema,
+)
 
 
 class _FakeOllamaClient:
@@ -52,6 +58,25 @@ def test_proposal_output_schema_requires_all_top_level_proposal_fields() -> None
         "needs_confirmation",
         "notes",
     ]
+
+
+def test_proposal_output_schema_stays_synced_with_proposal_contract() -> None:
+    schema = proposal_output_schema()
+    properties = schema["properties"]
+    required = schema["required"]
+
+    assert schema["additionalProperties"] is False
+    assert set(required) == set(PLANNER_PROPOSAL_REQUIRED_FIELDS)
+    assert all(field in Proposal.model_fields for field in required)
+    assert set(PLANNER_PROPOSAL_REQUIRED_FIELDS).issubset(properties)
+    assert properties["action_type"]["enum"] == [ActionType.SHELL_COMMAND.value]
+    assert properties["mode"]["enum"] == [mode.value for mode in ProposalMode]
+    assert properties["needs_confirmation"] == {"type": "boolean", "enum": [True]}
+    assert properties["risk_level"] == {
+        "type": ["string", "null"],
+        "enum": [risk.value for risk in RiskLevel] + [None],
+    }
+    assert properties["notes"] == {"type": "array", "items": {"type": "string"}}
 
 
 def test_chat_json_allows_explicit_temperature(monkeypatch: pytest.MonkeyPatch) -> None:

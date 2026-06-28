@@ -95,6 +95,7 @@
         "path": ".",
         "name": "*.py"
       },
+      "command": null,
       "summary": "find python files",
       "explanation": "use find",
       "risk_level": "safe",
@@ -132,6 +133,7 @@
         "files_with_matches": false,
         "max_count": 5
       },
+      "command": null,
       "summary": "find TODO",
       "explanation": "use grep",
       "risk_level": "safe",
@@ -166,6 +168,7 @@
         ],
         "brief": true
       },
+      "command": null,
       "summary": "inspect file type",
       "explanation": "file brief",
       "risk_level": "safe",
@@ -197,6 +200,7 @@
         "lines": 20,
         "bytes": null
       },
+      "command": null,
       "summary": "read file head",
       "explanation": "head lines",
       "risk_level": "safe",
@@ -229,6 +233,7 @@
         "lines": null,
         "bytes": 128
       },
+      "command": null,
       "summary": "read file tail",
       "explanation": "tail bytes",
       "risk_level": "safe",
@@ -260,6 +265,7 @@
         "summarize": true,
         "max_depth": null
       },
+      "command": null,
       "summary": "disk usage summary",
       "explanation": "use du",
       "risk_level": "safe",

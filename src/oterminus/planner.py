@@ -80,6 +80,8 @@ class Planner:
         except json.JSONDecodeError as exc:
             raise PlannerError(f"Invalid JSON from model: {exc}") from exc
 
+        _validate_planner_output_contract(payload)
+
         try:
             proposal = Proposal.model_validate(payload)
         except ValidationError as exc:
@@ -187,6 +189,67 @@ def _validation_error_summary(exc: ValidationError) -> str:
         details.append(f"{remaining} additional validation error(s)")
 
     return _truncate("; ".join(details), _VALIDATION_DETAIL_MAX_CHARS)
+
+
+def _validate_planner_output_contract(payload: object) -> None:
+    schema = proposal_output_schema()
+    required = tuple(schema["required"])  # type: ignore[index]
+    properties = schema["properties"]  # type: ignore[index]
+
+    if not isinstance(payload, dict):
+        raise _ProposalSchemaError("proposal: Input should be a JSON object.")
+
+    missing = [field for field in required if field not in payload]
+    if missing:
+        raise _ProposalSchemaError(f"field `{missing[0]}`: Field required")
+
+    extra = sorted(set(payload) - set(properties))
+    if extra:
+        raise _ProposalSchemaError(f"field `{extra[0]}`: Extra inputs are not permitted")
+
+    if payload["action_type"] != "shell_command":
+        raise _ProposalSchemaError(
+            f"field `action_type`: Input should be 'shell_command'; got {payload['action_type']!r}"
+        )
+
+    if payload["mode"] not in {"structured", "experimental"}:
+        raise _ProposalSchemaError(
+            "field `mode`: Input should be 'structured' or 'experimental'; "
+            f"got {payload['mode']!r}"
+        )
+
+    _validate_nullable_string(payload, "command_family")
+    _validate_nullable_string(payload, "command")
+    _validate_required_string(payload, "summary")
+    _validate_required_string(payload, "explanation")
+
+    if payload["arguments"] is not None and not isinstance(payload["arguments"], dict):
+        raise _ProposalSchemaError("field `arguments`: Input should be an object or null")
+
+    if payload["risk_level"] not in {"safe", "write", "dangerous", None}:
+        raise _ProposalSchemaError(
+            "field `risk_level`: Input should be 'safe', 'write', 'dangerous', or null; "
+            f"got {payload['risk_level']!r}"
+        )
+
+    if payload["needs_confirmation"] is not True:
+        raise _ProposalSchemaError(
+            f"field `needs_confirmation`: Input should be true; got {payload['needs_confirmation']!r}"
+        )
+
+    notes = payload["notes"]
+    if not isinstance(notes, list) or any(not isinstance(note, str) for note in notes):
+        raise _ProposalSchemaError("field `notes`: Input should be an array of strings")
+
+
+def _validate_required_string(payload: dict[str, object], field: str) -> None:
+    if not isinstance(payload[field], str):
+        raise _ProposalSchemaError(f"field `{field}`: Input should be a string")
+
+
+def _validate_nullable_string(payload: dict[str, object], field: str) -> None:
+    if payload[field] is not None and not isinstance(payload[field], str):
+        raise _ProposalSchemaError(f"field `{field}`: Input should be a string or null")
 
 
 def _format_repaired_schema_failure(detail: str) -> str:

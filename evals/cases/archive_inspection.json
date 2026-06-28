@@ -10,6 +10,7 @@
         "operation": "list",
         "archive_path": "archive.tar"
       },
+      "command": null,
       "summary": "list tar archive contents",
       "explanation": "read-only archive inspection",
       "risk_level": "safe",
@@ -38,6 +39,7 @@
         "operation": "list",
         "archive_path": "backup.zip"
       },
+      "command": null,
       "summary": "list zip archive contents",
       "explanation": "read-only archive inspection",
       "risk_level": "safe",
@@ -66,6 +68,7 @@
         "operation": "list",
         "archive_path": "archive.zip"
       },
+      "command": null,
       "summary": "list zip archive contents",
       "explanation": "read-only archive inspection",
       "risk_level": "safe",
@@ -95,6 +98,7 @@
         "archive_path": "archive.tar",
         "destination_path": "./out"
       },
+      "command": null,
       "summary": "extract tar archive",
       "explanation": "guarded archive extraction to an explicit destination",
       "risk_level": "write",
@@ -126,6 +130,7 @@
         "archive_path": "backup.zip",
         "destination_path": "./restore"
       },
+      "command": null,
       "summary": "extract zip archive",
       "explanation": "guarded archive extraction to an explicit destination",
       "risk_level": "write",
@@ -162,6 +167,7 @@
         "archive_path": "backup.zip",
         "destination_path": "/"
       },
+      "command": null,
       "summary": "extract zip archive",
       "explanation": "guarded archive extraction",
       "risk_level": "write",
@@ -190,6 +196,7 @@
           "src"
         ]
       },
+      "command": null,
       "summary": "create tar.gz archive",
       "explanation": "guarded archive creation from explicit source paths",
       "risk_level": "write",
@@ -222,6 +229,7 @@
           "docs"
         ]
       },
+      "command": null,
       "summary": "create zip archive",
       "explanation": "guarded archive creation from explicit source paths",
       "risk_level": "write",
@@ -255,6 +263,7 @@
           "docs"
         ]
       },
+      "command": null,
       "summary": "create zip archive",
       "explanation": "guarded archive creation from explicit source paths",
       "risk_level": "write",
@@ -294,6 +303,7 @@
           "/"
         ]
       },
+      "command": null,
       "summary": "create zip archive",
       "explanation": "guarded archive creation",
       "risk_level": "write",
@@ -309,6 +319,7 @@
       "action_type": "shell_command",
       "mode": "experimental",
       "command_family": "zip",
+      "arguments": null,
       "command": "zip -e encrypted.zip file.txt",
       "summary": "create encrypted zip archive",
       "explanation": "zip encryption is unsupported in guarded archive creation",

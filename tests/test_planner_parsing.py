@@ -28,12 +28,13 @@ class _StubClient:
         return self.payloads.pop(0)
 
 
-def _proposal_payload(**overrides: object) -> str:
+def _proposal_dict(**overrides: object) -> dict[str, object]:
     payload = {
         "action_type": "shell_command",
         "mode": "structured",
         "command_family": "man",
         "arguments": {"topic": "ls", "section": None},
+        "command": None,
         "summary": "show manual",
         "explanation": "Use the local manual page for ls.",
         "risk_level": "safe",
@@ -41,7 +42,11 @@ def _proposal_payload(**overrides: object) -> str:
         "notes": [],
     }
     payload.update(overrides)
-    return json.dumps(payload)
+    return payload
+
+
+def _proposal_payload(**overrides: object) -> str:
+    return json.dumps(_proposal_dict(**overrides))
 
 
 def test_proposal_mode_exposes_only_structured_and_experimental() -> None:
@@ -50,7 +55,8 @@ def test_proposal_mode_exposes_only_structured_and_experimental() -> None:
 
 def test_parse_supported_command_ls_proposal_is_normalized_to_structured() -> None:
     raw = (
-        '{"action_type":"shell_command","command":"ls -lh",'
+        '{"action_type":"shell_command","mode":"experimental","command_family":null,'
+        '"arguments":null,"command":"ls -lh",'
         '"summary":"list files with sizes","explanation":"show a long listing",'
         '"risk_level":"safe","needs_confirmation":true,"notes":[]}'
     )
@@ -96,7 +102,8 @@ def test_parse_supported_command_proposal_is_normalized_to_structured(
     command: str, expected_family: str, expected_arguments: dict[str, object]
 ) -> None:
     raw = (
-        f'{{"action_type":"shell_command","command":"{command}",'
+        f'{{"action_type":"shell_command","mode":"experimental","command_family":null,'
+        f'"arguments":null,"command":"{command}",'
         '"summary":"normalized","explanation":"prefer structured rendering",'
         '"risk_level":"safe","needs_confirmation":true,"notes":[]}'
     )
@@ -112,7 +119,8 @@ def test_parse_supported_command_proposal_is_normalized_to_structured(
 
 def test_parse_valid_experimental_fallback_for_unstructured_variant() -> None:
     raw = (
-        '{"action_type":"shell_command","command":"stat -f %z README.md",'
+        '{"action_type":"shell_command","mode":"experimental","command_family":null,'
+        '"arguments":null,"command":"stat -f %z README.md",'
         '"summary":"show file size","explanation":"custom stat format",'
         '"risk_level":"safe","needs_confirmation":true,"notes":[]}'
     )
@@ -125,16 +133,13 @@ def test_parse_valid_experimental_fallback_for_unstructured_variant() -> None:
 
 def test_parse_legacy_raw_mode_is_normalized_to_experimental_with_note() -> None:
     raw = (
-        '{"action_type":"shell_command","mode":"raw","command":"stat -f %z README.md",'
+        '{"action_type":"shell_command","mode":"raw","command_family":null,'
+        '"arguments":null,"command":"stat -f %z README.md",'
         '"summary":"show file size","explanation":"legacy compatibility payload",'
         '"risk_level":"safe","needs_confirmation":true,"notes":[]}'
     )
-    proposal = Planner.parse_proposal(raw)
-    assert proposal.mode == ProposalMode.EXPERIMENTAL
-    assert proposal.command == "stat -f %z README.md"
-    assert any(
-        "Legacy raw mode was normalized to experimental mode." in note for note in proposal.notes
-    )
+    with pytest.raises(PlannerError, match="field `mode`"):
+        Planner.parse_proposal(raw)
 
 
 def test_parse_legacy_raw_mode_with_unparseable_structured_command_returns_planner_error() -> None:
@@ -187,7 +192,7 @@ def test_validate_missing_mode_with_command_family_and_command_stays_experimenta
 def test_parse_structured_proposal_without_command_text() -> None:
     raw = (
         '{"action_type":"shell_command","mode":"structured","command_family":"find",'
-        '"arguments":{"path":".","name":"*.py"},"summary":"find python files",'
+        '"arguments":{"path":".","name":"*.py"},"command":null,"summary":"find python files",'
         '"explanation":"structured search plan","risk_level":"safe",'
         '"needs_confirmation":true,"notes":["future-ready"]}'
     )
@@ -227,7 +232,8 @@ def test_parse_legacy_raw_mode_with_structured_arguments_is_rejected() -> None:
 
 def test_parse_symbolic_chmod_stays_experimental_when_structured_not_feasible() -> None:
     raw = (
-        '{"action_type":"shell_command","command":"chmod u+x run.sh",'
+        '{"action_type":"shell_command","mode":"experimental","command_family":null,'
+        '"arguments":null,"command":"chmod u+x run.sh",'
         '"summary":"make script executable","explanation":"symbolic chmod",'
         '"risk_level":"write","needs_confirmation":true,"notes":[]}'
     )
@@ -238,7 +244,7 @@ def test_parse_symbolic_chmod_stays_experimental_when_structured_not_feasible() 
 
 def test_parse_explicit_experimental_proposal_is_preserved() -> None:
     raw = (
-        '{"action_type":"shell_command","mode":"experimental","command_family":"stat",'
+        '{"action_type":"shell_command","mode":"experimental","command_family":"stat","arguments":null,'
         '"command":"stat -f %z README.md","summary":"show size",'
         '"explanation":"experimental fallback","risk_level":"safe",'
         '"needs_confirmation":true,"notes":["experimental"]}'
@@ -251,7 +257,8 @@ def test_parse_explicit_experimental_proposal_is_preserved() -> None:
 
 def test_parse_rejects_arguments_without_command_family() -> None:
     raw = (
-        '{"action_type":"shell_command","mode":"structured","arguments":{"path":"src"},'
+        '{"action_type":"shell_command","mode":"structured","command_family":null,'
+        '"arguments":{"path":"src"},"command":null,'
         '"summary":"bad structured proposal","explanation":"missing family",'
         '"risk_level":"safe","needs_confirmation":true,"notes":[]}'
     )
@@ -262,6 +269,7 @@ def test_parse_rejects_arguments_without_command_family() -> None:
 def test_parse_rejects_structured_without_arguments() -> None:
     raw = (
         '{"action_type":"shell_command","mode":"structured","command_family":"find",'
+        '"arguments":null,"command":null,'
         '"summary":"bad structured proposal","explanation":"missing args",'
         '"risk_level":"safe","needs_confirmation":true,"notes":[]}'
     )
@@ -272,7 +280,7 @@ def test_parse_rejects_structured_without_arguments() -> None:
 def test_parse_rejects_unsupported_structured_family() -> None:
     raw = (
         '{"action_type":"shell_command","mode":"structured","command_family":"python",'
-        '"arguments":{"script":"app.py"},"summary":"run python",'
+        '"arguments":{"script":"app.py"},"command":null,"summary":"run python",'
         '"explanation":"bad structured family","risk_level":"safe",'
         '"needs_confirmation":true,"notes":[]}'
     )
@@ -283,7 +291,7 @@ def test_parse_rejects_unsupported_structured_family() -> None:
 def test_parse_rejects_malformed_structured_arguments() -> None:
     raw = (
         '{"action_type":"shell_command","mode":"structured","command_family":"open",'
-        '"arguments":{"path":"https://example.com","reveal":false},"summary":"open url",'
+        '"arguments":{"path":"https://example.com","reveal":false},"command":null,"summary":"open url",'
         '"explanation":"bad target","risk_level":"safe",'
         '"needs_confirmation":true,"notes":[]}'
     )
@@ -311,6 +319,38 @@ def test_parse_rejects_structured_arguments_in_experimental_mode() -> None:
     )
     with pytest.raises(PlannerError):
         Planner.parse_proposal(raw)
+
+
+@pytest.mark.parametrize(
+    ("overrides", "expected_message"),
+    [
+        ({"action_type": "cat", "command_family": "cat", "arguments": {"paths": ["README.md"]}}, "field `action_type`"),
+        ({"mode": "file", "command_family": "cat", "arguments": {"paths": ["README.md"]}}, "field `mode`"),
+        ({"needs_confirmation": False}, "field `needs_confirmation`"),
+        ({"risk_level": "medium"}, "field `risk_level`"),
+        ({"notes": "safe"}, "field `notes`"),
+    ],
+)
+def test_parse_rejects_invalid_outer_schema_values(
+    overrides: dict[str, object], expected_message: str
+) -> None:
+    with pytest.raises(PlannerError, match=expected_message):
+        Planner.parse_proposal(json.dumps(_proposal_dict(**overrides)))
+
+
+def test_parse_rejects_missing_required_outer_schema_field() -> None:
+    payload = _proposal_dict()
+    del payload["command"]
+
+    with pytest.raises(PlannerError, match="field `command`"):
+        Planner.parse_proposal(json.dumps(payload))
+
+
+def test_parse_rejects_extra_outer_schema_field() -> None:
+    payload = _proposal_dict(unexpected="nope")
+
+    with pytest.raises(PlannerError, match="field `unexpected`"):
+        Planner.parse_proposal(json.dumps(payload))
 
 
 def test_parse_invalid_json() -> None:
@@ -388,9 +428,13 @@ def test_planner_repairs_structured_proposal_missing_command_family() -> None:
         {
             "action_type": "shell_command",
             "mode": "structured",
+            "command_family": None,
+            "arguments": {},
+            "command": None,
             "summary": "Display manual of ls command",
             "explanation": "Using cat to show the manual page for ls utility.",
-            "needs_confirmation": False,
+            "risk_level": "safe",
+            "needs_confirmation": True,
             "notes": ["No alternative command fits better."],
         }
     )
