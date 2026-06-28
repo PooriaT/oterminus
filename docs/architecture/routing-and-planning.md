@@ -18,7 +18,7 @@ Routing is reached only after two earlier checks:
 1. **Direct command detection**: supported direct shell commands skip the planner but still continue
    to validation and policy. They are not treated as ambiguous natural language.
 2. **Ambiguity detection**: vague natural-language requests stop before routing and planner calls.
-   These are logged as planner-skipped fast-path outcomes (`planner_skip_reason=ambiguity_blocked`).
+   These are logged as planner-skipped outcomes (`planner_skip_reason=ambiguity_blocked`).
    OTerminus shows safe read-only inspection alternatives and does not execute anything.
 
 ## Deterministic router
@@ -125,8 +125,10 @@ only the operation enum: `run_tests`, `lint_check`, `format_check`, `build_docs`
 
 The deterministic router maps clear requests such as `run tests`, `run ruff check`,
 `check formatting`, `run format check`, `build docs`, and `run evals` to the `project_health`
-category when the project pack is enabled. The shortcut layer can turn those requests into structured
-proposals without Ollama; validation, preview, policy, and confirmation still run before execution.
+category when the project pack is enabled. That route is metadata for planner prompt context and
+audit; it does not itself choose a command. The LLM planner is responsible for turning clear
+natural-language project-health requests into structured `project_health` proposals, and validation,
+preview, policy, and confirmation still run before execution.
 
 Requests for install/update/deploy/publish/arbitrary poetry commands, or write-formatting, are not
 treated as safe project-health execution and remain unsupported or rejected. Direct

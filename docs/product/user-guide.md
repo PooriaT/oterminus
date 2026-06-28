@@ -94,8 +94,8 @@ workflow, not the primary user install path. See the
 
 PyPI installation gives you the OTerminus CLI; it does not install Ollama, start the Ollama service,
 or download a local model. Ollama is still required for natural-language planning. Direct commands
-and some deterministic local paths may skip model planning, but first-run natural-language usage
-depends on Ollama being ready.
+and retained `deterministic_shortcut` utility requests may skip model planning, but first-run
+natural-language usage depends on Ollama being ready.
 
 Startup and doctor readiness checks include:
 
@@ -572,10 +572,12 @@ natural-language requests stop before planning.
 The CLI flag is for one-shot requests only. Inside the REPL, use the built-in form
 `explain <request>` or `explain <history_id>` instead.
 
-When you run with `--verbose`, trace output includes fast-path diagnostics (`fast_path=direct_command`
-or `fast_path=ambiguity_blocked`), planner invocation status (`planner=invoked`), bounded planner
-schema-repair state such as `planner=schema_validation_failed stage=initial` and
-`planner=repair_attempt succeeded`, and a concise timing summary (for example:
+When you run with `--verbose`, trace output includes proposal-source diagnostics such as
+`proposal_source=direct_command planner=skipped`, `proposal_source=llm_planner planner=invoked`,
+`proposal_source=deterministic_shortcut ... planner=skipped`, or
+`proposal_source=unknown planner=skipped reason=ambiguity_blocked`. It can also include bounded
+planner schema-repair state such as `planner=schema_validation_failed stage=initial` and
+`planner=repair_attempt succeeded`, plus a concise timing summary (for example:
 `[trace] timings direct=1ms route=1ms planner=skipped ... total=4ms`). Trace output does not print
 full prompts or full raw model output.
 
@@ -841,9 +843,9 @@ These can skip Ollama by building structured proposals for:
 - `show current directory`, `where am i`, `print working directory`
 - `clear screen`, `clear the screen`
 
-This fast path only builds structured proposals; it never emits arbitrary shell text and never
-executes directly. Validation, deterministic preview rendering, policy checks, command-pack
-availability, platform restrictions, and confirmation policy still apply. Flexible natural-language
-requests for filesystems, manual pages, text inspection, processes, Git, and project health go to
-the LLM planner unless they are typed as direct commands such as `ls -l`, `man ls`, or
-`git status --short`.
+This optional `deterministic_shortcut` path only builds structured proposals; it never emits
+arbitrary shell text and never executes directly. Validation, deterministic preview rendering,
+policy checks, command-pack availability, platform restrictions, and confirmation policy still
+apply. Flexible natural-language requests for filesystems, manual pages, text inspection,
+processes, Git, and project health go to the LLM planner unless they are typed as direct commands
+such as `ls -l`, `man ls`, or `git status --short`.

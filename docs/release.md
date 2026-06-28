@@ -219,7 +219,8 @@ Ollama; `oterminus doctor` is the recommended post-install readiness diagnostic 
 report installed package version, Python executable, install context, Ollama CLI, service,
 local-model readiness, selected model, and config/audit/history path status. PyPI installation does
 not install or start Ollama; natural-language planning still depends on a ready local Ollama setup,
-although direct commands and some deterministic local paths may not need a live model.
+although direct commands and retained `deterministic_shortcut` utility requests may not need a live
+model.
 
 Release verification should not add or rely on automatic shell startup-file changes. OTerminus
 supports REPL Tab autocomplete via `prompt_toolkit` and prints opt-in zsh, bash, and fish

@@ -5,11 +5,12 @@ OTerminus processes each request through a layered local pipeline:
 1. direct command detection
 2. ambiguity guardrails
 3. capability routing
-4. planner proposal generation
-5. structured parsing/rendering preference
-6. validation + policy gating
-7. preview + confirmation
-8. execution + audit logging
+4. optional governed deterministic shortcuts
+5. LLM planner proposal generation for remaining natural-language requests
+6. structured parsing/rendering preference
+7. validation + policy gating
+8. preview + confirmation
+9. execution + audit logging
 
 The architecture is built for deterministic control surfaces around LLM output, not free-form shell
 execution. The model never executes commands directly; it can only propose JSON that OTerminus
@@ -33,6 +34,8 @@ are normalized before downstream handling. Raw is not a public or architectural 
 ## Architecture invariants
 
 - The model never executes commands directly.
+- Direct commands are handled locally before natural-language ambiguity checks.
+- Deterministic shortcuts are optional, tiny, and not a general natural-language planner.
 - Structured mode is preferred for supported capabilities.
 - Experimental mode is constrained and higher-friction.
 - Validator and policy decisions are authoritative for every proposal.
@@ -45,6 +48,7 @@ are normalized before downstream handling. Raw is not a public or architectural 
 - `direct_commands.py`: direct command detection
 - `ambiguity.py`: inspect-first ambiguity blocking
 - `router.py`: deterministic route category classification
+- `deterministic_shortcuts.py`: governed zero-argument utility shortcuts
 - `planner.py`: LLM JSON proposal parse + normalization
 - `structured_commands.py`: typed structured argument schemas + deterministic rendering
 - `validator.py`: shape checks, allowlist enforcement, policy checks

@@ -90,10 +90,10 @@ Use `oterminus --version` after install or upgrade to confirm the installed pack
 `oterminus doctor` after installation to check the package/runtime environment, pipx or virtualenv
 context, platform, configuration files, audit/history paths, and Ollama readiness before your first
 natural-language planning request. PyPI installation does not install or start an Ollama model for
-you. Direct commands and some deterministic local paths may not need a live model, but first-run
-natural-language usage depends on Ollama being installed, running, and having a local model
-available. Model choice affects both speed and schema compliance: smaller or faster models may be
-less reliable at returning the exact planner JSON shape OTerminus requires.
+you. Direct commands and retained `deterministic_shortcut` utility requests may not need a live
+model, but first-run natural-language usage depends on Ollama being installed, running, and having a
+local model available. Model choice affects both speed and schema compliance: smaller or faster
+models may be less reliable at returning the exact planner JSON shape OTerminus requires.
 
 On the first bare interactive launch (`oterminus`) with no existing user config file, OTerminus
 offers a concise configuration wizard. The wizard sets safety/privacy defaults and can select an

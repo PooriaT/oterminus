@@ -92,7 +92,7 @@ The `git_inspection` capability is intentionally scoped to read-only inspection.
 `project_health` is a supported structured developer-workflow capability for common repository
 health checks: `run_tests`, `lint_check`, `format_check`, `build_docs`, and `run_evals`. It remains
 structured-only in this release: direct `poetry run ...` command input is not accepted as a
-project-health shortcut.
+project-health direct-command path.
 
 The curated operation set is:
 - `run_tests` -> `poetry run pytest`

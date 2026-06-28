@@ -89,6 +89,11 @@ Git repository state, filesystem contents, a real installed wheel, or subprocess
 the same deterministic fixture path, so no Ollama service/model/network call is required for the
 regression gate. See [Evals](architecture/evals.md) for fixture organization and format details.
 
+Do not add natural-language phrase variants as deterministic shortcut fixtures. Direct-command evals
+cover local command detection, deterministic-shortcut evals cover only the retained fixed utility
+shortcuts, and flexible natural-language behavior should be represented with mocked
+`planner_proposal` payloads.
+
 For contributor-created candidate files, validate the sanitized JSON before moving it into
 `evals/cases/`:
 
@@ -110,7 +115,11 @@ or bug reports. Dogfooding notes should capture the request pattern and expected
 private logs, file contents, audit records, history files, hostnames, tokens, or project details.
 Do not add deterministic shortcuts for broad natural-language phrase coverage. Flexible language
 should be handled through planner prompts, schema-constrained outputs, diagnostics, and mocked
-planner eval fixtures; the shortcut layer is limited to retained fixed utility requests.
+planner eval fixtures; the shortcut layer is limited to retained fixed utility requests. Do not add
+broad regex coverage, argument extraction, or shortcut recipes to work around model schema failures.
+A new deterministic shortcut needs strong justification: tiny, stable, low-ambiguity, read-only,
+and no path, count, search-term, manual-page topic, process-name, Git, project-health, or other
+argument interpretation.
 
 ## CI coverage
 
