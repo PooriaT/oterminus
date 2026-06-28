@@ -192,6 +192,7 @@ def test_reject_disabled_pack_for_direct_origin_ls_passthrough() -> None:
         ProposalOrigin.UNKNOWN,
         ProposalOrigin.LLM_PLANNER,
         ProposalOrigin.DETERMINISTIC_SHORTCUT,
+        # Legacy read/compatibility origins must not receive direct-command trust.
         ProposalOrigin.OLLAMA_PLANNER,
         ProposalOrigin.LOCAL_PLANNER,
     ],

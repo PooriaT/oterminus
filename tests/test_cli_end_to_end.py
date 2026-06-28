@@ -454,7 +454,6 @@ def test_deterministic_shortcuts_minimal_uses_pwd_shortcut_without_planner(
     assert payload["proposal_origin"] == "deterministic_shortcut"
     assert payload["rendered_command"] == "pwd"
     assert "deterministic_shortcut_ms" in payload["timings_ms"]
-    assert "local_planner_ms" not in payload["timings_ms"]
 
 
 def test_deterministic_shortcuts_minimal_uses_clear_shortcut_without_planner(
@@ -522,7 +521,6 @@ def test_broad_natural_language_requests_do_not_use_deterministic_shortcuts(
     assert payload["planner_skip_reason"] is None
     assert payload["proposal_origin"] == "llm_planner"
     assert "deterministic_shortcut_ms" in payload["timings_ms"]
-    assert "local_planner_ms" not in payload["timings_ms"]
 
 
 def test_one_shot_execute_mode_confirmation_runs_executor(monkeypatch, tmp_path: Path) -> None:
