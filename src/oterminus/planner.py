@@ -214,8 +214,7 @@ def _validate_planner_output_contract(payload: object) -> None:
 
     if payload["mode"] not in {"structured", "experimental"}:
         raise _ProposalSchemaError(
-            "field `mode`: Input should be 'structured' or 'experimental'; "
-            f"got {payload['mode']!r}"
+            f"field `mode`: Input should be 'structured' or 'experimental'; got {payload['mode']!r}"
         )
 
     _validate_nullable_string(payload, "command_family")

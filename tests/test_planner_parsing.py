@@ -324,8 +324,14 @@ def test_parse_rejects_structured_arguments_in_experimental_mode() -> None:
 @pytest.mark.parametrize(
     ("overrides", "expected_message"),
     [
-        ({"action_type": "cat", "command_family": "cat", "arguments": {"paths": ["README.md"]}}, "field `action_type`"),
-        ({"mode": "file", "command_family": "cat", "arguments": {"paths": ["README.md"]}}, "field `mode`"),
+        (
+            {"action_type": "cat", "command_family": "cat", "arguments": {"paths": ["README.md"]}},
+            "field `action_type`",
+        ),
+        (
+            {"mode": "file", "command_family": "cat", "arguments": {"paths": ["README.md"]}},
+            "field `mode`",
+        ),
         ({"needs_confirmation": False}, "field `needs_confirmation`"),
         ({"risk_level": "medium"}, "field `risk_level`"),
         ({"notes": "safe"}, "field `notes`"),
