@@ -1382,6 +1382,95 @@ def test_handle_request_natural_language_verbose_shows_planner_invoked(monkeypat
     assert "[trace] proposal_source=llm_planner planner=invoked" in output
 
 
+def test_handle_request_verbose_shows_planner_repair_success(monkeypatch, capsys) -> None:
+    from oterminus.cli import handle_request
+
+    class RepairingPlanner:
+        def plan(self, request: str, *, trace_callback=None) -> Proposal:
+            assert request == "show files in this directory"
+            assert trace_callback is not None
+            trace_callback("planner=schema_validation_failed stage=initial detail=field `mode`")
+            trace_callback("planner=repair_attempt started")
+            trace_callback("planner=repair_attempt succeeded")
+            return Proposal(
+                action_type=ActionType.SHELL_COMMAND,
+                mode=ProposalMode.STRUCTURED,
+                command_family="find",
+                arguments={"path": ".", "name": "*.py"},
+                summary="list files",
+                explanation="desc",
+                risk_level=RiskLevel.SAFE,
+                needs_confirmation=True,
+                notes=[],
+            )
+
+    validator = Mock()
+    validator.validate.return_value = ValidationResult(
+        accepted=True,
+        risk_level=RiskLevel.SAFE,
+        rendered_command="find . -name '*.py'",
+        argv=["find", ".", "-name", "*.py"],
+    )
+    executor = Mock()
+    executor.run.return_value.returncode = 0
+    executor.run.return_value.stdout = ""
+    executor.run.return_value.stderr = ""
+    monkeypatch.setattr("builtins.input", lambda _: "y")
+
+    code = handle_request(
+        "show files in this directory", RepairingPlanner(), validator, executor, debug_trace=True
+    )
+
+    assert code == 0
+    output = capsys.readouterr().out
+    assert "[trace] planner=schema_validation_failed stage=initial" in output
+    assert "[trace] planner=repair_attempt started" in output
+    assert "[trace] planner=repair_attempt succeeded" in output
+    assert "find . -name '*.py'" in output
+
+
+def test_handle_request_verbose_shows_planner_repair_failure(capsys) -> None:
+    from oterminus.cli import handle_request
+    from oterminus.planner import PlannerError
+
+    class FailingPlanner:
+        def plan(self, request: str, *, trace_callback=None) -> Proposal:
+            assert request == "show files in this directory"
+            assert trace_callback is not None
+            trace_callback("planner=schema_validation_failed stage=initial detail=field `mode`")
+            trace_callback("planner=repair_attempt started")
+            trace_callback("planner=repair_attempt failed")
+            raise PlannerError(
+                "the selected model returned JSON, but it did not match OTerminus's required "
+                "proposal schema after one repair attempt.\n\n"
+                "Try:\n"
+                "- `oterminus config set model <another-model>`\n"
+                "- `oterminus doctor`\n"
+                "- or run the direct command if you already know it.\n\n"
+                "Details: field `mode`: expected `structured` or `experimental`; got `file`"
+            )
+
+    validator = Mock()
+    executor = Mock()
+
+    code = handle_request(
+        "show files in this directory", FailingPlanner(), validator, executor, debug_trace=True
+    )
+
+    assert code == 2
+    output = capsys.readouterr().out
+    assert "Planning failed: the selected model returned JSON" in output
+    assert "`oterminus config set model <another-model>`" in output
+    assert "`oterminus doctor`" in output
+    assert "Details: field `mode`" in output
+    assert "[trace] planner=schema_validation_failed stage=initial" in output
+    assert "[trace] planner=repair_attempt failed" in output
+    assert "Original planner context:" not in output
+    assert "Invalid JSON returned:" not in output
+    validator.validate.assert_not_called()
+    executor.run.assert_not_called()
+
+
 def test_ask_confirmation_requires_experimental_phrase(monkeypatch) -> None:
     monkeypatch.setattr("builtins.input", lambda _: "EXECUTE")
     assert ask_confirmation(ConfirmationLevel.VERY_STRONG) is False

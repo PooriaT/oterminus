@@ -2,6 +2,10 @@ from __future__ import annotations
 
 import json
 
+from collections.abc import Callable
+from dataclasses import dataclass
+from typing import Literal
+
 from pydantic import ValidationError
 
 from oterminus.models import Proposal, ProposalMode
@@ -24,8 +28,16 @@ class _ProposalSchemaError(RuntimeError):
     pass
 
 
+@dataclass(frozen=True)
+class PlannerSchemaFailure:
+    stage: Literal["initial", "repair"]
+    detail: str
+    raw_output_preview: str | None = None
+
+
 _REPAIR_CONTEXT_MAX_CHARS = 2000
 _VALIDATION_DETAIL_MAX_CHARS = 1200
+_RAW_OUTPUT_PREVIEW_MAX_CHARS = 500
 
 
 class Planner:
@@ -33,7 +45,12 @@ class Planner:
         self.client = client
         self.policy = policy or PolicyConfig()
 
-    def plan(self, request: str) -> Proposal:
+    def plan(
+        self,
+        request: str,
+        *,
+        trace_callback: Callable[[str], None] | None = None,
+    ) -> Proposal:
         route = route_request(request, disabled_pack_ids=self.policy.disabled_command_packs)
         system_prompt = build_system_prompt(disabled_pack_ids=self.policy.disabled_command_packs)
         user_prompt = build_user_prompt(request, route=route)
@@ -44,26 +61,61 @@ class Planner:
         )
         try:
             return self._parse_proposal_strict(raw)
-        except _ProposalSchemaError as first_error:
+        except (_ProposalSchemaError, PlannerError) as first_error:
+            first_failure = PlannerSchemaFailure(
+                stage="initial",
+                detail=str(first_error),
+                raw_output_preview=_preview_raw_output(raw),
+            )
+            _emit_trace(
+                trace_callback,
+                "planner=schema_validation_failed "
+                f"stage={first_failure.stage} detail={_truncate(first_failure.detail, 180)}",
+            )
+            _emit_trace(trace_callback, "planner=repair_attempt started")
             repair_raw = self.client.chat_json(
                 system_prompt=system_prompt,
                 user_prompt=build_repair_user_prompt(
                     original_request=request,
                     original_user_prompt=user_prompt,
                     invalid_json=raw,
-                    validation_error=str(first_error),
+                    validation_error=first_failure.detail,
                 ),
                 output_schema=proposal_output_schema(),
             )
             try:
-                return self._parse_proposal_strict(repair_raw)
+                proposal = self._parse_proposal_strict(repair_raw)
+                _emit_trace(trace_callback, "planner=repair_attempt succeeded")
+                return proposal
             except _ProposalSchemaError as second_error:
+                second_failure = PlannerSchemaFailure(
+                    stage="repair",
+                    detail=str(second_error),
+                    raw_output_preview=_preview_raw_output(repair_raw),
+                )
+                _emit_trace(
+                    trace_callback,
+                    "planner=schema_validation_failed "
+                    f"stage={second_failure.stage} detail={_truncate(second_failure.detail, 180)}",
+                )
+                _emit_trace(trace_callback, "planner=repair_attempt failed")
                 raise PlannerError(
-                    _format_repaired_schema_failure(str(second_error))
+                    _format_repaired_schema_failure(second_failure.detail)
                 ) from second_error
             except PlannerError as second_error:
+                second_failure = PlannerSchemaFailure(
+                    stage="repair",
+                    detail=str(second_error),
+                    raw_output_preview=_preview_raw_output(repair_raw),
+                )
+                _emit_trace(
+                    trace_callback,
+                    "planner=schema_validation_failed "
+                    f"stage={second_failure.stage} detail={_truncate(second_failure.detail, 180)}",
+                )
+                _emit_trace(trace_callback, "planner=repair_attempt failed")
                 raise PlannerError(
-                    _format_repaired_schema_failure(str(second_error))
+                    _format_repaired_schema_failure(second_failure.detail)
                 ) from second_error
 
     @staticmethod
@@ -146,6 +198,8 @@ def build_repair_user_prompt(
 ) -> str:
     return (
         "The previous response did not match the required Proposal schema.\n\n"
+        "Return JSON only. Do not return markdown. Do not return prose before or after the JSON.\n"
+        "Preserve the original user intent while correcting only the schema and shape.\n\n"
         "Original user request:\n"
         f"{_truncate(original_request, _REPAIR_CONTEXT_MAX_CHARS)}\n\n"
         "Original planner context:\n"
@@ -154,10 +208,18 @@ def build_repair_user_prompt(
         f"{_truncate(invalid_json, _REPAIR_CONTEXT_MAX_CHARS)}\n\n"
         "Validation error:\n"
         f"{_truncate(validation_error, _VALIDATION_DETAIL_MAX_CHARS)}\n\n"
-        "Return a corrected JSON object only. Every corrected object must include "
-        "action_type, mode, summary, explanation, needs_confirmation, and notes. Keep action_type "
-        'exactly "shell_command". Keep mode exactly "structured" or "experimental". Do not use '
-        "command names as action_type or mode. Always set needs_confirmation to true.\n\n"
+        "Return one corrected JSON object only. Every corrected object must include action_type, "
+        "mode, command_family, arguments, command, summary, explanation, risk_level, "
+        "needs_confirmation, and notes.\n"
+        '- action_type must be exactly "shell_command".\n'
+        '- mode must be exactly "structured" or "experimental".\n'
+        "- Command names such as `cat`, `ls`, `file`, or `grep` must not be used as action_type "
+        "or mode.\n"
+        "- needs_confirmation must be true.\n"
+        "- Structured proposals require command_family and arguments.\n"
+        "- Structured proposals must set command to null.\n"
+        "- Experimental proposals require command.\n"
+        "- Experimental proposals must set command_family and arguments to null.\n\n"
         "Valid structured shape:\n"
         '{"action_type":"shell_command","mode":"structured","command_family":"...",'
         '"arguments":{},"command":null,"summary":"...","explanation":"...","risk_level":"safe",'
@@ -267,3 +329,12 @@ def _truncate(value: str, max_chars: int) -> str:
     if len(value) <= max_chars:
         return value
     return value[: max_chars - 3] + "..."
+
+
+def _preview_raw_output(raw_output: str) -> str:
+    return _truncate(raw_output.replace("\x00", ""), _RAW_OUTPUT_PREVIEW_MAX_CHARS)
+
+
+def _emit_trace(callback: Callable[[str], None] | None, message: str) -> None:
+    if callback is not None:
+        callback(message)
