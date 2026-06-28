@@ -16,6 +16,56 @@ Use this section for changes merged after the next planned release section has b
 
 ### Internal
 
+## 0.1.4
+
+Proposal-source simplification, LLM planner schema hardening, and architecture cleanup release.
+
+### Added
+
+- Added schema-constrained LLM planner behavior for Ollama-backed proposals.
+- Added deterministic proposal-source terminology for direct commands, deterministic shortcuts,
+  and LLM planner output.
+- Added eval coverage for planner schema, repair, proposal-source lifecycle, and deterministic
+  shortcut behavior.
+- Added safe config `get`, `set`, and `reset` commands plus installed-package smoke coverage for
+  config commands.
+- Added safe manual-page lookup support for `man` topics.
+
+### Changed
+
+- Simplified the proposal architecture around direct commands and LLM-planned natural-language
+  requests.
+- Reduced deterministic natural-language handling to a small governed shortcut layer.
+- Reframed local-planner behavior as deterministic shortcuts and removed obsolete local-planner
+  code, fixtures, tests, and references.
+- Persisted proposal origin in history records.
+- Updated request lifecycle, routing/planning, eval, and contributor documentation to reflect the
+  simplified architecture.
+- Expanded CI and release validation to include installed-package smoke checks.
+
+### Fixed
+
+- Improved handling and diagnostics when a selected Ollama model returns JSON that does not satisfy
+  the OTerminus proposal schema.
+- Prevented model-specific schema failures from being worked around through broad deterministic
+  phrase matching.
+- Tightened auto-execute eligibility for legacy planner origins.
+- Rejected invalid UTF-8 eval candidate files.
+
+### Documentation
+
+- Documented the direct-command vs LLM-planner proposal model.
+- Documented when not to add deterministic shortcuts.
+- Updated eval guidance for planner-path fixtures and deterministic shortcut coverage.
+- Added dogfooding playbook guidance for collecting safe request examples.
+
+### Internal
+
+- Cleaned stale local-planner naming, fixtures, tests, and references after proposal-source
+  simplification.
+- Refactored app structure, terminal UI state handling, planner enum validation, and planner JSON
+  repair trace output.
+
 ## 0.1.3
 
 Configuration, onboarding, safety-default, and terminal-color release.
