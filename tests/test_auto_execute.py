@@ -85,7 +85,15 @@ def test_deterministic_shortcut_structured_safe_command_is_eligible() -> None:
 
 
 @pytest.mark.parametrize(
-    "origin", ["llm_planner", "ollama_planner", "unknown", "experimental_fallback", "local_planner"]
+    "origin",
+    [
+        "llm_planner",
+        "unknown",
+        "experimental_fallback",
+        # Legacy read/compatibility origins must stay ineligible for new auto-execute decisions.
+        "ollama_planner",
+        "local_planner",
+    ],
 )
 def test_only_direct_and_shortcut_origins_are_eligible(origin: str) -> None:
     decision = _decision(origin=origin)

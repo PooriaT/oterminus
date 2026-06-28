@@ -20,6 +20,7 @@ class SessionHistoryItem:
     timestamp: str | None = None
     direct_command_detected: bool = False
     routed_category: str | None = None
+    proposal_origin: str | None = None
     proposal_mode: str | None = None
     command_family: str | None = None
     rendered_command: str | None = None
@@ -134,6 +135,7 @@ class PersistentHistoryStore:
                     user_input=user_input,
                     direct_command_detected=bool(payload.get("direct_command_detected", False)),
                     routed_category=payload.get("routed_category"),
+                    proposal_origin=payload.get("proposal_origin"),
                     proposal_mode=payload.get("proposal_mode"),
                     command_family=payload.get("command_family"),
                     rendered_command=payload.get("rendered_command"),
@@ -155,6 +157,7 @@ class PersistentHistoryStore:
             "user_input": item.user_input,
             "direct_command_detected": item.direct_command_detected,
             "routed_category": item.routed_category,
+            "proposal_origin": item.proposal_origin,
             "proposal_mode": item.proposal_mode,
             "command_family": item.command_family,
             "rendered_command": item.rendered_command,

@@ -53,7 +53,7 @@ class ProposalOrigin(str, Enum):
     DIRECT_COMMAND = "direct_command"
     DETERMINISTIC_SHORTCUT = "deterministic_shortcut"
     LLM_PLANNER = "llm_planner"
-    # Legacy value retained so older audit/history data and tests can still be interpreted.
+    # Legacy read/compatibility values only; active runtime paths must not emit these.
     LOCAL_PLANNER = "local_planner"
     OLLAMA_PLANNER = "ollama_planner"
     UNKNOWN = "unknown"

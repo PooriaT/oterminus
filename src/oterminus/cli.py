@@ -245,6 +245,7 @@ def handle_request(
     event.planner_skip_reason = PLANNER_SKIP_DIRECT_COMMAND if is_direct_command else None
     if history_item is not None:
         history_item.direct_command_detected = is_direct_command
+        history_item.proposal_origin = proposal_origin
         history_item.execution_status = "planning"
     try:
         if proposal is None:
@@ -351,6 +352,7 @@ def handle_request(
     event.command_family = proposal.command_family
     event.proposal_origin = proposal_origin
     if history_item is not None:
+        history_item.proposal_origin = proposal_origin
         history_item.proposal_mode = proposal.mode.value
         history_item.command_family = proposal.command_family
         history_item.proposal = proposal

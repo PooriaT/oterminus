@@ -368,6 +368,7 @@
   {
     "id": "network-reject-nc-unsupported",
     "user_input": "start a netcat connection",
+    "platform_id": "linux",
     "planner_proposal": {
       "action_type": "shell_command",
       "mode": "experimental",
