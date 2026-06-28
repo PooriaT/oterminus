@@ -219,7 +219,8 @@ changed value. If the existing file is invalid, the command refuses to overwrite
 Accepted `config set` values:
 
 - `model`: any nonblank string after trimming surrounding whitespace. Use `none` or `null` to clear
-  a persisted model.
+  a persisted model. Model selection affects planning speed and schema compliance; for
+  natural-language planning, reliable JSON Schema-style output matters more than speed alone.
 - `command_profile`: `beginner`, `safe`, `developer`, or `power`, case-insensitive and persisted
   lowercase.
 - `deterministic_shortcuts`: `off` or `minimal`, case-insensitive and persisted lowercase.

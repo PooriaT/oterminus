@@ -130,15 +130,19 @@ selection is saved in `~/.oterminus/config.json` (or `OTERMINUS_CONFIG_PATH` if 
 
 ### Model returned invalid proposal JSON
 
-Some smaller or faster local models may produce valid JSON with invalid proposal values, such as
-putting a command name in `action_type` or `mode`. OTerminus requests a JSON Schema-constrained
-response from Ollama, uses deterministic low-temperature planning, retries one repair attempt, and
-rejects the output if it still does not match the proposal schema.
+Some smaller or faster local models may produce malformed JSON or valid JSON with invalid proposal
+values, such as putting a command name in `action_type` or `mode`. OTerminus requests a JSON
+Schema-constrained response from Ollama, uses deterministic low-temperature planning, retries one
+repair attempt, and rejects the output if it still does not match the proposal schema.
 
 Schema-constrained output improves formatting reliability, but it does not guarantee semantic
-correctness. OTerminus still validates and previews every proposal before execution. If a model
-repeatedly fails schema validation, try another installed model with
-`oterminus config set model <model>` or run `oterminus doctor`.
+correctness. OTerminus still validates and previews every proposal before execution, and invalid
+model output is never executed. If a model repeatedly fails schema validation:
+
+- check the selected model with `oterminus config get model`
+- try another installed model with `oterminus config set model <model-name>`
+- run `oterminus doctor` to inspect local Ollama/model readiness
+- use a direct command when you already know the command you want
 
 On the first bare interactive launch (`oterminus`) when the persistent config file does not exist
 and stdin is a TTY, OTerminus offers a first-time configuration wizard. The wizard does not run for
@@ -569,7 +573,11 @@ The CLI flag is for one-shot requests only. Inside the REPL, use the built-in fo
 `explain <request>` or `explain <history_id>` instead.
 
 When you run with `--verbose`, trace output includes fast-path diagnostics (`fast_path=direct_command`
-or `fast_path=ambiguity_blocked`), planner invocation status (`planner=invoked`), and a concise timing summary (for example: `[trace] timings direct=1ms route=1ms planner=skipped ... total=4ms`).
+or `fast_path=ambiguity_blocked`), planner invocation status (`planner=invoked`), bounded planner
+schema-repair state such as `planner=schema_validation_failed stage=initial` and
+`planner=repair_attempt succeeded`, and a concise timing summary (for example:
+`[trace] timings direct=1ms route=1ms planner=skipped ... total=4ms`). Trace output does not print
+full prompts or full raw model output.
 
 ## REPL session history and rerun safety
 

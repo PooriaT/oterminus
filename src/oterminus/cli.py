@@ -37,6 +37,7 @@ from oterminus.executor import Executor
 from oterminus.failure_explainer import FailureExplainer
 from oterminus.deterministic_shortcuts import plan_with_deterministic_shortcut
 from oterminus.logging_utils import configure_logging
+from oterminus.models import Proposal
 from oterminus.ollama_client import OllamaClientError, OllamaPlannerClient
 from oterminus.onboarding import run_onboarding, save_declined_onboarding
 from oterminus.planner import Planner, PlannerError
@@ -322,7 +323,11 @@ def handle_request(
                 event.planner_skipped = False
                 event.planner_skip_reason = None
                 planner_started = time.perf_counter()
-                proposal = planner.plan(request)
+                proposal = _run_planner(
+                    planner,
+                    request,
+                    trace_callback=_print_planner_trace if debug_trace else None,
+                )
                 proposal_origin = PROPOSAL_ORIGIN_LLM_PLANNER
                 validation_origin = ProposalOrigin.LLM_PLANNER
                 timings_ms["planner_ms"] = _duration_ms_from_counter(planner_started)
@@ -643,6 +648,32 @@ def handle_request(
     _write_audit_event(audit_logger, event)
     _persist_if_needed()
     return result.returncode
+
+
+def _run_planner(
+    planner: Planner,
+    request: str,
+    *,
+    trace_callback: Callable[[str], None] | None = None,
+) -> Proposal:
+    if trace_callback is None or not _planner_accepts_trace_callback(planner):
+        return planner.plan(request)
+    return planner.plan(request, trace_callback=trace_callback)
+
+
+def _planner_accepts_trace_callback(planner: Planner) -> bool:
+    try:
+        signature = inspect.signature(planner.plan)
+    except (TypeError, ValueError):
+        return False
+    parameters = signature.parameters
+    return "trace_callback" in parameters or any(
+        parameter.kind is inspect.Parameter.VAR_KEYWORD for parameter in parameters.values()
+    )
+
+
+def _print_planner_trace(message: str) -> None:
+    print(f"[trace] {message}")
 
 
 def repl(

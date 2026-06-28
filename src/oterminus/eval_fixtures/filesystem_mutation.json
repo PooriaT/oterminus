@@ -82,6 +82,7 @@
         "path": "build",
         "parents": true
       },
+      "command": null,
       "summary": "make folder",
       "explanation": "mkdir",
       "risk_level": "write",
@@ -113,6 +114,7 @@
         "preserve": false,
         "no_clobber": true
       },
+      "command": null,
       "summary": "copy report",
       "explanation": "copy file",
       "risk_level": "write",

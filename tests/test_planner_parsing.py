@@ -28,12 +28,13 @@ class _StubClient:
         return self.payloads.pop(0)
 
 
-def _proposal_payload(**overrides: object) -> str:
+def _proposal_dict(**overrides: object) -> dict[str, object]:
     payload = {
         "action_type": "shell_command",
         "mode": "structured",
         "command_family": "man",
         "arguments": {"topic": "ls", "section": None},
+        "command": None,
         "summary": "show manual",
         "explanation": "Use the local manual page for ls.",
         "risk_level": "safe",
@@ -41,7 +42,11 @@ def _proposal_payload(**overrides: object) -> str:
         "notes": [],
     }
     payload.update(overrides)
-    return json.dumps(payload)
+    return payload
+
+
+def _proposal_payload(**overrides: object) -> str:
+    return json.dumps(_proposal_dict(**overrides))
 
 
 def test_proposal_mode_exposes_only_structured_and_experimental() -> None:
@@ -50,7 +55,8 @@ def test_proposal_mode_exposes_only_structured_and_experimental() -> None:
 
 def test_parse_supported_command_ls_proposal_is_normalized_to_structured() -> None:
     raw = (
-        '{"action_type":"shell_command","command":"ls -lh",'
+        '{"action_type":"shell_command","mode":"experimental","command_family":null,'
+        '"arguments":null,"command":"ls -lh",'
         '"summary":"list files with sizes","explanation":"show a long listing",'
         '"risk_level":"safe","needs_confirmation":true,"notes":[]}'
     )
@@ -96,7 +102,8 @@ def test_parse_supported_command_proposal_is_normalized_to_structured(
     command: str, expected_family: str, expected_arguments: dict[str, object]
 ) -> None:
     raw = (
-        f'{{"action_type":"shell_command","command":"{command}",'
+        f'{{"action_type":"shell_command","mode":"experimental","command_family":null,'
+        f'"arguments":null,"command":"{command}",'
         '"summary":"normalized","explanation":"prefer structured rendering",'
         '"risk_level":"safe","needs_confirmation":true,"notes":[]}'
     )
@@ -112,7 +119,8 @@ def test_parse_supported_command_proposal_is_normalized_to_structured(
 
 def test_parse_valid_experimental_fallback_for_unstructured_variant() -> None:
     raw = (
-        '{"action_type":"shell_command","command":"stat -f %z README.md",'
+        '{"action_type":"shell_command","mode":"experimental","command_family":null,'
+        '"arguments":null,"command":"stat -f %z README.md",'
         '"summary":"show file size","explanation":"custom stat format",'
         '"risk_level":"safe","needs_confirmation":true,"notes":[]}'
     )
@@ -125,16 +133,13 @@ def test_parse_valid_experimental_fallback_for_unstructured_variant() -> None:
 
 def test_parse_legacy_raw_mode_is_normalized_to_experimental_with_note() -> None:
     raw = (
-        '{"action_type":"shell_command","mode":"raw","command":"stat -f %z README.md",'
+        '{"action_type":"shell_command","mode":"raw","command_family":null,'
+        '"arguments":null,"command":"stat -f %z README.md",'
         '"summary":"show file size","explanation":"legacy compatibility payload",'
         '"risk_level":"safe","needs_confirmation":true,"notes":[]}'
     )
-    proposal = Planner.parse_proposal(raw)
-    assert proposal.mode == ProposalMode.EXPERIMENTAL
-    assert proposal.command == "stat -f %z README.md"
-    assert any(
-        "Legacy raw mode was normalized to experimental mode." in note for note in proposal.notes
-    )
+    with pytest.raises(PlannerError, match="field `mode`"):
+        Planner.parse_proposal(raw)
 
 
 def test_parse_legacy_raw_mode_with_unparseable_structured_command_returns_planner_error() -> None:
@@ -187,7 +192,7 @@ def test_validate_missing_mode_with_command_family_and_command_stays_experimenta
 def test_parse_structured_proposal_without_command_text() -> None:
     raw = (
         '{"action_type":"shell_command","mode":"structured","command_family":"find",'
-        '"arguments":{"path":".","name":"*.py"},"summary":"find python files",'
+        '"arguments":{"path":".","name":"*.py"},"command":null,"summary":"find python files",'
         '"explanation":"structured search plan","risk_level":"safe",'
         '"needs_confirmation":true,"notes":["future-ready"]}'
     )
@@ -227,7 +232,8 @@ def test_parse_legacy_raw_mode_with_structured_arguments_is_rejected() -> None:
 
 def test_parse_symbolic_chmod_stays_experimental_when_structured_not_feasible() -> None:
     raw = (
-        '{"action_type":"shell_command","command":"chmod u+x run.sh",'
+        '{"action_type":"shell_command","mode":"experimental","command_family":null,'
+        '"arguments":null,"command":"chmod u+x run.sh",'
         '"summary":"make script executable","explanation":"symbolic chmod",'
         '"risk_level":"write","needs_confirmation":true,"notes":[]}'
     )
@@ -238,7 +244,7 @@ def test_parse_symbolic_chmod_stays_experimental_when_structured_not_feasible() 
 
 def test_parse_explicit_experimental_proposal_is_preserved() -> None:
     raw = (
-        '{"action_type":"shell_command","mode":"experimental","command_family":"stat",'
+        '{"action_type":"shell_command","mode":"experimental","command_family":"stat","arguments":null,'
         '"command":"stat -f %z README.md","summary":"show size",'
         '"explanation":"experimental fallback","risk_level":"safe",'
         '"needs_confirmation":true,"notes":["experimental"]}'
@@ -251,7 +257,8 @@ def test_parse_explicit_experimental_proposal_is_preserved() -> None:
 
 def test_parse_rejects_arguments_without_command_family() -> None:
     raw = (
-        '{"action_type":"shell_command","mode":"structured","arguments":{"path":"src"},'
+        '{"action_type":"shell_command","mode":"structured","command_family":null,'
+        '"arguments":{"path":"src"},"command":null,'
         '"summary":"bad structured proposal","explanation":"missing family",'
         '"risk_level":"safe","needs_confirmation":true,"notes":[]}'
     )
@@ -262,6 +269,7 @@ def test_parse_rejects_arguments_without_command_family() -> None:
 def test_parse_rejects_structured_without_arguments() -> None:
     raw = (
         '{"action_type":"shell_command","mode":"structured","command_family":"find",'
+        '"arguments":null,"command":null,'
         '"summary":"bad structured proposal","explanation":"missing args",'
         '"risk_level":"safe","needs_confirmation":true,"notes":[]}'
     )
@@ -272,7 +280,7 @@ def test_parse_rejects_structured_without_arguments() -> None:
 def test_parse_rejects_unsupported_structured_family() -> None:
     raw = (
         '{"action_type":"shell_command","mode":"structured","command_family":"python",'
-        '"arguments":{"script":"app.py"},"summary":"run python",'
+        '"arguments":{"script":"app.py"},"command":null,"summary":"run python",'
         '"explanation":"bad structured family","risk_level":"safe",'
         '"needs_confirmation":true,"notes":[]}'
     )
@@ -283,7 +291,7 @@ def test_parse_rejects_unsupported_structured_family() -> None:
 def test_parse_rejects_malformed_structured_arguments() -> None:
     raw = (
         '{"action_type":"shell_command","mode":"structured","command_family":"open",'
-        '"arguments":{"path":"https://example.com","reveal":false},"summary":"open url",'
+        '"arguments":{"path":"https://example.com","reveal":false},"command":null,"summary":"open url",'
         '"explanation":"bad target","risk_level":"safe",'
         '"needs_confirmation":true,"notes":[]}'
     )
@@ -313,6 +321,61 @@ def test_parse_rejects_structured_arguments_in_experimental_mode() -> None:
         Planner.parse_proposal(raw)
 
 
+@pytest.mark.parametrize(
+    ("overrides", "expected_message"),
+    [
+        (
+            {"action_type": "cat", "command_family": "cat", "arguments": {"paths": ["README.md"]}},
+            "field `action_type`",
+        ),
+        (
+            {"mode": "file", "command_family": "cat", "arguments": {"paths": ["README.md"]}},
+            "field `mode`",
+        ),
+        ({"needs_confirmation": False}, "field `needs_confirmation`"),
+        ({"risk_level": "medium"}, "field `risk_level`"),
+        ({"notes": "safe"}, "field `notes`"),
+    ],
+)
+def test_parse_rejects_invalid_outer_schema_values(
+    overrides: dict[str, object], expected_message: str
+) -> None:
+    with pytest.raises(PlannerError, match=expected_message):
+        Planner.parse_proposal(json.dumps(_proposal_dict(**overrides)))
+
+
+@pytest.mark.parametrize(
+    ("overrides", "expected_message"),
+    [
+        ({"action_type": ["shell_command"]}, "field `action_type`"),
+        ({"mode": ["structured"]}, "field `mode`"),
+        ({"mode": {"value": "structured"}}, "field `mode`"),
+        ({"risk_level": ["safe"]}, "field `risk_level`"),
+        ({"risk_level": {"value": "safe"}}, "field `risk_level`"),
+    ],
+)
+def test_parse_rejects_non_scalar_enum_fields(
+    overrides: dict[str, object], expected_message: str
+) -> None:
+    with pytest.raises(PlannerError, match=expected_message):
+        Planner.parse_proposal(json.dumps(_proposal_dict(**overrides)))
+
+
+def test_parse_rejects_missing_required_outer_schema_field() -> None:
+    payload = _proposal_dict()
+    del payload["command"]
+
+    with pytest.raises(PlannerError, match="field `command`"):
+        Planner.parse_proposal(json.dumps(payload))
+
+
+def test_parse_rejects_extra_outer_schema_field() -> None:
+    payload = _proposal_dict(unexpected="nope")
+
+    with pytest.raises(PlannerError, match="field `unexpected`"):
+        Planner.parse_proposal(json.dumps(payload))
+
+
 def test_parse_invalid_json() -> None:
     with pytest.raises(PlannerError):
         Planner.parse_proposal("not-json")
@@ -329,6 +392,17 @@ def test_planner_first_call_valid_structured_proposal_passes() -> None:
     assert proposal.arguments == {"topic": "ls", "section": None}
     assert len(client.calls) == 1
     assert client.calls[0]["output_schema"] is not None
+
+
+def test_planner_first_call_valid_proposal_does_not_use_repair_prompt() -> None:
+    client = _StubClient(_proposal_payload())
+    planner = Planner(client)
+
+    proposal = planner.plan("show me the manual of ls")
+
+    assert proposal.command_family == "man"
+    assert len(client.calls) == 1
+    assert "Invalid JSON returned:" not in str(client.calls[0]["user_prompt"])
 
 
 def test_planner_first_call_valid_experimental_proposal_passes() -> None:
@@ -381,6 +455,47 @@ def test_planner_repairs_invalid_action_type_and_mode_once() -> None:
     assert '"structured" or "experimental"' in repair_prompt
     assert "Every corrected object must include" in repair_prompt
     assert "Valid structured shape:" in repair_prompt
+    assert "Return JSON only" in repair_prompt
+    assert "Do not return markdown" in repair_prompt
+    assert "Do not return prose" in repair_prompt
+    assert "Preserve the original user intent" in repair_prompt
+    assert "Command names such as `cat`, `ls`, `file`, or `grep`" in repair_prompt
+    assert "Structured proposals must set command to null" in repair_prompt
+    assert "Experimental proposals must set command_family and arguments to null" in repair_prompt
+
+
+def test_planner_repairs_invalid_mode() -> None:
+    invalid = _proposal_payload(
+        mode="file",
+        command_family="cat",
+        arguments={"paths": ["README.md"]},
+    )
+    repaired = _proposal_payload()
+    client = _StubClient(invalid, repaired)
+    planner = Planner(client)
+
+    proposal = planner.plan("show me the manual of ls")
+
+    assert proposal.mode == ProposalMode.STRUCTURED
+    assert proposal.command_family == "man"
+    assert len(client.calls) == 2
+    assert "field `mode`" in str(client.calls[1]["user_prompt"])
+
+
+def test_planner_repairs_non_scalar_mode() -> None:
+    invalid = _proposal_payload(mode=["structured"])
+    repaired = _proposal_payload()
+    client = _StubClient(invalid, repaired)
+    planner = Planner(client)
+
+    proposal = planner.plan("show me the manual of ls")
+
+    assert proposal.mode == ProposalMode.STRUCTURED
+    assert proposal.command_family == "man"
+    assert len(client.calls) == 2
+    repair_prompt = str(client.calls[1]["user_prompt"])
+    assert "field `mode`" in repair_prompt
+    assert "['structured']" in repair_prompt
 
 
 def test_planner_repairs_structured_proposal_missing_command_family() -> None:
@@ -388,9 +503,13 @@ def test_planner_repairs_structured_proposal_missing_command_family() -> None:
         {
             "action_type": "shell_command",
             "mode": "structured",
+            "command_family": None,
+            "arguments": {},
+            "command": None,
             "summary": "Display manual of ls command",
             "explanation": "Using cat to show the manual page for ls utility.",
-            "needs_confirmation": False,
+            "risk_level": "safe",
+            "needs_confirmation": True,
             "notes": ["No alternative command fits better."],
         }
     )
@@ -407,7 +526,7 @@ def test_planner_repairs_structured_proposal_missing_command_family() -> None:
     repair_prompt = str(client.calls[1]["user_prompt"])
     assert "Structured proposals require command_family" in repair_prompt
     assert "Valid structured shape:" in repair_prompt
-    assert "needs_confirmation to true" in repair_prompt
+    assert "needs_confirmation must be true" in repair_prompt
 
 
 def test_planner_repairs_false_needs_confirmation() -> None:
@@ -422,7 +541,25 @@ def test_planner_repairs_false_needs_confirmation() -> None:
     assert len(client.calls) == 2
     repair_prompt = str(client.calls[1]["user_prompt"])
     assert "field `needs_confirmation`" in repair_prompt
-    assert "needs_confirmation to true" in repair_prompt
+    assert "needs_confirmation must be true" in repair_prompt
+
+
+def test_planner_repairs_invalid_structured_arguments() -> None:
+    invalid = _proposal_payload(
+        command_family="open",
+        arguments={"path": "https://example.com", "reveal": False},
+        summary="open url",
+        explanation="bad target",
+    )
+    repaired = _proposal_payload()
+    client = _StubClient(invalid, repaired)
+    planner = Planner(client)
+
+    proposal = planner.plan("show me the manual of ls")
+
+    assert proposal.command_family == "man"
+    assert len(client.calls) == 2
+    assert "field `proposal`" in str(client.calls[1]["user_prompt"])
 
 
 def test_planner_repair_failure_raises_concise_error() -> None:
@@ -446,11 +583,59 @@ def test_planner_repair_failure_raises_concise_error() -> None:
     assert len(client.calls) == 2
 
 
-def test_planner_malformed_json_fails_without_repair() -> None:
-    client = _StubClient("not-json")
+def test_planner_malformed_json_triggers_one_repair() -> None:
+    client = _StubClient("not-json", _proposal_payload())
     planner = Planner(client)
 
-    with pytest.raises(PlannerError, match="Invalid JSON from model"):
+    proposal = planner.plan("show me the manual of ls")
+
+    assert proposal.command_family == "man"
+    assert len(client.calls) == 2
+    repair_prompt = str(client.calls[1]["user_prompt"])
+    assert "not-json" in repair_prompt
+    assert "Invalid JSON from model" in repair_prompt
+
+
+def test_planner_malformed_json_repair_failure_is_safe() -> None:
+    client = _StubClient("not-json", "{still-not-json")
+    planner = Planner(client)
+
+    with pytest.raises(PlannerError) as exc_info:
         planner.plan("show me the manual of ls")
 
-    assert len(client.calls) == 1
+    message = str(exc_info.value)
+    assert "after one repair attempt" in message
+    assert "Invalid JSON from model" in message
+    assert len(client.calls) == 2
+
+
+def test_planner_trace_callback_reports_repair_success() -> None:
+    client = _StubClient(_proposal_payload(mode="file"), _proposal_payload())
+    planner = Planner(client)
+    events: list[str] = []
+
+    proposal = planner.plan("show me the manual of ls", trace_callback=events.append)
+
+    assert proposal.command_family == "man"
+    assert events == [
+        "planner=schema_validation_failed stage=initial detail=field `mode`: Input should be 'structured' or 'experimental'; got 'file'",
+        "planner=repair_attempt started",
+        "planner=repair_attempt succeeded",
+    ]
+
+
+def test_planner_trace_callback_reports_repair_failure() -> None:
+    invalid = _proposal_payload(mode="file")
+    client = _StubClient(invalid, invalid)
+    planner = Planner(client)
+    events: list[str] = []
+
+    with pytest.raises(PlannerError):
+        planner.plan("show me the manual of ls", trace_callback=events.append)
+
+    assert events == [
+        "planner=schema_validation_failed stage=initial detail=field `mode`: Input should be 'structured' or 'experimental'; got 'file'",
+        "planner=repair_attempt started",
+        "planner=schema_validation_failed stage=repair detail=field `mode`: Input should be 'structured' or 'experimental'; got 'file'",
+        "planner=repair_attempt failed",
+    ]

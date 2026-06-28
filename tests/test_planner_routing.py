@@ -30,6 +30,7 @@ def test_planner_includes_router_context_in_prompt() -> None:
         '{"action_type":"shell_command","mode":"structured","command_family":"grep",'
         '"arguments":{"pattern":"TODO","paths":["src"],"ignore_case":false,"line_number":false,'
         '"fixed_strings":false,"recursive":false,"files_with_matches":false,"max_count":null},'
+        '"command":null,'
         '"summary":"search TODO","explanation":"text search","risk_level":"safe",'
         '"needs_confirmation":true,"notes":[]}'
     )
@@ -46,7 +47,8 @@ def test_planner_includes_router_context_in_prompt() -> None:
 
 def test_planner_includes_unsupported_router_context() -> None:
     client = _StubClient(
-        '{"action_type":"shell_command","mode":"experimental","command":"pwd",'
+        '{"action_type":"shell_command","mode":"experimental","command_family":null,'
+        '"arguments":null,"command":"pwd",'
         '"summary":"fallback","explanation":"unsupported request fallback",'
         '"risk_level":"safe","needs_confirmation":true,"notes":["experimental"]}'
     )
@@ -78,7 +80,8 @@ def test_planner_routes_manual_page_requests_to_man() -> None:
 
 def test_planner_route_context_excludes_disabled_profile_capabilities() -> None:
     client = _StubClient(
-        '{"action_type":"shell_command","mode":"experimental","command":"pwd",'
+        '{"action_type":"shell_command","mode":"experimental","command_family":null,'
+        '"arguments":null,"command":"pwd",'
         '"summary":"fallback","explanation":"unsupported request fallback",'
         '"risk_level":"safe","needs_confirmation":true,"notes":["experimental"]}'
     )
@@ -182,7 +185,7 @@ def test_planner_system_prompt_excludes_project_health_when_project_pack_disable
 def test_planner_route_context_includes_project_health_when_enabled() -> None:
     client = _StubClient(
         '{"action_type":"shell_command","mode":"structured","command_family":"project_health",'
-        '"arguments":{"operation":"run_tests"},'
+        '"arguments":{"operation":"run_tests"},"command":null,'
         '"summary":"run tests","explanation":"curated project health",'
         '"risk_level":"write","needs_confirmation":true,"notes":[]}'
     )
@@ -198,7 +201,8 @@ def test_planner_route_context_includes_project_health_when_enabled() -> None:
 
 def test_planner_route_context_excludes_project_health_when_disabled() -> None:
     client = _StubClient(
-        '{"action_type":"shell_command","mode":"experimental","command":"pwd",'
+        '{"action_type":"shell_command","mode":"experimental","command_family":null,'
+        '"arguments":null,"command":"pwd",'
         '"summary":"fallback","explanation":"unsupported request fallback",'
         '"risk_level":"safe","needs_confirmation":true,"notes":["experimental"]}'
     )

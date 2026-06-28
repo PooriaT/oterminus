@@ -5,18 +5,44 @@ import subprocess
 
 from ollama import Client, ResponseError
 
+from oterminus.models import ActionType, ProposalMode, RiskLevel
+
 
 class OllamaClientError(RuntimeError):
     pass
 
 
+PLANNER_PROPOSAL_REQUIRED_FIELDS = (
+    "action_type",
+    "mode",
+    "command_family",
+    "arguments",
+    "command",
+    "summary",
+    "explanation",
+    "risk_level",
+    "needs_confirmation",
+    "notes",
+)
+
+
 def proposal_output_schema() -> dict[str, object]:
+    """Return the simple JSON Schema sent to Ollama for planner proposals.
+
+    `Proposal.model_json_schema()` is intentionally not used directly here: it contains
+    Pydantic defaults/refs and cannot express the planner-output-only contract that every
+    top-level key must be present and `needs_confirmation` must be true. Conditional
+    structured-vs-experimental shape constraints are left to `Proposal` post-validation
+    instead of `oneOf` so the schema remains small and Ollama-compatible. Keep this schema
+    synchronized with `Proposal` via tests.
+    """
+
     return {
         "type": "object",
         "additionalProperties": False,
         "properties": {
-            "action_type": {"type": "string", "enum": ["shell_command"]},
-            "mode": {"type": "string", "enum": ["structured", "experimental"]},
+            "action_type": {"type": "string", "enum": [ActionType.SHELL_COMMAND.value]},
+            "mode": {"type": "string", "enum": [mode.value for mode in ProposalMode]},
             "command_family": {"type": ["string", "null"]},
             "arguments": {"type": ["object", "null"]},
             "command": {"type": ["string", "null"]},
@@ -24,23 +50,12 @@ def proposal_output_schema() -> dict[str, object]:
             "explanation": {"type": "string"},
             "risk_level": {
                 "type": ["string", "null"],
-                "enum": ["safe", "write", "dangerous", None],
+                "enum": [risk.value for risk in RiskLevel] + [None],
             },
             "needs_confirmation": {"type": "boolean", "enum": [True]},
             "notes": {"type": "array", "items": {"type": "string"}},
         },
-        "required": [
-            "action_type",
-            "mode",
-            "command_family",
-            "arguments",
-            "command",
-            "summary",
-            "explanation",
-            "risk_level",
-            "needs_confirmation",
-            "notes",
-        ],
+        "required": list(PLANNER_PROPOSAL_REQUIRED_FIELDS),
     }
 
 

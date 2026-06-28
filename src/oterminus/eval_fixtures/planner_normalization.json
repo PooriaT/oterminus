@@ -38,6 +38,7 @@
         "topic": "ls",
         "section": null
       },
+      "command": null,
       "summary": "show ls manual",
       "explanation": "Display the local manual page for ls.",
       "risk_level": "safe",
@@ -59,6 +60,9 @@
     "user_input": "show files with sizes",
     "planner_proposal": {
       "action_type": "shell_command",
+      "mode": "experimental",
+      "command_family": null,
+      "arguments": null,
       "command": "ls -lh",
       "summary": "list files",
       "explanation": "show details",
@@ -85,6 +89,7 @@
       "action_type": "shell_command",
       "mode": "experimental",
       "command_family": "stat",
+      "arguments": null,
       "command": "stat -f %z README.md",
       "summary": "size",
       "explanation": "custom stat format",
@@ -111,6 +116,7 @@
       "action_type": "shell_command",
       "mode": "experimental",
       "command_family": "ls",
+      "arguments": null,
       "command": "ls -lh",
       "summary": "list files",
       "explanation": "assistant suggests command",

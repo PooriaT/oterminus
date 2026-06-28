@@ -92,7 +92,8 @@ context, platform, configuration files, audit/history paths, and Ollama readines
 natural-language planning request. PyPI installation does not install or start an Ollama model for
 you. Direct commands and some deterministic local paths may not need a live model, but first-run
 natural-language usage depends on Ollama being installed, running, and having a local model
-available.
+available. Model choice affects both speed and schema compliance: smaller or faster models may be
+less reliable at returning the exact planner JSON shape OTerminus requires.
 
 On the first bare interactive launch (`oterminus`) with no existing user config file, OTerminus
 offers a concise configuration wizard. The wizard sets safety/privacy defaults and can select an

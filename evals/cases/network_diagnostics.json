@@ -10,6 +10,7 @@
         "host": "example.com",
         "count": 4
       },
+      "command": null,
       "summary": "ping example.com",
       "explanation": "Send four ICMP echo requests to example.com.",
       "risk_level": "safe",
@@ -41,6 +42,7 @@
         "operation": "http_head",
         "url": "https://example.com"
       },
+      "command": null,
       "summary": "show HTTP headers",
       "explanation": "Use a constrained HTTP HEAD request.",
       "risk_level": "safe",
@@ -70,6 +72,7 @@
       "arguments": {
         "domain": "example.com"
       },
+      "command": null,
       "summary": "look up DNS records",
       "explanation": "Run a basic dig lookup.",
       "risk_level": "safe",
@@ -98,6 +101,7 @@
       "arguments": {
         "domain": "example.com"
       },
+      "command": null,
       "summary": "run nslookup",
       "explanation": "Run a basic nslookup query.",
       "risk_level": "safe",
@@ -123,6 +127,7 @@
       "action_type": "shell_command",
       "mode": "experimental",
       "command_family": "curl",
+      "arguments": null,
       "command": "curl -X POST https://example.com",
       "summary": "POST request",
       "explanation": "Unsupported mutating HTTP method fixture.",
@@ -149,6 +154,7 @@
       "action_type": "shell_command",
       "mode": "experimental",
       "command_family": "curl",
+      "arguments": null,
       "command": "curl -H 'Authorization: Bearer token' https://example.com",
       "summary": "curl with auth header",
       "explanation": "Unsupported secret-bearing header fixture.",
@@ -175,6 +181,7 @@
       "action_type": "shell_command",
       "mode": "experimental",
       "command_family": "curl",
+      "arguments": null,
       "command": "curl -o file https://example.com",
       "summary": "download file",
       "explanation": "Unsupported download fixture.",
@@ -201,6 +208,7 @@
       "action_type": "shell_command",
       "mode": "experimental",
       "command_family": "nmap",
+      "arguments": null,
       "command": "nmap example.com",
       "summary": "scan host",
       "explanation": "Unsupported network scanning fixture.",
@@ -225,6 +233,7 @@
       "action_type": "shell_command",
       "mode": "experimental",
       "command_family": "ssh",
+      "arguments": null,
       "command": "ssh example.com",
       "summary": "ssh host",
       "explanation": "Unsupported SSH fixture.",
@@ -249,15 +258,16 @@
       "action_type": "shell_command",
       "mode": "structured",
       "command_family": "curl",
+      "arguments": {
+        "operation": "http_put",
+        "url": "https://example.com"
+      },
+      "command": null,
       "summary": "fixture proposal",
       "explanation": "deterministic eval fixture",
       "risk_level": "safe",
       "needs_confirmation": true,
-      "notes": [],
-      "arguments": {
-        "operation": "http_put",
-        "url": "https://example.com"
-      }
+      "notes": []
     },
     "expected_planner_error_contains": "operation must be http_head"
   },
@@ -268,15 +278,16 @@
       "action_type": "shell_command",
       "mode": "structured",
       "command_family": "curl",
+      "arguments": {
+        "operation": "http_delete",
+        "url": "https://example.com/resource"
+      },
+      "command": null,
       "summary": "fixture proposal",
       "explanation": "deterministic eval fixture",
       "risk_level": "safe",
       "needs_confirmation": true,
-      "notes": [],
-      "arguments": {
-        "operation": "http_delete",
-        "url": "https://example.com/resource"
-      }
+      "notes": []
     },
     "expected_planner_error_contains": "operation must be http_head"
   },
@@ -287,15 +298,16 @@
       "action_type": "shell_command",
       "mode": "structured",
       "command_family": "curl",
+      "arguments": {
+        "operation": "http_head",
+        "url": "file:///tmp/data"
+      },
+      "command": null,
       "summary": "fixture proposal",
       "explanation": "deterministic eval fixture",
       "risk_level": "safe",
       "needs_confirmation": true,
-      "notes": [],
-      "arguments": {
-        "operation": "http_head",
-        "url": "file:///tmp/data"
-      }
+      "notes": []
     },
     "expected_planner_error_contains": "url must be an http:// or https:// URL"
   },
@@ -335,12 +347,13 @@
       "action_type": "shell_command",
       "mode": "experimental",
       "command_family": "wget",
+      "arguments": null,
+      "command": "wget https://example.com",
       "summary": "fixture proposal",
       "explanation": "deterministic eval fixture",
       "risk_level": "safe",
       "needs_confirmation": true,
-      "notes": [],
-      "command": "wget https://example.com"
+      "notes": []
     },
     "expected_mode": "experimental",
     "expected_command_family": "wget",
@@ -359,12 +372,13 @@
       "action_type": "shell_command",
       "mode": "experimental",
       "command_family": "nc",
+      "arguments": null,
+      "command": "nc example.com 80",
       "summary": "fixture proposal",
       "explanation": "deterministic eval fixture",
       "risk_level": "safe",
       "needs_confirmation": true,
-      "notes": [],
-      "command": "nc example.com 80"
+      "notes": []
     },
     "expected_mode": "experimental",
     "expected_command_family": "nc",

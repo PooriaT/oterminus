@@ -48,6 +48,7 @@
         "long": false,
         "human_readable": false
       },
+      "command": null,
       "summary": "list files",
       "explanation": "Planner handles filesystem inspection requests.",
       "risk_level": "safe",
@@ -74,6 +75,7 @@
       "arguments": {
         "human_readable": true
       },
+      "command": null,
       "summary": "show disk usage",
       "explanation": "Planner handles disk usage inspection requests.",
       "risk_level": "safe",
@@ -124,6 +126,7 @@
         "words": false,
         "bytes": false
       },
+      "command": null,
       "summary": "count README lines",
       "explanation": "deterministic release smoke fixture",
       "risk_level": "safe",

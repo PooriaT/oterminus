@@ -146,9 +146,10 @@ command detection.
 Normal natural-language requests reach the LLM planner unless blocked as ambiguous or matched by one
 of the retained deterministic shortcuts. The planner asks Ollama for JSON Schema-constrained output and
 validates the returned JSON against the `Proposal` schema. The schema supports only two first-class
-modes: `structured` and `experimental`. If the model returns valid JSON with invalid proposal
-fields, OTerminus makes one bounded repair request and rejects the output if the repaired JSON still
-fails validation.
+modes: `structured` and `experimental`. If the model returns malformed JSON or valid JSON with
+invalid proposal fields, OTerminus makes one bounded repair request and rejects the output if the
+repaired JSON still fails validation. Repaired output must pass the same schema and structured
+argument checks before preview, validation, confirmation, or execution.
 
 Planner and parser prefer structured mode when command family + arguments can be represented
 deterministically. Experimental mode is used only when structured support is unavailable or
