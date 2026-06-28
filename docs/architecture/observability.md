@@ -62,7 +62,7 @@ Persistent REPL history is optional and local-only (JSONL). It stores request/de
 
 Persistent REPL history is separate from audit logging and is disabled by default. When enabled (`OTERMINUS_HISTORY_ENABLED=true`), records are stored only on the local machine as JSONL at `OTERMINUS_HISTORY_PATH`. It can be disabled again with `OTERMINUS_HISTORY_ENABLED=false`.
 
-Persisted history records may include request text, rendered command text, local paths, routing/proposal metadata, risk and validation status, execution status, and rerun lineage IDs. They do not store command stdout/stderr, full failure output, or raw planner responses.
+Persisted history records may include request text, rendered command text, local paths, routed category, proposal origin, proposal metadata, risk and validation status, execution status, and rerun lineage IDs. They do not store command stdout/stderr, full failure output, or raw planner responses.
 
 `OTERMINUS_HISTORY_REDACT` defaults to the audit-redaction setting and can redact obvious secret-looking values before write, but redaction is best-effort and does not guarantee removal of all sensitive context. Review history content before copying, pasting, or publishing it.
 

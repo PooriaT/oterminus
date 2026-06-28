@@ -427,6 +427,104 @@ def test_deterministic_shortcuts_off_routes_natural_language_to_planner(
     assert payload["proposal_origin"] == "llm_planner"
 
 
+def test_deterministic_shortcuts_minimal_uses_pwd_shortcut_without_planner(
+    monkeypatch, tmp_path: Path
+) -> None:
+    from oterminus.cli import main
+
+    config = _config(tmp_path)
+    validator, executor = _install_main_dependencies(monkeypatch, config)
+    monkeypatch.setattr(
+        "oterminus.cli.ensure_startup_ready",
+        Mock(side_effect=AssertionError("deterministic shortcut should not require Ollama")),
+    )
+    monkeypatch.setattr("oterminus.cli.Planner", Mock(side_effect=AssertionError("no planner")))
+    monkeypatch.setattr("builtins.input", Mock(side_effect=AssertionError("dry-run")))
+
+    code = main(["--dry-run", "show", "current", "directory"])
+
+    assert code == 0
+    validator.validate.assert_called_once()
+    assert validator.validate.call_args.kwargs["origin"] == ProposalOrigin.DETERMINISTIC_SHORTCUT
+    executor.run.assert_not_called()
+    payload = _read_audit_payload(config.audit_log_path)
+    assert payload["planner_invoked"] is False
+    assert payload["planner_skipped"] is True
+    assert payload["planner_skip_reason"] == "deterministic_shortcut"
+    assert payload["proposal_origin"] == "deterministic_shortcut"
+    assert payload["rendered_command"] == "pwd"
+    assert "deterministic_shortcut_ms" in payload["timings_ms"]
+    assert "local_planner_ms" not in payload["timings_ms"]
+
+
+def test_deterministic_shortcuts_minimal_uses_clear_shortcut_without_planner(
+    monkeypatch, tmp_path: Path
+) -> None:
+    from oterminus.cli import main
+
+    config = _config(tmp_path)
+    validator, executor = _install_main_dependencies(monkeypatch, config)
+    monkeypatch.setattr(
+        "oterminus.cli.ensure_startup_ready",
+        Mock(side_effect=AssertionError("deterministic shortcut should not require Ollama")),
+    )
+    monkeypatch.setattr("oterminus.cli.Planner", Mock(side_effect=AssertionError("no planner")))
+    monkeypatch.setattr("builtins.input", Mock(side_effect=AssertionError("dry-run")))
+
+    code = main(["--dry-run", "clear", "screen"])
+
+    assert code == 0
+    validator.validate.assert_called_once()
+    assert validator.validate.call_args.kwargs["origin"] == ProposalOrigin.DETERMINISTIC_SHORTCUT
+    executor.run.assert_not_called()
+    payload = _read_audit_payload(config.audit_log_path)
+    assert payload["planner_skip_reason"] == "deterministic_shortcut"
+    assert payload["proposal_origin"] == "deterministic_shortcut"
+    assert payload["rendered_command"] == "clear"
+
+
+@pytest.mark.parametrize(
+    "user_request",
+    (
+        "show me the manual of ls",
+        "show first 20 lines of README.md",
+        "find python processes",
+        "show last 5 commits",
+        "run tests",
+        "show hidden files",
+        "search TODO in src",
+    ),
+)
+def test_broad_natural_language_requests_do_not_use_deterministic_shortcuts(
+    monkeypatch, tmp_path: Path, user_request: str
+) -> None:
+    from oterminus.cli import main
+
+    config = _config(tmp_path / user_request.replace(" ", "_").replace("/", "_"))
+    validator, executor = _install_main_dependencies(monkeypatch, config)
+    planner = Mock()
+    planner.plan.return_value = _planned_ls_proposal()
+    monkeypatch.setattr("oterminus.cli.ensure_startup_ready", Mock(return_value="test-model"))
+    monkeypatch.setattr("oterminus.cli.OllamaPlannerClient", Mock())
+    monkeypatch.setattr("oterminus.cli.Planner", Mock(return_value=planner))
+    monkeypatch.setattr("builtins.input", Mock(side_effect=AssertionError("dry-run")))
+
+    code = main(["--dry-run", *user_request.split()])
+
+    assert code == 0
+    planner.plan.assert_called_once_with(user_request)
+    validator.validate.assert_called_once()
+    assert validator.validate.call_args.kwargs["origin"] == ProposalOrigin.LLM_PLANNER
+    executor.run.assert_not_called()
+    payload = _read_audit_payload(config.audit_log_path)
+    assert payload["planner_invoked"] is True
+    assert payload["planner_skipped"] is False
+    assert payload["planner_skip_reason"] is None
+    assert payload["proposal_origin"] == "llm_planner"
+    assert "deterministic_shortcut_ms" in payload["timings_ms"]
+    assert "local_planner_ms" not in payload["timings_ms"]
+
+
 def test_one_shot_execute_mode_confirmation_runs_executor(monkeypatch, tmp_path: Path) -> None:
     from oterminus.cli import main
 
