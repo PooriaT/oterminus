@@ -65,8 +65,11 @@ options such as `--color=auto`, and local path operands while preserving the typ
 schema for natural-language planning.
 
 Planner JSON, proposal notes, summaries, explanations, and command text cannot choose this trusted
-origin. Local-planner, Ollama-planner, unknown, or reconstructed proposals continue through explicit
-flag validation, and every command without the opt-in remains strict.
+origin. `llm_planner`, `deterministic_shortcut`, unknown, legacy `local_planner`/`ollama_planner`, or
+reconstructed proposals continue through explicit flag validation, and every command without the
+opt-in remains strict. The legacy origin names are retained only so older audit/history data can be
+interpreted; new proposal sources should be `direct_command`, `deterministic_shortcut`, or
+`llm_planner`.
 
 ## Network-touching warning boundary
 

@@ -2,6 +2,15 @@
 
 OTerminus currently focuses on curated local workflows grouped by capability.
 
+Direct commands for supported families can be detected locally, so forms such as `ls -lah` or
+`git status --short` do not need the LLM planner. Natural-language requests normally use the
+configured LLM model to propose a structured command in the required schema, then OTerminus
+validates, previews, confirms, and executes only if accepted. If the model returns invalid proposal
+JSON after the bounded repair attempt, the request is rejected safely.
+
+The optional `deterministic_shortcut` layer is limited to fixed zero-argument utility requests such
+as current-directory and clear-screen requests. It is not broad natural-language support.
+
 ## Filesystem inspection
 
 Examples:
@@ -75,6 +84,23 @@ Example:
 - open local files/folders in Finder/apps
 
 Representative family: `open`.
+
+## Project health
+
+Examples:
+
+- run tests
+- check linting
+- check formatting without rewriting files
+- build docs
+- run eval fixtures
+
+Representative family: `project_health`.
+
+Project-health requests are natural-language planner requests. Direct `poetry run ...` input is not
+accepted as project-health support. Accepted project-health proposals render only to curated
+`poetry run ...` operations, may execute local project code or tooling, and always require preview
+plus explicit confirmation.
 
 ## Destructive operations
 

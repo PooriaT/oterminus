@@ -11,7 +11,7 @@ accepted unexpectedly, or hard to explain. A good dogfooding note should answer:
 - What did they expect?
 - What happened instead?
 - Was the behavior safe, ambiguous, unsupported, rejected, or incorrectly accepted?
-- Should this become an eval case, shortcut follow-up, command-spec change, docs update, bug
+- Should this become an eval case, planner/schema follow-up, command-spec change, docs update, bug
   report, or no action?
 
 Sanitize the note before it becomes an issue, eval fixture, documentation example, pull request
@@ -161,6 +161,11 @@ Good eval candidates include:
 - ambiguity should stop before planning
 - a retained deterministic shortcut should keep producing the same structured proposal
 - a mocked planner proposal should validate or reject in a known way
+
+Do not turn ordinary phrase variation into deterministic-shortcut work. Natural-language gaps
+should normally become planner/schema, prompt, diagnostics, or mocked planner-fixture follow-ups.
+Deterministic shortcuts are only for tiny, stable, low-ambiguity, read-only utility requests with no
+argument interpretation.
 
 Tie new fixtures to the existing eval organization in [Evals](architecture/evals.md). Keep fixture
 IDs unique, put cases in the capability or behavior file that owns the boundary, and use
