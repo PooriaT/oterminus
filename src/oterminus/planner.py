@@ -269,15 +269,18 @@ def _validate_planner_output_contract(payload: object) -> None:
     if extra:
         raise _ProposalSchemaError(f"field `{extra[0]}`: Extra inputs are not permitted")
 
-    if payload["action_type"] != "shell_command":
-        raise _ProposalSchemaError(
-            f"field `action_type`: Input should be 'shell_command'; got {payload['action_type']!r}"
-        )
-
-    if payload["mode"] not in {"structured", "experimental"}:
-        raise _ProposalSchemaError(
-            f"field `mode`: Input should be 'structured' or 'experimental'; got {payload['mode']!r}"
-        )
+    _validate_required_enum_string(
+        payload,
+        "action_type",
+        allowed_values={"shell_command"},
+        expected="'shell_command'",
+    )
+    _validate_required_enum_string(
+        payload,
+        "mode",
+        allowed_values={"structured", "experimental"},
+        expected="'structured' or 'experimental'",
+    )
 
     _validate_nullable_string(payload, "command_family")
     _validate_nullable_string(payload, "command")
@@ -287,11 +290,12 @@ def _validate_planner_output_contract(payload: object) -> None:
     if payload["arguments"] is not None and not isinstance(payload["arguments"], dict):
         raise _ProposalSchemaError("field `arguments`: Input should be an object or null")
 
-    if payload["risk_level"] not in {"safe", "write", "dangerous", None}:
-        raise _ProposalSchemaError(
-            "field `risk_level`: Input should be 'safe', 'write', 'dangerous', or null; "
-            f"got {payload['risk_level']!r}"
-        )
+    _validate_nullable_enum_string(
+        payload,
+        "risk_level",
+        allowed_values={"safe", "write", "dangerous"},
+        expected="'safe', 'write', 'dangerous', or null",
+    )
 
     if payload["needs_confirmation"] is not True:
         raise _ProposalSchemaError(
@@ -311,6 +315,30 @@ def _validate_required_string(payload: dict[str, object], field: str) -> None:
 def _validate_nullable_string(payload: dict[str, object], field: str) -> None:
     if payload[field] is not None and not isinstance(payload[field], str):
         raise _ProposalSchemaError(f"field `{field}`: Input should be a string or null")
+
+
+def _validate_required_enum_string(
+    payload: dict[str, object],
+    field: str,
+    *,
+    allowed_values: set[str],
+    expected: str,
+) -> None:
+    value = payload[field]
+    if not isinstance(value, str) or value not in allowed_values:
+        raise _ProposalSchemaError(f"field `{field}`: Input should be {expected}; got {value!r}")
+
+
+def _validate_nullable_enum_string(
+    payload: dict[str, object],
+    field: str,
+    *,
+    allowed_values: set[str],
+    expected: str,
+) -> None:
+    value = payload[field]
+    if value is not None and (not isinstance(value, str) or value not in allowed_values):
+        raise _ProposalSchemaError(f"field `{field}`: Input should be {expected}; got {value!r}")
 
 
 def _format_repaired_schema_failure(detail: str) -> str:

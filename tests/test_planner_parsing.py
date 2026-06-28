@@ -344,6 +344,23 @@ def test_parse_rejects_invalid_outer_schema_values(
         Planner.parse_proposal(json.dumps(_proposal_dict(**overrides)))
 
 
+@pytest.mark.parametrize(
+    ("overrides", "expected_message"),
+    [
+        ({"action_type": ["shell_command"]}, "field `action_type`"),
+        ({"mode": ["structured"]}, "field `mode`"),
+        ({"mode": {"value": "structured"}}, "field `mode`"),
+        ({"risk_level": ["safe"]}, "field `risk_level`"),
+        ({"risk_level": {"value": "safe"}}, "field `risk_level`"),
+    ],
+)
+def test_parse_rejects_non_scalar_enum_fields(
+    overrides: dict[str, object], expected_message: str
+) -> None:
+    with pytest.raises(PlannerError, match=expected_message):
+        Planner.parse_proposal(json.dumps(_proposal_dict(**overrides)))
+
+
 def test_parse_rejects_missing_required_outer_schema_field() -> None:
     payload = _proposal_dict()
     del payload["command"]
@@ -463,6 +480,22 @@ def test_planner_repairs_invalid_mode() -> None:
     assert proposal.command_family == "man"
     assert len(client.calls) == 2
     assert "field `mode`" in str(client.calls[1]["user_prompt"])
+
+
+def test_planner_repairs_non_scalar_mode() -> None:
+    invalid = _proposal_payload(mode=["structured"])
+    repaired = _proposal_payload()
+    client = _StubClient(invalid, repaired)
+    planner = Planner(client)
+
+    proposal = planner.plan("show me the manual of ls")
+
+    assert proposal.mode == ProposalMode.STRUCTURED
+    assert proposal.command_family == "man"
+    assert len(client.calls) == 2
+    repair_prompt = str(client.calls[1]["user_prompt"])
+    assert "field `mode`" in repair_prompt
+    assert "['structured']" in repair_prompt
 
 
 def test_planner_repairs_structured_proposal_missing_command_family() -> None:
