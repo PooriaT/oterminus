@@ -88,3 +88,42 @@ def test_same_file_anchor_missing_fails(tmp_path: Path, monkeypatch: pytest.Monk
 def test_readme_docs_link_checked() -> None:
     errors = check_docs_links.run_checks()
     assert not any(err.startswith("README.md: missing link target") for err in errors)
+
+
+def test_docusaurus_sidebar_missing_file_fails(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    docs = tmp_path / "website" / "docs"
+    docs.mkdir(parents=True)
+    sidebar = tmp_path / "website" / "sidebars.ts"
+    sidebar.write_text(
+        "const sidebars = {docsSidebar: [{type: 'doc', id: 'missing'}]};\n",
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(check_docs_links, "DOCUSAURUS_DOCS_DIR", docs)
+    monkeypatch.setattr(check_docs_links, "DOCUSAURUS_SIDEBAR", sidebar)
+
+    errors: list[str] = []
+    check_docs_links.check_docusaurus_sidebar(errors)
+    assert any("sidebar doc target does not exist" in err for err in errors)
+
+
+def test_docusaurus_mode_checks_docs_and_sidebar(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    docs = tmp_path / "website" / "docs"
+    docs.mkdir(parents=True)
+    (docs / "index.md").write_text("# Home\n\n[Next](guide.md)\n", encoding="utf-8")
+    (docs / "guide.md").write_text("# Guide\n", encoding="utf-8")
+    sidebar = tmp_path / "website" / "sidebars.ts"
+    sidebar.write_text(
+        "const sidebars = {docsSidebar: [{type: 'doc', id: 'index'}, 'guide']};\n",
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(check_docs_links, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(check_docs_links, "DOCUSAURUS_DOCS_DIR", docs)
+    monkeypatch.setattr(check_docs_links, "DOCUSAURUS_SIDEBAR", sidebar)
+
+    assert check_docs_links.run_checks(docusaurus=True) == []
