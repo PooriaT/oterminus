@@ -54,7 +54,7 @@ This table uses the current `mkdocs.yml` navigation as the source of truth.
 
 | Current path | Proposed Docusaurus path | Nav section | Likely MDX conversion | Mermaid | Admonitions | Generated | Important inbound links |
 |---|---|---|---|---|---|---|---|
-| `docs/index.md` | `website/docs/intro.md` | Home | no | no | no | no | yes |
+| `docs/index.md` | `website/docs/index.md` with `slug: /` | Home | no | no | no | no | yes |
 | `docs/product/what-is-oterminus.md` | `website/docs/product/what-is-oterminus.md` | Product | no | no | no | no | yes |
 | `docs/product/user-guide.md` | `website/docs/product/user-guide.md` | Product | no | no | no | no | yes |
 | `docs/product/shell-completion.md` | `website/docs/product/shell-completion.md` | Product | no | no | no | no | yes |
@@ -103,7 +103,7 @@ website/
   static/
     .nojekyll
   docs/
-    intro.md
+    index.md
     product/
     architecture/
     reference/
@@ -118,7 +118,12 @@ release workflows. It also makes it easier for CI to cache and run Python and No
 
 Recommended content shape:
 
-- Move the current `docs/index.md` content to `website/docs/intro.md`.
+- Move the current `docs/index.md` content to `website/docs/index.md` and give that doc an
+  explicit root slug, for example `slug: /`.
+- Configure Docusaurus docs routing so docs are served at the repository site root, not under a
+  new `/docs/` prefix. If the migration chooses not to use docs-root routing, add an equivalent
+  `website/src/pages/index.*` redirect or landing page so `https://pooriat.github.io/oterminus/`
+  continues to show the current documentation landing content.
 - Preserve product and architecture paths under `website/docs/product/` and
   `website/docs/architecture/`.
 - Preserve reference paths under `website/docs/reference/`.
@@ -138,11 +143,22 @@ https://pooriat.github.io/oterminus/
 The intended Docusaurus config is:
 
 ```ts
-url: 'https://pooriat.github.io'
-baseUrl: '/oterminus/'
-organizationName: 'PooriaT'
-projectName: 'oterminus'
-trailingSlash: false
+url: 'https://pooriat.github.io',
+baseUrl: '/oterminus/',
+organizationName: 'PooriaT',
+projectName: 'oterminus',
+trailingSlash: false,
+presets: [
+  [
+    'classic',
+    {
+      docs: {
+        routeBasePath: '/',
+        sidebarPath: './sidebars.ts',
+      },
+    },
+  ],
+],
 ```
 
 GitHub Pages should continue to deploy from GitHub Actions. The current repo already has
@@ -151,7 +167,9 @@ and `actions/deploy-pages` to deploy MkDocs output from `site` after pushes to `
 
 Migration PRs should not switch the Pages artifact path until the Docusaurus build is present,
 link-checked, and verified in CI. The deployment PR should change the artifact from MkDocs `site` to
-the Docusaurus build output, normally `website/build`.
+the Docusaurus build output, normally `website/build`. Before that switch, verify that the built
+site root at `/oterminus/` renders the migrated `docs/index.md` landing content rather than a
+Docusaurus default page, `/intro`, or `/docs/intro`.
 
 ## Conversion Risks and Mitigations
 
