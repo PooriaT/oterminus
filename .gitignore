@@ -31,6 +31,9 @@ dist/
 
 # Documentation output
 site/
+website/node_modules/
+website/build/
+website/.docusaurus/
 
 # Project dependency locks
 poetry.lock
