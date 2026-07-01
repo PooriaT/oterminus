@@ -119,3 +119,14 @@ def test_write_then_check_round_trip(tmp_path: Path, monkeypatch) -> None:
 
     assert module.main(["--write"]) == 0
     assert module.main(["--check"]) == 0
+
+
+def test_docs_root_can_target_docusaurus_docs(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr(module, "REPO_ROOT", tmp_path)
+
+    docs_root = tmp_path / "website" / "docs"
+    assert module.main(["--docs-root", str(docs_root), "--write"]) == 0
+
+    assert (docs_root / "reference" / "capability-map.md").exists()
+    assert (docs_root / "reference" / "command-families.md").exists()
+    assert module.main(["--docs-root", str(docs_root), "--check"]) == 0

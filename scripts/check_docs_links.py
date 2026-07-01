@@ -3,14 +3,19 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
+import sys
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DOCS_DIR = REPO_ROOT / "docs"
 README = REPO_ROOT / "README.md"
 MKDOCS_CONFIG = REPO_ROOT / "mkdocs.yml"
+DOCUSAURUS_DOCS_DIR = REPO_ROOT / "website" / "docs"
+DOCUSAURUS_SIDEBAR = REPO_ROOT / "website" / "sidebars.ts"
 
 LINK_RE = re.compile(r"\[[^\]]+\]\(([^)]+)\)")
 ANCHOR_RE = re.compile(r"^#{1,6}\s+(.+)$", re.MULTILINE)
+SIDEBAR_ID_RE = re.compile(r"\bid:\s*['\"]([^'\"]+)['\"]")
+SIDEBAR_ITEM_RE = re.compile(r"^\s*['\"]([^'\"]+)['\"],?\s*$", re.MULTILINE)
 PLACEHOLDER_PATTERNS = ("TODO", "TBD", "example.com", "your-", "REPLACE_ME")
 
 
@@ -93,23 +98,60 @@ def check_mkdocs_nav(errors: list[str]) -> None:
             errors.append(f"mkdocs.yml:{line_num}: nav target does not exist: docs/{nav_target}")
 
 
-def run_checks() -> list[str]:
+def _docusaurus_doc_exists(doc_id: str) -> bool:
+    candidates = [
+        DOCUSAURUS_DOCS_DIR / f"{doc_id}.md",
+        DOCUSAURUS_DOCS_DIR / f"{doc_id}.mdx",
+        DOCUSAURUS_DOCS_DIR / doc_id / "index.md",
+        DOCUSAURUS_DOCS_DIR / doc_id / "index.mdx",
+    ]
+    return any(candidate.exists() for candidate in candidates)
+
+
+def check_docusaurus_sidebar(errors: list[str]) -> None:
+    content = DOCUSAURUS_SIDEBAR.read_text(encoding="utf-8")
+    doc_ids = set(SIDEBAR_ID_RE.findall(content))
+    doc_ids.update(SIDEBAR_ITEM_RE.findall(content))
+    for doc_id in sorted(doc_ids):
+        if not _docusaurus_doc_exists(doc_id):
+            errors.append(f"website/sidebars.ts: sidebar doc target does not exist: {doc_id}")
+
+
+def run_checks(docusaurus: bool = False) -> list[str]:
     errors: list[str] = []
-    markdown_files = [README, *sorted(DOCS_DIR.rglob("*.md"))]
+    if docusaurus:
+        markdown_files = [
+            *sorted(DOCUSAURUS_DOCS_DIR.rglob("*.md")),
+            *sorted(DOCUSAURUS_DOCS_DIR.rglob("*.mdx")),
+        ]
+    else:
+        markdown_files = [README, *sorted(DOCS_DIR.rglob("*.md"))]
     for md_file in markdown_files:
         check_markdown_file(md_file, errors)
-    check_mkdocs_nav(errors)
+    if docusaurus:
+        check_docusaurus_sidebar(errors)
+    else:
+        check_mkdocs_nav(errors)
     return errors
 
 
-def main() -> int:
-    errors = run_checks()
+def main(argv: list[str] | None = None) -> int:
+    args = set(argv if argv is not None else sys.argv[1:])
+    if not args.issubset({"--docusaurus"}):
+        print("Usage: check_docs_links.py [--docusaurus]")
+        return 2
+
+    docusaurus = "--docusaurus" in args
+    errors = run_checks(docusaurus=docusaurus)
     if errors:
         print("Documentation link check failed:")
         for error in errors:
             print(f"- {error}")
         return 1
-    print("Documentation link check passed.")
+    if docusaurus:
+        print("Docusaurus documentation link check passed.")
+    else:
+        print("Documentation link check passed.")
     return 0
 
 

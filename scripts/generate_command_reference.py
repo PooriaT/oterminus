@@ -23,6 +23,7 @@ GENERATED_NOTE = (
     "<!-- Generated from the command registry. Do not edit command tables manually; "
     "update command specs instead. -->"
 )
+TABLE_LINE_BREAK = "<br />"
 
 
 def _normalize_level(value: object) -> str:
@@ -42,13 +43,21 @@ def _direct_support_text(values: set[bool]) -> str:
 def _direct_flag_policy_text(values: set[str]) -> str:
     if len(values) == 1:
         return next(iter(values))
-    return "<br>".join(sorted(values))
+    return TABLE_LINE_BREAK.join(sorted(values))
 
 
 def _platform_text(platforms: object) -> str:
     if not platforms:
         return "all"
     return ", ".join(sorted(str(item) for item in platforms))
+
+
+def _escape_mdx_text(value: str) -> str:
+    return value.replace("<", "&lt;").replace(">", "&gt;")
+
+
+def _join_table_lines(values: list[str] | tuple[str, ...]) -> str:
+    return TABLE_LINE_BREAK.join(_escape_mdx_text(value) for value in values)
 
 
 def _notes_for_spec(spec: object) -> tuple[str, ...]:
@@ -93,17 +102,19 @@ def _render_capability_map() -> str:
         first = specs[0]
         commands = ", ".join(f"`{spec.name}`" for spec in specs)
         risks = ", ".join(sorted({_normalize_level(spec.risk_level) for spec in specs}))
-        maturities = "<br>".join(sorted({command_maturity_status(spec) for spec in specs}))
+        maturities = TABLE_LINE_BREAK.join(
+            sorted({command_maturity_status(spec) for spec in specs})
+        )
         direct_support = _direct_support_text({spec.direct_supported for spec in specs})
         direct_flag_policy = _direct_flag_policy_text(
             {_normalize_level(spec.direct_flag_policy) for spec in specs}
         )
         notes = sorted({note for spec in specs for note in _notes_for_spec(spec)})
-        notes_text = "<br>".join(notes) if notes else "—"
+        notes_text = _join_table_lines(notes) if notes else "—"
         row = [
             capability_id,
             first.capability_label,
-            first.capability_description,
+            _escape_mdx_text(first.capability_description),
             commands,
             _platform_text({p for spec in specs for p in (spec.supported_platforms or ())}),
             risks,
@@ -166,7 +177,9 @@ def _render_command_families() -> str:
         )
         for spec in specs:
             examples = (
-                "<br>".join(f"`{example}`" for example in spec.examples) if spec.examples else "—"
+                TABLE_LINE_BREAK.join(f"`{example}`" for example in spec.examples)
+                if spec.examples
+                else "—"
             )
             aliases = (
                 ", ".join(f"`{alias}`" for alias in spec.natural_language_aliases)
@@ -174,7 +187,7 @@ def _render_command_families() -> str:
                 else "—"
             )
             spec_notes = _notes_for_spec(spec)
-            notes = "<br>".join(spec_notes) if spec_notes else "—"
+            notes = _join_table_lines(spec_notes) if spec_notes else "—"
             row = [
                 f"`{spec.name}`",
                 spec.category,
@@ -194,10 +207,25 @@ def _render_command_families() -> str:
     return "\n".join(lines)
 
 
-def generate_reference_docs() -> dict[Path, str]:
+def _resolve_docs_root(docs_root: Path | str) -> Path:
+    path = Path(docs_root)
+    if not path.is_absolute():
+        path = REPO_ROOT / path
+    return path
+
+
+def _reference_paths(docs_root: Path | str | None = None) -> tuple[Path, Path]:
+    if docs_root is None:
+        return CAPABILITY_MAP_PATH, COMMAND_FAMILIES_PATH
+    reference_dir = _resolve_docs_root(docs_root) / "reference"
+    return reference_dir / "capability-map.md", reference_dir / "command-families.md"
+
+
+def generate_reference_docs(docs_root: Path | str | None = None) -> dict[Path, str]:
+    capability_map_path, command_families_path = _reference_paths(docs_root)
     return {
-        CAPABILITY_MAP_PATH: _render_capability_map(),
-        COMMAND_FAMILIES_PATH: _render_command_families(),
+        capability_map_path: _render_capability_map(),
+        command_families_path: _render_command_families(),
     }
 
 
@@ -230,6 +258,14 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Generate registry-backed command reference docs.")
     parser.add_argument("--write", action="store_true", help="Write generated docs to disk.")
     parser.add_argument("--check", action="store_true", help="Check generated docs are up to date.")
+    parser.add_argument(
+        "--docs-root",
+        action="append",
+        help=(
+            "Documentation root that contains reference/. May be repeated. "
+            "Defaults to docs for the live MkDocs site."
+        ),
+    )
     return parser.parse_args(argv)
 
 
@@ -240,7 +276,10 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     _ = COMMAND_PACKS
-    contents = generate_reference_docs()
+    docs_roots = args.docs_root or [None]
+    contents: dict[Path, str] = {}
+    for docs_root in docs_roots:
+        contents.update(generate_reference_docs(docs_root))
 
     if args.write:
         return _write_docs(contents)
