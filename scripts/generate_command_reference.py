@@ -18,6 +18,7 @@ from oterminus.commands import (
 DOCS_REFERENCE = REPO_ROOT / "docs" / "reference"
 CAPABILITY_MAP_PATH = DOCS_REFERENCE / "capability-map.md"
 COMMAND_FAMILIES_PATH = DOCS_REFERENCE / "command-families.md"
+DEFAULT_DOCS_ROOTS: tuple[Path | str | None, ...] = (None, "website/docs")
 
 GENERATED_NOTE = (
     "<!-- Generated from the command registry. Do not edit command tables manually; "
@@ -263,7 +264,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         action="append",
         help=(
             "Documentation root that contains reference/. May be repeated. "
-            "Defaults to docs for the live MkDocs site."
+            "Defaults to docs and website/docs."
         ),
     )
     return parser.parse_args(argv)
@@ -276,7 +277,7 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     _ = COMMAND_PACKS
-    docs_roots = args.docs_root or [None]
+    docs_roots = args.docs_root or DEFAULT_DOCS_ROOTS
     contents: dict[Path, str] = {}
     for docs_root in docs_roots:
         contents.update(generate_reference_docs(docs_root))
