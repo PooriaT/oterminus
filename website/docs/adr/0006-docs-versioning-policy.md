@@ -21,7 +21,7 @@ regenerating old docs from newer code.
 
 Official Docusaurus versioning guidance supports snapshotting the current docs into
 `versioned_docs/`, `versioned_sidebars/`, and `versions.json` with
-`npm run docusaurus docs:version <version>`. The same guidance warns that most sites do not need
+`npx docusaurus docs:version <version>`. The same guidance warns that most sites do not need
 versioning because it increases build time and codebase complexity, is best suited for high-traffic
 projects with rapid docs changes between versions, and should keep the number of active versions
 small. It also notes that relative imports and assets can become harder to manage once docs are
@@ -63,7 +63,7 @@ Snapshot docs with:
 
 ```bash
 cd website
-npm run docusaurus docs:version <version>
+npx docusaurus docs:version <version>
 ```
 
 Pros:
@@ -138,7 +138,7 @@ artifacts:
 - decide whether patch releases ever get docs snapshots;
 - update `website/docusaurus.config.ts` for the selected versioning behavior;
 - add a version dropdown only if it improves navigation;
-- run `cd website && npm run docusaurus docs:version <version>` when the current docs are ready to
+- run `cd website && npx docusaurus docs:version <version>` when the current docs are ready to
   freeze;
 - snapshot generated reference files with each docs version;
 - update `scripts/generate_command_reference.py` to either target versioned docs deliberately or stay
