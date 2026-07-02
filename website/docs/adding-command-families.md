@@ -189,8 +189,8 @@ Documentation should explain workflow intent, not just command syntax. See the
 
 The capability map and command-family reference pages are generated from the command registry:
 
-- `docs/reference/capability-map.md`
-- `docs/reference/command-families.md`
+- `website/docs/reference/capability-map.md`
+- `website/docs/reference/command-families.md`
 
 When you add or change command specs in `src/oterminus/commands/`, refresh and validate the
 reference docs:
@@ -198,7 +198,10 @@ reference docs:
 ```bash
 poetry run python scripts/generate_command_reference.py --write
 poetry run python scripts/generate_command_reference.py --check
-poetry run mkdocs build --strict
+cd website
+npm ci
+npm run build
+npm run typecheck
 ```
 
 Do not edit command tables in those reference pages by hand; update registry specs and regenerate.

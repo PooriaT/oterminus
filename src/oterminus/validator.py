@@ -179,7 +179,7 @@ class Validator:
                 ("poetry", "run", "pytest"),
                 ("poetry", "run", "ruff", "check", "."),
                 ("poetry", "run", "ruff", "format", "--check", "."),
-                ("poetry", "run", "mkdocs", "build", "--strict"),
+                ("npm", "--prefix", "website", "run", "build"),
                 ("poetry", "run", "oterminus-evals"),
             }
             if tuple(args) not in expected:

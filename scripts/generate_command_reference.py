@@ -15,10 +15,10 @@ from oterminus.commands import (
     command_maturity_status,
 )
 
-DOCS_REFERENCE = REPO_ROOT / "docs" / "reference"
+DOCS_REFERENCE = REPO_ROOT / "website" / "docs" / "reference"
 CAPABILITY_MAP_PATH = DOCS_REFERENCE / "capability-map.md"
 COMMAND_FAMILIES_PATH = DOCS_REFERENCE / "command-families.md"
-DEFAULT_DOCS_ROOTS: tuple[Path | str | None, ...] = (None, "website/docs")
+DEFAULT_DOCS_ROOTS: tuple[Path | str | None, ...] = (None,)
 
 GENERATED_NOTE = (
     "<!-- Generated from the command registry. Do not edit command tables manually; "
@@ -264,7 +264,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         action="append",
         help=(
             "Documentation root that contains reference/. May be repeated. "
-            "Defaults to docs and website/docs."
+            "Defaults to website/docs."
         ),
     )
     return parser.parse_args(argv)

@@ -24,10 +24,13 @@ source of truth for TestPyPI, production PyPI, Trusted Publishing, and protected
 poetry run pytest
 poetry run ruff check .
 poetry run ruff format --check .
-poetry run mkdocs build --strict
 poetry run oterminus-evals
 poetry run python scripts/generate_command_reference.py --check
 poetry run python scripts/check_docs_links.py
+cd website
+npm ci
+npm run build
+npm run typecheck
 ```
 
 The deterministic eval gate includes `release_smoke.json`, which protects public-install and
@@ -118,9 +121,9 @@ The TestPyPI workflow automatically:
    - `poetry run pytest`
    - `poetry run ruff check .`
    - `poetry run ruff format --check .`
-   - `poetry run mkdocs build --strict`
+   - `cd website && npm ci && npm run build && npm run typecheck`
    - `poetry run oterminus-evals`
-   - generated docs/reference check (if script exists)
+   - generated reference-docs check (if script exists)
    - docs link checker (if script exists)
 3. builds distributions via `poetry build`
 4. publishes artifacts to TestPyPI via OIDC Trusted Publishing
@@ -146,9 +149,9 @@ The production workflow automatically:
    - `poetry run pytest`
    - `poetry run ruff check .`
    - `poetry run ruff format --check .`
-   - `poetry run mkdocs build --strict`
+   - `cd website && npm ci && npm run build && npm run typecheck`
    - `poetry run oterminus-evals`
-   - generated docs/reference check
+   - generated reference-docs check
    - docs link checker
 3. runs local installed-package validation with
    `poetry run python scripts/validate_package_install.py`
@@ -177,7 +180,7 @@ It is not the primary end-user install path; users should install released packa
 `pipx install oterminus` or, when `pipx` is unavailable, `python -m pip install oterminus`.
 
 The main CI workflow runs the same package validation command in the Ubuntu full regression gate
-after the normal tests, lint, evals, generated docs checks, docs link checks, and strict docs build.
+after the normal tests, lint, evals, generated docs checks, docs link checks, and Docusaurus docs build.
 Its macOS smoke lane also runs the package validation command to verify installed CLI basics on a
 real macOS runner without requiring Ollama or publishing artifacts. The production release workflow
 runs package validation before uploading artifacts for PyPI publishing. The TestPyPI workflow still

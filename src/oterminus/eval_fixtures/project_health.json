@@ -189,7 +189,7 @@
       },
       "command": null,
       "summary": "Build docs",
-      "explanation": "Runs strict docs build.",
+      "explanation": "Runs Docusaurus docs build.",
       "risk_level": "write",
       "needs_confirmation": true,
       "notes": []
@@ -198,13 +198,13 @@
     "expected_command_family": "project_health",
     "expected_risk_level": "write",
     "expected_acceptance": true,
-    "expected_rendered_command": "poetry run mkdocs build --strict",
+    "expected_rendered_command": "npm --prefix website run build",
     "expected_argv": [
-      "poetry",
+      "npm",
+      "--prefix",
+      "website",
       "run",
-      "mkdocs",
-      "build",
-      "--strict"
+      "build"
     ]
   },
   {
@@ -219,7 +219,7 @@
       },
       "command": null,
       "summary": "Build docs",
-      "explanation": "Runs strict docs build.",
+      "explanation": "Runs Docusaurus docs build.",
       "risk_level": "write",
       "needs_confirmation": true,
       "notes": []
@@ -228,13 +228,13 @@
     "expected_command_family": "project_health",
     "expected_risk_level": "write",
     "expected_acceptance": true,
-    "expected_rendered_command": "poetry run mkdocs build --strict",
+    "expected_rendered_command": "npm --prefix website run build",
     "expected_argv": [
-      "poetry",
+      "npm",
+      "--prefix",
+      "website",
       "run",
-      "mkdocs",
-      "build",
-      "--strict"
+      "build"
     ]
   },
   {
@@ -406,7 +406,7 @@
       "mode": "experimental",
       "command_family": null,
       "arguments": null,
-      "command": "poetry run mkdocs gh-deploy",
+      "command": "npm --prefix website run build",
       "summary": "deploy docs",
       "explanation": "Unsupported docs deploy.",
       "risk_level": "dangerous",

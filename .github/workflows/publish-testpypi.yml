@@ -42,7 +42,7 @@ jobs:
             ${{ runner.os }}-py3.13-poetry-
 
       - name: Install dependencies
-        run: poetry install --with dev,docs
+        run: poetry install --with dev
 
       - name: Run tests
         run: poetry run pytest
@@ -53,8 +53,19 @@ jobs:
       - name: Verify formatting
         run: poetry run ruff format --check .
 
-      - name: Build docs (strict)
-        run: poetry run mkdocs build --strict
+      - name: Set up Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: website/package-lock.json
+
+      - name: Validate Docusaurus docs
+        run: |
+          cd website
+          npm ci
+          npm run build
+          npm run typecheck
 
       - name: Run deterministic evals
         run: poetry run oterminus-evals

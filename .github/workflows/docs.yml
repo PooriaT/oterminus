@@ -4,7 +4,6 @@ on:
   pull_request:
     paths:
       - README.md
-      - docs/**
       - website/**
       - .github/workflows/docs.yml
   push:
@@ -55,7 +54,7 @@ jobs:
             ${{ runner.os }}-py3.13-poetry-
 
       - name: Install Poetry dependencies
-        run: poetry install --with dev,docs
+        run: poetry install --with dev
 
       - name: Check generated command reference docs
         run: poetry run python scripts/generate_command_reference.py --check

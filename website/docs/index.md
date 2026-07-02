@@ -50,19 +50,22 @@ contributor reference material.
 
 ## Sections
 
-- Product docs: [`docs/product/`](product/what-is-oterminus.md)
-- Architecture docs: [`docs/architecture/`](architecture/overview.md)
-- Reference docs: [`docs/reference/`](reference/config.md)
-- Release process: [`docs/release.md`](release.md)
+- Product docs: [`product/`](product/what-is-oterminus.md)
+- Architecture docs: [`architecture/`](architecture/overview.md)
+- Reference docs: [`reference/`](reference/config.md)
+- Release process: [`release.md`](release.md)
 - Changelog: [`CHANGELOG.md`](https://github.com/PooriaT/oterminus/blob/main/CHANGELOG.md)
-- ADRs: [`docs/adr/`](adr/0001-capability-first-not-shell-first.md)
+- ADRs: [`adr/`](adr/0001-capability-first-not-shell-first.md)
 
 ## Build and preview docs locally
 
 ```bash
-poetry install --with dev,docs
-poetry run mkdocs serve
-poetry run mkdocs build --strict
+poetry install --with dev
+cd website
+npm ci
+npm run start
+npm run build
+npm run typecheck
 ```
 
 See the [contributor workflow](contributing.md) for the complete local lint, format, test, and docs
@@ -71,10 +74,10 @@ checklist.
 ## Documentation contributor notes
 
 When architecture, behavior, configuration, command support, or eval behavior changes, update docs
-in the same PR. Keep proposal-mode docs consistent across README and `docs/`: structured and
+in the same PR. Keep proposal-mode docs consistent across README and `website/docs/`: structured and
 experimental are the only supported first-class modes.
 
-Before opening a PR, run `poetry run mkdocs build --strict` and fix any warnings or broken links.
+Before opening a PR, run `npm run build` and `npm run typecheck` from `website/`, then fix any warnings or broken links.
 
 Command capability reference pages are generated from the registry; run `poetry run python scripts/generate_command_reference.py --write` after command-spec changes and verify with `--check` before opening a PR.
 

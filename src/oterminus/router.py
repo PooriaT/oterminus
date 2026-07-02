@@ -636,7 +636,7 @@ _PROJECT_HEALTH_HINTS = (
     "formatting is okay",
     "build docs",
     "check docs build",
-    "run mkdocs build",
+    "run docusaurus build",
     "documentation build",
     "run evals",
     "oterminus evals",

@@ -17,7 +17,7 @@ Contributors working from a source checkout should use Poetry instead of a publi
 ## Set up development dependencies
 
 ```bash
-poetry install --with dev,docs
+poetry install --with dev
 ```
 
 ## Formatting and linting
@@ -142,8 +142,8 @@ change, not follow-up work.
 Keep documentation organized this way:
 
 - Keep `README.md` as the landing page and quick orientation.
-- Put detailed product, architecture, reference, eval, and contributor material under `/docs`.
-- Update MkDocs navigation when adding, moving, or deleting docs pages.
+- Put detailed product, architecture, reference, eval, and contributor material under `website/docs/`.
+- Update `website/sidebars.ts` when adding, moving, or deleting docs pages.
 - Keep public install docs aligned with PyPI/pipx behavior, development docs aligned with Poetry,
   and release/package-validation docs aligned with the package validation script.
 - Update the root `CHANGELOG.md` for user-facing changes.
@@ -156,7 +156,6 @@ Keep documentation organized this way:
 Validate docs before review:
 
 ```bash
-poetry run mkdocs build --strict
 poetry run python scripts/check_docs_links.py
 poetry run python scripts/generate_command_reference.py --check
 cd website
@@ -165,7 +164,7 @@ npm run build
 npm run typecheck
 ```
 
-The CI workflow validates both the MkDocs transition docs and the Docusaurus site. The docs
+The CI workflow validates the Docusaurus site and Docusaurus docs links. The docs
 workflow deploys the Docusaurus `website/build` artifact only after a push to `main` or a manual
 workflow dispatch. Confirm the repository Pages setting is **Settings → Pages → Build and
 deployment → Source → GitHub Actions**.
@@ -182,7 +181,10 @@ poetry run pytest
 poetry run pytest --cov=src/oterminus --cov-report=term-missing
 poetry run python scripts/check_docs_links.py
 poetry run python scripts/generate_command_reference.py --check
-poetry run mkdocs build --strict
+cd website
+npm ci
+npm run build
+npm run typecheck
 poetry run oterminus-evals
 poetry run python scripts/validate_package_install.py
 ```
@@ -215,7 +217,7 @@ Notes:
   installability.
 - `oterminus-evals` uses packaged fixture data from `src/oterminus/eval_fixtures/` so it works after wheel install.
 - CI and the production PyPI workflow run the same package validation command before the production publish boundary.
-- Publishing to TestPyPI and production PyPI is documented in `docs/release.md` and uses GitHub
+- Publishing to TestPyPI and production PyPI is documented in `website/docs/release.md` and uses GitHub
   OIDC Trusted Publishing with protected deployment environments. The TestPyPI workflow still
   verifies the exact published version by installing it back from TestPyPI after publish.
 - End-user installs should use `pipx install oterminus` after PyPI release; contributors should not add install-time or runtime behavior that automatically edits user shell startup files for completion.

@@ -49,18 +49,6 @@ def test_external_links_ignored(tmp_path: Path, monkeypatch: pytest.MonkeyPatch)
     assert errors == []
 
 
-def test_mkdocs_nav_missing_file_fails(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    mkdocs = tmp_path / "mkdocs.yml"
-    mkdocs.write_text("nav:\n  - Home: index.md\n", encoding="utf-8")
-
-    monkeypatch.setattr(check_docs_links, "MKDOCS_CONFIG", mkdocs)
-    monkeypatch.setattr(check_docs_links, "DOCS_DIR", tmp_path / "docs")
-
-    errors: list[str] = []
-    check_docs_links.check_mkdocs_nav(errors)
-    assert any("nav target does not exist" in err for err in errors)
-
-
 def test_same_file_anchor_passes(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     page = tmp_path / "docs" / "page.md"
     page.parent.mkdir(parents=True)
@@ -109,7 +97,7 @@ def test_docusaurus_sidebar_missing_file_fails(
     assert any("sidebar doc target does not exist" in err for err in errors)
 
 
-def test_docusaurus_mode_checks_docs_and_sidebar(
+def test_run_checks_checks_readme_docs_and_sidebar(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     docs = tmp_path / "website" / "docs"
@@ -126,4 +114,9 @@ def test_docusaurus_mode_checks_docs_and_sidebar(
     monkeypatch.setattr(check_docs_links, "DOCUSAURUS_DOCS_DIR", docs)
     monkeypatch.setattr(check_docs_links, "DOCUSAURUS_SIDEBAR", sidebar)
 
-    assert check_docs_links.run_checks(docusaurus=True) == []
+    readme = tmp_path / "README.md"
+    readme.write_text("[Docs](website/docs/index.md)\n", encoding="utf-8")
+
+    monkeypatch.setattr(check_docs_links, "README", readme)
+
+    assert check_docs_links.run_checks() == []

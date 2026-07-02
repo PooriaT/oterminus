@@ -131,7 +131,7 @@ def _parse_project_health_direct(args: list[str]) -> dict[str, str] | None:
         ("poetry", "run", "pytest"): "run_tests",
         ("poetry", "run", "ruff", "check", "."): "lint_check",
         ("poetry", "run", "ruff", "format", "--check", "."): "format_check",
-        ("poetry", "run", "mkdocs", "build", "--strict"): "build_docs",
+        ("npm", "--prefix", "website", "run", "build"): "build_docs",
         ("poetry", "run", "oterminus-evals"): "run_evals",
     }
     operation = mapping.get(tuple(args))
