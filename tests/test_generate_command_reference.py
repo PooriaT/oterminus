@@ -119,3 +119,31 @@ def test_write_then_check_round_trip(tmp_path: Path, monkeypatch) -> None:
 
     assert module.main(["--write"]) == 0
     assert module.main(["--check"]) == 0
+
+
+def test_default_check_includes_docusaurus_reference_docs(tmp_path: Path, monkeypatch) -> None:
+    cap = tmp_path / "docs" / "reference" / "capability-map.md"
+    fam = tmp_path / "docs" / "reference" / "command-families.md"
+    website_cap = tmp_path / "website" / "docs" / "reference" / "capability-map.md"
+    website_fam = tmp_path / "website" / "docs" / "reference" / "command-families.md"
+
+    monkeypatch.setattr(module, "CAPABILITY_MAP_PATH", cap)
+    monkeypatch.setattr(module, "COMMAND_FAMILIES_PATH", fam)
+    monkeypatch.setattr(module, "REPO_ROOT", tmp_path)
+
+    assert module.main(["--write"]) == 0
+    website_cap.write_text("stale\n", encoding="utf-8")
+
+    assert module.main(["--check"]) == 1
+    assert website_fam.exists()
+
+
+def test_docs_root_can_target_docusaurus_docs(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr(module, "REPO_ROOT", tmp_path)
+
+    docs_root = tmp_path / "website" / "docs"
+    assert module.main(["--docs-root", str(docs_root), "--write"]) == 0
+
+    assert (docs_root / "reference" / "capability-map.md").exists()
+    assert (docs_root / "reference" / "command-families.md").exists()
+    assert module.main(["--docs-root", str(docs_root), "--check"]) == 0

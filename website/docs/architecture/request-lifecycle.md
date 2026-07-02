@@ -1,0 +1,235 @@
+# Request Lifecycle
+
+This is the central execution flow for OTerminus. The order is deliberate: OTerminus detects direct
+shell commands before applying natural-language ambiguity heuristics. Only non-direct,
+natural-language requests are checked for ambiguity before capability routing and planner calls.
+
+Before request handling begins, OTerminus handles command namespaces that are explicitly outside
+the request lifecycle. `version`, `completion`, and `doctor` exit through their own paths. The
+`oterminus config` namespace also exits before runtime request setup; `config path`, `show`, `init`,
+`get`, `set`, `reset`, `validate`, and `edit` do not construct the validator, executor, planner, audit
+logger, or history store, do not run startup readiness checks, do not contact Ollama, and do not
+start the REPL. `config set` writes only the validated user config JSON through the atomic config
+save path. `config reset` removes only supported safe persisted keys through the same validated save
+path. Neither command edits `.env`, exported environment variables, or shell startup files.
+
+For a bare interactive launch, OTerminus inspects persistent config state before constructing
+runtime services. If stdin is interactive and the config file is missing, it offers first-run
+onboarding. Accepting runs the wizard, optionally selects an installed Ollama model, saves after a
+summary confirmation, and then reloads effective config before the validator, executor, audit
+logger, history store, and REPL are created. Declining saves safe defaults with
+`onboarding_completed: true` and continues. Onboarding is not offered for one-shot requests,
+`--dry-run`, `--explain`, `doctor`, `version`, `completion`, `config` commands, existing config
+files, legacy config files, or non-interactive stdin.
+
+For normal request handling, OTerminus resolves runtime configuration into `AppConfig`.
+Resolution applies exported environment variables, current-directory `.env`, validated user config,
+and built-in defaults in that order for supported settings. The persistent user config is a
+schema-versioned JSON preference file; invalid JSON, unknown fields, unsupported schema versions, or
+invalid security-relevant values fail startup with a bounded configuration error instead of being
+silently ignored. `OTERMINUS_CONFIG_PATH` and `OTERMINUS_ALLOW_DANGEROUS` remain environment/.env
+only. Terminal color mode is resolved as configuration, and one terminal style object is threaded
+through OTerminus-owned preview, prompt, lifecycle, discovery/help, and diagnostic rendering.
+`NO_COLOR` is applied at render time. ANSI styling must not enter audit events, history records,
+subprocess stdout/stderr or their metadata, shell completion scripts, generated references, JSON
+output, or other machine-oriented command output.
+
+```mermaid
+flowchart TD
+  A[CLI argv] --> A0{Early CLI mode?}
+  A0 -->|version/completion/config| A3[Print or manage local metadata and exit]
+  A0 -->|doctor| A2[Run doctor checks and exit]
+  A0 -->|bare interactive| O0{Missing config and TTY?}
+  O0 -->|yes| O1[Offer onboarding]
+  O1 --> Z
+  O0 -->|no| Z
+  A0 -->|one-shot request| Z[Resolve AppConfig]
+  Z --> B[Direct command detection]
+  B --> C{Direct command?}
+  C -->|yes| C1[Build direct proposal]
+  C -->|no| D[Ambiguity detection]
+  D --> E{Ambiguous?}
+  E -->|yes| E1[Show safer inspection options]
+  E1 --> N
+  E -->|no| F[Capability router]
+  F --> LP{Deterministic shortcut enabled and matched?}
+  LP -->|yes| LP1[Build shortcut structured proposal]
+  LP -->|no| G[LLM planner JSON proposal]
+  G --> P[Parse Proposal schema]
+  LP1 --> P
+  C1 --> P
+  P --> S{Structured support suitable?}
+  S -->|yes| S1[Structured mode: command_family + arguments]
+  S1 --> R[Deterministic Python renderer]
+  S -->|no| X1[Experimental mode: constrained command text]
+  R --> H[Validator]
+  X1 --> H
+  H --> I[Policy gate]
+  I --> J[Preview renderer]
+  J --> K{Run mode}
+  K -->|dry-run/explain| K1[Skip confirmation and execution]
+  K1 --> N[Audit log event]
+  K -->|execute| AE{Safe auto-execute eligible?}
+  AE -->|yes| M[Executor]
+  AE -->|no| L[User confirmation]
+  L -->|cancel| L1[Stop]
+  L -->|confirm| M[Executor]
+  M --> N[Audit log event]
+  H --> O[Evals/tests validate deterministic behavior]
+```
+
+## Stage details
+
+### 1) User input
+
+Input can be:
+
+- the explicit diagnostics command (`doctor`), which runs readiness checks and exits outside the
+  normal request planning/execution lifecycle
+- bare interactive launch (`oterminus`), which may offer onboarding before REPL services are
+  constructed when no config file exists
+- natural language (`"find large files here"`)
+- direct command (`"ls -lah"`)
+
+### 2) Direct command detection
+
+Direct command detection runs before ambiguity detection. If input already looks like a supported
+command family invocation, OTerminus skips LLM planning and builds a direct proposal. Examples such
+as `chmod +x run.sh` and `rm -rf build` are not intercepted as ambiguous natural language.
+
+Direct proposals still continue through proposal parsing, structured rendering when available,
+validation, policy checks, preview, and confirmation policy in execute mode. In `--dry-run` or
+`--explain` one-shot mode, direct proposals do not require Ollama if direct detection succeeds.
+
+### 3) Ambiguity handling
+
+Ambiguity detection runs only for non-direct natural-language requests. It looks for broad,
+destructive, or underspecified wording such as “clean this folder”, “delete unnecessary files”, or
+“repair permissions”. When such a request is ambiguous, OTerminus shows a short explanation and safe
+read-only inspection alternatives.
+
+Ambiguous requests stop before planner setup, planner calls, validation, confirmation prompts, and
+execution. Nothing is executed, including in dry-run or explain mode. Their audit events use
+`confirmation_result: "blocked_ambiguous"` and include the ambiguity reason plus suggested safe
+options. They also record planner skip diagnostics with `planner_invoked: false`,
+`planner_skipped: true`, and `planner_skip_reason: "ambiguity_blocked"`.
+
+### 4) Capability router
+
+A deterministic router classifies the request into categories like `filesystem_inspect`,
+`filesystem_mutate`, `text_search`, `process_inspect`, etc.
+Routing is metadata for audit, policy context, and prompt guidance. It is not the planner and does
+not by itself choose a command.
+
+### 5) Deterministic shortcuts
+
+After routing, OTerminus may attempt deterministic shortcuts for a small set of explicit,
+reviewable rules. This layer is controlled by `deterministic_shortcuts`; supported values are
+`minimal` (default) and `off`. Shortcuts produce structured proposals only; they never emit
+experimental command text and never execute directly.
+
+Current recipes are limited to fixed zero-argument utility shortcuts: current-directory requests
+(`show current directory`, `where am i`, `print working directory`) and clear-screen requests
+(`clear screen`, `clear the screen`). The shared proposal builder respects disabled command packs
+and platform-specific command availability through registry metadata, then lets structured argument
+validation remain the final authority.
+
+The shortcut layer is not a general natural-language parser. It does not extract paths, counts,
+search terms, manual-page topics, process names, Git operations, or project-health operations.
+Natural-language inspection requests such as `show hidden files`, `show first 20 lines of README.md`,
+`find python processes`, and `show last 5 commits` continue to the LLM planner. Direct commands such
+as `ls -l`, `head -n 20 README.md`, and `git status --short` still bypass the LLM through direct
+command detection.
+
+### 6) LLM planner + parsing
+
+Normal natural-language requests reach the LLM planner unless blocked as ambiguous or matched by one
+of the retained deterministic shortcuts. The planner asks Ollama for JSON Schema-constrained output and
+validates the returned JSON against the `Proposal` schema. The schema supports only two first-class
+modes: `structured` and `experimental`. If the model returns malformed JSON or valid JSON with
+invalid proposal fields, OTerminus makes one bounded repair request and rejects the output if the
+repaired JSON still fails validation. Repaired output must pass the same schema and structured
+argument checks before preview, validation, confirmation, or execution.
+
+Planner and parser prefer structured mode when command family + arguments can be represented
+deterministically. Experimental mode is used only when structured support is unavailable or
+unsuitable for a constrained single-command proposal.
+
+### 7) Structured or experimental proposal handling
+
+For structured proposals, Python renders final command strings/argv from typed arguments instead of
+trusting command text. Direct commands may also be normalized into structured arguments when a parser
+is available. Experimental proposals may carry command text, but they remain constrained by parsing,
+registry, validator, policy, preview, and stronger confirmation.
+
+Normal experimental previews use plain user-facing wording:
+`Experimental command: this was not rendered from typed structured arguments. Review it carefully before running.`
+Verbose previews may add the architecture diagnostic:
+`Experimental mode stays outside deterministic structured rendering and uses stricter confirmation.`
+
+Some trusted direct commands may remain experimental when the typed schema cannot represent the
+user's argv exactly. For example, `ls -ltrh` is detected locally, skips Ollama planning, preserves
+`["ls", "-ltrh"]`, and reaches validation with direct-command origin. Natural-language requests such
+as "show files sorted by modification time" still go through the LLM planner and can only produce
+typed structured arguments.
+
+### 8) Validation and policy
+
+Validator enforces:
+
+- curated command-family allowlist
+- operand/flag shape checks
+- blocked operators/redirection/chaining
+- path safety checks (including allowed roots)
+- risk + policy mode compatibility
+
+### 9) Preview and run mode
+
+OTerminus renders preview details (command, mode, risk, warnings/rejections).
+
+The normal execute mode requires explicit confirmation after a successful preview by default.
+Experimental mode uses very-strong confirmation text and requires the exact phrase
+`EXECUTE EXPERIMENTAL`. Failed validation or policy checks stop before execution.
+
+If `OTERMINUS_AUTO_EXECUTE_SAFE=true`, OTerminus evaluates a narrow local policy after preview and
+after dry-run/explain have already returned. The confirmation prompt may be skipped only for
+validated, warning-free, structured, exact-`safe` commands from direct detection or the deterministic
+shortcut layer. LLM-planned proposals, experimental proposals, network-touching commands, write or
+dangerous commands, project-health commands, archive extraction/creation, commands with warnings,
+history reruns, dry-run, and explain mode never qualify. The executor still runs only after the
+preview has been printed.
+
+One-shot `--dry-run` and `--explain` modes still use direct detection and, for specific
+natural-language requests, planning, validation, policy checks, and preview rendering. Ambiguous
+natural-language requests stop earlier in every run mode. Dry-run and explain intentionally skip
+confirmation and execution after successful validation. The REPL `dry-run <request>` and
+`explain <request>` built-ins provide the same inspection behavior inside an interactive session.
+
+### 10) Execution
+
+Executor runs command argv via subprocess, with special local handling for `cd` and `clear`.
+
+### 11) Audit logging
+
+When enabled, OTerminus writes a JSONL event with request lifecycle fields (routing, mode,
+validation, confirmation result or safe auto-execute skip, exit code, duration). Ambiguous requests record the ambiguity outcome and
+`blocked_ambiguous` status without planner, validation, confirmation, or execution fields. Dry-run
+and explain requests record skipped execution status instead of an execution exit code.
+
+### 12) Evals and tests
+
+Deterministic fixture evals and unit tests assert lifecycle invariants and prevent regressions.
+
+## REPL history-aware commands in lifecycle terms
+
+In REPL mode, `history`, `history <n>`, and `explain <history_id>` are local inspection commands
+for the current process session and do not execute shell commands.
+
+`rerun <history_id>` does not shortcut execution. It submits the original user input back into the
+same request lifecycle described above, including ambiguity handling, planning/direct detection,
+validation/policy, preview, and explicit execute confirmation. Reruns are never eligible for safe
+auto-execute, even when the original request would otherwise qualify.
+
+### Timing observability
+
+When audit logging is enabled, lifecycle stages record approximate local latencies in `timings_ms` using `time.perf_counter()` (milliseconds). These metrics are for debugging and contributor observability; they do not include command stdout/stderr content.
