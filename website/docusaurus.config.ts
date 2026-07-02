@@ -71,10 +71,6 @@ const config: Config = {
               label: 'GitHub',
               href: 'https://github.com/PooriaT/oterminus',
             },
-            {
-              label: 'MkDocs source',
-              href: 'https://github.com/PooriaT/oterminus/tree/main/docs',
-            },
           ],
         },
         {
