@@ -87,6 +87,7 @@ jobs:
         uses: actions/upload-pages-artifact@v5
         with:
           path: website/build
+          include-hidden-files: true
 
   deploy:
     name: Deploy Docusaurus site
@@ -102,5 +103,5 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v5
         with:
-          timeout: 600000
+          timeout: 1800000
           error_count: 10
