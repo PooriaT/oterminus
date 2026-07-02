@@ -62,6 +62,8 @@ const sidebars: SidebarsConfig = {
         'adr/0002-structured-first-planning',
         'adr/0003-router-before-planner',
         'adr/0004-network-diagnostics-boundary',
+        'adr/0005-project-health-executes-local-code',
+        'adr/0006-docs-versioning-policy',
       ],
     },
   ],
