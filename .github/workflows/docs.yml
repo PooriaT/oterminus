@@ -22,6 +22,9 @@ permissions:
 jobs:
   build:
     name: Build Docusaurus site
+    permissions:
+      contents: read
+      pages: read
     runs-on: ubuntu-latest
 
     steps:
