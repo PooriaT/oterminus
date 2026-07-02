@@ -47,7 +47,7 @@ jobs:
             ${{ runner.os }}-py${{ matrix.python-version }}-poetry-
 
       - name: Install dependencies
-        run: poetry install --with dev,docs
+        run: poetry install --with dev
 
       - name: Run tests
         run: poetry run pytest
@@ -64,11 +64,22 @@ jobs:
       - name: Check generated command reference docs
         run: poetry run python scripts/generate_command_reference.py --check
 
-      - name: Check docs links and consistency
+      - name: Check Docusaurus docs links and consistency
         run: poetry run python scripts/check_docs_links.py
 
-      - name: Build docs (strict)
-        run: poetry run mkdocs build --strict
+      - name: Set up Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: website/package-lock.json
+
+      - name: Validate Docusaurus docs
+        run: |
+          cd website
+          npm ci
+          npm run build
+          npm run typecheck
 
       - name: Validate installed package smoke checks
         run: poetry run python scripts/validate_package_install.py
@@ -134,7 +145,7 @@ jobs:
             ${{ runner.os }}-py${{ env.PYTHON_VERSION }}-poetry-
 
       - name: Install dependencies
-        run: poetry install --with dev,docs
+        run: poetry install --with dev
 
       - name: Run platform smoke tests
         run: >

@@ -1197,7 +1197,7 @@ def render_structured_command(
         if validated.operation == "format_check":
             return RenderedCommand(("poetry", "run", "ruff", "format", "--check", "."))
         if validated.operation == "build_docs":
-            return RenderedCommand(("poetry", "run", "mkdocs", "build", "--strict"))
+            return RenderedCommand(("npm", "--prefix", "website", "run", "build"))
         if validated.operation == "run_evals":
             return RenderedCommand(("poetry", "run", "oterminus-evals"))
 

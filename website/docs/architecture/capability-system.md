@@ -98,7 +98,7 @@ The curated operation set is:
 - `run_tests` -> `poetry run pytest`
 - `lint_check` -> `poetry run ruff check .`
 - `format_check` -> `poetry run ruff format --check .`
-- `build_docs` -> `poetry run mkdocs build --strict`
+- `build_docs` -> `npm --prefix website run build`
 - `run_evals` -> `poetry run oterminus-evals`
 
 Safety boundary:

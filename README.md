@@ -30,8 +30,8 @@ OTerminus is designed around an inspect-and-confirm execution contract:
 
 Direct shell commands are not blocked by natural-language ambiguity heuristics; they still go through
 validation and policy checks. Ambiguous natural-language requests stop before planning and execution
-and suggest safer read-only inspections. See the [user guide](docs/product/user-guide.md) and
-[request lifecycle](docs/architecture/request-lifecycle.md) for details.
+and suggest safer read-only inspections. See the [user guide](website/docs/product/user-guide.md) and
+[request lifecycle](website/docs/architecture/request-lifecycle.md) for details.
 
 If ambiguity handling, validation, or policy checks block a request, OTerminus does not execute.
 
@@ -128,7 +128,7 @@ oterminus completion fish
 
 The completion command only prints the script to stdout; it never edits your `.zshrc`, `.bashrc`,
 `config.fish`, or other shell startup files automatically. See the
-[shell completion docs](docs/product/shell-completion.md) for manual setup details.
+[shell completion docs](website/docs/product/shell-completion.md) for manual setup details.
 
 ### Configuration management
 
@@ -256,9 +256,9 @@ Capability maturity/status comes from registry metadata. Planned or metadata-onl
 shown in detailed references/help with warnings, but are not advertised as normal executable
 autocomplete or planner actions until their maturity metadata is updated.
 
-See [structured rendering](docs/architecture/structured-rendering.md), [routing and
-planning](docs/architecture/routing-and-planning.md), and the [request
-lifecycle](docs/architecture/request-lifecycle.md) for details.
+See [structured rendering](website/docs/architecture/structured-rendering.md), [routing and
+planning](website/docs/architecture/routing-and-planning.md), and the [request
+lifecycle](website/docs/architecture/request-lifecycle.md) for details.
 
 ## Network diagnostics
 
@@ -277,38 +277,41 @@ deploy/publish commands, or write-formatting such as `ruff format .`.
 
 ## Documentation
 
-The README is the landing page. Full documentation is generated from [`docs/`](docs/index.md) and
-published to GitHub Pages after merges to `main` (once Pages is enabled in repository settings).
+The README is the repository landing page. Full documentation is built from the Docusaurus source under [`website/docs/`](website/docs/index.md) and
+published to GitHub Pages after merges to `main`.
 
-- Hosted docs (after enablement): `https://pooriat.github.io/oterminus/`
-- Docs source of truth: [`docs/`](docs/index.md)
-- Architecture overview: [`docs/architecture/overview.md`](docs/architecture/overview.md)
+- Hosted docs: `https://pooriat.github.io/oterminus/`
+- Docs source of truth: [`website/docs/`](website/docs/index.md)
+- Architecture overview: [`website/docs/architecture/overview.md`](website/docs/architecture/overview.md)
 - Request lifecycle (central flow):
-  [`docs/architecture/request-lifecycle.md`](docs/architecture/request-lifecycle.md)
-- User guide: [`docs/product/user-guide.md`](docs/product/user-guide.md)
-- Configuration reference: [`docs/reference/config.md`](docs/reference/config.md)
-- Contributor workflow: [`docs/contributing.md`](docs/contributing.md)
-- Dogfooding playbook: [`docs/dogfooding-playbook.md`](docs/dogfooding-playbook.md)
+  [`website/docs/architecture/request-lifecycle.md`](website/docs/architecture/request-lifecycle.md)
+- User guide: [`website/docs/product/user-guide.md`](website/docs/product/user-guide.md)
+- Configuration reference: [`website/docs/reference/config.md`](website/docs/reference/config.md)
+- Contributor workflow: [`website/docs/contributing.md`](website/docs/contributing.md)
+- Dogfooding playbook: [`website/docs/dogfooding-playbook.md`](website/docs/dogfooding-playbook.md)
 - Changelog: [`CHANGELOG.md`](CHANGELOG.md)
-- Release process: [`docs/release.md`](docs/release.md)
+- Release process: [`website/docs/release.md`](website/docs/release.md)
 - Contributor command-family guide:
-  [`docs/adding-command-families.md`](docs/adding-command-families.md)
-- Evals docs: [`docs/architecture/evals.md`](docs/architecture/evals.md)
+  [`website/docs/adding-command-families.md`](website/docs/adding-command-families.md)
+- Evals docs: [`website/docs/architecture/evals.md`](website/docs/architecture/evals.md)
 
 ### Work on docs locally
 
 ```bash
-poetry install --with dev,docs
-poetry run mkdocs serve
-poetry run mkdocs build --strict
+poetry install --with dev
+cd website
+npm ci
+npm run start
+npm run build
+npm run typecheck
 ```
 
 For the full local quality checklist, including Ruff format/lint and pytest commands, see the
-[contributor workflow](docs/contributing.md). When behavior changes, update docs in the same pull
+[contributor workflow](website/docs/contributing.md). When behavior changes, update docs in the same pull
 request.
 
 - Optional local persistent REPL history is available via `OTERMINUS_HISTORY_ENABLED=true`; reruns still go through normal validation + confirmation.
-- Audit logs and persistent history are local JSONL files; redaction is enabled by default, but review logs/history before sharing. See the [audit schema](docs/reference/audit-log-schema.md) and [configuration reference](docs/reference/config.md).
+- Audit logs and persistent history are local JSONL files; redaction is enabled by default, but review logs/history before sharing. See the [audit schema](website/docs/reference/audit-log-schema.md) and [configuration reference](website/docs/reference/config.md).
 
 For a tiny set of deterministic utility requests, OTerminus can skip Ollama by producing a local
 structured proposal before normal validation and confirmation policy. The retained shortcuts are

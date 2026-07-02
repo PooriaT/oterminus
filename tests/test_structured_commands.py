@@ -319,8 +319,8 @@ def test_supported_structured_families_are_curated(command_family: str) -> None:
         (
             "project_health",
             {"operation": "build_docs"},
-            ("poetry", "run", "mkdocs", "build", "--strict"),
-            "poetry run mkdocs build --strict",
+            ("npm", "--prefix", "website", "run", "build"),
+            "npm --prefix website run build",
         ),
         (
             "project_health",
@@ -797,7 +797,7 @@ def test_parse_raw_command_as_structured_raises_for_conflicting_uniq_flags() -> 
         ("run_tests", ("poetry", "run", "pytest")),
         ("lint_check", ("poetry", "run", "ruff", "check", ".")),
         ("format_check", ("poetry", "run", "ruff", "format", "--check", ".")),
-        ("build_docs", ("poetry", "run", "mkdocs", "build", "--strict")),
+        ("build_docs", ("npm", "--prefix", "website", "run", "build")),
         ("run_evals", ("poetry", "run", "oterminus-evals")),
     ],
 )

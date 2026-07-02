@@ -12,7 +12,7 @@ def test_route_request_common_buckets() -> None:
     assert route_request("run the test suite").category == "project_health"
     assert route_request("run ruff check").category == "project_health"
     assert route_request("check docs build").category == "project_health"
-    assert route_request("run mkdocs build").category == "project_health"
+    assert route_request("run docusaurus build").category == "project_health"
 
 
 def test_route_request_manual_page_suggests_man() -> None:

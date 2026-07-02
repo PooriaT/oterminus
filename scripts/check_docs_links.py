@@ -6,9 +6,7 @@ from pathlib import Path
 import sys
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-DOCS_DIR = REPO_ROOT / "docs"
 README = REPO_ROOT / "README.md"
-MKDOCS_CONFIG = REPO_ROOT / "mkdocs.yml"
 DOCUSAURUS_DOCS_DIR = REPO_ROOT / "website" / "docs"
 DOCUSAURUS_SIDEBAR = REPO_ROOT / "website" / "sidebars.ts"
 
@@ -49,6 +47,26 @@ def _display_path(path: Path) -> str:
         return str(path)
 
 
+def _resolve_local_target(base: Path, raw_target: str) -> Path:
+    if raw_target.startswith("/"):
+        trimmed = raw_target.lstrip("/")
+        if trimmed.startswith("oterminus/"):
+            trimmed = trimmed.removeprefix("oterminus/")
+        target = DOCUSAURUS_DOCS_DIR / trimmed
+        if target.suffix:
+            return target.resolve()
+        for candidate in (
+            DOCUSAURUS_DOCS_DIR / f"{trimmed}.md",
+            DOCUSAURUS_DOCS_DIR / f"{trimmed}.mdx",
+            DOCUSAURUS_DOCS_DIR / trimmed / "index.md",
+            DOCUSAURUS_DOCS_DIR / trimmed / "index.mdx",
+        ):
+            if candidate.exists():
+                return candidate.resolve()
+        return target.resolve()
+    return (base / raw_target).resolve()
+
+
 def check_markdown_file(path: Path, errors: list[str]) -> None:
     base = path.parent
     for link in iter_markdown_links(path):
@@ -62,7 +80,7 @@ def check_markdown_file(path: Path, errors: list[str]) -> None:
         target_raw = link.split("#", 1)[0].split("?", 1)[0]
         anchor = link.split("#", 1)[1] if "#" in link else None
 
-        target_path = (base / target_raw).resolve() if target_raw else path
+        target_path = _resolve_local_target(base, target_raw) if target_raw else path
 
         try:
             target_path.relative_to(REPO_ROOT)
@@ -74,28 +92,13 @@ def check_markdown_file(path: Path, errors: list[str]) -> None:
             errors.append(f"{_display_path(path)}: missing link target: {link}")
             continue
 
-        if anchor and target_path.suffix.lower() == ".md":
+        if anchor and target_path.suffix.lower() in {".md", ".mdx"}:
             anchors = anchors_for_markdown(target_path)
             if normalize_anchor(anchor) not in anchors:
                 errors.append(
                     f"{_display_path(path)}: missing anchor '#{anchor}' in "
                     f"{_display_path(target_path)}"
                 )
-
-
-def check_mkdocs_nav(errors: list[str]) -> None:
-    content = MKDOCS_CONFIG.read_text(encoding="utf-8")
-    for line_num, line in enumerate(content.splitlines(), start=1):
-        stripped = line.strip()
-        if not stripped.startswith("- ") or ":" not in stripped:
-            continue
-        _, value = stripped.split(":", 1)
-        nav_target = value.strip()
-        if not nav_target.endswith(".md"):
-            continue
-        target = DOCS_DIR / nav_target
-        if not target.exists():
-            errors.append(f"mkdocs.yml:{line_num}: nav target does not exist: docs/{nav_target}")
 
 
 def _docusaurus_doc_exists(doc_id: str) -> bool:
@@ -117,41 +120,32 @@ def check_docusaurus_sidebar(errors: list[str]) -> None:
             errors.append(f"website/sidebars.ts: sidebar doc target does not exist: {doc_id}")
 
 
-def run_checks(docusaurus: bool = False) -> list[str]:
+def run_checks() -> list[str]:
     errors: list[str] = []
-    if docusaurus:
-        markdown_files = [
-            *sorted(DOCUSAURUS_DOCS_DIR.rglob("*.md")),
-            *sorted(DOCUSAURUS_DOCS_DIR.rglob("*.mdx")),
-        ]
-    else:
-        markdown_files = [README, *sorted(DOCS_DIR.rglob("*.md"))]
+    markdown_files = [
+        README,
+        *sorted(DOCUSAURUS_DOCS_DIR.rglob("*.md")),
+        *sorted(DOCUSAURUS_DOCS_DIR.rglob("*.mdx")),
+    ]
     for md_file in markdown_files:
         check_markdown_file(md_file, errors)
-    if docusaurus:
-        check_docusaurus_sidebar(errors)
-    else:
-        check_mkdocs_nav(errors)
+    check_docusaurus_sidebar(errors)
     return errors
 
 
 def main(argv: list[str] | None = None) -> int:
-    args = set(argv if argv is not None else sys.argv[1:])
-    if not args.issubset({"--docusaurus"}):
-        print("Usage: check_docs_links.py [--docusaurus]")
+    args = argv if argv is not None else sys.argv[1:]
+    if args:
+        print("Usage: check_docs_links.py")
         return 2
 
-    docusaurus = "--docusaurus" in args
-    errors = run_checks(docusaurus=docusaurus)
+    errors = run_checks()
     if errors:
         print("Documentation link check failed:")
         for error in errors:
             print(f"- {error}")
         return 1
-    if docusaurus:
-        print("Docusaurus documentation link check passed.")
-    else:
-        print("Documentation link check passed.")
+    print("Docusaurus documentation link check passed.")
     return 0
 
 
