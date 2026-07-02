@@ -18,12 +18,13 @@ concurrency:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 jobs:
   build:
     name: Build Docusaurus site
+    permissions:
+      contents: read
+      pages: read
     runs-on: ubuntu-latest
 
     steps:
@@ -91,6 +92,9 @@ jobs:
 
   deploy:
     name: Deploy Docusaurus site
+    permissions:
+      pages: write
+      id-token: write
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     needs: build
     runs-on: ubuntu-latest
@@ -103,5 +107,5 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v5
         with:
-          timeout: 1800000
+          timeout: 600000
           error_count: 10
