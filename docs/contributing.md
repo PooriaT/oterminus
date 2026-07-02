@@ -159,10 +159,16 @@ Validate docs before review:
 poetry run mkdocs build --strict
 poetry run python scripts/check_docs_links.py
 poetry run python scripts/generate_command_reference.py --check
+cd website
+npm ci
+npm run build
+npm run typecheck
 ```
 
-The docs workflow runs the strict build on pull requests and pushes to `main`, but deploys only
-after a push to `main`.
+The CI workflow validates both the MkDocs transition docs and the Docusaurus site. The docs
+workflow deploys the Docusaurus `website/build` artifact only after a push to `main` or a manual
+workflow dispatch. Confirm the repository Pages setting is **Settings → Pages → Build and
+deployment → Source → GitHub Actions**.
 
 ## Pre-PR quality commands
 
