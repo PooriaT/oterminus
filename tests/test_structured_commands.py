@@ -1,5 +1,8 @@
+import shlex
+
 import pytest
 
+from oterminus.path_utils import expand_user_path
 from oterminus.structured_commands import (
     StructuredCommandError,
     parse_raw_command_as_structured,
@@ -340,6 +343,85 @@ def test_render_structured_command(
 
     assert rendered.argv == expected_argv
     assert rendered.command == expected_command
+
+
+def test_expand_user_path_only_expands_current_user_home(monkeypatch, tmp_path) -> None:
+    monkeypatch.setenv("HOME", str(tmp_path))
+
+    assert expand_user_path("~") == str(tmp_path)
+    assert expand_user_path("~/Downloads") == str(tmp_path / "Downloads")
+    assert expand_user_path("~//etc/passwd") == f"{tmp_path}//etc/passwd"
+    assert expand_user_path(".") == "."
+    assert expand_user_path("src") == "src"
+    assert expand_user_path("/tmp") == "/tmp"
+    assert expand_user_path("~otheruser") == "~otheruser"
+    assert expand_user_path("$HOME/file") == "$HOME/file"
+    assert expand_user_path("${HOME}/file") == "${HOME}/file"
+    assert expand_user_path("*") == "*"
+
+
+def test_render_ls_expands_current_user_home_path(monkeypatch, tmp_path) -> None:
+    monkeypatch.setenv("HOME", str(tmp_path))
+
+    rendered = render_structured_command("ls", {"path": "~/Downloads", "all": True})
+
+    expected_path = str(tmp_path / "Downloads")
+    assert rendered.argv == ("ls", "-a", expected_path)
+    assert rendered.command == f"ls -a {shlex.quote(expected_path)}"
+
+
+@pytest.mark.parametrize(
+    ("command_family", "arguments", "expected_argv"),
+    [
+        ("du", {"path": "~", "human_readable": True}, ("du", "-h", "{home}")),
+        ("cat", {"paths": ["~/file.txt"]}, ("cat", "{home}/file.txt")),
+        ("grep", {"pattern": "TODO", "paths": ["~/project"]}, ("grep", "TODO", "{home}/project")),
+        (
+            "tar",
+            {
+                "operation": "extract_tar",
+                "archive_path": "~/archive.tar",
+                "destination_path": "~/out",
+            },
+            ("tar", "-xf", "{home}/archive.tar", "-C", "{home}/out"),
+        ),
+    ],
+)
+def test_render_structured_command_expands_path_fields(
+    monkeypatch,
+    tmp_path,
+    command_family: str,
+    arguments: dict[str, object],
+    expected_argv: tuple[str, ...],
+) -> None:
+    monkeypatch.setenv("HOME", str(tmp_path))
+
+    rendered = render_structured_command(command_family, arguments)
+
+    assert rendered.argv == tuple(arg.replace("{home}", str(tmp_path)) for arg in expected_argv)
+
+
+@pytest.mark.parametrize(
+    ("command_family", "arguments", "literal_value"),
+    [
+        ("ls", {"path": "~otheruser/file"}, "~otheruser/file"),
+        ("cat", {"paths": ["$HOME/file"]}, "$HOME/file"),
+        ("cat", {"paths": ["${HOME}/file"]}, "${HOME}/file"),
+        ("grep", {"pattern": "~", "paths": ["src"]}, "~"),
+    ],
+)
+def test_render_structured_command_does_not_expand_other_shell_syntax(
+    monkeypatch,
+    tmp_path,
+    command_family: str,
+    arguments: dict[str, object],
+    literal_value: str,
+) -> None:
+    monkeypatch.setenv("HOME", str(tmp_path))
+
+    rendered = render_structured_command(command_family, arguments)
+
+    assert literal_value in rendered.argv
 
 
 @pytest.mark.parametrize(
