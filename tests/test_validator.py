@@ -136,6 +136,126 @@ def test_direct_origin_ls_passthrough_preserves_hash_in_operand() -> None:
 
 
 @pytest.mark.parametrize(
+    ("command", "expected_argv"),
+    [
+        ("du -h ~", ["du", "-h", "{home}"]),
+        ("ls -a ~/Downloads", ["ls", "-a", "{home}/Downloads"]),
+        ("cat ~/file.txt", ["cat", "{home}/file.txt"]),
+        ("grep TODO ~/project", ["grep", "TODO", "{home}/project"]),
+    ],
+)
+def test_direct_structured_commands_expand_current_user_home_paths(
+    monkeypatch,
+    tmp_path,
+    command: str,
+    expected_argv: list[str],
+) -> None:
+    monkeypatch.setenv("HOME", str(tmp_path))
+    validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))
+
+    result = validator.validate(make_proposal(command), origin=ProposalOrigin.DIRECT_COMMAND)
+
+    assert result.accepted is True
+    assert result.argv == [arg.replace("{home}", str(tmp_path)) for arg in expected_argv]
+    assert "~" not in result.argv
+    assert "~" not in result.rendered_command
+
+
+def test_direct_origin_ls_passthrough_expands_current_user_home_path(monkeypatch, tmp_path) -> None:
+    monkeypatch.setenv("HOME", str(tmp_path))
+    validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))
+
+    result = validator.validate(
+        make_proposal("ls -ltrh ~/Downloads"), origin=ProposalOrigin.DIRECT_COMMAND
+    )
+
+    expected_path = str(tmp_path / "Downloads")
+    assert result.accepted is True
+    assert result.argv == ["ls", "-ltrh", expected_path]
+    assert result.rendered_command == f"ls -ltrh {expected_path}"
+
+
+@pytest.mark.parametrize(
+    "command",
+    ["ls -ltrh ~otheruser/file", "ls -ltrh $HOME/file", "ls -ltrh ${HOME}/file"],
+)
+def test_direct_origin_ls_passthrough_does_not_expand_other_shell_syntax(
+    monkeypatch, tmp_path, command: str
+) -> None:
+    monkeypatch.setenv("HOME", str(tmp_path))
+    validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))
+
+    result = validator.validate(make_proposal(command), origin=ProposalOrigin.DIRECT_COMMAND)
+
+    assert result.accepted is True
+    assert result.argv == command.split()
+    assert result.rendered_command == command
+
+
+def test_current_user_home_path_is_accepted_when_home_is_allowed_root(
+    monkeypatch, tmp_path
+) -> None:
+    monkeypatch.setenv("HOME", str(tmp_path))
+    validator = Validator(
+        PolicyConfig(
+            mode=RiskLevel.WRITE,
+            allow_dangerous=False,
+            allowed_roots=[str(tmp_path)],
+        )
+    )
+
+    result = validator.validate(
+        make_proposal("ls -a ~/Downloads"), origin=ProposalOrigin.DIRECT_COMMAND
+    )
+
+    assert result.accepted is True
+    assert result.argv == ["ls", "-a", str(tmp_path / "Downloads")]
+
+
+def test_current_user_home_path_is_rejected_when_expanded_path_is_outside_allowed_roots(
+    monkeypatch, tmp_path
+) -> None:
+    home = tmp_path / "home"
+    allowed = tmp_path / "allowed"
+    monkeypatch.setenv("HOME", str(home))
+    validator = Validator(
+        PolicyConfig(
+            mode=RiskLevel.WRITE,
+            allow_dangerous=False,
+            allowed_roots=[str(allowed)],
+        )
+    )
+
+    result = validator.validate(
+        make_proposal("ls -a ~/Downloads"), origin=ProposalOrigin.DIRECT_COMMAND
+    )
+
+    assert result.accepted is False
+    assert result.argv == ["ls", "-a", str(home / "Downloads")]
+    assert any("Paths outside allowed roots" in reason for reason in result.reasons)
+
+
+def test_home_parent_traversal_is_rejected_by_allowed_roots(monkeypatch, tmp_path) -> None:
+    home = tmp_path / "home"
+    monkeypatch.setenv("HOME", str(home))
+    validator = Validator(
+        PolicyConfig(
+            mode=RiskLevel.WRITE,
+            allow_dangerous=False,
+            allowed_roots=[str(home)],
+        )
+    )
+
+    result = validator.validate(
+        make_proposal("ls -a ~/../../etc"), origin=ProposalOrigin.DIRECT_COMMAND
+    )
+
+    assert result.accepted is False
+    assert result.argv == ["ls", "-a", str(home / "../../etc")]
+    assert any("Paths outside allowed roots" in reason for reason in result.reasons)
+
+
+@pytest.mark.parametrize(
     "command",
     [
         "ls -ltrh | cat",

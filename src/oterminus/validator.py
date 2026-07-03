@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import re
 import shlex
-from pathlib import Path
 from enum import Enum
+from pathlib import Path
 
 from oterminus.commands import (
     CommandSpec,
@@ -19,6 +19,7 @@ from oterminus.commands import (
 )
 from oterminus.messages import EXPERIMENTAL_USER_WARNING
 from oterminus.models import Proposal, ProposalMode, RiskLevel, ValidationResult
+from oterminus.path_utils import expand_user_path
 from oterminus.policies import PolicyConfig, is_risk_allowed
 from oterminus.structured_commands import (
     StructuredCommandError,
@@ -47,6 +48,34 @@ BLOCKED_FRAGMENT_REASONS = {
     "\r": "multiline command text",
     "\x00": "null bytes",
 }
+PATH_EXPANDING_COMMANDS = frozenset(
+    {
+        "cat",
+        "cd",
+        "chmod",
+        "cp",
+        "df",
+        "du",
+        "file",
+        "find",
+        "grep",
+        "head",
+        "ls",
+        "lsof",
+        "mkdir",
+        "mv",
+        "open",
+        "sort",
+        "stat",
+        "tail",
+        "tar",
+        "touch",
+        "uniq",
+        "unzip",
+        "wc",
+        "zip",
+    }
+)
 
 
 class ProposalOrigin(str, Enum):
@@ -220,6 +249,11 @@ class Validator:
             risk = self._risk_for_command_shape(spec, args[1:], default=risk)
             if spec.network_touching and NETWORK_TOUCHING_WARNING not in warnings:
                 warnings.append(NETWORK_TOUCHING_WARNING)
+
+            normalized_arguments = self._normalize_path_arguments(spec, args[1:])
+            if normalized_arguments != args[1:]:
+                args = [base, *normalized_arguments]
+                command = shlex.join(args)
 
         if (
             spec is not None
@@ -533,10 +567,115 @@ class Validator:
         path_operands = self._path_operands(spec, arguments)
 
         for arg in path_operands:
-            path = Path(arg).expanduser().resolve()
+            path = Path(expand_user_path(arg)).resolve()
             if not any(path == root or root in path.parents for root in roots):
                 disallowed.append(arg)
         return disallowed
+
+    def _normalize_path_arguments(self, spec: CommandSpec, arguments: list[str]) -> list[str]:
+        if spec.name not in PATH_EXPANDING_COMMANDS:
+            return arguments
+        if spec.name == "grep":
+            return self._normalize_grep_path_arguments(spec, arguments)
+        if spec.path_operand_mode == PathOperandMode.NONE:
+            return arguments
+        if spec.path_operand_mode == PathOperandMode.CD:
+            if not arguments or arguments == ["-"]:
+                return arguments
+            return [expand_user_path(arguments[0]), *arguments[1:]]
+        if spec.path_operand_mode == PathOperandMode.FIND:
+            return self._normalize_find_path_arguments(spec, arguments)
+        return self._normalize_default_path_arguments(spec, arguments)
+
+    def _normalize_find_path_arguments(self, spec: CommandSpec, arguments: list[str]) -> list[str]:
+        normalized = list(arguments)
+        index = 0
+        while index < len(normalized):
+            arg = normalized[index]
+            if arg in spec.leading_flags:
+                index += 1
+                continue
+            if arg in spec.leading_flags_with_values:
+                index += 2
+                continue
+            if any(
+                arg.startswith(flag) and len(arg) > len(flag)
+                for flag in spec.leading_flags_with_inline_values
+            ):
+                index += 1
+                continue
+            break
+
+        while index < len(normalized):
+            arg = normalized[index]
+            if arg.startswith("-") or arg in {"(", ")", "!", ","}:
+                break
+            normalized[index] = expand_user_path(arg)
+            index += 1
+        return normalized
+
+    def _normalize_grep_path_arguments(self, spec: CommandSpec, arguments: list[str]) -> list[str]:
+        normalized = list(arguments)
+        pattern_seen = False
+        index = 0
+        while index < len(normalized):
+            arg = normalized[index]
+            if arg.startswith("-") and arg != "-":
+                if arg == "-f" and index + 1 < len(normalized):
+                    value = normalized[index + 1]
+                    if not self._is_non_path_flag_value(spec, arg, value):
+                        normalized[index + 1] = expand_user_path(value)
+                    index += 2
+                    continue
+                if arg in spec.flags_with_values or arg in spec.path_valued_flags:
+                    index += 2
+                    continue
+                if self._has_supported_inline_flag_value(arg, spec):
+                    index += 1
+                    continue
+                index += 1
+                continue
+
+            if not pattern_seen:
+                pattern_seen = True
+            else:
+                normalized[index] = expand_user_path(arg)
+            index += 1
+        return normalized
+
+    def _normalize_default_path_arguments(
+        self, spec: CommandSpec, arguments: list[str]
+    ) -> list[str]:
+        normalized = list(arguments)
+        index = 0
+        while index < len(normalized):
+            arg = normalized[index]
+            if arg.startswith("-"):
+                if "=" in arg:
+                    flag, value = arg.split("=", maxsplit=1)
+                    if (
+                        flag in spec.path_valued_flags
+                        and value
+                        and not self._is_non_path_flag_value(spec, flag, value)
+                    ):
+                        normalized[index] = f"{flag}={expand_user_path(value)}"
+                    index += 1
+                    continue
+                if arg in spec.path_valued_flags:
+                    if index + 1 < len(normalized):
+                        value = normalized[index + 1]
+                        if not self._is_non_path_flag_value(spec, arg, value):
+                            normalized[index + 1] = expand_user_path(value)
+                    index += 2
+                    continue
+                if arg in spec.flags_with_values:
+                    index += 2
+                    continue
+                index += 1
+                continue
+            normalized[index] = expand_user_path(arg)
+            index += 1
+        return normalized
 
     def _path_operands(self, spec: CommandSpec, arguments: list[str]) -> list[str]:
         if spec.path_operand_mode == PathOperandMode.NONE:

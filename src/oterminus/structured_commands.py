@@ -10,6 +10,8 @@ from urllib.parse import urlsplit
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 
+from oterminus.path_utils import expand_user_path
+
 
 class StructuredCommandError(ValueError):
     pass
@@ -917,7 +919,7 @@ def render_structured_command(
             argv.append("-a")
         if validated.recursive:
             argv.append("-R")
-        argv.append(validated.path)
+        argv.append(expand_user_path(validated.path))
         return RenderedCommand(tuple(argv))
 
     if command_family == "pwd":
@@ -967,14 +969,14 @@ def render_structured_command(
         argv = ["mkdir"]
         if validated.parents:
             argv.append("-p")
-        argv.append(validated.path)
+        argv.append(expand_user_path(validated.path))
         return RenderedCommand(tuple(argv))
 
     if command_family == "chmod":
-        return RenderedCommand(("chmod", validated.mode, validated.path))
+        return RenderedCommand(("chmod", validated.mode, expand_user_path(validated.path)))
 
     if command_family == "find":
-        return RenderedCommand(("find", validated.path, "-name", validated.name))
+        return RenderedCommand(("find", expand_user_path(validated.path), "-name", validated.name))
 
     if command_family == "cp":
         argv = ["cp"]
@@ -984,14 +986,14 @@ def render_structured_command(
             argv.append("-p")
         if validated.no_clobber:
             argv.append("-n")
-        argv.extend((validated.source, validated.destination))
+        argv.extend((expand_user_path(validated.source), expand_user_path(validated.destination)))
         return RenderedCommand(tuple(argv))
 
     if command_family == "mv":
         argv = ["mv"]
         if validated.no_clobber:
             argv.append("-n")
-        argv.extend((validated.source, validated.destination))
+        argv.extend((expand_user_path(validated.source), expand_user_path(validated.destination)))
         return RenderedCommand(tuple(argv))
 
     if command_family == "du":
@@ -1002,7 +1004,7 @@ def render_structured_command(
             argv.append("-s")
         if validated.max_depth is not None:
             argv.extend(("-d", str(validated.max_depth)))
-        argv.append(validated.path)
+        argv.append(expand_user_path(validated.path))
         return RenderedCommand(tuple(argv))
 
     if command_family == "df":
@@ -1010,7 +1012,7 @@ def render_structured_command(
         if validated.human_readable:
             argv.append("-h")
         if validated.path is not None:
-            argv.append(validated.path)
+            argv.append(expand_user_path(validated.path))
         return RenderedCommand(tuple(argv))
 
     if command_family == "stat":
@@ -1019,7 +1021,7 @@ def render_structured_command(
             argv.append("-L")
         if validated.verbose:
             argv.append("-x")
-        argv.append(validated.path)
+        argv.append(expand_user_path(validated.path))
         return RenderedCommand(tuple(argv))
 
     if command_family in {"head", "tail"}:
@@ -1028,7 +1030,7 @@ def render_structured_command(
             argv.extend(("-n", str(validated.lines)))
         if validated.bytes is not None:
             argv.extend(("-c", str(validated.bytes)))
-        argv.extend(validated.paths)
+        argv.extend(expand_user_path(path) for path in validated.paths)
         return RenderedCommand(tuple(argv))
 
     if command_family == "grep":
@@ -1046,24 +1048,26 @@ def render_structured_command(
         if validated.max_count is not None:
             argv.extend(("-m", str(validated.max_count)))
         argv.append(validated.pattern)
-        argv.extend(validated.paths)
+        argv.extend(expand_user_path(path) for path in validated.paths)
         return RenderedCommand(tuple(argv))
 
     if command_family == "cat":
-        return RenderedCommand(tuple(["cat", *validated.paths]))
+        return RenderedCommand(
+            tuple(["cat", *(expand_user_path(path) for path in validated.paths)])
+        )
 
     if command_family == "open":
         argv = ["open"]
         if validated.reveal:
             argv.append("-R")
-        argv.append(validated.path)
+        argv.append(expand_user_path(validated.path))
         return RenderedCommand(tuple(argv))
 
     if command_family == "file":
         argv = ["file"]
         if validated.brief:
             argv.append("-b")
-        argv.extend(validated.paths)
+        argv.extend(expand_user_path(path) for path in validated.paths)
         return RenderedCommand(tuple(argv))
 
     if command_family == "ps":
@@ -1102,7 +1106,7 @@ def render_structured_command(
         if validated.command_prefix is not None:
             argv.extend(("-c", validated.command_prefix))
         if validated.path is not None:
-            argv.append(validated.path)
+            argv.append(expand_user_path(validated.path))
         return RenderedCommand(tuple(argv))
 
     if command_family == "wc":
@@ -1113,7 +1117,7 @@ def render_structured_command(
             argv.append("-w")
         if validated.bytes:
             argv.append("-c")
-        argv.extend(validated.paths)
+        argv.extend(expand_user_path(path) for path in validated.paths)
         return RenderedCommand(tuple(argv))
 
     if command_family == "sort":
@@ -1124,7 +1128,7 @@ def render_structured_command(
             argv.append("-r")
         if validated.unique:
             argv.append("-u")
-        argv.append(validated.path)
+        argv.append(expand_user_path(validated.path))
         return RenderedCommand(tuple(argv))
 
     if command_family == "uniq":
@@ -1135,7 +1139,7 @@ def render_structured_command(
             argv.append("-d")
         if validated.unique_only:
             argv.append("-u")
-        argv.append(validated.path)
+        argv.append(expand_user_path(validated.path))
         return RenderedCommand(tuple(argv))
 
     if command_family == "git":
@@ -1165,28 +1169,53 @@ def render_structured_command(
 
     if command_family == "tar":
         if validated.operation == "list":
-            return RenderedCommand(("tar", "-tf", validated.archive_path))
+            return RenderedCommand(("tar", "-tf", expand_user_path(validated.archive_path)))
         if validated.operation == "extract_tar":
             return RenderedCommand(
-                ("tar", "-xf", validated.archive_path, "-C", validated.destination_path)
+                (
+                    "tar",
+                    "-xf",
+                    expand_user_path(validated.archive_path),
+                    "-C",
+                    expand_user_path(validated.destination_path),
+                )
             )
         if validated.operation == "create_tar_gz":
             return RenderedCommand(
-                tuple(["tar", "-czf", validated.archive_path, *validated.source_paths])
+                tuple(
+                    [
+                        "tar",
+                        "-czf",
+                        expand_user_path(validated.archive_path),
+                        *(expand_user_path(path) for path in validated.source_paths),
+                    ]
+                )
             )
 
     if command_family == "unzip":
         if validated.operation == "list":
-            return RenderedCommand(("unzip", "-l", validated.archive_path))
+            return RenderedCommand(("unzip", "-l", expand_user_path(validated.archive_path)))
         if validated.operation == "extract_zip":
             return RenderedCommand(
-                ("unzip", validated.archive_path, "-d", validated.destination_path)
+                (
+                    "unzip",
+                    expand_user_path(validated.archive_path),
+                    "-d",
+                    expand_user_path(validated.destination_path),
+                )
             )
 
     if command_family == "zip":
         if validated.operation == "create_zip":
             return RenderedCommand(
-                tuple(["zip", "-r", validated.archive_path, *validated.source_paths])
+                tuple(
+                    [
+                        "zip",
+                        "-r",
+                        expand_user_path(validated.archive_path),
+                        *(expand_user_path(path) for path in validated.source_paths),
+                    ]
+                )
             )
 
     if command_family == "project_health":
