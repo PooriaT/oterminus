@@ -142,6 +142,7 @@ def test_direct_origin_ls_passthrough_preserves_hash_in_operand() -> None:
         ("ls -a ~/Downloads", ["ls", "-a", "{home}/Downloads"]),
         ("cat ~/file.txt", ["cat", "{home}/file.txt"]),
         ("grep TODO ~/project", ["grep", "TODO", "{home}/project"]),
+        ("grep -e TODO ~/project", ["grep", "-e", "TODO", "{home}/project"]),
     ],
 )
 def test_direct_structured_commands_expand_current_user_home_paths(

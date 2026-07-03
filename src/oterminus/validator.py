@@ -627,6 +627,10 @@ class Validator:
                         normalized[index + 1] = expand_user_path(value)
                     index += 2
                     continue
+                if arg == "-e" and index + 1 < len(normalized):
+                    pattern_seen = True
+                    index += 2
+                    continue
                 if arg in spec.flags_with_values or arg in spec.path_valued_flags:
                     index += 2
                     continue

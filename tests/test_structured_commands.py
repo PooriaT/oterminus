@@ -350,6 +350,7 @@ def test_expand_user_path_only_expands_current_user_home(monkeypatch, tmp_path) 
 
     assert expand_user_path("~") == str(tmp_path)
     assert expand_user_path("~/Downloads") == str(tmp_path / "Downloads")
+    assert expand_user_path("~//etc/passwd") == f"{tmp_path}//etc/passwd"
     assert expand_user_path(".") == "."
     assert expand_user_path("src") == "src"
     assert expand_user_path("/tmp") == "/tmp"
