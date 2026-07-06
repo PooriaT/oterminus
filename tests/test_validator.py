@@ -1,3 +1,5 @@
+import shlex
+
 import pytest
 
 from oterminus.commands import COMMAND_REGISTRY, NETWORK_TOUCHING_WARNING, command as command_spec
@@ -162,18 +164,104 @@ def test_direct_structured_commands_expand_current_user_home_paths(
     assert "~" not in result.rendered_command
 
 
-def test_direct_origin_ls_passthrough_expands_current_user_home_path(monkeypatch, tmp_path) -> None:
+@pytest.mark.parametrize(
+    "command",
+    [
+        "ls -ltrh ~/Downloads",
+        "ls --sort=time ~/Downloads",
+        "ls --color=auto ~/Downloads",
+    ],
+)
+def test_direct_origin_ls_passthrough_expands_current_user_home_path(
+    monkeypatch, tmp_path, command: str
+) -> None:
+    monkeypatch.setenv("HOME", str(tmp_path))
+    validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))
+
+    result = validator.validate(make_proposal(command), origin=ProposalOrigin.DIRECT_COMMAND)
+
+    expected_path = str(tmp_path / "Downloads")
+    assert result.accepted is True
+    assert result.argv == [*command.split()[:-1], expected_path]
+    assert result.rendered_command == shlex.join(result.argv)
+    assert all("~" not in arg for arg in result.argv)
+    assert "~" not in result.rendered_command
+
+
+def test_grep_preserves_pattern_and_expands_paths_for_allowed_root(monkeypatch, tmp_path) -> None:
+    monkeypatch.setenv("HOME", str(tmp_path))
+    validator = Validator(
+        PolicyConfig(
+            mode=RiskLevel.WRITE,
+            allow_dangerous=False,
+            allowed_roots=[str(tmp_path)],
+        )
+    )
+
+    result = validator.validate(
+        make_proposal("grep TODO ~/project"), origin=ProposalOrigin.DIRECT_COMMAND
+    )
+
+    assert result.accepted is True
+    assert result.argv == ["grep", "TODO", str(tmp_path / "project")]
+    assert result.rendered_command == shlex.join(result.argv)
+
+
+def test_grep_file_pattern_and_path_operands_expand_together(monkeypatch, tmp_path) -> None:
     monkeypatch.setenv("HOME", str(tmp_path))
     validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))
 
     result = validator.validate(
-        make_proposal("ls -ltrh ~/Downloads"), origin=ProposalOrigin.DIRECT_COMMAND
+        make_proposal("grep -f ~/patterns ~/project"), origin=ProposalOrigin.DIRECT_COMMAND
     )
 
-    expected_path = str(tmp_path / "Downloads")
     assert result.accepted is True
-    assert result.argv == ["ls", "-ltrh", expected_path]
-    assert result.rendered_command == f"ls -ltrh {expected_path}"
+    assert result.argv == [
+        "grep",
+        "-f",
+        str(tmp_path / "patterns"),
+        str(tmp_path / "project"),
+    ]
+    assert result.rendered_command == shlex.join(result.argv)
+
+
+def test_pgrep_pattern_is_not_expanded(monkeypatch, tmp_path) -> None:
+    monkeypatch.setenv("HOME", str(tmp_path))
+    validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))
+
+    result = validator.validate(
+        make_proposal("pgrep ~/python"), origin=ProposalOrigin.DIRECT_COMMAND
+    )
+
+    assert result.accepted is True
+    assert result.argv == ["pgrep", "~/python"]
+    assert result.rendered_command == "pgrep '~/python'"
+
+
+def test_man_path_like_topic_is_rejected_without_expansion(monkeypatch, tmp_path) -> None:
+    monkeypatch.setenv("HOME", str(tmp_path))
+    validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))
+
+    result = validator.validate(make_proposal("man ~/ls"), origin=ProposalOrigin.DIRECT_COMMAND)
+
+    assert result.accepted is False
+    assert result.argv == ["man", "~/ls"]
+    assert result.rendered_command == "man ~/ls"
+    assert any("manual" in reason for reason in result.reasons)
+
+
+def test_curl_url_path_is_not_expanded(monkeypatch, tmp_path) -> None:
+    monkeypatch.setenv("HOME", str(tmp_path))
+    validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))
+
+    result = validator.validate(
+        make_proposal("curl -I https://example.com/~user"),
+        origin=ProposalOrigin.DIRECT_COMMAND,
+    )
+
+    assert result.accepted is True
+    assert result.argv == ["curl", "-I", "https://example.com/~user"]
+    assert result.rendered_command == "curl -I 'https://example.com/~user'"
 
 
 @pytest.mark.parametrize(
@@ -834,6 +922,33 @@ def test_allowed_roots_grep_pattern_file_is_checked() -> None:
         PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False, allowed_roots=["/allowed"])
     )
     result = validator.validate(make_proposal("grep -f /etc/patterns /allowed/input.txt"))
+    assert result.accepted is False
+    assert any("Paths outside allowed roots" in reason for reason in result.reasons)
+
+
+def test_allowed_roots_grep_inline_regexp_marks_following_operands_as_paths() -> None:
+    validator = Validator(
+        PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False, allowed_roots=["/allowed"])
+    )
+    result = validator.validate(make_proposal("grep -eTODO /etc/passwd"))
+    assert result.accepted is False
+    assert any("Paths outside allowed roots" in reason for reason in result.reasons)
+
+
+def test_allowed_roots_grep_inline_pattern_file_is_checked() -> None:
+    validator = Validator(
+        PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False, allowed_roots=["/allowed"])
+    )
+    result = validator.validate(make_proposal("grep -f/etc/patterns /allowed/input.txt"))
+    assert result.accepted is False
+    assert any("Paths outside allowed roots" in reason for reason in result.reasons)
+
+
+def test_allowed_roots_grep_inline_pattern_file_marks_following_operands_as_paths() -> None:
+    validator = Validator(
+        PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False, allowed_roots=["/allowed"])
+    )
+    result = validator.validate(make_proposal("grep -f/allowed/patterns /etc/passwd"))
     assert result.accepted is False
     assert any("Paths outside allowed roots" in reason for reason in result.reasons)
 
