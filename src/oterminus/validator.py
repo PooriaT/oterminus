@@ -577,6 +577,8 @@ class Validator:
             return arguments
         if spec.name == "grep":
             return self._normalize_grep_path_arguments(spec, arguments)
+        if spec.name in {"tar", "unzip", "zip"}:
+            return self._normalize_archive_path_arguments(spec, arguments)
         if spec.path_operand_mode == PathOperandMode.NONE:
             return arguments
         if spec.path_operand_mode == PathOperandMode.CD:
@@ -612,6 +614,32 @@ class Validator:
                 break
             normalized[index] = expand_user_path(arg)
             index += 1
+        return normalized
+
+    def _normalize_archive_path_arguments(
+        self, spec: CommandSpec, arguments: list[str]
+    ) -> list[str]:
+        normalized = list(arguments)
+        if spec.name == "tar":
+            if len(normalized) == 2 and normalized[0] == "-tf":
+                normalized[1] = expand_user_path(normalized[1])
+            elif len(normalized) == 4 and normalized[0] == "-xf" and normalized[2] == "-C":
+                normalized[1] = expand_user_path(normalized[1])
+                normalized[3] = expand_user_path(normalized[3])
+            elif len(normalized) >= 3 and normalized[0] == "-czf":
+                normalized[1] = expand_user_path(normalized[1])
+            return normalized
+
+        if spec.name == "unzip":
+            if len(normalized) == 2 and normalized[0] == "-l":
+                normalized[1] = expand_user_path(normalized[1])
+            elif len(normalized) == 3 and normalized[1] == "-d":
+                normalized[0] = expand_user_path(normalized[0])
+                normalized[2] = expand_user_path(normalized[2])
+            return normalized
+
+        if spec.name == "zip" and len(normalized) >= 3 and normalized[0] == "-r":
+            normalized[1] = expand_user_path(normalized[1])
         return normalized
 
     def _normalize_grep_path_arguments(self, spec: CommandSpec, arguments: list[str]) -> list[str]:

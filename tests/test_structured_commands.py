@@ -402,6 +402,75 @@ def test_render_structured_command_expands_path_fields(
 
 
 @pytest.mark.parametrize(
+    ("command_family", "arguments", "expected_argv"),
+    [
+        ("ls", {"path": "~/Downloads"}, ("ls", "{home}/Downloads")),
+        ("mkdir", {"path": "~/new-dir"}, ("mkdir", "{home}/new-dir")),
+        ("chmod", {"path": "~/run.sh", "mode": "755"}, ("chmod", "755", "{home}/run.sh")),
+        ("find", {"path": "~/src", "name": "*.py"}, ("find", "{home}/src", "-name", "*.py")),
+        (
+            "cp",
+            {"source": "~/in.txt", "destination": "~/out.txt"},
+            ("cp", "{home}/in.txt", "{home}/out.txt"),
+        ),
+        (
+            "mv",
+            {"source": "~/old.txt", "destination": "~/new.txt"},
+            ("mv", "{home}/old.txt", "{home}/new.txt"),
+        ),
+        ("du", {"path": "~"}, ("du", "{home}")),
+        ("df", {"path": "~/Downloads"}, ("df", "{home}/Downloads")),
+        ("stat", {"path": "~/README.md"}, ("stat", "{home}/README.md")),
+        ("head", {"paths": ["~/a.txt", "~/b.txt"]}, ("head", "{home}/a.txt", "{home}/b.txt")),
+        ("tail", {"paths": ["~/a.txt", "~/b.txt"]}, ("tail", "{home}/a.txt", "{home}/b.txt")),
+        ("grep", {"pattern": "~", "paths": ["~/project"]}, ("grep", "~", "{home}/project")),
+        ("cat", {"paths": ["~/file.txt"]}, ("cat", "{home}/file.txt")),
+        ("open", {"path": "~/Downloads"}, ("open", "{home}/Downloads")),
+        ("file", {"paths": ["~/file.txt"]}, ("file", "{home}/file.txt")),
+        ("lsof", {"path": "~/socket"}, ("lsof", "{home}/socket")),
+        ("wc", {"paths": ["~/file.txt"]}, ("wc", "{home}/file.txt")),
+        ("sort", {"path": "~/names.txt"}, ("sort", "{home}/names.txt")),
+        ("uniq", {"path": "~/names.txt"}, ("uniq", "{home}/names.txt")),
+        (
+            "tar",
+            {"operation": "list", "archive_path": "~/archive.tar"},
+            ("tar", "-tf", "{home}/archive.tar"),
+        ),
+        (
+            "unzip",
+            {
+                "operation": "extract_zip",
+                "archive_path": "~/archive.zip",
+                "destination_path": "~/restore",
+            },
+            ("unzip", "{home}/archive.zip", "-d", "{home}/restore"),
+        ),
+        (
+            "zip",
+            {
+                "operation": "create_zip",
+                "archive_path": "~/backup.zip",
+                "source_paths": ["src"],
+            },
+            ("zip", "-r", "{home}/backup.zip", "src"),
+        ),
+    ],
+)
+def test_render_structured_command_expands_all_supported_local_path_fields(
+    monkeypatch,
+    tmp_path,
+    command_family: str,
+    arguments: dict[str, object],
+    expected_argv: tuple[str, ...],
+) -> None:
+    monkeypatch.setenv("HOME", str(tmp_path))
+
+    rendered = render_structured_command(command_family, arguments)
+
+    assert rendered.argv == tuple(arg.replace("{home}", str(tmp_path)) for arg in expected_argv)
+
+
+@pytest.mark.parametrize(
     ("command_family", "arguments", "literal_value"),
     [
         ("ls", {"path": "~otheruser/file"}, "~otheruser/file"),
@@ -768,7 +837,9 @@ def test_structured_archive_extraction_rejects_shell_tokens_in_destination() -> 
         )
 
 
-@pytest.mark.parametrize("source_path", ["/", ".", "~", "*", "src/*.py", "src; rm -rf tmp"])
+@pytest.mark.parametrize(
+    "source_path", ["/", ".", "~", "~/src", "*", "src/*.py", "src; rm -rf tmp"]
+)
 def test_structured_archive_creation_rejects_unsafe_source_paths(source_path: str) -> None:
     with pytest.raises(StructuredCommandError):
         render_structured_command(
