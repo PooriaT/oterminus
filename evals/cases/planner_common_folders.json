@@ -1,0 +1,161 @@
+[
+  {
+    "id": "planner-common-folder-downloads-ls",
+    "user_input": "show me files in the Downloads directory",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "ls",
+      "arguments": {
+        "path": "~/Downloads",
+        "long": false,
+        "human_readable": false,
+        "all": false,
+        "recursive": false
+      },
+      "command": null,
+      "summary": "List files in Downloads",
+      "explanation": "Use ls on the current user's Downloads folder.",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "structured",
+    "expected_command_family": "ls",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "ls {home}/Downloads",
+    "expected_argv": [
+      "ls",
+      "{home}/Downloads"
+    ]
+  },
+  {
+    "id": "planner-common-folder-downloads-hidden-ls",
+    "user_input": "show hidden files in my Downloads folder",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "ls",
+      "arguments": {
+        "path": "~/Downloads",
+        "long": false,
+        "human_readable": false,
+        "all": true,
+        "recursive": false
+      },
+      "command": null,
+      "summary": "List hidden files in Downloads",
+      "explanation": "Use ls -a on the current user's Downloads folder.",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "structured",
+    "expected_command_family": "ls",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "ls -a {home}/Downloads",
+    "expected_argv": [
+      "ls",
+      "-a",
+      "{home}/Downloads"
+    ]
+  },
+  {
+    "id": "planner-common-folder-desktop-ls",
+    "user_input": "show files on my Desktop",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "ls",
+      "arguments": {
+        "path": "~/Desktop",
+        "long": false,
+        "human_readable": false,
+        "all": false,
+        "recursive": false
+      },
+      "command": null,
+      "summary": "List files on Desktop",
+      "explanation": "Use ls on the current user's Desktop folder.",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "structured",
+    "expected_command_family": "ls",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "ls {home}/Desktop",
+    "expected_argv": [
+      "ls",
+      "{home}/Desktop"
+    ]
+  },
+  {
+    "id": "planner-common-folder-documents-du",
+    "user_input": "show disk usage for Documents",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "du",
+      "arguments": {
+        "path": "~/Documents",
+        "human_readable": true,
+        "summarize": true,
+        "max_depth": null
+      },
+      "command": null,
+      "summary": "Show Documents disk usage",
+      "explanation": "Use du on the current user's Documents folder.",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "structured",
+    "expected_command_family": "du",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "du -h -s {home}/Documents",
+    "expected_argv": [
+      "du",
+      "-h",
+      "-s",
+      "{home}/Documents"
+    ]
+  },
+  {
+    "id": "planner-common-folder-documents-head",
+    "user_input": "show first 20 lines of a file in Documents",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "head",
+      "arguments": {
+        "paths": [
+          "~/Documents/notes.txt"
+        ],
+        "lines": 20,
+        "bytes": null
+      },
+      "command": null,
+      "summary": "Show first lines of a Documents file",
+      "explanation": "Use head on a file path under the current user's Documents folder.",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "structured",
+    "expected_command_family": "head",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "head -n 20 {home}/Documents/notes.txt",
+    "expected_argv": [
+      "head",
+      "-n",
+      "20",
+      "{home}/Documents/notes.txt"
+    ]
+  }
+]

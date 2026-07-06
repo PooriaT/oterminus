@@ -353,24 +353,35 @@ def _evaluate_case_on_platform(
             )
         )
 
+    expected_rendered_command = _expand_expected_placeholders(case.expected_rendered_command)
     if (
-        case.expected_rendered_command is not None
-        and validation.rendered_command != case.expected_rendered_command
+        expected_rendered_command is not None
+        and validation.rendered_command != expected_rendered_command
     ):
         mismatches.append(
             EvalMismatch(
                 field="rendered_command",
-                expected=case.expected_rendered_command,
+                expected=expected_rendered_command,
                 actual=validation.rendered_command,
             )
         )
 
-    if case.expected_argv is not None and validation.argv != case.expected_argv:
+    expected_argv = _expand_expected_placeholders(case.expected_argv)
+    if expected_argv is not None and validation.argv != expected_argv:
         mismatches.append(
-            EvalMismatch(field="argv", expected=case.expected_argv, actual=validation.argv)
+            EvalMismatch(field="argv", expected=expected_argv, actual=validation.argv)
         )
 
     return EvalResult(case_id=case.id, passed=len(mismatches) == 0, mismatches=mismatches)
+
+
+def _expand_expected_placeholders(value: str | list[str] | None) -> str | list[str] | None:
+    if value is None:
+        return None
+    home = str(Path.home())
+    if isinstance(value, str):
+        return value.replace("{home}", home)
+    return [item.replace("{home}", home) for item in value]
 
 
 @contextmanager

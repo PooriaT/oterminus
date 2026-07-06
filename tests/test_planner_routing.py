@@ -117,6 +117,17 @@ def test_planner_system_prompt_env_shape_requires_variable_operand() -> None:
     assert '- `env`: `{"variable": "PATH"}`' in prompt
 
 
+def test_planner_system_prompt_includes_common_user_folder_guidance() -> None:
+    prompt = build_system_prompt()
+
+    assert "~/Downloads" in prompt
+    assert "~/Desktop" in prompt
+    assert "~/Documents" in prompt
+    assert "Do not guess arbitrary" in prompt
+    assert "$HOME" in prompt
+    assert "${HOME}" in prompt
+
+
 def test_planner_system_prompt_filters_platform_unsupported_commands() -> None:
     prompt = build_system_prompt(platform_id="linux")
     assert "`open`" not in prompt
