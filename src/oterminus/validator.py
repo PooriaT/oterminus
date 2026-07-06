@@ -653,6 +653,7 @@ class Validator:
                     value = normalized[index + 1]
                     if not self._is_non_path_flag_value(spec, arg, value):
                         normalized[index + 1] = expand_user_path(value)
+                    pattern_seen = True
                     index += 2
                     continue
                 if arg == "-e" and index + 1 < len(normalized):
@@ -713,6 +714,9 @@ class Validator:
         if spec.path_operand_mode == PathOperandMode.NONE:
             return []
 
+        if spec.name == "grep":
+            return self._grep_path_operands(spec, arguments)
+
         if spec.path_operand_mode == PathOperandMode.CD:
             if not arguments or arguments == ["-"]:
                 return ["~"] if not arguments else []
@@ -772,6 +776,42 @@ class Validator:
                 continue
             path_operands.append(arg)
             index += 1
+        return path_operands
+
+    def _grep_path_operands(self, spec: CommandSpec, arguments: list[str]) -> list[str]:
+        path_operands: list[str] = []
+        pattern_seen = False
+        index = 0
+
+        while index < len(arguments):
+            arg = arguments[index]
+            if arg.startswith("-") and arg != "-":
+                if arg == "-f" and index + 1 < len(arguments):
+                    value = arguments[index + 1]
+                    if not self._is_non_path_flag_value(spec, arg, value):
+                        path_operands.append(value)
+                    pattern_seen = True
+                    index += 2
+                    continue
+                if arg == "-e" and index + 1 < len(arguments):
+                    pattern_seen = True
+                    index += 2
+                    continue
+                if arg in spec.flags_with_values or arg in spec.path_valued_flags:
+                    index += 2
+                    continue
+                if self._has_supported_inline_flag_value(arg, spec):
+                    index += 1
+                    continue
+                index += 1
+                continue
+
+            if not pattern_seen:
+                pattern_seen = True
+            else:
+                path_operands.append(arg)
+            index += 1
+
         return path_operands
 
     def _is_non_path_flag_value(self, spec: CommandSpec, flag: str, value: str) -> bool:
