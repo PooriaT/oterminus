@@ -227,6 +227,16 @@ missing. `config edit` creates defaults first if needed, then launches `$VISUAL`
 the config path appended; if no editor is configured, it prints the path and manual-edit guidance.
 Editor commands are parsed as argv, not through a shell.
 
+## Path handling
+
+OTerminus executes commands as argv, not through a shell. For local path operands, structured
+rendering intentionally supports only current-user home shorthand: `~` and `~/...`.
+
+In natural-language planning, common folders such as Downloads, Desktop, Documents, Pictures,
+Movies, and Music are interpreted as current-user folders where appropriate, for example
+`~/Downloads`. OTerminus does not expand `$HOME`, `${HOME}`, globs, or command substitution, and it
+does not guess arbitrary system, project, application, or hidden directories.
+
 Use `config get <key>` to print a single effective value, such as `color_mode=auto` or
 `auto_execute_safe=false`. It uses normal precedence: exported environment, current-directory
 `.env`, user config, then default. Use `config set <key> <value>` to persist one safe setting in the

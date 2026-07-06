@@ -577,6 +577,8 @@ class Validator:
             return arguments
         if spec.name == "grep":
             return self._normalize_grep_path_arguments(spec, arguments)
+        if spec.name in {"tar", "unzip", "zip"}:
+            return self._normalize_archive_path_arguments(spec, arguments)
         if spec.path_operand_mode == PathOperandMode.NONE:
             return arguments
         if spec.path_operand_mode == PathOperandMode.CD:
@@ -614,6 +616,32 @@ class Validator:
             index += 1
         return normalized
 
+    def _normalize_archive_path_arguments(
+        self, spec: CommandSpec, arguments: list[str]
+    ) -> list[str]:
+        normalized = list(arguments)
+        if spec.name == "tar":
+            if len(normalized) == 2 and normalized[0] == "-tf":
+                normalized[1] = expand_user_path(normalized[1])
+            elif len(normalized) == 4 and normalized[0] == "-xf" and normalized[2] == "-C":
+                normalized[1] = expand_user_path(normalized[1])
+                normalized[3] = expand_user_path(normalized[3])
+            elif len(normalized) >= 3 and normalized[0] == "-czf":
+                normalized[1] = expand_user_path(normalized[1])
+            return normalized
+
+        if spec.name == "unzip":
+            if len(normalized) == 2 and normalized[0] == "-l":
+                normalized[1] = expand_user_path(normalized[1])
+            elif len(normalized) == 3 and normalized[1] == "-d":
+                normalized[0] = expand_user_path(normalized[0])
+                normalized[2] = expand_user_path(normalized[2])
+            return normalized
+
+        if spec.name == "zip" and len(normalized) >= 3 and normalized[0] == "-r":
+            normalized[1] = expand_user_path(normalized[1])
+        return normalized
+
     def _normalize_grep_path_arguments(self, spec: CommandSpec, arguments: list[str]) -> list[str]:
         normalized = list(arguments)
         pattern_seen = False
@@ -625,6 +653,7 @@ class Validator:
                     value = normalized[index + 1]
                     if not self._is_non_path_flag_value(spec, arg, value):
                         normalized[index + 1] = expand_user_path(value)
+                    pattern_seen = True
                     index += 2
                     continue
                 if arg == "-e" and index + 1 < len(normalized):
@@ -634,7 +663,15 @@ class Validator:
                 if arg in spec.flags_with_values or arg in spec.path_valued_flags:
                     index += 2
                     continue
-                if self._has_supported_inline_flag_value(arg, spec):
+                inline = self._supported_inline_flag_value(arg, spec)
+                if inline is not None:
+                    flag, value = inline
+                    if flag == "-f":
+                        if not self._is_non_path_flag_value(spec, flag, value):
+                            normalized[index] = f"{flag}{expand_user_path(value)}"
+                        pattern_seen = True
+                    elif flag == "-e":
+                        pattern_seen = True
                     index += 1
                     continue
                 index += 1
@@ -684,6 +721,9 @@ class Validator:
     def _path_operands(self, spec: CommandSpec, arguments: list[str]) -> list[str]:
         if spec.path_operand_mode == PathOperandMode.NONE:
             return []
+
+        if spec.name == "grep":
+            return self._grep_path_operands(spec, arguments)
 
         if spec.path_operand_mode == PathOperandMode.CD:
             if not arguments or arguments == ["-"]:
@@ -746,6 +786,50 @@ class Validator:
             index += 1
         return path_operands
 
+    def _grep_path_operands(self, spec: CommandSpec, arguments: list[str]) -> list[str]:
+        path_operands: list[str] = []
+        pattern_seen = False
+        index = 0
+
+        while index < len(arguments):
+            arg = arguments[index]
+            if arg.startswith("-") and arg != "-":
+                if arg == "-f" and index + 1 < len(arguments):
+                    value = arguments[index + 1]
+                    if not self._is_non_path_flag_value(spec, arg, value):
+                        path_operands.append(value)
+                    pattern_seen = True
+                    index += 2
+                    continue
+                if arg == "-e" and index + 1 < len(arguments):
+                    pattern_seen = True
+                    index += 2
+                    continue
+                if arg in spec.flags_with_values or arg in spec.path_valued_flags:
+                    index += 2
+                    continue
+                inline = self._supported_inline_flag_value(arg, spec)
+                if inline is not None:
+                    flag, value = inline
+                    if flag == "-f":
+                        if not self._is_non_path_flag_value(spec, flag, value):
+                            path_operands.append(value)
+                        pattern_seen = True
+                    elif flag == "-e":
+                        pattern_seen = True
+                    index += 1
+                    continue
+                index += 1
+                continue
+
+            if not pattern_seen:
+                pattern_seen = True
+            else:
+                path_operands.append(arg)
+            index += 1
+
+        return path_operands
+
     def _is_non_path_flag_value(self, spec: CommandSpec, flag: str, value: str) -> bool:
         # GNU grep uses "-" with -f/--file to mean "read patterns from stdin".
         return spec.name == "grep" and flag == "-f" and value == "-"
@@ -763,6 +847,9 @@ class Validator:
         return all(f"-{char}" in allowed_single_flags for char in token[1:])
 
     def _has_supported_inline_flag_value(self, token: str, spec: CommandSpec) -> bool:
+        return self._supported_inline_flag_value(token, spec) is not None
+
+    def _supported_inline_flag_value(self, token: str, spec: CommandSpec) -> tuple[str, str] | None:
         inline_value_flags = {
             *spec.leading_flags_with_inline_values,
             *(
@@ -771,7 +858,10 @@ class Validator:
                 if re.fullmatch(r"-[A-Za-z]", flag)
             ),
         }
-        return any(token.startswith(flag) and len(token) > len(flag) for flag in inline_value_flags)
+        for flag in sorted(inline_value_flags, key=len, reverse=True):
+            if token.startswith(flag) and len(token) > len(flag):
+                return flag, token[len(flag) :]
+        return None
 
     def _parse_shell_command(self, command: str) -> tuple[list[str], list[str]]:
         issues: list[str] = []

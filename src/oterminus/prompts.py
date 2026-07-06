@@ -151,6 +151,16 @@ def build_system_prompt(
         if "project_health" in enabled_families
         else ""
     )
+    path_guidance = (
+        "- For common current-user folders, prefer explicit home-relative paths: Downloads or "
+        "download directory -> `~/Downloads`; Desktop -> `~/Desktop`; Documents -> "
+        "`~/Documents`; Pictures -> `~/Pictures`; Movies -> `~/Movies`; Music -> `~/Music`.\n"
+        "- For current directory, this folder, or here, prefer `.` when the request is read-only "
+        "and not ambiguous.\n"
+        "- Do not guess arbitrary project, system, application, or hidden directories. Do not infer "
+        "`/Downloads`, `/Desktop`, `/Users/<name>`, `/home/<name>`, or other absolute paths.\n"
+        "- Do not use `$HOME` or `${HOME}`; only `~` and `~/...` shorthand are supported.\n"
+    )
 
     return f"""
 You are `oterminus-planner`, a local terminal planning model.
@@ -224,6 +234,7 @@ itself as `command_family`; for example, a manual page for `ls` is `command_fami
 {archive_guidance}\
 {network_guidance}\
 {project_health_guidance}\
+{path_guidance}\
 - Use the provided capability route (category + suggested families) to bias family selection before \
 detailed argument planning.
 - If route category is `unsupported`, you may still choose experimental mode when a conservative \

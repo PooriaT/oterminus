@@ -200,6 +200,7 @@ def test_default_fixture_suite_is_capability_split() -> None:
         "git_inspection.json",
         "macos_desktop.json",
         "network_diagnostics.json",
+        "planner_common_folders.json",
         "planner_normalization.json",
         "process_inspection.json",
         "project_health.json",
@@ -223,6 +224,41 @@ def test_default_eval_command_uses_packaged_capability_fixtures() -> None:
     assert parse_args([]).fixtures_dir == str(default_fixtures_dir())
     assert package_fixture_files == repo_fixture_files
     assert len(load_eval_cases(default_fixtures_dir())) == len(load_eval_cases(Path("evals/cases")))
+
+
+def test_eval_expected_values_support_home_placeholder(monkeypatch, tmp_path: Path) -> None:
+    fake_home = tmp_path / "home with space"
+    monkeypatch.setenv("HOME", str(fake_home))
+    validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))
+    case = EvalCase.model_validate(
+        {
+            "id": "placeholder-home",
+            "user_input": "show files in Downloads",
+            "planner_proposal": {
+                "action_type": "shell_command",
+                "mode": "structured",
+                "command_family": "ls",
+                "arguments": {"path": "~/Downloads"},
+                "command": None,
+                "summary": "list downloads",
+                "explanation": "use ls",
+                "risk_level": "safe",
+                "needs_confirmation": True,
+                "notes": [],
+            },
+            "expected_mode": "structured",
+            "expected_command_family": "ls",
+            "expected_risk_level": "safe",
+            "expected_acceptance": True,
+            "expected_rendered_command": "ls {home}/Downloads",
+            "expected_argv": ["ls", "{home}/Downloads"],
+        }
+    )
+
+    results, summary = run_eval_cases([case], validator)
+
+    assert summary.failed == 0
+    assert results[0].passed
 
 
 def test_expanded_newer_capability_cases_pass_without_ollama() -> None:
