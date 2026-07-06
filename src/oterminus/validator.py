@@ -663,7 +663,15 @@ class Validator:
                 if arg in spec.flags_with_values or arg in spec.path_valued_flags:
                     index += 2
                     continue
-                if self._has_supported_inline_flag_value(arg, spec):
+                inline = self._supported_inline_flag_value(arg, spec)
+                if inline is not None:
+                    flag, value = inline
+                    if flag == "-f":
+                        if not self._is_non_path_flag_value(spec, flag, value):
+                            normalized[index] = f"{flag}{expand_user_path(value)}"
+                        pattern_seen = True
+                    elif flag == "-e":
+                        pattern_seen = True
                     index += 1
                     continue
                 index += 1
@@ -800,7 +808,15 @@ class Validator:
                 if arg in spec.flags_with_values or arg in spec.path_valued_flags:
                     index += 2
                     continue
-                if self._has_supported_inline_flag_value(arg, spec):
+                inline = self._supported_inline_flag_value(arg, spec)
+                if inline is not None:
+                    flag, value = inline
+                    if flag == "-f":
+                        if not self._is_non_path_flag_value(spec, flag, value):
+                            path_operands.append(value)
+                        pattern_seen = True
+                    elif flag == "-e":
+                        pattern_seen = True
                     index += 1
                     continue
                 index += 1
@@ -831,6 +847,9 @@ class Validator:
         return all(f"-{char}" in allowed_single_flags for char in token[1:])
 
     def _has_supported_inline_flag_value(self, token: str, spec: CommandSpec) -> bool:
+        return self._supported_inline_flag_value(token, spec) is not None
+
+    def _supported_inline_flag_value(self, token: str, spec: CommandSpec) -> tuple[str, str] | None:
         inline_value_flags = {
             *spec.leading_flags_with_inline_values,
             *(
@@ -839,7 +858,10 @@ class Validator:
                 if re.fullmatch(r"-[A-Za-z]", flag)
             ),
         }
-        return any(token.startswith(flag) and len(token) > len(flag) for flag in inline_value_flags)
+        for flag in sorted(inline_value_flags, key=len, reverse=True):
+            if token.startswith(flag) and len(token) > len(flag):
+                return flag, token[len(flag) :]
+        return None
 
     def _parse_shell_command(self, command: str) -> tuple[list[str], list[str]]:
         issues: list[str] = []

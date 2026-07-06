@@ -926,6 +926,33 @@ def test_allowed_roots_grep_pattern_file_is_checked() -> None:
     assert any("Paths outside allowed roots" in reason for reason in result.reasons)
 
 
+def test_allowed_roots_grep_inline_regexp_marks_following_operands_as_paths() -> None:
+    validator = Validator(
+        PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False, allowed_roots=["/allowed"])
+    )
+    result = validator.validate(make_proposal("grep -eTODO /etc/passwd"))
+    assert result.accepted is False
+    assert any("Paths outside allowed roots" in reason for reason in result.reasons)
+
+
+def test_allowed_roots_grep_inline_pattern_file_is_checked() -> None:
+    validator = Validator(
+        PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False, allowed_roots=["/allowed"])
+    )
+    result = validator.validate(make_proposal("grep -f/etc/patterns /allowed/input.txt"))
+    assert result.accepted is False
+    assert any("Paths outside allowed roots" in reason for reason in result.reasons)
+
+
+def test_allowed_roots_grep_inline_pattern_file_marks_following_operands_as_paths() -> None:
+    validator = Validator(
+        PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False, allowed_roots=["/allowed"])
+    )
+    result = validator.validate(make_proposal("grep -f/allowed/patterns /etc/passwd"))
+    assert result.accepted is False
+    assert any("Paths outside allowed roots" in reason for reason in result.reasons)
+
+
 def test_allowed_roots_grep_pattern_file_stdin_sentinel_is_not_treated_as_path() -> None:
     validator = Validator(
         PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False, allowed_roots=["/allowed"])
