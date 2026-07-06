@@ -5,6 +5,7 @@ from contextlib import contextmanager
 import json
 from dataclasses import dataclass
 from pathlib import Path
+import shlex
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
@@ -353,7 +354,10 @@ def _evaluate_case_on_platform(
             )
         )
 
-    expected_rendered_command = _expand_expected_placeholders(case.expected_rendered_command)
+    expected_argv = _expand_expected_placeholders(case.expected_argv)
+    expected_rendered_command = _expand_expected_rendered_command(
+        case.expected_rendered_command, expected_argv
+    )
     if (
         expected_rendered_command is not None
         and validation.rendered_command != expected_rendered_command
@@ -366,13 +370,22 @@ def _evaluate_case_on_platform(
             )
         )
 
-    expected_argv = _expand_expected_placeholders(case.expected_argv)
     if expected_argv is not None and validation.argv != expected_argv:
         mismatches.append(
             EvalMismatch(field="argv", expected=expected_argv, actual=validation.argv)
         )
 
     return EvalResult(case_id=case.id, passed=len(mismatches) == 0, mismatches=mismatches)
+
+
+def _expand_expected_rendered_command(
+    value: str | None, expected_argv: list[str] | None
+) -> str | None:
+    if value is None:
+        return None
+    if "{home}" in value and expected_argv is not None:
+        return shlex.join(expected_argv)
+    return _expand_expected_placeholders(value)
 
 
 def _expand_expected_placeholders(value: str | list[str] | None) -> str | list[str] | None:

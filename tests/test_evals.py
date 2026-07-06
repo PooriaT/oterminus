@@ -226,7 +226,9 @@ def test_default_eval_command_uses_packaged_capability_fixtures() -> None:
     assert len(load_eval_cases(default_fixtures_dir())) == len(load_eval_cases(Path("evals/cases")))
 
 
-def test_eval_expected_values_support_home_placeholder() -> None:
+def test_eval_expected_values_support_home_placeholder(monkeypatch, tmp_path: Path) -> None:
+    fake_home = tmp_path / "home with space"
+    monkeypatch.setenv("HOME", str(fake_home))
     validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))
     case = EvalCase.model_validate(
         {
@@ -248,6 +250,7 @@ def test_eval_expected_values_support_home_placeholder() -> None:
             "expected_command_family": "ls",
             "expected_risk_level": "safe",
             "expected_acceptance": True,
+            "expected_rendered_command": "ls {home}/Downloads",
             "expected_argv": ["ls", "{home}/Downloads"],
         }
     )
