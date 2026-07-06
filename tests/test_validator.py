@@ -1076,8 +1076,10 @@ def test_validator_rejects_unsafe_direct_archive_creation_forms() -> None:
     for command in (
         "tar -czf backup.tar.gz /",
         "tar -czf backup.tar.gz '*'",
+        "tar -czf backup.tar.gz ~/src",
         "zip -r backup.zip /",
         "zip -r backup.zip ~",
+        "zip -r backup.zip ~/src",
         "zip -e backup.zip file.txt",
         "zip --password secret backup.zip file.txt",
     ):
@@ -1087,6 +1089,46 @@ def test_validator_rejects_unsafe_direct_archive_creation_forms() -> None:
             )
         )
         assert result.accepted is False, command
+
+
+def test_validator_expands_direct_archive_destination_paths(monkeypatch, tmp_path) -> None:
+    monkeypatch.setenv("HOME", str(tmp_path))
+    validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))
+
+    result = validator.validate(make_proposal("tar -xf ~/archive.tar -C ~/restore"))
+
+    assert result.accepted is True
+    assert result.argv == [
+        "tar",
+        "-xf",
+        str(tmp_path / "archive.tar"),
+        "-C",
+        str(tmp_path / "restore"),
+    ]
+    assert result.rendered_command == (
+        f"tar -xf {str(tmp_path / 'archive.tar')} -C {str(tmp_path / 'restore')}"
+    )
+
+
+def test_validator_preserves_archive_source_home_rejection_before_expansion(
+    monkeypatch, tmp_path
+) -> None:
+    monkeypatch.setenv("HOME", str(tmp_path))
+    validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))
+
+    result = validator.validate(
+        make_proposal(
+            "zip -r ~/backup.zip ~/src",
+            mode=ProposalMode.EXPERIMENTAL,
+            command_family="zip",
+        )
+    )
+
+    assert result.accepted is False
+    assert result.argv == ["zip", "-r", str(tmp_path / "backup.zip"), "~/src"]
+    assert any(
+        "Only guarded zip archive creation is supported" in reason for reason in result.reasons
+    )
 
 
 def test_validator_archive_allowed_roots_checks_archive_and_destination() -> None:
