@@ -29,6 +29,8 @@ class SessionHistoryItem:
     execution_status: str = "pending"
     exit_code: int | None = None
     rerun_source_history_id: int | None = None
+    recovery_source_history_id: int | None = None
+    recovery_request: bool = False
     proposal: object | None = None
     validation: object | None = None
     stdout: str | None = None
@@ -171,6 +173,8 @@ class PersistentHistoryStore:
                     execution_status=payload.get("execution_status") or "pending",
                     exit_code=payload.get("exit_code"),
                     rerun_source_history_id=payload.get("rerun_source_history_id"),
+                    recovery_source_history_id=payload.get("recovery_source_history_id"),
+                    recovery_request=bool(payload.get("recovery_request", False)),
                     stdout=payload.get("stdout"),
                     stderr=payload.get("stderr"),
                     stdout_truncated=bool(payload.get("stdout_truncated", False)),
@@ -206,6 +210,8 @@ class PersistentHistoryStore:
             "execution_status": item.execution_status,
             "exit_code": item.exit_code,
             "rerun_source_history_id": item.rerun_source_history_id,
+            "recovery_source_history_id": item.recovery_source_history_id,
+            "recovery_request": item.recovery_request,
             "stdout": item.stdout,
             "stderr": item.stderr,
             "stdout_truncated": item.stdout_truncated,
@@ -219,6 +225,8 @@ class PersistentHistoryStore:
             "failure_explanation_error": item.failure_explanation_error,
         }
         payload = {key: value for key, value in payload.items() if value is not None}
+        if not item.recovery_request:
+            payload.pop("recovery_request", None)
         if self.redact:
             for key in (
                 "user_input",

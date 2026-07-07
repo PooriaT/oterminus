@@ -192,6 +192,7 @@ def handle_request(
     run_mode: RunMode = RunMode.EXECUTE,
     session_history: SessionHistory | None = None,
     rerun_source_history_id: int | None = None,
+    recovery_source_history_id: int | None = None,
     persistent_store: PersistentHistoryStore | None = None,
     disabled_pack_ids: frozenset[str] | None = None,
     failure_explainer: FailureExplainer | None = None,
@@ -205,6 +206,8 @@ def handle_request(
     timings_ms: dict[str, int] = {}
     event = AuditEvent.start(user_input=request)
     event.rerun_source_history_id = rerun_source_history_id
+    event.recovery_source_history_id = recovery_source_history_id
+    event.recovery_request = recovery_source_history_id is not None
     event.auto_execute_safe_enabled = auto_execute_safe
     LOGGER.info("request=%s", request)
     history_item = session_history.start(request) if session_history is not None else None
@@ -268,6 +271,9 @@ def handle_request(
     event.planner_skip_reason = PLANNER_SKIP_DIRECT_COMMAND if is_direct_command else None
     if history_item is not None:
         history_item.direct_command_detected = is_direct_command
+        history_item.rerun_source_history_id = rerun_source_history_id
+        history_item.recovery_source_history_id = recovery_source_history_id
+        history_item.recovery_request = recovery_source_history_id is not None
         history_item.proposal_origin = proposal_origin
         history_item.execution_status = "planning"
     try:
@@ -489,6 +495,7 @@ def handle_request(
         proposal_origin=proposal_origin,
         command_spec=command_spec,
         rerun_source_history_id=rerun_source_history_id,
+        recovery_source_history_id=recovery_source_history_id,
         disabled_pack_ids=effective_disabled_pack_ids,
     )
     event.auto_execute_safe_eligible = auto_execute_decision.eligible
@@ -970,6 +977,22 @@ def handle_repl_history_command(
             style=style,
         )
 
+    if lowered in {"suggest fix for last failure", "recover last failure"}:
+        return _recover_last_failure(
+            session_history,
+            planner_factory=planner_factory,
+            validator=validator,
+            executor=executor,
+            audit_logger=audit_logger,
+            debug_trace=debug_trace,
+            persistent_store=persistent_store,
+            failure_explainer=failure_explainer,
+            failure_explainer_factory=failure_explainer_factory,
+            auto_execute_safe=auto_execute_safe,
+            deterministic_shortcuts=deterministic_shortcuts,
+            style=style,
+        )
+
     if lowered.startswith("history "):
         count = _parse_positive_int(lowered.split(maxsplit=1)[1])
         if count is None:
@@ -1013,6 +1036,99 @@ def handle_repl_history_command(
         )
         return ""
     return None
+
+
+def _recover_last_failure(
+    session_history: SessionHistory,
+    *,
+    planner_factory: Planner | Callable[[], Planner],
+    validator: Validator,
+    executor: Executor,
+    audit_logger: AuditLogger | None,
+    debug_trace: bool,
+    persistent_store: PersistentHistoryStore | None,
+    failure_explainer: FailureExplainer | None,
+    failure_explainer_factory: Callable[[], FailureExplainer] | None,
+    auto_execute_safe: bool,
+    deterministic_shortcuts: str,
+    style: TerminalStyle | None,
+) -> str:
+    item = session_history.latest_failure()
+    if item is None:
+        return "No failed command has been recorded in this REPL session."
+
+    suggestion = (item.failure_suggested_next_action or "").strip()
+    if not suggestion:
+        if failure_explainer is None and failure_explainer_factory is None:
+            return (
+                "Failure recovery needs failure explanations or a configured local model. "
+                "Run `explain last failure` or enable failure explanations first."
+            )
+        try:
+            active_failure_explainer = failure_explainer
+            if active_failure_explainer is None and failure_explainer_factory is not None:
+                active_failure_explainer = failure_explainer_factory()
+            if active_failure_explainer is None:
+                return (
+                    "Failure recovery needs failure explanations or a configured local model. "
+                    "Run `explain last failure` or enable failure explanations first."
+                )
+            explanation = active_failure_explainer.explain(
+                command=item.rendered_command or item.user_input,
+                exit_code=item.exit_code if item.exit_code is not None else 1,
+                stdout=item.stdout or "",
+                stderr=item.stderr or "",
+            )
+        except Exception as exc:  # noqa: BLE001
+            item.failure_explanation_error = str(exc)
+            return f"Failure recovery suggestion could not be generated: {exc}"
+        _store_failure_explanation(item, explanation)
+        suggestion = (explanation.suggested_next_action or "").strip()
+
+    suggestion_mode = item.failure_suggested_next_action_mode or "none"
+    if not suggestion or suggestion_mode == "none":
+        return (
+            "Failure recovery needs failure explanations or a configured local model. "
+            "Run `explain last failure` or enable failure explanations first."
+        )
+    if suggestion_mode == "copy-only":
+        return (
+            "--- recovery suggestion for last failure ---\n"
+            f"Suggested request: {suggestion}\n"
+            "This suggestion is marked copy-only, so OTerminus will not plan, validate, "
+            "audit, or execute it automatically. Copy it into the prompt yourself if you "
+            "want to run it through the normal lifecycle."
+        )
+
+    print(
+        _style(
+            style,
+            StyleToken.HEADING,
+            f"--- recovery suggestion for failed history id {item.id} ---",
+        )
+    )
+    print(f"Suggested request: {suggestion}")
+    print(
+        "Previewing through the normal OTerminus lifecycle; recovery suggestions never auto-execute."
+    )
+    handle_request(
+        suggestion,
+        planner_factory,
+        validator,
+        executor,
+        audit_logger=audit_logger,
+        debug_trace=debug_trace,
+        run_mode=RunMode.DRY_RUN,
+        session_history=session_history,
+        recovery_source_history_id=item.persisted_id if item.source == "persisted" else item.id,
+        persistent_store=persistent_store,
+        failure_explainer=failure_explainer,
+        failure_explainer_factory=failure_explainer_factory,
+        auto_execute_safe=auto_execute_safe,
+        deterministic_shortcuts=deterministic_shortcuts,
+        style=style,
+    )
+    return ""
 
 
 def _render_last_failure(session_history: SessionHistory) -> str:

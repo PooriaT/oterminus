@@ -80,3 +80,21 @@ def test_persistent_history_keeps_new_failure_fields_when_redaction_disabled(
     payload = json.loads(path.read_text(encoding="utf-8"))
 
     assert payload["stderr"] == "secret"
+
+
+def test_persistent_history_round_trips_recovery_metadata(tmp_path) -> None:
+    path = tmp_path / "history.jsonl"
+    store = PersistentHistoryStore(path, enabled=True, limit=10, redact=False)
+    store.append(
+        SessionHistoryItem(
+            id=2,
+            user_input="ls /",
+            recovery_source_history_id=1,
+            recovery_request=True,
+        )
+    )
+
+    loaded = store.load()
+
+    assert loaded[0].recovery_source_history_id == 1
+    assert loaded[0].recovery_request is True

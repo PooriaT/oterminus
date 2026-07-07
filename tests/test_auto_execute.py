@@ -60,6 +60,7 @@ def _decision(
     enabled: bool = True,
     run_mode: str = "execute",
     rerun_source_history_id: int | None = None,
+    recovery_source_history_id: int | None = None,
     disabled_pack_ids: frozenset[str] | None = None,
     platform_id: str | None = None,
 ):
@@ -71,6 +72,7 @@ def _decision(
         proposal_origin=origin,
         command_spec=get_command_spec(command_name) if command_name is not None else None,
         rerun_source_history_id=rerun_source_history_id,
+        recovery_source_history_id=recovery_source_history_id,
         disabled_pack_ids=disabled_pack_ids,
         platform_id=platform_id,
     )
@@ -217,6 +219,12 @@ def test_history_rerun_is_ineligible() -> None:
     decision = _decision(rerun_source_history_id=7)
     assert decision.eligible is False
     assert decision.reason == "history_rerun"
+
+
+def test_failure_recovery_is_ineligible() -> None:
+    decision = _decision(recovery_source_history_id=7)
+    assert decision.eligible is False
+    assert decision.reason == "failure_recovery"
 
 
 def test_missing_command_spec_is_ineligible() -> None:
