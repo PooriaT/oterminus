@@ -1085,10 +1085,19 @@ def _recover_last_failure(
         _store_failure_explanation(item, explanation)
         suggestion = (explanation.suggested_next_action or "").strip()
 
-    if not suggestion or (item.failure_suggested_next_action_mode or "none") == "none":
+    suggestion_mode = item.failure_suggested_next_action_mode or "none"
+    if not suggestion or suggestion_mode == "none":
         return (
             "Failure recovery needs failure explanations or a configured local model. "
             "Run `explain last failure` or enable failure explanations first."
+        )
+    if suggestion_mode == "copy-only":
+        return (
+            "--- recovery suggestion for last failure ---\n"
+            f"Suggested request: {suggestion}\n"
+            "This suggestion is marked copy-only, so OTerminus will not plan, validate, "
+            "audit, or execute it automatically. Copy it into the prompt yourself if you "
+            "want to run it through the normal lifecycle."
         )
 
     print(

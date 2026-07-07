@@ -213,6 +213,40 @@ def test_recover_last_failure_uses_stored_suggestion_dry_run(monkeypatch) -> Non
     assert kwargs["auto_execute_safe"] is True
 
 
+def test_recover_last_failure_copy_only_suggestion_is_display_only(monkeypatch) -> None:
+    calls = []
+
+    def fake_handle_request(*args, **kwargs):
+        calls.append((args, kwargs))
+        return 0
+
+    monkeypatch.setattr("oterminus.cli.handle_request", fake_handle_request)
+    history = _history_with_failure()
+    item = history.latest_failure()
+    assert item is not None
+    item.failure_suggested_next_action = "ls /"
+    item.failure_suggested_next_action_mode = "copy-only"
+    validator = Mock()
+    executor = Mock()
+
+    output = handle_repl_history_command(
+        "recover last failure",
+        session_history=history,
+        planner_factory=Mock(),
+        validator=validator,
+        executor=executor,
+        audit_logger=None,
+        debug_trace=False,
+    )
+
+    assert output is not None
+    assert "copy-only" in output
+    assert "ls /" in output
+    assert calls == []
+    validator.validate.assert_not_called()
+    executor.run.assert_not_called()
+
+
 def test_suggest_fix_last_failure_generates_and_stores_suggestion(monkeypatch) -> None:
     calls = []
 
@@ -246,6 +280,43 @@ def test_suggest_fix_last_failure_generates_and_stores_suggestion(monkeypatch) -
     assert output == ""
     assert calls[0][0][0] == "stat /missing"
     assert history.latest_failure().failure_suggested_next_action == "stat /missing"
+
+
+def test_suggest_fix_generated_copy_only_suggestion_is_display_only(monkeypatch) -> None:
+    calls = []
+
+    def fake_handle_request(*args, **kwargs):
+        calls.append((args, kwargs))
+        return 0
+
+    monkeypatch.setattr("oterminus.cli.handle_request", fake_handle_request)
+    history = _history_with_failure()
+    explainer = Mock()
+    explainer.explain.return_value = FailureExplanation(
+        command="ls /missing",
+        exit_code=2,
+        stderr_summary="No such file.",
+        likely_cause="The target path is missing.",
+        suggested_next_action="ls /",
+        suggested_next_action_mode="copy-only",
+    )
+
+    output = handle_repl_history_command(
+        "suggest fix for last failure",
+        session_history=history,
+        planner_factory=Mock(),
+        validator=Mock(),
+        executor=Mock(),
+        audit_logger=None,
+        debug_trace=False,
+        failure_explainer=explainer,
+    )
+
+    assert output is not None
+    assert "copy-only" in output
+    assert "ls /" in output
+    assert calls == []
+    assert history.latest_failure().failure_suggested_next_action_mode == "copy-only"
 
 
 def test_recover_last_failure_disabled_without_suggestion() -> None:
