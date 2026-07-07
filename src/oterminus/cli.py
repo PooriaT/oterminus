@@ -1263,6 +1263,21 @@ def main(argv: list[str] | None = None) -> int:
             planner = Planner(client)
         return planner
 
+    explain_failures_enabled = getattr(config, "explain_failures", False) is True
+    if explain_failures_enabled:
+
+        def get_failure_explainer() -> FailureExplainer:
+            nonlocal failure_explainer
+            if failure_explainer is not None:
+                return failure_explainer
+            failure_explainer = FailureExplainer(
+                OllamaPlannerClient(model=ensure_planner_ready()),
+                max_chars=getattr(config, "failure_explanation_max_chars", 4000),
+            )
+            return failure_explainer
+
+        failure_explainer_factory = get_failure_explainer
+
     if args.request:
         request = " ".join(args.request)
         audit_response = handle_audit_command(
@@ -1271,20 +1286,6 @@ def main(argv: list[str] | None = None) -> int:
         if audit_response is not None:
             print(audit_response)
             return 0
-        explain_failures_enabled = getattr(config, "explain_failures", False) is True
-        if explain_failures_enabled:
-
-            def get_failure_explainer() -> FailureExplainer:
-                nonlocal failure_explainer
-                if failure_explainer is not None:
-                    return failure_explainer
-                failure_explainer = FailureExplainer(
-                    OllamaPlannerClient(model=ensure_planner_ready()),
-                    max_chars=getattr(config, "failure_explanation_max_chars", 4000),
-                )
-                return failure_explainer
-
-            failure_explainer_factory = get_failure_explainer
         return handle_request(
             request,
             get_planner,
