@@ -360,8 +360,11 @@ REPL built-ins include (all local, deterministic, and backed by command-registry
 - `help`, `help capabilities`, `help <capability_id>`, `help <command_family>`
 - `capabilities`, `commands`, `examples`
 - `history`, `history <n>`, `explain <history_id>`, `rerun <history_id>`
+- `last failure`, `explain last failure`
 - `dry-run <request>`, `explain <request>`
 - `audit status`, `audit tail [n]`, `audit clear`, `exit`, `quit`
+
+`last failure` shows the most recent failed command recorded in the current REPL session, including the history id, original input, rendered command, exit code, status, and recorded stderr/stdout snippets when available. `explain last failure` shows any stored failure explanation, or explicitly requests the configured local failure explainer if no explanation has been stored yet. Both commands are inspection-only: they do not plan, validate, confirm, execute shell commands, or run any suggested next action. Plain `last failure` does not invoke the LLM.
 
 ### One-shot mode
 

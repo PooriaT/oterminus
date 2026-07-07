@@ -37,7 +37,7 @@ from oterminus.executor import Executor
 from oterminus.failure_explainer import FailureExplainer
 from oterminus.deterministic_shortcuts import plan_with_deterministic_shortcut
 from oterminus.logging_utils import configure_logging
-from oterminus.models import Proposal
+from oterminus.models import FailureExplanation, Proposal
 from oterminus.ollama_client import OllamaClientError, OllamaPlannerClient
 from oterminus.onboarding import run_onboarding, save_declined_onboarding
 from oterminus.planner import Planner, PlannerError
@@ -58,6 +58,29 @@ PROPOSAL_ORIGIN_DIRECT_COMMAND = "direct_command"
 PROPOSAL_ORIGIN_DETERMINISTIC_SHORTCUT = "deterministic_shortcut"
 PROPOSAL_ORIGIN_LLM_PLANNER = "llm_planner"
 PROPOSAL_ORIGIN_UNKNOWN = "unknown"
+
+
+def _store_failure_output(history_item, result) -> None:
+    history_item.stdout = result.stdout
+    history_item.stderr = result.stderr
+    history_item.stdout_truncated = bool(getattr(result, "stdout_truncated", False))
+    history_item.stderr_truncated = bool(getattr(result, "stderr_truncated", False))
+    stdout_original_chars = getattr(result, "stdout_original_chars", None)
+    stderr_original_chars = getattr(result, "stderr_original_chars", None)
+    history_item.stdout_original_chars = (
+        stdout_original_chars if isinstance(stdout_original_chars, int) else len(result.stdout)
+    )
+    history_item.stderr_original_chars = (
+        stderr_original_chars if isinstance(stderr_original_chars, int) else len(result.stderr)
+    )
+
+
+def _store_failure_explanation(history_item, explanation) -> None:
+    history_item.failure_stderr_summary = explanation.stderr_summary
+    history_item.failure_likely_cause = explanation.likely_cause
+    history_item.failure_suggested_next_action = explanation.suggested_next_action
+    mode = explanation.suggested_next_action_mode
+    history_item.failure_suggested_next_action_mode = getattr(mode, "value", str(mode))
 
 
 class RunMode(str, Enum):
@@ -540,6 +563,7 @@ def handle_request(
         _finalize_event()
         _trace_timings_if_enabled()
         _write_audit_event(audit_logger, event)
+        _persist_if_needed()
         return 124
     except (OSError, subprocess.SubprocessError) as exc:
         print(_style(style, StyleToken.ERROR, f"Execution failed: {exc}"))
@@ -551,6 +575,7 @@ def handle_request(
         _finalize_event()
         _trace_timings_if_enabled()
         _write_audit_event(audit_logger, event)
+        _persist_if_needed()
         return 1
     except KeyboardInterrupt:
         print(_style(style, StyleToken.WARNING, "Execution interrupted."))
@@ -562,6 +587,7 @@ def handle_request(
         _finalize_event()
         _trace_timings_if_enabled()
         _write_audit_event(audit_logger, event)
+        _persist_if_needed()
         return 130
 
     if validation.argv[0] == "clear":
@@ -573,11 +599,14 @@ def handle_request(
         if history_item is not None:
             history_item.execution_status = "executed"
             history_item.exit_code = result.returncode
+            if result.returncode != 0:
+                _store_failure_output(history_item, result)
         event.execution_exit_code = result.returncode
         event.duration_ms = _duration_ms_since(started_at)
         _finalize_event()
         _trace_timings_if_enabled()
         _write_audit_event(audit_logger, event)
+        _persist_if_needed()
         return result.returncode
 
     print("\n" + _style(style, StyleToken.HEADING, "--- execution output ---"))
@@ -623,14 +652,20 @@ def handle_request(
                 event.failure_explanation_generated = True
                 event.failure_suggested_next_action = explanation.suggested_next_action
                 event.failure_stderr_summary = explanation.stderr_summary
+                if history_item is not None:
+                    _store_failure_explanation(history_item, explanation)
                 print(render_failure_explanation(explanation, style=style))
         except Exception as exc:  # noqa: BLE001
             event.failure_explanation_error = str(exc)
+            if history_item is not None:
+                history_item.failure_explanation_error = str(exc)
 
     LOGGER.info("exit_code=%s", result.returncode)
     if history_item is not None:
         history_item.execution_status = "executed"
         history_item.exit_code = result.returncode
+        if result.returncode != 0:
+            _store_failure_output(history_item, result)
     event.execution_exit_code = result.returncode
     event.stdout_truncated = bool(getattr(result, "stdout_truncated", False))
     event.stderr_truncated = bool(getattr(result, "stderr_truncated", False))
@@ -924,6 +959,17 @@ def handle_repl_history_command(
     if lowered == "history persisted":
         return session_history.render_table(source="persisted")
 
+    if lowered == "last failure":
+        return _render_last_failure(session_history)
+
+    if lowered == "explain last failure":
+        return _render_explain_last_failure(
+            session_history,
+            failure_explainer=failure_explainer,
+            failure_explainer_factory=failure_explainer_factory,
+            style=style,
+        )
+
     if lowered.startswith("history "):
         count = _parse_positive_int(lowered.split(maxsplit=1)[1])
         if count is None:
@@ -967,6 +1013,101 @@ def handle_repl_history_command(
         )
         return ""
     return None
+
+
+def _render_last_failure(session_history: SessionHistory) -> str:
+    item = session_history.latest_failure()
+    if item is None:
+        return "No failed command has been recorded in this REPL session."
+    lines = [
+        "--- last failure ---",
+        f"History id: {item.id}",
+        f"Input: {item.user_input}",
+        f"Command: {item.rendered_command or '(unavailable)'}",
+        f"Status: {item.execution_status}",
+        f"Exit code: {item.exit_code if item.exit_code is not None else '(unknown)'}",
+    ]
+    if item.failure_stderr_summary:
+        lines.append(f"stderr summary: {item.failure_stderr_summary}")
+    elif item.stderr:
+        lines.append(f"stderr: {_truncate_multiline(item.stderr, 500)}")
+    else:
+        lines.append("stderr: (none recorded)")
+    if item.stdout:
+        lines.append(f"stdout: {_truncate_multiline(item.stdout, 300)}")
+    truncated = []
+    if item.stderr_truncated:
+        truncated.append(_format_truncation("stderr", item.stderr_original_chars))
+    if item.stdout_truncated:
+        truncated.append(_format_truncation("stdout", item.stdout_original_chars))
+    if truncated:
+        lines.append("Truncated: " + "; ".join(truncated))
+    if item.failure_likely_cause:
+        lines.append(f"Stored explanation: {item.failure_likely_cause}")
+    return "\n".join(lines)
+
+
+def _render_explain_last_failure(
+    session_history: SessionHistory,
+    *,
+    failure_explainer: FailureExplainer | None,
+    failure_explainer_factory: Callable[[], FailureExplainer] | None,
+    style: TerminalStyle | None = None,
+) -> str:
+    item = session_history.latest_failure()
+    if item is None:
+        return "No failed command has been recorded in this REPL session."
+    if item.failure_likely_cause or item.failure_stderr_summary:
+        return render_failure_explanation(_failure_explanation_from_history(item), style=style)
+    if failure_explainer is None and failure_explainer_factory is None:
+        return "Failure explanations are disabled or unavailable.\n" + _render_last_failure(
+            session_history
+        )
+    try:
+        active_failure_explainer = failure_explainer
+        if active_failure_explainer is None and failure_explainer_factory is not None:
+            active_failure_explainer = failure_explainer_factory()
+        if active_failure_explainer is None:
+            return "Failure explanations are disabled or unavailable.\n" + _render_last_failure(
+                session_history
+            )
+        explanation = active_failure_explainer.explain(
+            command=item.rendered_command or item.user_input,
+            exit_code=item.exit_code if item.exit_code is not None else 1,
+            stdout=item.stdout or "",
+            stderr=item.stderr or "",
+        )
+    except Exception as exc:  # noqa: BLE001
+        item.failure_explanation_error = str(exc)
+        return f"Failure explanation could not be generated: {exc}\n" + _render_last_failure(
+            session_history
+        )
+    _store_failure_explanation(item, explanation)
+    return render_failure_explanation(explanation, style=style)
+
+
+def _failure_explanation_from_history(item) -> FailureExplanation:
+    return FailureExplanation(
+        command=item.rendered_command or item.user_input,
+        exit_code=item.exit_code if item.exit_code is not None else 1,
+        stderr_summary=item.failure_stderr_summary or item.stderr or "(none recorded)",
+        likely_cause=item.failure_likely_cause or "The command failed with a non-zero exit code.",
+        suggested_next_action=item.failure_suggested_next_action,
+        suggested_next_action_mode=item.failure_suggested_next_action_mode or "none",
+    )
+
+
+def _truncate_multiline(value: str, max_chars: int) -> str:
+    collapsed = "\n".join(line.rstrip() for line in value.strip().splitlines())
+    if len(collapsed) <= max_chars:
+        return collapsed
+    return collapsed[: max_chars - 1] + "…"
+
+
+def _format_truncation(stream: str, original_chars: int | None) -> str:
+    if original_chars is None:
+        return stream
+    return f"{stream} original {original_chars} chars"
 
 
 def _render_history_explanation(
