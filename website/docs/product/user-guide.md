@@ -360,11 +360,13 @@ REPL built-ins include (all local, deterministic, and backed by command-registry
 - `help`, `help capabilities`, `help <capability_id>`, `help <command_family>`
 - `capabilities`, `commands`, `examples`
 - `history`, `history <n>`, `explain <history_id>`, `rerun <history_id>`
-- `last failure`, `explain last failure`
+- `last failure`, `explain last failure`, `suggest fix for last failure`, `recover last failure`
 - `dry-run <request>`, `explain <request>`
 - `audit status`, `audit tail [n]`, `audit clear`, `exit`, `quit`
 
 `last failure` shows the most recent failed command recorded in the current REPL session, including the history id, original input, rendered command, exit code, status, and recorded stderr/stdout snippets when available. `explain last failure` shows any stored failure explanation, or explicitly requests the configured local failure explainer if no explanation has been stored yet. Both commands are inspection-only: they do not plan, validate, confirm, execute shell commands, or run any suggested next action. Plain `last failure` does not invoke the LLM.
+
+`suggest fix for last failure` and `recover last failure` ask OTerminus to propose one conservative next step for the most recent failed command. Recovery suggestions prefer read-only diagnostics such as checking a path, listing a parent directory, or inspecting Git status. The suggestion is sent back through the normal request lifecycle in dry-run mode by default, so it is detected or planned, validated, previewed, policy-checked, and recorded like any other request. Recovery suggestions never use safe auto-execute and never run automatically; mutating fixes require explicit user intent and the normal confirmation and policy flow.
 
 ### One-shot mode
 
