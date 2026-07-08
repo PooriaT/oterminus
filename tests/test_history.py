@@ -43,6 +43,21 @@ def test_persisted_history_loads_legacy_records_without_failure_fields(tmp_path:
     assert items[0].failure_likely_cause is None
 
 
+def test_persisted_history_ignores_legacy_output_fields(tmp_path: Path) -> None:
+    path = tmp_path / "history.jsonl"
+    path.write_text(
+        '{"id": 1, "user_input": "legacy", "stdout": "secret out", "stderr": "secret err"}\n',
+        encoding="utf-8",
+    )
+    store = PersistentHistoryStore(path, enabled=True, limit=10, redact=False)
+
+    items = store.load()
+
+    assert len(items) == 1
+    assert items[0].stdout is None
+    assert items[0].stderr is None
+
+
 def test_persistent_history_redacts_new_failure_fields(tmp_path: Path) -> None:
     path = tmp_path / "history.jsonl"
     store = PersistentHistoryStore(path, enabled=True, limit=10, redact=True)
@@ -63,8 +78,8 @@ def test_persistent_history_redacts_new_failure_fields(tmp_path: Path) -> None:
 
     payload = json.loads(path.read_text(encoding="utf-8"))
 
-    assert payload["stdout"] == "out token=[REDACTED]"
-    assert payload["stderr"] == "err token=[REDACTED]"
+    assert "stdout" not in payload
+    assert "stderr" not in payload
     assert payload["failure_stderr_summary"] == "summary token=[REDACTED]"
     assert payload["failure_likely_cause"] == "cause token=[REDACTED]"
     assert payload["failure_suggested_next_action"] == "inspect token=[REDACTED]"
@@ -75,11 +90,30 @@ def test_persistent_history_keeps_new_failure_fields_when_redaction_disabled(
 ) -> None:
     path = tmp_path / "history.jsonl"
     store = PersistentHistoryStore(path, enabled=True, limit=10, redact=False)
-    store.append(SessionHistoryItem(id=1, user_input="x", stderr="secret", exit_code=1))
+    store.append(
+        SessionHistoryItem(
+            id=1,
+            user_input="x",
+            stdout="secret out",
+            stderr="secret err",
+            stdout_truncated=True,
+            stderr_truncated=True,
+            stdout_original_chars=100,
+            stderr_original_chars=200,
+            failure_stderr_summary="summary secret",
+            exit_code=1,
+        )
+    )
 
     payload = json.loads(path.read_text(encoding="utf-8"))
 
-    assert payload["stderr"] == "secret"
+    assert "stdout" not in payload
+    assert "stderr" not in payload
+    assert payload["stdout_truncated"] is True
+    assert payload["stderr_truncated"] is True
+    assert payload["stdout_original_chars"] == 100
+    assert payload["stderr_original_chars"] == 200
+    assert payload["failure_stderr_summary"] == "summary secret"
 
 
 def test_persistent_history_round_trips_recovery_metadata(tmp_path) -> None:
