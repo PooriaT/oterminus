@@ -29,8 +29,21 @@ class SessionHistoryItem:
     execution_status: str = "pending"
     exit_code: int | None = None
     rerun_source_history_id: int | None = None
+    recovery_source_history_id: int | None = None
+    recovery_request: bool = False
     proposal: object | None = None
     validation: object | None = None
+    stdout: str | None = None
+    stderr: str | None = None
+    stdout_truncated: bool = False
+    stderr_truncated: bool = False
+    stdout_original_chars: int | None = None
+    stderr_original_chars: int | None = None
+    failure_stderr_summary: str | None = None
+    failure_likely_cause: str | None = None
+    failure_suggested_next_action: str | None = None
+    failure_suggested_next_action_mode: str | None = None
+    failure_explanation_error: str | None = None
 
 
 class SessionHistory:
@@ -58,6 +71,22 @@ class SessionHistory:
             if item.id == history_id:
                 return item
         return None
+
+    def latest_failure(self) -> SessionHistoryItem | None:
+        """Return the most recent failed execution in this session.
+
+        Prefer concrete command failures represented by a non-zero exit code.
+        If no such entry exists, fall back to terminal execution failure states
+        that may not have captured a process exit code.
+        """
+        fallback_statuses = {"timed_out", "execution_failed", "interrupted"}
+        fallback: SessionHistoryItem | None = None
+        for item in reversed(self._items):
+            if item.exit_code is not None and item.exit_code != 0:
+                return item
+            if fallback is None and item.execution_status in fallback_statuses:
+                fallback = item
+        return fallback
 
     def render_table(self, limit: int | None = None, *, source: str | None = None) -> str:
         items = self._items
@@ -144,6 +173,19 @@ class PersistentHistoryStore:
                     execution_status=payload.get("execution_status") or "pending",
                     exit_code=payload.get("exit_code"),
                     rerun_source_history_id=payload.get("rerun_source_history_id"),
+                    recovery_source_history_id=payload.get("recovery_source_history_id"),
+                    recovery_request=bool(payload.get("recovery_request", False)),
+                    stdout_truncated=bool(payload.get("stdout_truncated", False)),
+                    stderr_truncated=bool(payload.get("stderr_truncated", False)),
+                    stdout_original_chars=payload.get("stdout_original_chars"),
+                    stderr_original_chars=payload.get("stderr_original_chars"),
+                    failure_stderr_summary=payload.get("failure_stderr_summary"),
+                    failure_likely_cause=payload.get("failure_likely_cause"),
+                    failure_suggested_next_action=payload.get("failure_suggested_next_action"),
+                    failure_suggested_next_action_mode=payload.get(
+                        "failure_suggested_next_action_mode"
+                    ),
+                    failure_explanation_error=payload.get("failure_explanation_error"),
                 )
             )
         return items[-self.limit :]
@@ -166,9 +208,30 @@ class PersistentHistoryStore:
             "execution_status": item.execution_status,
             "exit_code": item.exit_code,
             "rerun_source_history_id": item.rerun_source_history_id,
+            "recovery_source_history_id": item.recovery_source_history_id,
+            "recovery_request": item.recovery_request,
+            "stdout_truncated": item.stdout_truncated,
+            "stderr_truncated": item.stderr_truncated,
+            "stdout_original_chars": item.stdout_original_chars,
+            "stderr_original_chars": item.stderr_original_chars,
+            "failure_stderr_summary": item.failure_stderr_summary,
+            "failure_likely_cause": item.failure_likely_cause,
+            "failure_suggested_next_action": item.failure_suggested_next_action,
+            "failure_suggested_next_action_mode": item.failure_suggested_next_action_mode,
+            "failure_explanation_error": item.failure_explanation_error,
         }
+        payload = {key: value for key, value in payload.items() if value is not None}
+        if not item.recovery_request:
+            payload.pop("recovery_request", None)
         if self.redact:
-            for key in ("user_input", "rendered_command"):
+            for key in (
+                "user_input",
+                "rendered_command",
+                "failure_stderr_summary",
+                "failure_likely_cause",
+                "failure_suggested_next_action",
+                "failure_explanation_error",
+            ):
                 if isinstance(payload.get(key), str):
                     payload[key] = redact_text(payload[key])
         try:

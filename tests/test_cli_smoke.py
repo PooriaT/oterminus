@@ -2462,6 +2462,40 @@ def test_main_explain_failures_does_not_require_startup_before_request_handling(
     assert code == 0
 
 
+def test_main_explain_failures_wires_factory_to_repl_without_eager_startup(monkeypatch) -> None:
+    from oterminus.cli import main
+
+    config = Mock()
+    config.policy = Mock()
+    config.timeout_seconds = 30
+    config.audit_log_path = Path("/tmp/oterminus-audit.jsonl")
+    config.audit_enabled = False
+    config.audit_redact = True
+    config.explain_failures = True
+    config.failure_explanation_max_chars = 4000
+    captured: dict[str, object] = {}
+
+    monkeypatch.setattr("oterminus.cli.configure_logging", lambda verbose: None)
+    monkeypatch.setattr("oterminus.cli.load_config", lambda: config)
+    monkeypatch.setattr(
+        "oterminus.cli.ensure_startup_ready",
+        Mock(side_effect=AssertionError("startup should not be called eagerly")),
+    )
+    monkeypatch.setattr("oterminus.cli.Validator", lambda policy: Mock())
+    monkeypatch.setattr("oterminus.cli.Executor", lambda timeout_seconds: Mock())
+
+    def fake_repl(*_args, **kwargs) -> int:
+        captured.update(kwargs)
+        return 0
+
+    monkeypatch.setattr("oterminus.cli.repl", fake_repl)
+
+    code = main([])
+
+    assert code == 0
+    assert captured.get("failure_explainer_factory") is not None
+
+
 def test_repl_propagates_failure_explainer_to_requests(monkeypatch) -> None:
     from oterminus.cli import repl
 

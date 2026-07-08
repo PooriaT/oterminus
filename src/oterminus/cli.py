@@ -37,7 +37,7 @@ from oterminus.executor import Executor
 from oterminus.failure_explainer import FailureExplainer
 from oterminus.deterministic_shortcuts import plan_with_deterministic_shortcut
 from oterminus.logging_utils import configure_logging
-from oterminus.models import Proposal
+from oterminus.models import FailureExplanation, Proposal
 from oterminus.ollama_client import OllamaClientError, OllamaPlannerClient
 from oterminus.onboarding import run_onboarding, save_declined_onboarding
 from oterminus.planner import Planner, PlannerError
@@ -58,6 +58,29 @@ PROPOSAL_ORIGIN_DIRECT_COMMAND = "direct_command"
 PROPOSAL_ORIGIN_DETERMINISTIC_SHORTCUT = "deterministic_shortcut"
 PROPOSAL_ORIGIN_LLM_PLANNER = "llm_planner"
 PROPOSAL_ORIGIN_UNKNOWN = "unknown"
+
+
+def _store_failure_output(history_item, result) -> None:
+    history_item.stdout = result.stdout
+    history_item.stderr = result.stderr
+    history_item.stdout_truncated = bool(getattr(result, "stdout_truncated", False))
+    history_item.stderr_truncated = bool(getattr(result, "stderr_truncated", False))
+    stdout_original_chars = getattr(result, "stdout_original_chars", None)
+    stderr_original_chars = getattr(result, "stderr_original_chars", None)
+    history_item.stdout_original_chars = (
+        stdout_original_chars if isinstance(stdout_original_chars, int) else len(result.stdout)
+    )
+    history_item.stderr_original_chars = (
+        stderr_original_chars if isinstance(stderr_original_chars, int) else len(result.stderr)
+    )
+
+
+def _store_failure_explanation(history_item, explanation) -> None:
+    history_item.failure_stderr_summary = explanation.stderr_summary
+    history_item.failure_likely_cause = explanation.likely_cause
+    history_item.failure_suggested_next_action = explanation.suggested_next_action
+    mode = explanation.suggested_next_action_mode
+    history_item.failure_suggested_next_action_mode = getattr(mode, "value", str(mode))
 
 
 class RunMode(str, Enum):
@@ -169,6 +192,7 @@ def handle_request(
     run_mode: RunMode = RunMode.EXECUTE,
     session_history: SessionHistory | None = None,
     rerun_source_history_id: int | None = None,
+    recovery_source_history_id: int | None = None,
     persistent_store: PersistentHistoryStore | None = None,
     disabled_pack_ids: frozenset[str] | None = None,
     failure_explainer: FailureExplainer | None = None,
@@ -182,6 +206,8 @@ def handle_request(
     timings_ms: dict[str, int] = {}
     event = AuditEvent.start(user_input=request)
     event.rerun_source_history_id = rerun_source_history_id
+    event.recovery_source_history_id = recovery_source_history_id
+    event.recovery_request = recovery_source_history_id is not None
     event.auto_execute_safe_enabled = auto_execute_safe
     LOGGER.info("request=%s", request)
     history_item = session_history.start(request) if session_history is not None else None
@@ -245,6 +271,9 @@ def handle_request(
     event.planner_skip_reason = PLANNER_SKIP_DIRECT_COMMAND if is_direct_command else None
     if history_item is not None:
         history_item.direct_command_detected = is_direct_command
+        history_item.rerun_source_history_id = rerun_source_history_id
+        history_item.recovery_source_history_id = recovery_source_history_id
+        history_item.recovery_request = recovery_source_history_id is not None
         history_item.proposal_origin = proposal_origin
         history_item.execution_status = "planning"
     try:
@@ -466,6 +495,7 @@ def handle_request(
         proposal_origin=proposal_origin,
         command_spec=command_spec,
         rerun_source_history_id=rerun_source_history_id,
+        recovery_source_history_id=recovery_source_history_id,
         disabled_pack_ids=effective_disabled_pack_ids,
     )
     event.auto_execute_safe_eligible = auto_execute_decision.eligible
@@ -540,6 +570,7 @@ def handle_request(
         _finalize_event()
         _trace_timings_if_enabled()
         _write_audit_event(audit_logger, event)
+        _persist_if_needed()
         return 124
     except (OSError, subprocess.SubprocessError) as exc:
         print(_style(style, StyleToken.ERROR, f"Execution failed: {exc}"))
@@ -551,6 +582,7 @@ def handle_request(
         _finalize_event()
         _trace_timings_if_enabled()
         _write_audit_event(audit_logger, event)
+        _persist_if_needed()
         return 1
     except KeyboardInterrupt:
         print(_style(style, StyleToken.WARNING, "Execution interrupted."))
@@ -562,6 +594,7 @@ def handle_request(
         _finalize_event()
         _trace_timings_if_enabled()
         _write_audit_event(audit_logger, event)
+        _persist_if_needed()
         return 130
 
     if validation.argv[0] == "clear":
@@ -573,11 +606,14 @@ def handle_request(
         if history_item is not None:
             history_item.execution_status = "executed"
             history_item.exit_code = result.returncode
+            if result.returncode != 0:
+                _store_failure_output(history_item, result)
         event.execution_exit_code = result.returncode
         event.duration_ms = _duration_ms_since(started_at)
         _finalize_event()
         _trace_timings_if_enabled()
         _write_audit_event(audit_logger, event)
+        _persist_if_needed()
         return result.returncode
 
     print("\n" + _style(style, StyleToken.HEADING, "--- execution output ---"))
@@ -623,14 +659,20 @@ def handle_request(
                 event.failure_explanation_generated = True
                 event.failure_suggested_next_action = explanation.suggested_next_action
                 event.failure_stderr_summary = explanation.stderr_summary
+                if history_item is not None:
+                    _store_failure_explanation(history_item, explanation)
                 print(render_failure_explanation(explanation, style=style))
         except Exception as exc:  # noqa: BLE001
             event.failure_explanation_error = str(exc)
+            if history_item is not None:
+                history_item.failure_explanation_error = str(exc)
 
     LOGGER.info("exit_code=%s", result.returncode)
     if history_item is not None:
         history_item.execution_status = "executed"
         history_item.exit_code = result.returncode
+        if result.returncode != 0:
+            _store_failure_output(history_item, result)
     event.execution_exit_code = result.returncode
     event.stdout_truncated = bool(getattr(result, "stdout_truncated", False))
     event.stderr_truncated = bool(getattr(result, "stderr_truncated", False))
@@ -924,6 +966,33 @@ def handle_repl_history_command(
     if lowered == "history persisted":
         return session_history.render_table(source="persisted")
 
+    if lowered == "last failure":
+        return _render_last_failure(session_history)
+
+    if lowered == "explain last failure":
+        return _render_explain_last_failure(
+            session_history,
+            failure_explainer=failure_explainer,
+            failure_explainer_factory=failure_explainer_factory,
+            style=style,
+        )
+
+    if lowered in {"suggest fix for last failure", "recover last failure"}:
+        return _recover_last_failure(
+            session_history,
+            planner_factory=planner_factory,
+            validator=validator,
+            executor=executor,
+            audit_logger=audit_logger,
+            debug_trace=debug_trace,
+            persistent_store=persistent_store,
+            failure_explainer=failure_explainer,
+            failure_explainer_factory=failure_explainer_factory,
+            auto_execute_safe=auto_execute_safe,
+            deterministic_shortcuts=deterministic_shortcuts,
+            style=style,
+        )
+
     if lowered.startswith("history "):
         count = _parse_positive_int(lowered.split(maxsplit=1)[1])
         if count is None:
@@ -967,6 +1036,194 @@ def handle_repl_history_command(
         )
         return ""
     return None
+
+
+def _recover_last_failure(
+    session_history: SessionHistory,
+    *,
+    planner_factory: Planner | Callable[[], Planner],
+    validator: Validator,
+    executor: Executor,
+    audit_logger: AuditLogger | None,
+    debug_trace: bool,
+    persistent_store: PersistentHistoryStore | None,
+    failure_explainer: FailureExplainer | None,
+    failure_explainer_factory: Callable[[], FailureExplainer] | None,
+    auto_execute_safe: bool,
+    deterministic_shortcuts: str,
+    style: TerminalStyle | None,
+) -> str:
+    item = session_history.latest_failure()
+    if item is None:
+        return "No failed command has been recorded in this REPL session."
+
+    suggestion = (item.failure_suggested_next_action or "").strip()
+    if not suggestion:
+        if failure_explainer is None and failure_explainer_factory is None:
+            return (
+                "Failure recovery needs failure explanations or a configured local model. "
+                "Run `explain last failure` or enable failure explanations first."
+            )
+        try:
+            active_failure_explainer = failure_explainer
+            if active_failure_explainer is None and failure_explainer_factory is not None:
+                active_failure_explainer = failure_explainer_factory()
+            if active_failure_explainer is None:
+                return (
+                    "Failure recovery needs failure explanations or a configured local model. "
+                    "Run `explain last failure` or enable failure explanations first."
+                )
+            explanation = active_failure_explainer.explain(
+                command=item.rendered_command or item.user_input,
+                exit_code=item.exit_code if item.exit_code is not None else 1,
+                stdout=item.stdout or "",
+                stderr=item.stderr or "",
+            )
+        except Exception as exc:  # noqa: BLE001
+            item.failure_explanation_error = str(exc)
+            return f"Failure recovery suggestion could not be generated: {exc}"
+        _store_failure_explanation(item, explanation)
+        suggestion = (explanation.suggested_next_action or "").strip()
+
+    suggestion_mode = item.failure_suggested_next_action_mode or "none"
+    if not suggestion or suggestion_mode == "none":
+        return (
+            "Failure recovery needs failure explanations or a configured local model. "
+            "Run `explain last failure` or enable failure explanations first."
+        )
+    if suggestion_mode == "copy-only":
+        return (
+            "--- recovery suggestion for last failure ---\n"
+            f"Suggested request: {suggestion}\n"
+            "This suggestion is marked copy-only, so OTerminus will not plan, validate, "
+            "audit, or execute it automatically. Copy it into the prompt yourself if you "
+            "want to run it through the normal lifecycle."
+        )
+
+    print(
+        _style(
+            style,
+            StyleToken.HEADING,
+            f"--- recovery suggestion for failed history id {item.id} ---",
+        )
+    )
+    print(f"Suggested request: {suggestion}")
+    print(
+        "Previewing through the normal OTerminus lifecycle; recovery suggestions never auto-execute."
+    )
+    handle_request(
+        suggestion,
+        planner_factory,
+        validator,
+        executor,
+        audit_logger=audit_logger,
+        debug_trace=debug_trace,
+        run_mode=RunMode.DRY_RUN,
+        session_history=session_history,
+        recovery_source_history_id=item.persisted_id if item.source == "persisted" else item.id,
+        persistent_store=persistent_store,
+        failure_explainer=failure_explainer,
+        failure_explainer_factory=failure_explainer_factory,
+        auto_execute_safe=auto_execute_safe,
+        deterministic_shortcuts=deterministic_shortcuts,
+        style=style,
+    )
+    return ""
+
+
+def _render_last_failure(session_history: SessionHistory) -> str:
+    item = session_history.latest_failure()
+    if item is None:
+        return "No failed command has been recorded in this REPL session."
+    lines = [
+        "--- last failure ---",
+        f"History id: {item.id}",
+        f"Input: {item.user_input}",
+        f"Command: {item.rendered_command or '(unavailable)'}",
+        f"Status: {item.execution_status}",
+        f"Exit code: {item.exit_code if item.exit_code is not None else '(unknown)'}",
+    ]
+    if item.failure_stderr_summary:
+        lines.append(f"stderr summary: {item.failure_stderr_summary}")
+    elif item.stderr:
+        lines.append(f"stderr: {_truncate_multiline(item.stderr, 500)}")
+    else:
+        lines.append("stderr: (none recorded)")
+    if item.stdout:
+        lines.append(f"stdout: {_truncate_multiline(item.stdout, 300)}")
+    truncated = []
+    if item.stderr_truncated:
+        truncated.append(_format_truncation("stderr", item.stderr_original_chars))
+    if item.stdout_truncated:
+        truncated.append(_format_truncation("stdout", item.stdout_original_chars))
+    if truncated:
+        lines.append("Truncated: " + "; ".join(truncated))
+    if item.failure_likely_cause:
+        lines.append(f"Stored explanation: {item.failure_likely_cause}")
+    return "\n".join(lines)
+
+
+def _render_explain_last_failure(
+    session_history: SessionHistory,
+    *,
+    failure_explainer: FailureExplainer | None,
+    failure_explainer_factory: Callable[[], FailureExplainer] | None,
+    style: TerminalStyle | None = None,
+) -> str:
+    item = session_history.latest_failure()
+    if item is None:
+        return "No failed command has been recorded in this REPL session."
+    if item.failure_likely_cause or item.failure_stderr_summary:
+        return render_failure_explanation(_failure_explanation_from_history(item), style=style)
+    if failure_explainer is None and failure_explainer_factory is None:
+        return "Failure explanations are disabled or unavailable.\n" + _render_last_failure(
+            session_history
+        )
+    try:
+        active_failure_explainer = failure_explainer
+        if active_failure_explainer is None and failure_explainer_factory is not None:
+            active_failure_explainer = failure_explainer_factory()
+        if active_failure_explainer is None:
+            return "Failure explanations are disabled or unavailable.\n" + _render_last_failure(
+                session_history
+            )
+        explanation = active_failure_explainer.explain(
+            command=item.rendered_command or item.user_input,
+            exit_code=item.exit_code if item.exit_code is not None else 1,
+            stdout=item.stdout or "",
+            stderr=item.stderr or "",
+        )
+    except Exception as exc:  # noqa: BLE001
+        item.failure_explanation_error = str(exc)
+        return f"Failure explanation could not be generated: {exc}\n" + _render_last_failure(
+            session_history
+        )
+    _store_failure_explanation(item, explanation)
+    return render_failure_explanation(explanation, style=style)
+
+
+def _failure_explanation_from_history(item) -> FailureExplanation:
+    return FailureExplanation(
+        command=item.rendered_command or item.user_input,
+        exit_code=item.exit_code if item.exit_code is not None else 1,
+        stderr_summary=item.failure_stderr_summary or item.stderr or "(none recorded)",
+        likely_cause=item.failure_likely_cause or "The command failed with a non-zero exit code.",
+        suggested_next_action=item.failure_suggested_next_action,
+        suggested_next_action_mode=item.failure_suggested_next_action_mode or "none",
+    )
+
+
+def _truncate_multiline(value: str, max_chars: int) -> str:
+    collapsed = "\n".join(line.rstrip() for line in value.strip().splitlines())
+    if len(collapsed) <= max_chars:
+        return collapsed
+    return collapsed[: max_chars - 1] + "…"
+
+
+def _format_truncation(stream: str, original_chars: int | None) -> str:
+    if original_chars is None:
+        return stream
+    return f"{stream} original {original_chars} chars"
 
 
 def _render_history_explanation(
@@ -1122,6 +1379,21 @@ def main(argv: list[str] | None = None) -> int:
             planner = Planner(client)
         return planner
 
+    explain_failures_enabled = getattr(config, "explain_failures", False) is True
+    if explain_failures_enabled:
+
+        def get_failure_explainer() -> FailureExplainer:
+            nonlocal failure_explainer
+            if failure_explainer is not None:
+                return failure_explainer
+            failure_explainer = FailureExplainer(
+                OllamaPlannerClient(model=ensure_planner_ready()),
+                max_chars=getattr(config, "failure_explanation_max_chars", 4000),
+            )
+            return failure_explainer
+
+        failure_explainer_factory = get_failure_explainer
+
     if args.request:
         request = " ".join(args.request)
         audit_response = handle_audit_command(
@@ -1130,20 +1402,6 @@ def main(argv: list[str] | None = None) -> int:
         if audit_response is not None:
             print(audit_response)
             return 0
-        explain_failures_enabled = getattr(config, "explain_failures", False) is True
-        if explain_failures_enabled:
-
-            def get_failure_explainer() -> FailureExplainer:
-                nonlocal failure_explainer
-                if failure_explainer is not None:
-                    return failure_explainer
-                failure_explainer = FailureExplainer(
-                    OllamaPlannerClient(model=ensure_planner_ready()),
-                    max_chars=getattr(config, "failure_explanation_max_chars", 4000),
-                )
-                return failure_explainer
-
-            failure_explainer_factory = get_failure_explainer
         return handle_request(
             request,
             get_planner,

@@ -42,6 +42,8 @@ Audit logs are newline-delimited JSON objects (JSONL), one event per handled req
 - `stdout_visible_chars` (nullable int)
 - `stderr_visible_chars` (nullable int)
 - `rerun_source_history_id` (nullable int)
+- `recovery_source_history_id` (nullable int)
+- `recovery_request` (bool)
 - `duration_ms` (nullable int)
 - `timings_ms` (object mapping stage names to non-negative integer milliseconds)
 

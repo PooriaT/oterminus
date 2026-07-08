@@ -18,6 +18,8 @@ When enabled, each request lifecycle writes one JSON line with fields covering:
 - stage-level latency metrics (`timings_ms`) to show where time was spent and whether planner was skipped
 - execution output truncation metadata (flags and character counts), without storing raw stdout/stderr
 - rerun lineage (`rerun_source_history_id`) when a request is triggered via `rerun <history_id>`
+- recovery lineage (`recovery_source_history_id`, `recovery_request`) when a request is triggered
+  from a last-failure recovery suggestion
 
 For ambiguous natural-language requests, the audit event records `ambiguity_detected`,
 `ambiguity_reason`, `ambiguity_safe_options`, `confirmation_result: "blocked_ambiguous"`, and
