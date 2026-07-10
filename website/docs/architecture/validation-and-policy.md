@@ -64,12 +64,27 @@ detection. That policy accepts conservative short flag clusters such as `-ltrh`,
 options such as `--color=auto`, and local path operands while preserving the typed structured `ls`
 schema for natural-language planning.
 
+An opt-in is accepted by the registry only after explicit command-by-command review. The command
+must be read-only and exact-`safe` risk; inspect only the local machine/local filesystem; treat its
+operands as local filesystem targets; and have no write, delete, mutation, install, network,
+archive creation/extraction, privilege, or project-execution behavior. Passthrough is appropriate
+only when useful safe flag combinations are too numerous to model one by one. Structured rendering
+remains the preferred and more strongly typed path for LLM/natural-language planning. For now the
+reviewed opt-in allowlist contains only `ls`; adding another family requires a separate policy
+review and issue.
+
 Planner JSON, proposal notes, summaries, explanations, and command text cannot choose this trusted
 origin. `llm_planner`, `deterministic_shortcut`, unknown, legacy `local_planner`/`ollama_planner`, or
 reconstructed proposals continue through explicit flag validation, and every command without the
 opt-in remains strict. The legacy origin names are retained only so older audit/history data can be
 interpreted; new proposal sources should be `direct_command`, `deterministic_shortcut`, or
 `llm_planner`.
+
+Passthrough preserves argv; it does not invoke a shell or bypass validation. Shell operators,
+redirection, pipelines, command substitution, control characters, the `--` option terminator, and
+URL-like operands remain rejected. Command-family/base consistency, allowed-root restrictions,
+disabled command packs, platform support, risk policy, preview, and confirmation all remain in the
+normal execution path. Non-opt-in commands continue to use their explicit curated flag metadata.
 
 ## Network-touching warning boundary
 

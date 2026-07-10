@@ -16,6 +16,7 @@ from oterminus.commands import (
     get_command_spec,
     get_pack_for_command,
     is_command_supported_on_platform,
+    safe_inspection_passthrough_eligibility_reasons,
 )
 from oterminus.messages import EXPERIMENTAL_USER_WARNING
 from oterminus.models import Proposal, ProposalMode, RiskLevel, ValidationResult
@@ -254,6 +255,14 @@ class Validator:
             if normalized_arguments != args[1:]:
                 args = [base, *normalized_arguments]
                 command = shlex.join(args)
+            elif (
+                not reasons
+                and proposal.mode != ProposalMode.STRUCTURED
+                and origin == ProposalOrigin.DIRECT_COMMAND
+                and spec.direct_flag_policy == DirectFlagPolicy.SAFE_INSPECTION_PASSTHROUGH
+                and proposal.command_family == spec.name
+            ):
+                command = shlex.join(args)
 
         if (
             spec is not None
@@ -418,6 +427,7 @@ class Validator:
             origin == ProposalOrigin.DIRECT_COMMAND
             and spec.direct_flag_policy == DirectFlagPolicy.SAFE_INSPECTION_PASSTHROUGH
             and proposal.command_family == spec.name
+            and not safe_inspection_passthrough_eligibility_reasons(spec)
         ):
             passthrough_reasons = self._validate_safe_inspection_passthrough(spec, arguments)
             if not passthrough_reasons:
@@ -466,6 +476,12 @@ class Validator:
         operand_count = 0
 
         for arg in arguments:
+            if _contains_control_character(arg):
+                reasons.append(
+                    f"Argument for command '{spec.name}' contains unsupported control characters."
+                )
+                continue
+
             if arg == "--":
                 reasons.append("Option terminator '--' is not supported in curated mode.")
                 continue
@@ -479,11 +495,11 @@ class Validator:
                 continue
 
             if arg.startswith("--"):
-                if not _is_safe_passthrough_long_option(arg):
+                if not _is_safe_ls_passthrough_long_option(arg):
                     reasons.append(f"Malformed direct option '{arg}' for command '{spec.name}'.")
                 continue
 
-            if not re.fullmatch(r"-[A-Za-z0-9]+", arg):
+            if not _is_safe_ls_passthrough_short_cluster(arg):
                 reasons.append(f"Malformed direct option '{arg}' for command '{spec.name}'.")
 
         if operand_count < spec.min_operands:
@@ -895,11 +911,39 @@ def _dedupe_preserve_order(values: list[str]) -> list[str]:
     return deduped
 
 
-def _is_safe_passthrough_long_option(token: str) -> bool:
-    if token == "--" or any(char.isspace() or ord(char) < 32 for char in token):
+# Deliberately conservative, read-only `ls` options reviewed for direct-command passthrough.
+# Keep these explicit: accepting arbitrary option-shaped tokens would let platform-specific or
+# future `ls` behavior cross the curated validation boundary without review.
+_SAFE_LS_SHORT_OPTION_LETTERS = frozenset(
+    {"a", "A", "d", "F", "G", "h", "i", "l", "n", "o", "p", "r", "R", "S", "t", "u"}
+)
+_SAFE_LS_LONG_OPTIONS = frozenset({"--almost-all", "--group-directories-first", "--human-readable"})
+_SAFE_LS_LONG_OPTION_VALUES = {
+    "--color": frozenset({"always", "auto", "never"}),
+    "--sort": frozenset({"size", "time"}),
+}
+
+
+def _is_safe_ls_passthrough_short_cluster(token: str) -> bool:
+    return (
+        len(token) > 1
+        and token.startswith("-")
+        and not token.startswith("--")
+        and all(letter in _SAFE_LS_SHORT_OPTION_LETTERS for letter in token[1:])
+    )
+
+
+def _is_safe_ls_passthrough_long_option(token: str) -> bool:
+    if token in _SAFE_LS_LONG_OPTIONS:
+        return True
+    if "=" not in token:
         return False
-    match = re.fullmatch(r"--[A-Za-z][A-Za-z0-9-]*(?:=([A-Za-z0-9_.,:+/@%-]+))?", token)
-    return match is not None and not token.endswith("=")
+    option, value = token.split("=", maxsplit=1)
+    return value in _SAFE_LS_LONG_OPTION_VALUES.get(option, ())
+
+
+def _contains_control_character(value: str) -> bool:
+    return any(ord(char) < 32 or ord(char) == 127 for char in value)
 
 
 def _looks_like_url_path_operand(value: str) -> bool:

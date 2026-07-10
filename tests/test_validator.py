@@ -111,9 +111,15 @@ def test_accept_short_flag_clusters_for_curated_safe_commands() -> None:
 @pytest.mark.parametrize(
     "command",
     [
+        "ls -lt",
+        "ls -lS",
         "ls -ltrh",
         "ls --color=auto",
         "ls --sort=time",
+        "ls --sort=size",
+        "ls --group-directories-first",
+        "ls --almost-all",
+        "ls --human-readable",
     ],
 )
 def test_accept_direct_origin_ls_safe_inspection_passthrough(command: str) -> None:
@@ -123,7 +129,39 @@ def test_accept_direct_origin_ls_safe_inspection_passthrough(command: str) -> No
     assert result.accepted is True
     assert result.risk_level == RiskLevel.SAFE
     assert result.argv == command.split()
-    assert result.rendered_command == command
+    assert result.rendered_command == shlex.join(result.argv)
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "ls -l",
+        "ls -la",
+        "ls -lah",
+        "ls -ltrh",
+        "ls -alh",
+        "ls -lt",
+        "ls -lS",
+        "ls -R",
+        "ls -lah .",
+        "ls -lah src",
+        "ls -lah ~/Downloads",
+        "ls --color=auto",
+        "ls --sort=time",
+        "ls --sort=size",
+        "ls --group-directories-first",
+        "ls --almost-all",
+        "ls --human-readable",
+    ],
+)
+def test_accept_common_direct_ls_forms(command: str) -> None:
+    validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))
+
+    result = validator.validate(make_proposal(command), origin=ProposalOrigin.DIRECT_COMMAND)
+
+    assert result.accepted is True
+    assert result.risk_level == RiskLevel.SAFE
+    assert result.rendered_command == shlex.join(result.argv)
 
 
 def test_direct_origin_ls_passthrough_preserves_hash_in_operand() -> None:
@@ -134,7 +172,7 @@ def test_direct_origin_ls_passthrough_preserves_hash_in_operand() -> None:
 
     assert result.accepted is True
     assert result.argv == ["ls", "-ltrh", "foo#bar"]
-    assert result.rendered_command == "ls -ltrh foo#bar"
+    assert result.rendered_command == shlex.join(result.argv)
 
 
 @pytest.mark.parametrize(
@@ -278,7 +316,7 @@ def test_direct_origin_ls_passthrough_does_not_expand_other_shell_syntax(
 
     assert result.accepted is True
     assert result.argv == command.split()
-    assert result.rendered_command == command
+    assert result.rendered_command == shlex.join(result.argv)
 
 
 def test_current_user_home_path_is_accepted_when_home_is_allowed_root(
@@ -354,8 +392,15 @@ def test_home_parent_traversal_is_rejected_by_allowed_roots(monkeypatch, tmp_pat
         "ls -l && whoami",
         "ls -- /tmp",
         "ls --color=",
+        "ls --sort=",
         "ls --bad!",
+        "ls --output=/tmp/x",
+        "ls -lq",
+        "ls -1",
         "ls https://example.com",
+        "ls file:///tmp/foo",
+        "ls src tests",
+        "ls foo\x1bbar",
     ],
 )
 def test_reject_direct_origin_ls_unsafe_passthrough_forms(command: str) -> None:
