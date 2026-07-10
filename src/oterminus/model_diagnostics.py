@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import inspect
+
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 
-from oterminus.models import ProposalMode
+from oterminus.models import Proposal, ProposalMode
 from oterminus.ollama_client import OllamaClientError, OllamaPlannerClient
 from oterminus.planner import Planner, PlannerError
 
@@ -72,9 +74,15 @@ def run_model_diagnostics(
     results: list[ModelProbeResult] = []
     for probe in probes:
         traces: list[str] = []
+        validated_proposals: list[Proposal] = []
         try:
             planner = make_planner(model)
-            proposal = planner.plan(probe.request, trace_callback=traces.append)
+            proposal = _plan_probe(
+                planner,
+                probe.request,
+                trace_callback=traces.append,
+                validated_proposal_callback=validated_proposals.append,
+            )
         except OllamaClientError as exc:
             raise ModelDiagnosticError(str(exc)) from exc
         except PlannerError as exc:
@@ -90,14 +98,15 @@ def run_model_diagnostics(
             )
             continue
 
-        mode = proposal.mode.value
-        command_family = proposal.command_family
+        model_proposal = validated_proposals[-1] if validated_proposals else proposal
+        mode = model_proposal.mode.value
+        command_family = model_proposal.command_family
         repaired = "planner=repair_attempt succeeded" in traces
         failure_reason = _semantic_failure_reason(
             probe,
-            mode=proposal.mode,
+            mode=model_proposal.mode,
             command_family=command_family,
-            needs_confirmation=proposal.needs_confirmation,
+            needs_confirmation=model_proposal.needs_confirmation,
         )
         results.append(
             ModelProbeResult(
@@ -115,6 +124,33 @@ def run_model_diagnostics(
 
 def _default_planner_factory(model: str) -> Planner:
     return Planner(OllamaPlannerClient(model=model))
+
+
+def _plan_probe(
+    planner: Planner,
+    request: str,
+    *,
+    trace_callback: Callable[[str], None],
+    validated_proposal_callback: Callable[[Proposal], None],
+) -> Proposal:
+    if _accepts_validated_proposal_callback(planner):
+        return planner.plan(
+            request,
+            trace_callback=trace_callback,
+            validated_proposal_callback=validated_proposal_callback,
+        )
+    return planner.plan(request, trace_callback=trace_callback)
+
+
+def _accepts_validated_proposal_callback(planner: Planner) -> bool:
+    try:
+        signature = inspect.signature(planner.plan)
+    except (TypeError, ValueError):
+        return False
+    parameters = signature.parameters
+    return "validated_proposal_callback" in parameters or any(
+        parameter.kind is inspect.Parameter.VAR_KEYWORD for parameter in parameters.values()
+    )
 
 
 def _semantic_failure_reason(

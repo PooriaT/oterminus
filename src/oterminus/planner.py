@@ -50,6 +50,7 @@ class Planner:
         request: str,
         *,
         trace_callback: Callable[[str], None] | None = None,
+        validated_proposal_callback: Callable[[Proposal], None] | None = None,
     ) -> Proposal:
         route = route_request(request, disabled_pack_ids=self.policy.disabled_command_packs)
         system_prompt = build_system_prompt(disabled_pack_ids=self.policy.disabled_command_packs)
@@ -60,7 +61,10 @@ class Planner:
             output_schema=proposal_output_schema(),
         )
         try:
-            return self._parse_proposal_strict(raw)
+            return self._parse_proposal_strict(
+                raw,
+                validated_proposal_callback=validated_proposal_callback,
+            )
         except (_ProposalSchemaError, PlannerError) as first_error:
             first_failure = PlannerSchemaFailure(
                 stage="initial",
@@ -84,7 +88,10 @@ class Planner:
                 output_schema=proposal_output_schema(),
             )
             try:
-                proposal = self._parse_proposal_strict(repair_raw)
+                proposal = self._parse_proposal_strict(
+                    repair_raw,
+                    validated_proposal_callback=validated_proposal_callback,
+                )
                 _emit_trace(trace_callback, "planner=repair_attempt succeeded")
                 return proposal
             except _ProposalSchemaError as second_error:
@@ -126,7 +133,11 @@ class Planner:
             raise PlannerError(f"Model output did not match proposal schema: {exc}") from exc
 
     @staticmethod
-    def _parse_proposal_strict(raw_json: str) -> Proposal:
+    def _parse_proposal_strict(
+        raw_json: str,
+        *,
+        validated_proposal_callback: Callable[[Proposal], None] | None = None,
+    ) -> Proposal:
         try:
             payload = json.loads(raw_json)
         except json.JSONDecodeError as exc:
@@ -143,6 +154,9 @@ class Planner:
             raise _ProposalSchemaError(
                 "field `needs_confirmation`: Input should be true; got False"
             )
+
+        if validated_proposal_callback is not None:
+            validated_proposal_callback(proposal)
 
         try:
             return Planner._prefer_structured_rendering(proposal)

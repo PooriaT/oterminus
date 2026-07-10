@@ -41,7 +41,11 @@ class _FakeClient:
         return self.responses.pop(0)
 
 
-def _payload(family: str, arguments: dict[str, object], **overrides: object) -> str:
+def _payload(
+    family: str | None,
+    arguments: dict[str, object] | None,
+    **overrides: object,
+) -> str:
     proposal: dict[str, object] = {
         "action_type": "shell_command",
         "mode": "structured",
@@ -163,6 +167,30 @@ def test_schema_mismatch_then_repair_success_is_marked_repaired() -> None:
 
     assert report.results[0].passed is True
     assert report.results[0].repaired is True
+
+
+def test_experimental_raw_command_fails_before_structured_normalization() -> None:
+    client = _FakeClient(
+        _payload(
+            None,
+            None,
+            mode="experimental",
+            command="ls .",
+            notes=["Experimental proposal; review before running."],
+        )
+    )
+
+    report = run_model_diagnostics(
+        "gemma4:latest",
+        probes=(_probe("ls"),),
+        planner_factory=lambda model: Planner(client),
+    )
+
+    result = report.results[0]
+    assert result.passed is False
+    assert result.mode == "experimental"
+    assert result.command_family is None
+    assert result.failure_reason == "expected mode structured, got experimental"
 
 
 def test_repair_failure_is_concise_and_does_not_include_raw_output() -> None:
