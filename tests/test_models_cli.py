@@ -48,6 +48,25 @@ def test_healthy_state_lists_models_and_marks_selection(capsys) -> None:
     assert "llama3.2:latest" in output
 
 
+def test_untagged_selection_matches_installed_latest_tag(capsys) -> None:
+    status = OllamaModelStatus(
+        cli_installed=True,
+        service_available=True,
+        models=("gemma4:latest", "llama3.2:latest"),
+    )
+
+    code = run_models_cli(
+        [], status_provider=lambda: status, config_resolver=lambda: _resolved("gemma4")
+    )
+
+    assert code == 0
+    output = capsys.readouterr().out
+    assert "Model: gemma4" in output
+    assert "Installed: yes" in output
+    assert "* gemma4:latest  selected" in output
+    assert "Guidance:" not in output
+
+
 def test_no_selected_model_reports_selection_guidance(capsys) -> None:
     status = OllamaModelStatus(True, True, ("gemma4:latest",))
 

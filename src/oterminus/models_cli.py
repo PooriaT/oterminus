@@ -44,8 +44,13 @@ def run_models_cli(
     source = resolved.sources.get("model")
     source_value = getattr(source, "value", str(source) if source is not None else "unknown")
     list_available = status.cli_installed and status.service_available
+    matched_model = (
+        _matching_installed_model(selected_model, status.models)
+        if selected_model is not None and list_available
+        else None
+    )
     selected_installed = (
-        selected_model in status.models if selected_model is not None and list_available else None
+        matched_model is not None if selected_model is not None and list_available else None
     )
 
     print("OTerminus models")
@@ -67,7 +72,7 @@ def run_models_cli(
         print("Models:")
         if status.models:
             for model in status.models:
-                if model == selected_model:
+                if model == matched_model:
                     print(f"  * {model}  selected")
                 else:
                     print(f"    {model}")
@@ -82,6 +87,15 @@ def run_models_cli(
     if not list_available or selected_installed is False:
         return 1
     return 0
+
+
+def _matching_installed_model(selected_model: str, installed_models: tuple[str, ...]) -> str | None:
+    if selected_model in installed_models:
+        return selected_model
+    if ":" in selected_model.rsplit("/", maxsplit=1)[-1]:
+        return None
+    latest_name = f"{selected_model}:latest"
+    return latest_name if latest_name in installed_models else None
 
 
 def _installed_label(selected_model: str | None, selected_installed: bool | None) -> str:
