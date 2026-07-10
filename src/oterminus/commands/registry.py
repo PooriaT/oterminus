@@ -16,7 +16,13 @@ from .process import COMMAND_PACK as PROCESS_COMMANDS
 from .project import COMMAND_PACK as PROJECT_COMMANDS
 from .system import COMMAND_PACK as SYSTEM_COMMANDS
 from .text import COMMAND_PACK as TEXT_COMMANDS
-from .types import CommandSpec, DirectDetectionMode, MaturityLevel, maturity_status_label
+from .types import (
+    CommandSpec,
+    DirectDetectionMode,
+    MaturityLevel,
+    maturity_status_label,
+    safe_inspection_passthrough_eligibility_reasons,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -92,6 +98,14 @@ def merge_command_packs(command_packs: Sequence[Iterable[CommandSpec]]) -> dict[
                 raise ValueError(msg)
             if not spec.capability_id.strip():
                 msg = f"Command spec '{spec.name}' must define a non-empty capability_id."
+                raise ValueError(msg)
+            passthrough_reasons = safe_inspection_passthrough_eligibility_reasons(spec)
+            if passthrough_reasons:
+                details = "; ".join(passthrough_reasons)
+                msg = (
+                    f"Command spec '{spec.name}' is not eligible for safe inspection "
+                    f"passthrough: {details}."
+                )
                 raise ValueError(msg)
             merged[spec.name] = spec
     return merged

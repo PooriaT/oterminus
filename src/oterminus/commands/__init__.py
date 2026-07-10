@@ -34,7 +34,9 @@ from .types import (
     DirectFlagPolicy,
     MaturityLevel,
     PathOperandMode,
+    SAFE_INSPECTION_PASSTHROUGH_COMMANDS,
     command,
+    safe_inspection_passthrough_eligibility_reasons,
 )
 
 __all__ = [
@@ -48,7 +50,9 @@ __all__ = [
     "MaturityLevel",
     "NETWORK_TOUCHING_WARNING",
     "PathOperandMode",
+    "SAFE_INSPECTION_PASSTHROUGH_COMMANDS",
     "command",
+    "safe_inspection_passthrough_eligibility_reasons",
     "capability_summary_for_prompt",
     "command_maturity_status",
     "command_supported_platforms",

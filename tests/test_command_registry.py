@@ -149,6 +149,51 @@ def test_only_ls_uses_safe_inspection_direct_flag_policy() -> None:
     assert passthrough_commands == {"ls"}
 
 
+def test_registry_rejects_unreviewed_safe_passthrough_opt_in() -> None:
+    spec = command(
+        name="du",
+        category="inspection",
+        capability_id="filesystem_inspection",
+        capability_label="Filesystem inspection",
+        capability_description="Inspect local filesystem usage.",
+        risk_level=RiskLevel.SAFE,
+        direct_flag_policy=DirectFlagPolicy.SAFE_INSPECTION_PASSTHROUGH,
+    )
+
+    with pytest.raises(ValueError, match="only explicitly reviewed commands may opt in"):
+        merge_command_packs([(spec,)])
+
+
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {"risk_level": RiskLevel.WRITE},
+        {"category": "filesystem_write"},
+        {"capability_id": "network_diagnostics"},
+        {"network_touching": True},
+        {"direct_supported": False},
+        {"maturity_level": MaturityLevel.DIRECT_ONLY},
+        {"path_operand_mode": PathOperandMode.NONE},
+        {"dangerous_flags": ("--mutate",)},
+    ],
+)
+def test_registry_rejects_ineligible_ls_passthrough_metadata(overrides: dict) -> None:
+    metadata = {
+        "name": "ls",
+        "category": "inspection",
+        "capability_id": "filesystem_inspection",
+        "capability_label": "Filesystem inspection",
+        "capability_description": "Inspect local filesystem paths.",
+        "risk_level": RiskLevel.SAFE,
+        "direct_flag_policy": DirectFlagPolicy.SAFE_INSPECTION_PASSTHROUGH,
+    }
+    metadata.update(overrides)
+    spec = command(**metadata)
+
+    with pytest.raises(ValueError, match="not eligible for safe inspection passthrough"):
+        merge_command_packs([(spec,)])
+
+
 def test_command_spec_can_mark_network_touching() -> None:
     spec = command(
         name="netcheck",

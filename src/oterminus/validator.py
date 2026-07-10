@@ -16,6 +16,7 @@ from oterminus.commands import (
     get_command_spec,
     get_pack_for_command,
     is_command_supported_on_platform,
+    safe_inspection_passthrough_eligibility_reasons,
 )
 from oterminus.messages import EXPERIMENTAL_USER_WARNING
 from oterminus.models import Proposal, ProposalMode, RiskLevel, ValidationResult
@@ -418,6 +419,7 @@ class Validator:
             origin == ProposalOrigin.DIRECT_COMMAND
             and spec.direct_flag_policy == DirectFlagPolicy.SAFE_INSPECTION_PASSTHROUGH
             and proposal.command_family == spec.name
+            and not safe_inspection_passthrough_eligibility_reasons(spec)
         ):
             passthrough_reasons = self._validate_safe_inspection_passthrough(spec, arguments)
             if not passthrough_reasons:
@@ -466,6 +468,12 @@ class Validator:
         operand_count = 0
 
         for arg in arguments:
+            if _contains_control_character(arg):
+                reasons.append(
+                    f"Argument for command '{spec.name}' contains unsupported control characters."
+                )
+                continue
+
             if arg == "--":
                 reasons.append("Option terminator '--' is not supported in curated mode.")
                 continue
@@ -900,6 +908,10 @@ def _is_safe_passthrough_long_option(token: str) -> bool:
         return False
     match = re.fullmatch(r"--[A-Za-z][A-Za-z0-9-]*(?:=([A-Za-z0-9_.,:+/@%-]+))?", token)
     return match is not None and not token.endswith("=")
+
+
+def _contains_control_character(value: str) -> bool:
+    return any(ord(char) < 32 or ord(char) == 127 for char in value)
 
 
 def _looks_like_url_path_operand(value: str) -> bool:
