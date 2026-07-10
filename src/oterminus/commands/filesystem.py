@@ -39,6 +39,7 @@ COMMAND_PACK: tuple[CommandSpec, ...] = (
         **FILESYSTEM_INSPECTION,
         risk_level=RiskLevel.SAFE,
         direct_flag_policy=DirectFlagPolicy.SAFE_INSPECTION_PASSTHROUGH,
+        max_operands=1,
         allowed_flags=("-a", "-h", "-l", "-R"),
         examples=("ls -la",),
         natural_language_aliases=("list files", "show directory contents"),
