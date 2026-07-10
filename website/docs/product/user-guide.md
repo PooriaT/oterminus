@@ -120,10 +120,11 @@ Run environment diagnostics explicitly with:
 oterminus doctor
 ```
 
-`doctor` prints the readiness report and exits. It does not start the REPL, execute a request, or
-invoke the LLM planner. Unlike `--version`, it checks environment readiness such as Ollama
-availability. If Ollama is missing, not running, or has no installed model, `doctor` should report
-that clearly so you can fix the local model setup before natural-language planning.
+`doctor` prints the readiness report and exits. It does not start the REPL, execute a request, invoke
+the LLM planner, or send model schema probes. Unlike `--version`, it checks environment readiness
+such as Ollama availability, reports the installed-model count, and shows the selected model, its
+configuration source, and whether it is installed. It points to `oterminus models test` for the
+separate, active schema-compliance diagnostic.
 
 For a focused view of local models and the current selection, run either equivalent form:
 
@@ -321,9 +322,11 @@ features, and developer-only checks:
   Start Ollama, for example with `ollama serve`, then rerun doctor.
 - `local ollama models` failing means the service is reachable but no local models are installed.
   Pull a model, for example `ollama pull gemma4`.
-- `configured model` warns when no model has been selected yet. Run OTerminus once to choose from
-  installed models, or set the `model` field in the config JSON. If the configured model is missing,
-  pull that model or update the config to an installed model.
+- `configured model` shows the selected value and its configuration source, warns when no model has
+  been selected, and fails when the selection is not installed. Use `oterminus models` to inspect
+  local choices and `oterminus config set model <name>` to select one. Installation is not a claim
+  of schema reliability: doctor never sends probes; run `oterminus models test` for that active
+  check.
 - `config path`, `audit log path`, and `history path` show whether OTerminus can read or create the
   relevant local directories. Audit logging is enabled by default; persistent history is disabled by
   default, so a disabled history check is normally OK.
