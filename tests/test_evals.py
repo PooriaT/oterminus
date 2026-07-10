@@ -205,6 +205,7 @@ def test_default_fixture_suite_is_capability_split() -> None:
         "process_inspection.json",
         "project_health.json",
         "release_smoke.json",
+        "safe_passthrough.json",
         "system_inspection.json",
         "text_inspection.json",
         "unsafe_and_blocked.json",

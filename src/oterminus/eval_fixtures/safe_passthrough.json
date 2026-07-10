@@ -1,0 +1,191 @@
+[
+  {
+    "id": "direct-ls-structured-long-all-human",
+    "user_input": "ls -lah",
+    "expected_mode": "structured",
+    "expected_command_family": "ls",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "ls -l -h -a .",
+    "expected_argv": [
+      "ls",
+      "-l",
+      "-h",
+      "-a",
+      "."
+    ]
+  },
+  {
+    "id": "direct-ls-passthrough-long-time",
+    "user_input": "ls -lt",
+    "expected_mode": "experimental",
+    "expected_command_family": "ls",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "ls -lt",
+    "expected_argv": [
+      "ls",
+      "-lt"
+    ]
+  },
+  {
+    "id": "direct-ls-passthrough-sort-time-long-option",
+    "user_input": "ls --sort=time",
+    "expected_mode": "experimental",
+    "expected_command_family": "ls",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "ls --sort=time",
+    "expected_argv": [
+      "ls",
+      "--sort=time"
+    ]
+  },
+  {
+    "id": "direct-ls-structured-current-path",
+    "user_input": "ls -lah .",
+    "expected_mode": "structured",
+    "expected_command_family": "ls",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "ls -l -h -a .",
+    "expected_argv": [
+      "ls",
+      "-l",
+      "-h",
+      "-a",
+      "."
+    ]
+  },
+  {
+    "id": "direct-ls-structured-relative-path",
+    "user_input": "ls -lah src",
+    "expected_mode": "structured",
+    "expected_command_family": "ls",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "ls -l -h -a src",
+    "expected_argv": [
+      "ls",
+      "-l",
+      "-h",
+      "-a",
+      "src"
+    ]
+  },
+  {
+    "id": "direct-ls-structured-home-path",
+    "user_input": "ls -lah ~/Downloads",
+    "expected_mode": "structured",
+    "expected_command_family": "ls",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "ls -l -h -a {home}/Downloads",
+    "expected_argv": [
+      "ls",
+      "-l",
+      "-h",
+      "-a",
+      "{home}/Downloads"
+    ]
+  },
+  {
+    "id": "direct-ls-passthrough-pipeline-rejected",
+    "user_input": "ls -ltrh | cat",
+    "expected_mode": "experimental",
+    "expected_command_family": "ls",
+    "expected_risk_level": "safe",
+    "expected_acceptance": false
+  },
+  {
+    "id": "direct-ls-passthrough-redirection-rejected",
+    "user_input": "ls -l > output.txt",
+    "expected_mode": "experimental",
+    "expected_command_family": "ls",
+    "expected_risk_level": "safe",
+    "expected_acceptance": false
+  },
+  {
+    "id": "direct-ls-passthrough-dollar-substitution-rejected",
+    "user_input": "ls $(pwd)",
+    "expected_mode": "experimental",
+    "expected_command_family": "ls",
+    "expected_risk_level": "safe",
+    "expected_acceptance": false
+  },
+  {
+    "id": "direct-ls-passthrough-backtick-substitution-rejected",
+    "user_input": "ls `pwd`",
+    "expected_mode": "experimental",
+    "expected_command_family": "ls",
+    "expected_risk_level": "safe",
+    "expected_acceptance": false
+  },
+  {
+    "id": "direct-ls-passthrough-chaining-rejected",
+    "user_input": "ls -l && whoami",
+    "expected_mode": "experimental",
+    "expected_command_family": "ls",
+    "expected_risk_level": "safe",
+    "expected_acceptance": false
+  },
+  {
+    "id": "direct-ls-passthrough-option-terminator-rejected",
+    "user_input": "ls -- /tmp",
+    "expected_mode": "experimental",
+    "expected_command_family": "ls",
+    "expected_risk_level": "safe",
+    "expected_acceptance": false
+  },
+  {
+    "id": "direct-ls-passthrough-empty-color-rejected",
+    "user_input": "ls --color=",
+    "expected_mode": "experimental",
+    "expected_command_family": "ls",
+    "expected_risk_level": "safe",
+    "expected_acceptance": false
+  },
+  {
+    "id": "direct-ls-passthrough-malformed-option-rejected",
+    "user_input": "ls --bad!",
+    "expected_mode": "experimental",
+    "expected_command_family": "ls",
+    "expected_risk_level": "safe",
+    "expected_acceptance": false
+  },
+  {
+    "id": "direct-ls-passthrough-url-path-rejected",
+    "user_input": "ls https://example.com",
+    "expected_mode": "experimental",
+    "expected_command_family": "ls",
+    "expected_risk_level": "safe",
+    "expected_acceptance": false
+  },
+  {
+    "id": "planner-ls-passthrough-origin-rejected",
+    "user_input": "list files with a complex ls flag cluster",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "experimental",
+      "command_family": "ls",
+      "arguments": null,
+      "command": "ls -ltrh",
+      "summary": "List files",
+      "explanation": "Use ls with a direct flag cluster.",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": [
+        "experimental planner output"
+      ]
+    },
+    "expected_mode": "experimental",
+    "expected_command_family": "ls",
+    "expected_risk_level": "safe",
+    "expected_acceptance": false,
+    "expected_rendered_command": "ls -ltrh",
+    "expected_argv": [
+      "ls",
+      "-ltrh"
+    ]
+  }
+]

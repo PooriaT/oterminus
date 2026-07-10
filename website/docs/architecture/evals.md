@@ -47,6 +47,7 @@ Files are organized by capability or behavior:
 | `process_inspection.json` | Process listing and matching behavior. |
 | `project_health.json` | Curated project test, lint, format, docs, and eval operations. |
 | `release_smoke.json` | Cross-cutting public install and first-use proposal/validation smoke flows. |
+| `safe_passthrough.json` | Trusted direct-command passthrough acceptance and rejection boundaries. |
 | `system_inspection.json` | System inspection commands, manual-page lookup, and environment-safety behavior. |
 | `text_inspection.json` | Text/statistical inspection commands. |
 | `unsafe_and_blocked.json` | Shell syntax, dangerous commands, unknown families, and policy blocks. |
@@ -124,6 +125,10 @@ command packs should include at least one representative accepted fixture plus f
 coverage for unsupported flags, unsafe operations, broad targets, and command-family-specific policy
 boundaries. Keep broad coverage expansion focused; small fixture additions are best paired with the
 behavior change that needs regression protection.
+
+Safe direct-command passthrough is a trust-sensitive validator path. Its fixtures must cover both
+accepted direct-origin forms and rejected shell, path, URL, malformed-option, and planner-origin
+forms so broader parsing cannot accidentally broaden passthrough trust.
 
 Use `release_smoke.json` for small cross-cutting checks that protect public-install and first-use
 behavior across direct commands, deterministic shortcuts, ambiguity blocking, and a minimal
