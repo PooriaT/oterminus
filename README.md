@@ -99,7 +99,7 @@ On the first bare interactive launch (`oterminus`) with no existing user config 
 offers a concise configuration wizard. The wizard sets safety/privacy defaults and can select an
 installed Ollama model, but model selection is optional and direct commands remain usable without
 Ollama. One-shot requests such as `oterminus "ls -l"`, `--dry-run`, `--explain`, `doctor`,
-`version`, `completion`, and `config` commands do not trigger onboarding.
+`version`, `completion`, `models`, and `config` commands do not trigger onboarding.
 
 Upgrade or uninstall the isolated CLI with:
 
@@ -158,6 +158,20 @@ history. `oterminus config path` prints the active JSON config path selected by
 `oterminus config`, not `oterminus --config`, so `--config` remains available for a future
 alternate-path option.
 
+### Model diagnostics
+
+Inspect Ollama readiness, installed model names, and the effective OTerminus model selection with:
+
+```bash
+oterminus models
+oterminus models list
+```
+
+The selected installed model is marked in the list, and the report includes the setting source and
+concise guidance for a missing CLI, unavailable service, empty model list, or mismatched selection.
+Change the selection with `oterminus config set model <model-name>`. This namespace is read-only: it
+does not invoke the planner or executor, write request audit/history, or pull models automatically.
+
 Use `oterminus config get <key>`, `oterminus config set <key> <value>`, and
 `oterminus config reset <key>` for safe single-setting changes. Supported keys are `model`,
 `command_profile`, `auto_execute_safe`, `audit_enabled`, `audit_redact`, `history_enabled`,
@@ -201,6 +215,7 @@ oterminus "show disk usage for this folder"
 oterminus --dry-run "copy notes.txt to backup/notes.txt"
 oterminus --explain "find processes matching python"
 oterminus doctor
+oterminus models
 oterminus config show
 ```
 

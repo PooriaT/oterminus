@@ -125,6 +125,24 @@ invoke the LLM planner. Unlike `--version`, it checks environment readiness such
 availability. If Ollama is missing, not running, or has no installed model, `doctor` should report
 that clearly so you can fix the local model setup before natural-language planning.
 
+For a focused view of local models and the current selection, run either equivalent form:
+
+```bash
+oterminus models
+oterminus models list
+```
+
+The report shows Ollama CLI and service status, installed model names, the selected OTerminus model
+and its configuration source, and whether that selection is installed. The selected model is marked
+with `*` in the installed-model list. Change the selection with
+`oterminus config set model <model-name>`.
+
+`models` is diagnostic-only: it does not start the REPL, invoke a model or planner, propose or
+execute a shell command, run onboarding, or write request audit/history entries. If the Ollama CLI
+is missing, the service cannot be reached, no models are installed, or the selected model does not
+match an installed model, the report prints a next step. OTerminus never pulls a model
+automatically; install one explicitly with `ollama pull <model>`.
+
 If no model is configured yet, OTerminus shows installed models and prompts you to choose one. The
 selection is saved in `~/.oterminus/config.json` (or `OTERMINUS_CONFIG_PATH` if set).
 
@@ -146,7 +164,7 @@ model output is never executed. If a model repeatedly fails schema validation:
 
 On the first bare interactive launch (`oterminus`) when the persistent config file does not exist
 and stdin is a TTY, OTerminus offers a first-time configuration wizard. The wizard does not run for
-one-shot requests, `--dry-run`, `--explain`, `doctor`, `version`, `completion`, `config` commands,
+one-shot requests, `--dry-run`, `--explain`, `doctor`, `version`, `completion`, `models`, `config` commands,
 or non-interactive stdin. Declining onboarding saves safe defaults with
 `onboarding_completed: true`, explains that you can rerun it with `oterminus config init`, and then
 continues into the REPL. If that save fails, OTerminus continues with in-memory safe defaults and
