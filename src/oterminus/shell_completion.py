@@ -5,8 +5,9 @@ import shlex
 from oterminus.config_settings import SUPPORTED_MUTABLE_CONFIG_KEYS, SUPPORTED_RESET_CONFIG_KEYS
 
 SUPPORTED_SHELLS: tuple[str, ...] = ("zsh", "bash", "fish")
-TOP_LEVEL_COMMANDS: tuple[str, ...] = ("doctor", "version", "completion", "config")
+TOP_LEVEL_COMMANDS: tuple[str, ...] = ("doctor", "version", "completion", "config", "models")
 COMPLETION_SHELLS: tuple[str, ...] = SUPPORTED_SHELLS
+MODELS_COMMANDS: tuple[str, ...] = ("list",)
 CONFIG_COMMANDS: tuple[str, ...] = (
     "path",
     "show",
@@ -57,6 +58,7 @@ def _render_zsh(program_name: str) -> str:
     commands = _quoted_words(TOP_LEVEL_COMMANDS)
     shells = _quoted_words(COMPLETION_SHELLS)
     config_commands = _quoted_words(CONFIG_COMMANDS)
+    models_commands = _quoted_words(MODELS_COMMANDS)
     config_init_options = _quoted_words(CONFIG_INIT_OPTIONS)
     config_keys = _quoted_words(SUPPORTED_MUTABLE_CONFIG_KEYS)
     config_reset_choices = _quoted_words((*SUPPORTED_RESET_CONFIG_KEYS, *CONFIG_RESET_OPTIONS))
@@ -68,12 +70,14 @@ _{program_name}() {{
   local -a commands
   local -a shells
   local -a config_commands
+  local -a models_commands
   local -a config_init_options
   local -a config_keys
   local -a config_reset_choices
   commands=({commands})
   shells=({shells})
   config_commands=({config_commands})
+  models_commands=({models_commands})
   config_init_options=({config_init_options})
   config_keys=({config_keys})
   config_reset_choices=({config_reset_choices})
@@ -97,6 +101,8 @@ _{program_name}() {{
         _describe -t shells 'shell' shells
       elif [[ $words[2] == config ]]; then
         _describe -t config-commands 'config command' config_commands
+      elif [[ $words[2] == models ]]; then
+        _describe -t models-commands 'models command' models_commands
       fi
       ;;
     request)
@@ -119,6 +125,7 @@ def _render_bash(program_name: str) -> str:
     commands = _words(TOP_LEVEL_COMMANDS)
     shells = _words(COMPLETION_SHELLS)
     config_commands = _words(CONFIG_COMMANDS)
+    models_commands = _words(MODELS_COMMANDS)
     config_init_options = _words(CONFIG_INIT_OPTIONS)
     config_keys = _words(SUPPORTED_MUTABLE_CONFIG_KEYS)
     config_reset_choices = _words((*SUPPORTED_RESET_CONFIG_KEYS, *CONFIG_RESET_OPTIONS))
@@ -144,6 +151,11 @@ def _render_bash(program_name: str) -> str:
 
   if [[ $prev == "config" ]]; then
     COMPREPLY=( $(compgen -W "{config_commands}" -- "$cur") )
+    return 0
+  fi
+
+  if [[ $prev == "models" ]]; then
+    COMPREPLY=( $(compgen -W "{models_commands}" -- "$cur") )
     return 0
   fi
 
@@ -179,6 +191,7 @@ def _render_fish(program_name: str) -> str:
     )
     shell_words = " ".join(COMPLETION_SHELLS)
     config_words = " ".join(CONFIG_COMMANDS)
+    models_words = " ".join(MODELS_COMMANDS)
     config_key_words = " ".join(SUPPORTED_MUTABLE_CONFIG_KEYS)
     config_reset_key_words = " ".join(SUPPORTED_RESET_CONFIG_KEYS)
     return f"""# fish completion for {program_name}
@@ -192,6 +205,7 @@ complete -c {program_name} -f -l help -d 'Show help'
 {command_words}
 complete -c {program_name} -n '__fish_seen_subcommand_from completion' -f -a "{shell_words}" -d 'Shell completion script'
 complete -c {program_name} -n '__fish_seen_subcommand_from config' -f -a "{config_words}" -d 'Config command'
+complete -c {program_name} -n '__fish_seen_subcommand_from models' -f -a "{models_words}" -d 'Models command'
 complete -c {program_name} -n '__fish_seen_subcommand_from config; and __fish_seen_subcommand_from init' -f -l defaults -d 'Create safe defaults'
 complete -c {program_name} -n '__fish_seen_subcommand_from config; and __fish_seen_subcommand_from init' -f -l force -d 'Replace an existing valid config'
 complete -c {program_name} -n '__fish_seen_subcommand_from config; and __fish_seen_subcommand_from get' -f -a "{config_key_words}" -d 'Config key'
@@ -210,4 +224,6 @@ def _fish_description(command: str) -> str:
         return "Print a shell completion script"
     if command == "config":
         return "Manage configuration"
+    if command == "models":
+        return "Inspect installed models"
     return command

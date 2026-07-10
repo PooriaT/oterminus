@@ -8,7 +8,7 @@ from oterminus.config_settings import SUPPORTED_MUTABLE_CONFIG_KEYS
 from oterminus.shell_completion import render_shell_completion, supported_shells
 
 EXPECTED_FLAGS = ("--dry-run", "--explain", "--version", "--verbose", "--help")
-EXPECTED_COMMANDS = ("doctor", "version", "completion", "config")
+EXPECTED_COMMANDS = ("doctor", "version", "completion", "config", "models")
 EXPECTED_CONFIG_COMMANDS = ("path", "show", "init", "validate", "edit", "get", "set", "reset")
 EXPECTED_CONFIG_INIT_OPTIONS = ("--defaults", "--force")
 EXPECTED_CONFIG_RESET_OPTIONS = ("--all-safe",)
@@ -109,6 +109,14 @@ def test_render_shell_completion_includes_config_subcommands(shell: str) -> None
 
     for command in EXPECTED_CONFIG_COMMANDS:
         assert command in script
+
+
+@pytest.mark.parametrize("shell", supported_shells())
+def test_render_shell_completion_includes_models_list_subcommand(shell: str) -> None:
+    script = render_shell_completion(shell)
+
+    assert "models" in script
+    assert "list" in script
 
 
 @pytest.mark.parametrize("shell", supported_shells())

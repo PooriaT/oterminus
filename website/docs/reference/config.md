@@ -131,6 +131,12 @@ Use `oterminus config` for configuration management. This namespace is intention
 `oterminus --config`; the flag shape is reserved for a possible future alternate-config-path option.
 All config commands bypass the normal request lifecycle and do not require Ollama.
 
+To compare the effective `model` setting with models installed in Ollama, use `oterminus models`
+(or `oterminus models list`). It reports the effective source returned by the normal configuration
+resolver and the active config path. The command is read-only and bypasses request planning,
+execution, audit, and history. Use `oterminus config set model <model-name>` to change the selected
+model. OTerminus reports missing CLI/service/model states but never pulls a model automatically.
+
 | Command | Behavior |
 | --- | --- |
 | `oterminus config` | Prints concise help for config subcommands and exits successfully. |
@@ -260,7 +266,7 @@ repairing, move it aside and run `oterminus config init --defaults`.
 
 Automatic onboarding appears only for a bare interactive `oterminus` launch when stdin is a TTY and
 the persistent config file does not exist. It does not appear for one-shot requests, `--dry-run`,
-`--explain`, `doctor`, `version`, `completion`, any `config` command, existing config files, legacy
+`--explain`, `doctor`, `version`, `completion`, `models`, any `config` command, existing config files, legacy
 config files, or non-interactive stdin. One-shot direct commands are not gated by onboarding and can
 still detect, validate, preview, confirm, and execute without Ollama.
 
