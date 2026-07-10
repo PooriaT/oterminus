@@ -132,16 +132,35 @@ oterminus models
 oterminus models list
 ```
 
-The report shows Ollama CLI and service status, installed model names, the selected OTerminus model
-and its configuration source, and whether that selection is installed. The selected model is marked
-with `*` in the installed-model list. Change the selection with
+The list report shows Ollama CLI and service status, installed model names, the selected OTerminus
+model and its configuration source, and whether that selection is installed. The selected model is
+marked with `*` in the installed-model list. Change the selection with
 `oterminus config set model <model-name>`.
 
-`models` is diagnostic-only: it does not start the REPL, invoke a model or planner, propose or
-execute a shell command, run onboarding, or write request audit/history entries. If the Ollama CLI
-is missing, the service cannot be reached, no models are installed, or the selected model does not
-match an installed model, the report prints a next step. OTerminus never pulls a model
+`models` list reporting is diagnostic-only: it does not start the REPL, invoke a model or planner,
+propose or execute a shell command, run onboarding, or write request audit/history entries. If the
+Ollama CLI is missing, the service cannot be reached, no models are installed, or the selected model
+does not match an installed model, the report prints a next step. OTerminus never pulls a model
 automatically; install one explicitly with `ollama pull <model>`.
+
+Test whether the configured model follows OTerminus's strict planner proposal contract with:
+
+```bash
+oterminus models test
+oterminus models test gemma4:latest
+```
+
+The second form tests that installed model for this invocation only and does not change user
+configuration. The test sends three fixed, read-only planning prompts to the local model and calls
+the normal planner schema and structured-argument validation path. It never renders, dry-runs, asks
+to confirm, or executes any proposed command, and it does not write normal request audit or history
+events.
+
+This is a proposal-compliance diagnostic, not a general-intelligence or benchmark-quality test. A
+first-pass success is the strongest result. A pass after the planner's single repair attempt remains
+usable, but is shown separately because frequent repairs indicate lower reliability. A schema or
+simple command-family mismatch fails the test; try another installed model or run `oterminus doctor`
+when readiness prevents the test from starting.
 
 If no model is configured yet, OTerminus shows installed models and prompts you to choose one. The
 selection is saved in `~/.oterminus/config.json` (or `OTERMINUS_CONFIG_PATH` if set).
@@ -157,6 +176,7 @@ Schema-constrained output improves formatting reliability, but it does not guara
 correctness. OTerminus still validates and previews every proposal before execution, and invalid
 model output is never executed. If a model repeatedly fails schema validation:
 
+- run `oterminus models test` to check the selected model with fixed read-only probes
 - check the selected model with `oterminus config get model`
 - try another installed model with `oterminus config set model <model-name>`
 - run `oterminus doctor` to inspect local Ollama/model readiness

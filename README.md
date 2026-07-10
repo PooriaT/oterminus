@@ -165,12 +165,16 @@ Inspect Ollama readiness, installed model names, and the effective OTerminus mod
 ```bash
 oterminus models
 oterminus models list
+oterminus models test
+oterminus models test gemma4:latest
 ```
 
 The selected installed model is marked in the list, and the report includes the setting source and
 concise guidance for a missing CLI, unavailable service, empty model list, or mismatched selection.
-Change the selection with `oterminus config set model <model-name>`. This namespace is read-only: it
-does not invoke the planner or executor, write request audit/history, or pull models automatically.
+Change the selection with `oterminus config set model <model-name>`. The `test` command sends fixed,
+read-only prompts through the normal planner schema path but never executes a returned command or
+changes the configured model. The namespace does not write normal request audit/history or pull
+models automatically.
 
 Use `oterminus config get <key>`, `oterminus config set <key> <value>`, and
 `oterminus config reset <key>` for safe single-setting changes. Supported keys are `model`,
@@ -216,6 +220,7 @@ oterminus --dry-run "copy notes.txt to backup/notes.txt"
 oterminus --explain "find processes matching python"
 oterminus doctor
 oterminus models
+oterminus models test
 oterminus config show
 ```
 

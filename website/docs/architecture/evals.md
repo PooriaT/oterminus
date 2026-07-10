@@ -21,6 +21,19 @@ These evals are not live LLM tests. For planner-path cases, `planner_proposal` s
 planner output payload. The runner parses that payload locally and validates the resulting proposal;
 it does not call Ollama, download a model, or require network access.
 
+Live local-model proposal compliance is a separate, opt-in diagnostic:
+
+```bash
+oterminus models test
+oterminus models test <installed-model>
+```
+
+That command sends fixed read-only prompts to Ollama and reuses `Planner.plan()`, including its
+single repair attempt. It reports first-pass, repair-assisted, schema-failure, and simple semantic
+family results without executing proposals. It is intentionally excluded from CI and package smoke
+validation because those environments may not have Ollama; smoke validation checks only
+`oterminus models test --help`.
+
 For real unsupported requests discovered during dogfooding, sanitize the request first using the
 [Dogfooding playbook](../dogfooding-playbook.md) before creating or changing eval fixtures.
 

@@ -11,6 +11,11 @@ from oterminus.config import (
     ConfigValueSource,
     ResolvedConfig,
 )
+from oterminus.model_diagnostics import (
+    ModelDiagnosticError,
+    ModelDiagnosticReport,
+    ModelProbeResult,
+)
 from oterminus.models_cli import run_models_cli
 from oterminus.setup import OllamaModelStatus
 
@@ -22,6 +27,29 @@ def _resolved(model: str | None) -> ResolvedConfig:
         user_config=None,
         config_path=Path("/tmp/oterminus-config.json"),
         config_exists=model is not None,
+    )
+
+
+def _report(
+    model: str,
+    *,
+    passed: bool = True,
+    repaired: bool = False,
+    family: str = "ls",
+    failure_reason: str | None = None,
+) -> ModelDiagnosticReport:
+    return ModelDiagnosticReport(
+        model=model,
+        results=(
+            ModelProbeResult(
+                probe_id="ls-current-directory",
+                passed=passed,
+                repaired=repaired,
+                mode="structured" if passed else None,
+                command_family=family if passed else None,
+                failure_reason=failure_reason,
+            ),
+        ),
     )
 
 
@@ -178,6 +206,149 @@ def test_models_help_does_not_query_config_or_ollama(capsys) -> None:
 
     assert exc_info.value.code == 0
     assert "oterminus models" in capsys.readouterr().out
+
+
+def test_models_test_help_does_not_query_config_ollama_or_diagnostic(capsys) -> None:
+    with pytest.raises(SystemExit) as exc_info:
+        run_models_cli(
+            ["test", "--help"],
+            status_provider=Mock(side_effect=AssertionError("no status")),
+            config_resolver=Mock(side_effect=AssertionError("no config")),
+            diagnostic_runner=Mock(side_effect=AssertionError("no diagnostic")),
+        )
+
+    assert exc_info.value.code == 0
+    output = capsys.readouterr().out
+    assert "oterminus models test" in output
+    assert "No proposed command is executed" in output
+
+
+def test_models_test_uses_effective_configured_model(capsys) -> None:
+    status = OllamaModelStatus(True, True, ("gemma4:latest",))
+    runner = Mock(return_value=_report("gemma4:latest"))
+
+    code = run_models_cli(
+        ["test"],
+        status_provider=lambda: status,
+        config_resolver=lambda: _resolved("gemma4:latest"),
+        diagnostic_runner=runner,
+    )
+
+    assert code == 0
+    runner.assert_called_once_with("gemma4:latest")
+    output = capsys.readouterr().out
+    assert "OTerminus model schema test" in output
+    assert "Model: gemma4:latest" in output
+    assert "Source: configuration (user_config)" in output
+    assert "PASS  ls-current-directory" in output
+    assert "Summary: 1 passed, 0 failed, 0 required repair" in output
+
+
+def test_models_test_explicit_model_skips_config_and_does_not_persist(capsys) -> None:
+    status = OllamaModelStatus(True, True, ("some-model:tag",))
+    config_resolver = Mock(side_effect=AssertionError("explicit selection must not read config"))
+    runner = Mock(return_value=_report("some-model:tag"))
+
+    code = run_models_cli(
+        ["test", "some-model:tag"],
+        status_provider=lambda: status,
+        config_resolver=config_resolver,
+        diagnostic_runner=runner,
+    )
+
+    assert code == 0
+    config_resolver.assert_not_called()
+    runner.assert_called_once_with("some-model:tag")
+    output = capsys.readouterr().out
+    assert "Model: some-model:tag" in output
+    assert "Source: command line" in output
+
+
+def test_models_test_missing_configured_model_exits_two_before_readiness(capsys) -> None:
+    status_provider = Mock(side_effect=AssertionError("readiness must not be queried"))
+    runner = Mock(side_effect=AssertionError("diagnostic must not run"))
+
+    code = run_models_cli(
+        ["test"],
+        status_provider=status_provider,
+        config_resolver=lambda: _resolved(None),
+        diagnostic_runner=runner,
+    )
+
+    assert code == 2
+    output = capsys.readouterr().out
+    assert "No model is configured" in output
+    assert "oterminus models test <model-name>" in output
+    status_provider.assert_not_called()
+    runner.assert_not_called()
+
+
+def test_models_test_uninstalled_model_exits_two_before_probes(capsys) -> None:
+    runner = Mock(side_effect=AssertionError("diagnostic must not run"))
+
+    code = run_models_cli(
+        ["test", "missing:latest"],
+        status_provider=lambda: OllamaModelStatus(True, True, ("installed:latest",)),
+        config_resolver=Mock(side_effect=AssertionError("no config")),
+        diagnostic_runner=runner,
+    )
+
+    assert code == 2
+    output = capsys.readouterr().out
+    assert "model 'missing:latest' is not installed" in output
+    assert "oterminus doctor" in output
+    runner.assert_not_called()
+
+
+def test_models_test_repaired_success_is_visible_and_successful(capsys) -> None:
+    runner = Mock(return_value=_report("gemma4:latest", repaired=True))
+
+    code = run_models_cli(
+        ["test", "gemma4:latest"],
+        status_provider=lambda: OllamaModelStatus(True, True, ("gemma4:latest",)),
+        diagnostic_runner=runner,
+    )
+
+    assert code == 0
+    output = capsys.readouterr().out
+    assert "structured/ls (after repair)" in output
+    assert "1 required repair" in output
+
+
+def test_models_test_probe_failure_exits_one_with_next_steps(capsys) -> None:
+    runner = Mock(
+        return_value=_report(
+            "gemma4:latest",
+            passed=False,
+            failure_reason="schema mismatch after repair: field `mode` is invalid",
+        )
+    )
+
+    code = run_models_cli(
+        ["test", "gemma4:latest"],
+        status_provider=lambda: OllamaModelStatus(True, True, ("gemma4:latest",)),
+        diagnostic_runner=runner,
+    )
+
+    assert code == 1
+    output = capsys.readouterr().out
+    assert "FAIL  ls-current-directory" in output
+    assert "schema mismatch after repair" in output
+    assert "Summary: 0 passed, 1 failed" in output
+    assert "oterminus config set model <model-name>" in output
+
+
+def test_models_test_client_failure_exits_two(capsys) -> None:
+    runner = Mock(side_effect=ModelDiagnosticError("Ollama returned an empty planning response."))
+
+    code = run_models_cli(
+        ["test", "gemma4:latest"],
+        status_provider=lambda: OllamaModelStatus(True, True, ("gemma4:latest",)),
+        diagnostic_runner=runner,
+    )
+
+    assert code == 2
+    assert "empty planning response" in capsys.readouterr().out
 
 
 def test_top_level_routing_bypasses_request_lifecycle(monkeypatch) -> None:
