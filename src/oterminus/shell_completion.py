@@ -7,7 +7,7 @@ from oterminus.config_settings import SUPPORTED_MUTABLE_CONFIG_KEYS, SUPPORTED_R
 SUPPORTED_SHELLS: tuple[str, ...] = ("zsh", "bash", "fish")
 TOP_LEVEL_COMMANDS: tuple[str, ...] = ("doctor", "version", "completion", "config", "models")
 COMPLETION_SHELLS: tuple[str, ...] = SUPPORTED_SHELLS
-MODELS_COMMANDS: tuple[str, ...] = ("list",)
+MODELS_COMMANDS: tuple[str, ...] = ("list", "test")
 CONFIG_COMMANDS: tuple[str, ...] = (
     "path",
     "show",

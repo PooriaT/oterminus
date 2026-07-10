@@ -200,6 +200,7 @@ def main() -> int:
         print("oterminus doctor may exit non-zero when Ollama is unavailable; continuing.")
         run([str(oterminus), "doctor"], check=False, env=env)
         run([str(oterminus), "models", "--help"], env=env)
+        run([str(oterminus), "models", "test", "--help"], env=env)
 
         section("Run installed config command smoke checks")
         validate_config_smoke(oterminus, temp_dir, env)

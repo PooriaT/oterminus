@@ -112,11 +112,12 @@ def test_render_shell_completion_includes_config_subcommands(shell: str) -> None
 
 
 @pytest.mark.parametrize("shell", supported_shells())
-def test_render_shell_completion_includes_models_list_subcommand(shell: str) -> None:
+def test_render_shell_completion_includes_models_subcommands(shell: str) -> None:
     script = render_shell_completion(shell)
 
     assert "models" in script
     assert "list" in script
+    assert "test" in script
 
 
 @pytest.mark.parametrize("shell", supported_shells())

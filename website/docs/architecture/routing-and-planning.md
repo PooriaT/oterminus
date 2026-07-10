@@ -76,6 +76,14 @@ Model compatibility is a schema-following concern, not just a speed concern. Fas
 models may be less reliable at the planner JSON contract; OTerminus rejects invalid output after the
 single repair attempt instead of treating partial proposals as executable.
 
+`oterminus models test [MODEL]` exercises this exact planner path with a small fixed set of
+read-only requests expected to produce structured `ls`, `du`, and `man` proposals. The diagnostic
+calls `Planner.plan()` directly, so direct-command detection and deterministic shortcuts cannot hide
+model behavior. It records the planner's bounded repair trace to distinguish first-pass success,
+repair-assisted success, and failure after repair, then checks the expected proposal mode and family.
+It does not route proposals into validation, preview, confirmation, audit/history, or execution and
+never runs a command returned by the model.
+
 Planner prompt context advertises only normal executable command families. Registry entries that are
 planned/metadata-only (`experimental_only` with `direct_supported=false`) remain visible in detailed
 help and generated references, but are filtered out of executable capability summaries, examples,
