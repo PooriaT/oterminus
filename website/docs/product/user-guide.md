@@ -120,10 +120,48 @@ Run environment diagnostics explicitly with:
 oterminus doctor
 ```
 
-`doctor` prints the readiness report and exits. It does not start the REPL, execute a request, or
-invoke the LLM planner. Unlike `--version`, it checks environment readiness such as Ollama
-availability. If Ollama is missing, not running, or has no installed model, `doctor` should report
-that clearly so you can fix the local model setup before natural-language planning.
+`doctor` prints the readiness report and exits. It does not start the REPL, execute a request, invoke
+the LLM planner, or send model schema probes. Unlike `--version`, it checks environment readiness
+such as Ollama availability, reports the installed-model count, and shows the selected model, its
+configuration source, and whether it is installed. It points to `oterminus models test` for the
+separate, active schema-compliance diagnostic.
+
+For a focused view of local models and the current selection, run either equivalent form:
+
+```bash
+oterminus models
+oterminus models list
+```
+
+The list report shows Ollama CLI and service status, installed model names, the selected OTerminus
+model and its configuration source, and whether that selection is installed. The selected model is
+marked with `*` in the installed-model list. Change the selection with
+`oterminus config set model <model-name>`.
+
+`models` list reporting is diagnostic-only: it does not start the REPL, invoke a model or planner,
+propose or execute a shell command, run onboarding, or write request audit/history entries. If the
+Ollama CLI is missing, the service cannot be reached, no models are installed, or the selected model
+does not match an installed model, the report prints a next step. OTerminus never pulls a model
+automatically; install one explicitly with `ollama pull <model>`.
+
+Test whether the configured model follows OTerminus's strict planner proposal contract with:
+
+```bash
+oterminus models test
+oterminus models test gemma4:latest
+```
+
+The second form tests that installed model for this invocation only and does not change user
+configuration. The test sends three fixed, read-only planning prompts to the local model and calls
+the normal planner schema and structured-argument validation path. It never renders, dry-runs, asks
+to confirm, or executes any proposed command, and it does not write normal request audit or history
+events.
+
+This is a proposal-compliance diagnostic, not a general-intelligence or benchmark-quality test. A
+first-pass success is the strongest result. A pass after the planner's single repair attempt remains
+usable, but is shown separately because frequent repairs indicate lower reliability. A schema or
+simple command-family mismatch fails the test; try another installed model or run `oterminus doctor`
+when readiness prevents the test from starting.
 
 If no model is configured yet, OTerminus shows installed models and prompts you to choose one. The
 selection is saved in `~/.oterminus/config.json` (or `OTERMINUS_CONFIG_PATH` if set).
@@ -139,6 +177,7 @@ Schema-constrained output improves formatting reliability, but it does not guara
 correctness. OTerminus still validates and previews every proposal before execution, and invalid
 model output is never executed. If a model repeatedly fails schema validation:
 
+- run `oterminus models test` to check the selected model with fixed read-only probes
 - check the selected model with `oterminus config get model`
 - try another installed model with `oterminus config set model <model-name>`
 - run `oterminus doctor` to inspect local Ollama/model readiness
@@ -146,7 +185,7 @@ model output is never executed. If a model repeatedly fails schema validation:
 
 On the first bare interactive launch (`oterminus`) when the persistent config file does not exist
 and stdin is a TTY, OTerminus offers a first-time configuration wizard. The wizard does not run for
-one-shot requests, `--dry-run`, `--explain`, `doctor`, `version`, `completion`, `config` commands,
+one-shot requests, `--dry-run`, `--explain`, `doctor`, `version`, `completion`, `models`, `config` commands,
 or non-interactive stdin. Declining onboarding saves safe defaults with
 `onboarding_completed: true`, explains that you can rerun it with `oterminus config init`, and then
 continues into the REPL. If that save fails, OTerminus continues with in-memory safe defaults and
@@ -283,9 +322,11 @@ features, and developer-only checks:
   Start Ollama, for example with `ollama serve`, then rerun doctor.
 - `local ollama models` failing means the service is reachable but no local models are installed.
   Pull a model, for example `ollama pull gemma4`.
-- `configured model` warns when no model has been selected yet. Run OTerminus once to choose from
-  installed models, or set the `model` field in the config JSON. If the configured model is missing,
-  pull that model or update the config to an installed model.
+- `configured model` shows the selected value and its configuration source, warns when no model has
+  been selected, and fails when the selection is not installed. Use `oterminus models` to inspect
+  local choices and `oterminus config set model <name>` to select one. Installation is not a claim
+  of schema reliability: doctor never sends probes; run `oterminus models test` for that active
+  check.
 - `config path`, `audit log path`, and `history path` show whether OTerminus can read or create the
   relevant local directories. Audit logging is enabled by default; persistent history is disabled by
   default, so a disabled history check is normally OK.

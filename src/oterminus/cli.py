@@ -38,6 +38,7 @@ from oterminus.failure_explainer import FailureExplainer
 from oterminus.deterministic_shortcuts import plan_with_deterministic_shortcut
 from oterminus.logging_utils import configure_logging
 from oterminus.models import FailureExplanation, Proposal
+from oterminus.models_cli import run_models_cli
 from oterminus.ollama_client import OllamaClientError, OllamaPlannerClient
 from oterminus.onboarding import run_onboarding, save_declined_onboarding
 from oterminus.planner import Planner, PlannerError
@@ -106,16 +107,18 @@ _FLAG_EXPLANATIONS: dict[str, str] = {
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
-    if argv and argv[0].lower() == "config":
+    if argv and argv[0].lower() in {"config", "models"}:
+        cli_mode = argv[0].lower()
         return argparse.Namespace(
             request=argv,
             dry_run=False,
             explain=False,
             version=False,
             verbose=False,
-            cli_mode="config",
+            cli_mode=cli_mode,
             completion_shell=None,
-            config_argv=argv[1:],
+            config_argv=argv[1:] if cli_mode == "config" else None,
+            models_argv=argv[1:] if cli_mode == "models" else None,
         )
 
     parser = argparse.ArgumentParser(description="oterminus: local AI terminal assistant")
@@ -137,7 +140,8 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     args.cli_mode = _cli_mode_from_request(args.request)
     args.completion_shell = None
     args.config_argv = args.request[1:] if args.cli_mode == "config" else None
-    if args.cli_mode in {"doctor", "version", "completion", "config"} and (
+    args.models_argv = args.request[1:] if args.cli_mode == "models" else None
+    if args.cli_mode in {"doctor", "version", "completion", "config", "models"} and (
         args.dry_run or args.explain
     ):
         parser.error(f"{args.cli_mode} cannot be combined with --dry-run or --explain")
@@ -159,6 +163,8 @@ def _cli_mode_from_request(request: list[str]) -> str:
         return "completion"
     if request and request[0].lower() == "config":
         return "config"
+    if request and request[0].lower() == "models":
+        return "models"
     return "request"
 
 
@@ -1295,6 +1301,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.cli_mode == "config":
         return run_config_cli(args.config_argv or [])
+
+    if args.cli_mode == "models":
+        return run_models_cli(args.models_argv or [])
 
     if _should_offer_first_run_onboarding(args):
         read_result = read_user_config()

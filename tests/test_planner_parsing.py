@@ -426,6 +426,33 @@ def test_planner_first_call_valid_experimental_proposal_passes() -> None:
     assert len(client.calls) == 1
 
 
+def test_planner_exposes_validated_shape_before_structured_normalization() -> None:
+    client = _StubClient(
+        _proposal_payload(
+            mode="experimental",
+            command_family=None,
+            arguments=None,
+            command="ls .",
+            summary="list files",
+            explanation="Use ls to list the current directory.",
+            notes=["Experimental proposal; review before running."],
+        )
+    )
+    planner = Planner(client)
+    validated_proposals: list[Proposal] = []
+
+    proposal = planner.plan(
+        "list files in the current directory",
+        validated_proposal_callback=validated_proposals.append,
+    )
+
+    assert validated_proposals[0].mode == ProposalMode.EXPERIMENTAL
+    assert validated_proposals[0].command_family is None
+    assert validated_proposals[0].command == "ls ."
+    assert proposal.mode == ProposalMode.STRUCTURED
+    assert proposal.command_family == "ls"
+
+
 def test_planner_repairs_invalid_action_type_and_mode_once() -> None:
     invalid = _proposal_payload(
         action_type="cat",

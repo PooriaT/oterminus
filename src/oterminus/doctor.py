@@ -9,7 +9,13 @@ from enum import Enum
 from pathlib import Path
 
 from oterminus.commands import COMMAND_PACKS, COMMAND_REGISTRY, current_platform_id
-from oterminus.config import AppConfig, get_user_config_path, load_config
+from oterminus.config import (
+    AppConfig,
+    ConfigValueSource,
+    ResolvedConfig,
+    get_user_config_path,
+    resolve_config,
+)
 from oterminus.evals import load_eval_cases
 from oterminus.setup import check_ollama_installed, check_ollama_running, get_available_models
 from oterminus.terminal_style import StyleToken, TerminalStyle
@@ -113,12 +119,22 @@ def run_doctor() -> DoctorReport:
             )
         )
 
-    app_config, config_check = _load_app_config()
+    resolved_config, config_check = _load_resolved_config()
     results.append(config_check)
+    app_config = resolved_config.app_config if resolved_config is not None else None
+    model_source = resolved_config.sources.get("model") if resolved_config is not None else None
     results.append(
-        _check_configured_model(app_config, models, ollama_ready=cli_installed and ollama_running)
+        _check_configured_model(
+            app_config,
+            model_source,
+            models,
+            ollama_ready=cli_installed and ollama_running,
+        )
     )
-    results.append(_check_config_file())
+    config_path = (
+        resolved_config.config_path if resolved_config is not None else get_user_config_path()
+    )
+    results.append(_check_config_file(config_path))
     results.append(_check_audit_path(app_config))
     results.append(_check_history_path(app_config))
     results.append(_check_prompt_toolkit())
@@ -383,7 +399,7 @@ def _check_ollama_models() -> tuple[CheckResult, list[str]]:
             CheckResult(
                 name="local ollama models",
                 status=Status.PASS,
-                message=f"Found {len(models)} model(s).",
+                message=f"Found {len(models)} installed model(s).",
                 critical=True,
             ),
             models,
@@ -401,9 +417,9 @@ def _check_ollama_models() -> tuple[CheckResult, list[str]]:
     )
 
 
-def _load_app_config() -> tuple[AppConfig | None, CheckResult]:
+def _load_resolved_config() -> tuple[ResolvedConfig | None, CheckResult]:
     try:
-        config = load_config()
+        resolved = resolve_config()
     except Exception as exc:
         return (
             None,
@@ -416,7 +432,7 @@ def _load_app_config() -> tuple[AppConfig | None, CheckResult]:
             ),
         )
     return (
-        config,
+        resolved,
         CheckResult(
             name="app config",
             status=Status.PASS,
@@ -427,7 +443,11 @@ def _load_app_config() -> tuple[AppConfig | None, CheckResult]:
 
 
 def _check_configured_model(
-    config: AppConfig | None, models: list[str], *, ollama_ready: bool
+    config: AppConfig | None,
+    source: ConfigValueSource | None,
+    models: list[str],
+    *,
+    ollama_ready: bool,
 ) -> CheckResult:
     if config is None:
         return CheckResult(
@@ -437,19 +457,25 @@ def _check_configured_model(
             guidance="Fix the app config check first, then rerun doctor.",
         )
     configured_model = config.model
+    source_value = source.value if source is not None else "unknown"
     if not configured_model:
         return CheckResult(
             name="configured model",
             status=Status.WARN,
-            message="No model configured in user config yet.",
-            guidance="Run OTerminus once to select a model, or set `model` in your config JSON.",
+            message=f"No model is selected (source: {source_value}).",
+            guidance=(
+                "Run `oterminus models`, then select one with `oterminus config set model <name>`."
+            ),
         )
 
     if not ollama_ready:
         return CheckResult(
             name="configured model",
             status=Status.WARN,
-            message=f"Configured model is `{configured_model}` (availability not verified).",
+            message=(
+                f"`{configured_model}` is selected (source: {source_value}); "
+                "installation status was not verified because Ollama is unavailable."
+            ),
             guidance="Fix Ollama CLI/service checks first, then rerun doctor.",
         )
 
@@ -457,21 +483,25 @@ def _check_configured_model(
         return CheckResult(
             name="configured model",
             status=Status.PASS,
-            message=f"`{configured_model}` is installed.",
+            message=(
+                f"`{configured_model}` is installed (source: {source_value}). "
+                "Schema reliability is not probed by doctor; run `oterminus models test`."
+            ),
             critical=True,
         )
 
     return CheckResult(
         name="configured model",
         status=Status.FAIL,
-        message=f"Configured model `{configured_model}` is not installed locally.",
-        guidance="Update config to an installed model or pull the configured model with Ollama.",
+        message=(
+            f"`{configured_model}` is selected (source: {source_value}) but is not installed."
+        ),
+        guidance="Run `oterminus models` or pull/select an installed model.",
         critical=True,
     )
 
 
-def _check_config_file() -> CheckResult:
-    path = get_user_config_path()
+def _check_config_file(path: Path) -> CheckResult:
     parent = path.parent
 
     try:

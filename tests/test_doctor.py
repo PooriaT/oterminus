@@ -6,13 +6,33 @@ from unittest.mock import Mock
 
 import pytest
 
-from oterminus.config import AppConfig, load_config as real_load_config
+from oterminus.config import (
+    AppConfig,
+    ConfigValueSource,
+    ResolvedConfig,
+    resolve_config as real_resolve_config,
+)
 from oterminus.doctor import CheckResult, DoctorReport, Status, print_report, run_doctor
 from oterminus.terminal_style import TerminalStyle
 from oterminus.version import get_version as real_get_version
 
 
 ANSI_RE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
+
+
+def _resolved_config(
+    config: AppConfig,
+    tmp_path: Path,
+    *,
+    model_source: ConfigValueSource = ConfigValueSource.USER_CONFIG,
+) -> ResolvedConfig:
+    return ResolvedConfig(
+        app_config=config,
+        sources={"model": model_source},
+        user_config=None,
+        config_path=tmp_path / "config.json",
+        config_exists=False,
+    )
 
 
 def _base_monkeypatches(monkeypatch, tmp_path: Path) -> None:
@@ -37,7 +57,9 @@ def _base_monkeypatches(monkeypatch, tmp_path: Path) -> None:
         history_enabled=False,
         history_path=tmp_path / "history" / "history.jsonl",
     )
-    monkeypatch.setattr("oterminus.doctor.load_config", lambda: config)
+    monkeypatch.setattr(
+        "oterminus.doctor.resolve_config", lambda: _resolved_config(config, tmp_path)
+    )
 
 
 def _status_by_name(report, name: str) -> CheckResult:
@@ -56,7 +78,14 @@ def test_doctor_passes_with_healthy_environment(monkeypatch, tmp_path: Path) -> 
     assert _status_by_name(report, "environment").status is Status.PASS
     assert _status_by_name(report, "ollama CLI").status is Status.PASS
     assert _status_by_name(report, "ollama service").status is Status.PASS
-    assert _status_by_name(report, "configured model").status is Status.PASS
+    models = _status_by_name(report, "local ollama models")
+    assert models.status is Status.PASS
+    assert "Found 1 installed model(s)." in models.message
+    configured = _status_by_name(report, "configured model")
+    assert configured.status is Status.PASS
+    assert "source: user_config" in configured.message
+    assert "oterminus models test" in configured.message
+    assert "reliable" not in configured.message.lower()
     assert _status_by_name(report, "audit log path").status is Status.PASS
     assert _status_by_name(report, "history path").status is Status.PASS
     assert _status_by_name(report, "command registry").status is Status.PASS
@@ -204,6 +233,10 @@ def test_doctor_fails_when_ollama_service_down(monkeypatch, tmp_path: Path) -> N
     assert _status_by_name(report, "ollama service").status is Status.FAIL
     assert _status_by_name(report, "local ollama models").status is Status.WARN
     assert "service is unreachable" in _status_by_name(report, "local ollama models").message
+    configured = _status_by_name(report, "configured model")
+    assert configured.status is Status.WARN
+    assert "`gemma3:latest` is selected (source: user_config)" in configured.message
+    assert "not verified" in configured.message
     assert report.exit_code == 2
 
 
@@ -226,7 +259,7 @@ def test_doctor_reports_config_parse_failure_instead_of_crashing(
 ) -> None:
     _base_monkeypatches(monkeypatch, tmp_path)
     monkeypatch.setattr(
-        "oterminus.doctor.load_config", Mock(side_effect=ValueError("invalid timeout"))
+        "oterminus.doctor.resolve_config", Mock(side_effect=ValueError("invalid timeout"))
     )
 
     report = run_doctor()
@@ -243,7 +276,7 @@ def test_doctor_reports_invalid_user_config_without_crashing(monkeypatch, tmp_pa
     config_path = tmp_path / "config.json"
     config_path.write_text('{"audit_log_path": 123}', encoding="utf-8")
     monkeypatch.setenv("OTERMINUS_CONFIG_PATH", str(config_path))
-    monkeypatch.setattr("oterminus.doctor.load_config", real_load_config)
+    monkeypatch.setattr("oterminus.doctor.resolve_config", real_resolve_config)
 
     report = run_doctor()
 
@@ -279,11 +312,17 @@ def test_doctor_fails_when_configured_model_missing(monkeypatch, tmp_path: Path)
         history_enabled=False,
         history_path=tmp_path / "history" / "history.jsonl",
     )
-    monkeypatch.setattr("oterminus.doctor.load_config", lambda: config)
+    monkeypatch.setattr(
+        "oterminus.doctor.resolve_config", lambda: _resolved_config(config, tmp_path)
+    )
 
     report = run_doctor()
 
-    assert _status_by_name(report, "configured model").status is Status.FAIL
+    configured = _status_by_name(report, "configured model")
+    assert configured.status is Status.FAIL
+    assert "source: user_config" in configured.message
+    assert configured.guidance is not None
+    assert "oterminus models" in configured.guidance
     assert report.exit_code == 2
 
 
@@ -296,13 +335,32 @@ def test_doctor_warns_when_no_model_configured(monkeypatch, tmp_path: Path) -> N
         history_enabled=False,
         history_path=tmp_path / "history" / "history.jsonl",
     )
-    monkeypatch.setattr("oterminus.doctor.load_config", lambda: config)
+    monkeypatch.setattr(
+        "oterminus.doctor.resolve_config",
+        lambda: _resolved_config(config, tmp_path, model_source=ConfigValueSource.DEFAULT),
+    )
 
     report = run_doctor()
 
     configured = _status_by_name(report, "configured model")
     assert configured.status is Status.WARN
-    assert "No model configured" in configured.message
+    assert "No model is selected (source: default)" in configured.message
+    assert configured.guidance is not None
+    assert "oterminus models" in configured.guidance
+
+
+def test_doctor_never_runs_active_model_probe(monkeypatch, tmp_path: Path) -> None:
+    _base_monkeypatches(monkeypatch, tmp_path)
+    monkeypatch.setattr(
+        "oterminus.ollama_client.OllamaPlannerClient.chat_json",
+        lambda *args, **kwargs: pytest.fail("doctor must not run model probes"),
+    )
+
+    report = run_doctor()
+
+    configured = _status_by_name(report, "configured model")
+    assert configured.status is Status.PASS
+    assert "Schema reliability is not probed" in configured.message
 
 
 def test_doctor_checks_audit_path(monkeypatch, tmp_path: Path) -> None:
@@ -326,7 +384,9 @@ def test_doctor_reports_disabled_audit_path(monkeypatch, tmp_path: Path) -> None
         history_enabled=False,
         history_path=tmp_path / "history" / "history.jsonl",
     )
-    monkeypatch.setattr("oterminus.doctor.load_config", lambda: config)
+    monkeypatch.setattr(
+        "oterminus.doctor.resolve_config", lambda: _resolved_config(config, tmp_path)
+    )
 
     report = run_doctor()
 
@@ -344,7 +404,9 @@ def test_doctor_checks_enabled_history_path(monkeypatch, tmp_path: Path) -> None
         history_enabled=True,
         history_path=tmp_path / "history" / "history.jsonl",
     )
-    monkeypatch.setattr("oterminus.doctor.load_config", lambda: config)
+    monkeypatch.setattr(
+        "oterminus.doctor.resolve_config", lambda: _resolved_config(config, tmp_path)
+    )
 
     report = run_doctor()
 
@@ -362,7 +424,9 @@ def test_doctor_checks_unwritable_history_path(monkeypatch, tmp_path: Path) -> N
         history_enabled=True,
         history_path=tmp_path / "history" / "history.jsonl",
     )
-    monkeypatch.setattr("oterminus.doctor.load_config", lambda: config)
+    monkeypatch.setattr(
+        "oterminus.doctor.resolve_config", lambda: _resolved_config(config, tmp_path)
+    )
     monkeypatch.setattr(
         "oterminus.doctor.os.access",
         lambda path, mode: False if Path(path) == tmp_path / "history" else True,
@@ -385,7 +449,9 @@ def test_doctor_checks_existing_history_file_writability(monkeypatch, tmp_path: 
         history_enabled=True,
         history_path=history_path,
     )
-    monkeypatch.setattr("oterminus.doctor.load_config", lambda: config)
+    monkeypatch.setattr(
+        "oterminus.doctor.resolve_config", lambda: _resolved_config(config, tmp_path)
+    )
     monkeypatch.setattr(
         "oterminus.doctor.os.access",
         lambda path, mode: False if Path(path) == history_path else True,
@@ -411,7 +477,9 @@ def test_doctor_rejects_history_path_that_is_existing_directory(
         history_enabled=True,
         history_path=history_path,
     )
-    monkeypatch.setattr("oterminus.doctor.load_config", lambda: config)
+    monkeypatch.setattr(
+        "oterminus.doctor.resolve_config", lambda: _resolved_config(config, tmp_path)
+    )
 
     report = run_doctor()
 

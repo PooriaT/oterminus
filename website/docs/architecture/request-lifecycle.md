@@ -84,8 +84,10 @@ flowchart TD
 
 Input can be:
 
-- the explicit diagnostics command (`doctor`), which runs readiness checks and exits outside the
-  normal request planning/execution lifecycle
+- the explicit diagnostics command (`doctor`), which checks Ollama readiness, installed-model count,
+  and model-selection consistency, then exits outside the normal request planning/execution
+  lifecycle without sending planner or schema-probe prompts; active schema diagnostics are only run
+  by `oterminus models test`
 - bare interactive launch (`oterminus`), which may offer onboarding before REPL services are
   constructed when no config file exists
 - natural language (`"find large files here"`)
