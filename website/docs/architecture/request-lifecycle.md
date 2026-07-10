@@ -100,6 +100,10 @@ as `chmod +x run.sh` and `rm -rf build` are not intercepted as ambiguous natural
 Direct proposals still continue through proposal parsing, structured rendering when available,
 validation, policy checks, preview, and confirmation policy in execute mode. In `--dry-run` or
 `--explain` one-shot mode, direct proposals do not require Ollama if direct detection succeeds.
+Direct input is parsed into a structured proposal when the typed schema can represent its argv
+exactly. When it cannot, only a constrained experimental direct-command fallback preserves the
+exact argv for validation. Any opted-in safe inspection flag passthrough is considered after local
+direct detection and only inside the normal validator/policy gate; it is never an execution bypass.
 
 ### 3) Ambiguity handling
 

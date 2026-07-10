@@ -25,6 +25,12 @@ class DirectFlagPolicy(str, Enum):
     SAFE_INSPECTION_PASSTHROUGH = "safe_inspection_passthrough"
 
 
+# Passthrough is a reviewed capability, not a classification inferred from risk alone. A command
+# must be added here deliberately after its complete behavior has been checked against the policy
+# documented in website/docs/architecture/validation-and-policy.md.
+SAFE_INSPECTION_PASSTHROUGH_COMMANDS = frozenset({"ls"})
+
+
 class PathOperandMode(str, Enum):
     DEFAULT = "default"
     CD = "cd"
@@ -149,3 +155,29 @@ def command(
         ),
         network_touching=network_touching,
     )
+
+
+def safe_inspection_passthrough_eligibility_reasons(spec: CommandSpec) -> tuple[str, ...]:
+    """Return fail-closed reasons why a passthrough opt-in is not policy eligible."""
+    if spec.direct_flag_policy != DirectFlagPolicy.SAFE_INSPECTION_PASSTHROUGH:
+        return ()
+
+    reasons: list[str] = []
+    if spec.name not in SAFE_INSPECTION_PASSTHROUGH_COMMANDS:
+        reviewed = ", ".join(sorted(SAFE_INSPECTION_PASSTHROUGH_COMMANDS))
+        reasons.append(f"only explicitly reviewed commands may opt in (currently: {reviewed})")
+    if spec.risk_level != RiskLevel.SAFE:
+        reasons.append("risk must be safe")
+    if spec.capability_id != "filesystem_inspection" or spec.category != "inspection":
+        reasons.append("command must be local-filesystem inspection only")
+    if spec.network_touching:
+        reasons.append("command must not be network-touching")
+    if not spec.direct_supported:
+        reasons.append("command must support trusted local direct detection")
+    if spec.maturity_level != MaturityLevel.STRUCTURED:
+        reasons.append("command must retain structured rendering for normal planning")
+    if spec.path_operand_mode != PathOperandMode.DEFAULT:
+        reasons.append("operands must use local-filesystem path handling")
+    if spec.dangerous_flags or spec.dangerous_target_literals:
+        reasons.append("command must not expose dangerous flags or targets")
+    return tuple(reasons)

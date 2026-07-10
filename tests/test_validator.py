@@ -356,6 +356,7 @@ def test_home_parent_traversal_is_rejected_by_allowed_roots(monkeypatch, tmp_pat
         "ls --color=",
         "ls --bad!",
         "ls https://example.com",
+        "ls foo\x1bbar",
     ],
 )
 def test_reject_direct_origin_ls_unsafe_passthrough_forms(command: str) -> None:
