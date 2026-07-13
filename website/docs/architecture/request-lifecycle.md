@@ -114,11 +114,19 @@ destructive, or underspecified wording such as “clean this folder”, “delet
 “repair permissions”. When such a request is ambiguous, OTerminus shows a short explanation and safe
 read-only inspection alternatives.
 
-Ambiguous requests stop before planner setup, planner calls, validation, confirmation prompts, and
+Ambiguous one-shot requests stop before planner setup, planner calls, validation, confirmation prompts, and
 execution. Nothing is executed, including in dry-run or explain mode. Their audit events use
 `confirmation_result: "blocked_ambiguous"` and include the ambiguity reason plus suggested safe
 options. They also record planner skip diagnostics with `planner_invoked: false`,
 `planner_skipped: true`, and `planner_skip_reason: "ambiguity_blocked"`.
+
+In REPL mode only, an ambiguous non-direct request may show one bounded clarification prompt before
+that blocked request is submitted to the normal handler. The prompt is deterministic: it lists safe
+inspection options from ambiguity detection, asks for one complete replacement request, and accepts
+only one answer. Blank input, `cancel`, interruption, EOF, or a still-ambiguous replacement returns to
+the REPL prompt without planner setup, validation, confirmation, or execution. A specific replacement
+re-enters the same lifecycle through `handle_request()`; the parsed REPL run mode (`dry-run` or
+`explain`) is preserved, and safe auto-execute is disabled for clarified requests.
 
 ### 4) Capability router
 
