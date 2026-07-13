@@ -12,7 +12,12 @@ from datetime import datetime, timezone
 from collections.abc import Callable
 from enum import Enum
 
-from oterminus.ambiguity import AmbiguityResult, detect_ambiguity
+from oterminus.ambiguity import (
+    AmbiguityResult,
+    ClarificationResult,
+    ClarificationStatus,
+    detect_ambiguity,
+)
 from oterminus.audit import AuditEvent, AuditLogger
 from oterminus.auto_execute import evaluate_safe_auto_execute
 from oterminus.commands import get_command_spec, supported_base_commands, supported_capabilities
@@ -59,6 +64,108 @@ PROPOSAL_ORIGIN_DIRECT_COMMAND = "direct_command"
 PROPOSAL_ORIGIN_DETERMINISTIC_SHORTCUT = "deterministic_shortcut"
 PROPOSAL_ORIGIN_LLM_PLANNER = "llm_planner"
 PROPOSAL_ORIGIN_UNKNOWN = "unknown"
+
+
+def clarify_repl_request(
+    request: str,
+    *,
+    input_fn: Callable[[str], str] | None = None,
+    output_fn: Callable[[str], None] = print,
+    disabled_pack_ids: frozenset[str] | None = None,
+    style: TerminalStyle | None = None,
+) -> ClarificationResult:
+    """Offer one bounded REPL clarification opportunity for ambiguous input.
+
+    This helper is intentionally limited to direct-command detection, ambiguity
+    detection, rendering, and reading one replacement request. It never plans,
+    validates, confirms, or executes.
+    """
+
+    if input_fn is None:
+        input_fn = input
+
+    if detect_direct_command(request, disabled_pack_ids=disabled_pack_ids) is not None:
+        return ClarificationResult(ClarificationStatus.NOT_NEEDED, original_request=request)
+
+    ambiguity = detect_ambiguity(request)
+    if not ambiguity.is_ambiguous:
+        return ClarificationResult(ClarificationStatus.NOT_NEEDED, original_request=request)
+
+    prompt = "clarify> "
+    output_fn(render_repl_clarification_prompt(ambiguity, style=style))
+    try:
+        answer = input_fn(_style(style, StyleToken.COMMAND, prompt)).strip()
+    except KeyboardInterrupt:
+        return ClarificationResult(
+            ClarificationStatus.CANCELLED,
+            original_request=request,
+            ambiguity=ambiguity,
+            prompt=prompt,
+        )
+
+    if not answer or answer.lower() == "cancel":
+        return ClarificationResult(
+            ClarificationStatus.CANCELLED,
+            original_request=request,
+            ambiguity=ambiguity,
+            prompt=prompt,
+            answer=answer,
+        )
+
+    if detect_direct_command(answer, disabled_pack_ids=disabled_pack_ids) is not None:
+        return ClarificationResult(
+            ClarificationStatus.CLARIFIED,
+            original_request=request,
+            ambiguity=ambiguity,
+            prompt=prompt,
+            answer=answer,
+            clarified_request=answer,
+        )
+
+    answer_ambiguity = detect_ambiguity(answer)
+    if answer_ambiguity.is_ambiguous:
+        output_fn("That replacement request is still ambiguous; returning to the prompt.")
+        return ClarificationResult(
+            ClarificationStatus.UNRESOLVED,
+            original_request=request,
+            ambiguity=answer_ambiguity,
+            prompt=prompt,
+            answer=answer,
+        )
+
+    return ClarificationResult(
+        ClarificationStatus.CLARIFIED,
+        original_request=request,
+        ambiguity=ambiguity,
+        prompt=prompt,
+        answer=answer,
+        clarified_request=answer,
+    )
+
+
+def render_repl_clarification_prompt(
+    result: AmbiguityResult, *, style: TerminalStyle | None = None
+) -> str:
+    lines = [
+        _style(style, StyleToken.WARNING, "This request is ambiguous and has not been planned."),
+    ]
+    if result.reason:
+        lines.append(f"Reason: {result.reason}")
+    if result.suggested_safe_options:
+        lines.append("")
+        lines.append(_style(style, StyleToken.HEADING, "Safer inspection ideas:"))
+        lines.extend(
+            f"  {index}. {option}"
+            for index, option in enumerate(result.suggested_safe_options, start=1)
+        )
+    lines.append("")
+    lines.append("Enter one complete, specific request, for example:")
+    example = result.suggested_safe_options[0] if result.suggested_safe_options else "list files"
+    lines.append(f"  {example} in ~/Downloads")
+    if result.follow_up_questions:
+        lines.append(result.follow_up_questions[0])
+    lines.append("Press Enter or type `cancel` to return to the prompt.")
+    return "\n".join(lines)
 
 
 def _store_failure_output(history_item, result) -> None:
@@ -828,6 +935,23 @@ def repl(
             print("Please provide a request after the REPL command prefix.")
             continue
 
+        try:
+            clarification = clarify_repl_request(
+                request,
+                disabled_pack_ids=effective_disabled_pack_ids,
+                style=style,
+            )
+        except EOFError:
+            print()
+            return 0
+        if clarification.status == ClarificationStatus.CANCELLED:
+            continue
+        if clarification.status == ClarificationStatus.UNRESOLVED:
+            continue
+        clarified = clarification.status == ClarificationStatus.CLARIFIED
+        if clarified and clarification.clarified_request is not None:
+            request = clarification.clarified_request
+
         handle_request(
             request,
             planner_factory,
@@ -841,7 +965,7 @@ def repl(
             disabled_pack_ids=disabled_pack_ids,
             failure_explainer=failure_explainer,
             failure_explainer_factory=failure_explainer_factory,
-            auto_execute_safe=auto_execute_safe,
+            auto_execute_safe=False if clarified else auto_execute_safe,
             deterministic_shortcuts=deterministic_shortcuts,
             style=style,
         )
