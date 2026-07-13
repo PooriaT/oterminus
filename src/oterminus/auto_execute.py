@@ -32,6 +32,7 @@ def evaluate_safe_auto_execute(
     command_spec: CommandSpec | None,
     rerun_source_history_id: int | None,
     recovery_source_history_id: int | None = None,
+    clarification_source_history_id: int | None = None,
     disabled_pack_ids: frozenset[str] | None = None,
     platform_id: str | None = None,
 ) -> AutoExecuteDecision:
@@ -45,6 +46,8 @@ def evaluate_safe_auto_execute(
         return AutoExecuteDecision(False, "history_rerun")
     if recovery_source_history_id is not None:
         return AutoExecuteDecision(False, "failure_recovery")
+    if clarification_source_history_id is not None:
+        return AutoExecuteDecision(False, "clarification_request")
     if proposal.mode != ProposalMode.STRUCTURED:
         return AutoExecuteDecision(False, "proposal_mode")
     if not validation.accepted:

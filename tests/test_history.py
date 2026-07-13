@@ -132,3 +132,58 @@ def test_persistent_history_round_trips_recovery_metadata(tmp_path) -> None:
 
     assert loaded[0].recovery_source_history_id == 1
     assert loaded[0].recovery_request is True
+
+
+def test_persistent_history_round_trips_clarification_metadata(tmp_path: Path) -> None:
+    path = tmp_path / "history.jsonl"
+    store = PersistentHistoryStore(path, enabled=True, limit=10, redact=False)
+    store.append(
+        SessionHistoryItem(
+            id=1,
+            user_input="clean this folder",
+            ambiguity_detected=True,
+            ambiguity_reason="broad",
+            ambiguity_safe_options=["list files"],
+            clarification_requested=True,
+            clarification_prompt="clarify> ",
+            clarification_answer="list files in .",
+            clarification_outcome="clarified",
+            clarified_request_text="list files in .",
+            execution_status="clarified",
+        )
+    )
+
+    loaded = store.load()
+
+    assert loaded[0].ambiguity_detected is True
+    assert loaded[0].ambiguity_safe_options == ["list files"]
+    assert loaded[0].clarification_requested is True
+    assert loaded[0].clarification_outcome == "clarified"
+    assert loaded[0].clarified_request_text == "list files in ."
+
+
+def test_persistent_history_redacts_clarification_fields(tmp_path: Path) -> None:
+    path = tmp_path / "history.jsonl"
+    store = PersistentHistoryStore(path, enabled=True, limit=10, redact=True)
+    store.append(
+        SessionHistoryItem(
+            id=1,
+            user_input="token=abc123",
+            ambiguity_detected=True,
+            ambiguity_reason="reason token=abc123",
+            ambiguity_safe_options=["inspect token=abc123"],
+            clarification_requested=True,
+            clarification_prompt="prompt token=abc123",
+            clarification_answer="answer token=abc123",
+            clarification_outcome="clarified",
+            clarified_request_text="final token=abc123",
+        )
+    )
+
+    payload = json.loads(path.read_text(encoding="utf-8"))
+
+    assert payload["ambiguity_reason"] == "reason token=[REDACTED]"
+    assert payload["ambiguity_safe_options"] == ["inspect token=[REDACTED]"]
+    assert payload["clarification_prompt"] == "prompt token=[REDACTED]"
+    assert payload["clarification_answer"] == "answer token=[REDACTED]"
+    assert payload["clarified_request_text"] == "final token=[REDACTED]"

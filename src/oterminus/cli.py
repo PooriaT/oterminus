@@ -59,6 +59,7 @@ from oterminus.version import format_version
 LOGGER = logging.getLogger("oterminus")
 PLANNER_SKIP_DIRECT_COMMAND = "direct_command"
 PLANNER_SKIP_AMBIGUITY_BLOCKED = "ambiguity_blocked"
+PLANNER_SKIP_AMBIGUITY_CLARIFICATION = "ambiguity_clarification"
 PLANNER_SKIP_DETERMINISTIC_SHORTCUT = "deterministic_shortcut"
 PROPOSAL_ORIGIN_DIRECT_COMMAND = "direct_command"
 PROPOSAL_ORIGIN_DETERMINISTIC_SHORTCUT = "deterministic_shortcut"
@@ -91,10 +92,11 @@ def clarify_repl_request(
     if not ambiguity.is_ambiguous:
         return ClarificationResult(ClarificationStatus.NOT_NEEDED, original_request=request)
 
-    prompt = "clarify> "
-    output_fn(render_repl_clarification_prompt(ambiguity, style=style))
+    prompt = render_repl_clarification_prompt(ambiguity, style=style)
+    input_prompt = "clarify> "
+    output_fn(prompt)
     try:
-        answer = input_fn(_style(style, StyleToken.COMMAND, prompt)).strip()
+        answer = input_fn(_style(style, StyleToken.COMMAND, input_prompt)).strip()
     except KeyboardInterrupt:
         return ClarificationResult(
             ClarificationStatus.CANCELLED,
@@ -128,7 +130,7 @@ def clarify_repl_request(
         return ClarificationResult(
             ClarificationStatus.UNRESOLVED,
             original_request=request,
-            ambiguity=answer_ambiguity,
+            ambiguity=ambiguity,
             prompt=prompt,
             answer=answer,
         )
@@ -306,6 +308,7 @@ def handle_request(
     session_history: SessionHistory | None = None,
     rerun_source_history_id: int | None = None,
     recovery_source_history_id: int | None = None,
+    clarification_source_history_id: int | None = None,
     persistent_store: PersistentHistoryStore | None = None,
     disabled_pack_ids: frozenset[str] | None = None,
     failure_explainer: FailureExplainer | None = None,
@@ -321,6 +324,8 @@ def handle_request(
     event.rerun_source_history_id = rerun_source_history_id
     event.recovery_source_history_id = recovery_source_history_id
     event.recovery_request = recovery_source_history_id is not None
+    event.clarification_source_history_id = clarification_source_history_id
+    event.is_clarified_request = clarification_source_history_id is not None
     event.auto_execute_safe_enabled = auto_execute_safe
     LOGGER.info("request=%s", request)
     history_item = session_history.start(request) if session_history is not None else None
@@ -387,6 +392,8 @@ def handle_request(
         history_item.rerun_source_history_id = rerun_source_history_id
         history_item.recovery_source_history_id = recovery_source_history_id
         history_item.recovery_request = recovery_source_history_id is not None
+        history_item.clarification_source_history_id = clarification_source_history_id
+        history_item.is_clarified_request = clarification_source_history_id is not None
         history_item.proposal_origin = proposal_origin
         history_item.execution_status = "planning"
     try:
@@ -409,6 +416,9 @@ def handle_request(
                     )
                 print(render_ambiguity_response(ambiguity, style=style))
                 if history_item is not None:
+                    history_item.ambiguity_detected = True
+                    history_item.ambiguity_reason = ambiguity.reason
+                    history_item.ambiguity_safe_options = list(ambiguity.suggested_safe_options)
                     history_item.execution_status = "blocked_ambiguous"
                 event.confirmation_result = "blocked_ambiguous"
                 event.duration_ms = _duration_ms_since(started_at)
@@ -609,6 +619,7 @@ def handle_request(
         command_spec=command_spec,
         rerun_source_history_id=rerun_source_history_id,
         recovery_source_history_id=recovery_source_history_id,
+        clarification_source_history_id=clarification_source_history_id,
         disabled_pack_ids=effective_disabled_pack_ids,
     )
     event.auto_execute_safe_eligible = auto_execute_decision.eligible
@@ -833,6 +844,59 @@ def _print_planner_trace(message: str) -> None:
     print(f"[trace] {message}")
 
 
+def _record_repl_clarification_source(
+    clarification: ClarificationResult,
+    *,
+    session_history: SessionHistory,
+    persistent_store: PersistentHistoryStore | None,
+    audit_logger: AuditLogger | None,
+    debug_trace: bool,
+) -> int | None:
+    if clarification.status == ClarificationStatus.NOT_NEEDED or clarification.ambiguity is None:
+        return None
+
+    source_item = session_history.start(clarification.original_request)
+    source_item.ambiguity_detected = True
+    source_item.ambiguity_reason = clarification.ambiguity.reason
+    source_item.ambiguity_safe_options = list(clarification.ambiguity.suggested_safe_options)
+    source_item.clarification_requested = True
+    source_item.clarification_prompt = clarification.prompt
+    source_item.clarification_answer = clarification.answer
+    source_item.clarification_outcome = clarification.status.value
+    source_item.clarified_request_text = clarification.clarified_request
+    source_item.execution_status = (
+        "clarified"
+        if clarification.status == ClarificationStatus.CLARIFIED
+        else f"clarification_{clarification.status.value}"
+    )
+
+    event = AuditEvent.start(user_input=clarification.original_request)
+    event.direct_command_detected = False
+    event.ambiguity_detected = True
+    event.ambiguity_reason = clarification.ambiguity.reason
+    event.ambiguity_safe_options = list(clarification.ambiguity.suggested_safe_options)
+    event.planner_invoked = False
+    event.planner_skipped = True
+    event.planner_skip_reason = PLANNER_SKIP_AMBIGUITY_CLARIFICATION
+    event.clarification_requested = True
+    event.clarification_prompt = clarification.prompt
+    event.clarification_answer = clarification.answer
+    event.clarification_outcome = clarification.status.value
+    event.clarified_request_text = clarification.clarified_request
+    event.confirmation_result = source_item.execution_status
+    event.duration_ms = 0
+    _write_audit_event(audit_logger, event)
+    if persistent_store is not None:
+        persistent_store.append(source_item)
+
+    if debug_trace:
+        if clarification.status == ClarificationStatus.CLARIFIED:
+            print(f"[trace] repl_clarification=clarified source_history_id={source_item.id}")
+        else:
+            print(f"[trace] repl_clarification={clarification.status.value}")
+    return source_item.id
+
+
 def repl(
     planner_factory: Planner | Callable[[], Planner],
     validator: Validator,
@@ -944,6 +1008,17 @@ def repl(
         except EOFError:
             print()
             return 0
+        source_history_id: int | None = None
+        if clarification.status != ClarificationStatus.NOT_NEEDED:
+            if debug_trace:
+                print("[trace] ambiguity=detected repl_clarification=requested")
+            source_history_id = _record_repl_clarification_source(
+                clarification,
+                session_history=session_history,
+                persistent_store=persistent_store,
+                audit_logger=audit_logger,
+                debug_trace=debug_trace,
+            )
         if clarification.status == ClarificationStatus.CANCELLED:
             continue
         if clarification.status == ClarificationStatus.UNRESOLVED:
@@ -962,6 +1037,7 @@ def repl(
             run_mode=run_mode,
             session_history=session_history,
             persistent_store=persistent_store,
+            clarification_source_history_id=source_history_id if clarified else None,
             disabled_pack_ids=disabled_pack_ids,
             failure_explainer=failure_explainer,
             failure_explainer_factory=failure_explainer_factory,
@@ -1363,19 +1439,41 @@ def _render_history_explanation(
     if history_item is None:
         return f"History id {history_id} not found."
 
+    extra_lines: list[str] = []
+    if history_item.ambiguity_detected:
+        extra_lines.append("Ambiguity: detected")
+        if history_item.ambiguity_reason:
+            extra_lines.append(f"Reason: {history_item.ambiguity_reason}")
+        if history_item.clarification_outcome:
+            extra_lines.append(f"Clarification outcome: {history_item.clarification_outcome}")
+        if history_item.clarification_prompt is not None:
+            extra_lines.append(f"Prompt: {history_item.clarification_prompt}")
+        if history_item.clarification_answer is not None:
+            extra_lines.append(f"Answer: {history_item.clarification_answer}")
+        if history_item.clarified_request_text is not None:
+            extra_lines.append(f"Clarified request: {history_item.clarified_request_text}")
+    if history_item.is_clarified_request:
+        extra_lines.append("Clarified request: yes")
+        if history_item.clarification_source_history_id is not None:
+            extra_lines.append(
+                f"Clarification source history id: {history_item.clarification_source_history_id}"
+            )
+
     if history_item.proposal is None or history_item.validation is None:
-        return (
+        base = (
             f"History id {history_id} has limited details.\n"
             f"Input: {history_item.user_input}\n"
             f"Status: {history_item.execution_status}"
         )
-    return render_explanation(
+        return base if not extra_lines else base + "\n" + "\n".join(extra_lines)
+    rendered = render_explanation(
         history_item.proposal,
         history_item.validation,
         selected_mode=RunMode.EXPLAIN,
         direct_command=history_item.direct_command_detected,
         style=style,
     )
+    return rendered if not extra_lines else rendered + "\n" + "\n".join(extra_lines)
 
 
 def run_doctor_cli() -> int:

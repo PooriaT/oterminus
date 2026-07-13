@@ -430,3 +430,63 @@ def test_repl_clarification_eof_exits_without_planning(monkeypatch, capsys) -> N
 
     assert "This request is ambiguous and has not been planned." in capsys.readouterr().out
     handle.assert_not_called()
+
+
+def test_explain_history_renders_clarification_source_details() -> None:
+    history = SessionHistory()
+    item = history.start("clean this folder")
+    item.ambiguity_detected = True
+    item.ambiguity_reason = "Matched ambiguous phrase"
+    item.clarification_requested = True
+    item.clarification_prompt = "clarify> "
+    item.clarification_answer = "list files in ."
+    item.clarification_outcome = "clarified"
+    item.clarified_request_text = "list files in ."
+    item.execution_status = "clarified"
+
+    output = handle_repl_history_command(
+        "explain 1",
+        session_history=history,
+        planner_factory=Mock(),
+        validator=Mock(),
+        executor=Mock(),
+        audit_logger=None,
+        debug_trace=False,
+    )
+
+    assert output is not None
+    assert "Ambiguity: detected" in output
+    assert "Clarification outcome: clarified" in output
+    assert "Clarified request: list files in ." in output
+
+
+def test_record_repl_clarification_source_has_no_lifecycle_details() -> None:
+    from oterminus.ambiguity import AmbiguityResult, ClarificationResult, ClarificationStatus
+    from oterminus.cli import _record_repl_clarification_source
+
+    history = SessionHistory()
+    result = ClarificationResult(
+        ClarificationStatus.CLARIFIED,
+        original_request="clean this folder",
+        ambiguity=AmbiguityResult(True, "broad", ("list files",)),
+        prompt="prompt text",
+        answer="list files in .",
+        clarified_request="list files in .",
+    )
+
+    source_id = _record_repl_clarification_source(
+        result,
+        session_history=history,
+        persistent_store=None,
+        audit_logger=None,
+        debug_trace=False,
+    )
+
+    item = history.find(source_id or 0)
+    assert item is not None
+    assert item.execution_status == "clarified"
+    assert item.proposal is None
+    assert item.validation is None
+    assert item.rendered_command is None
+    assert item.clarification_outcome == "clarified"
+    assert item.clarified_request_text == "list files in ."
