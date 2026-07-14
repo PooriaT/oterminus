@@ -49,8 +49,12 @@ flowchart TD
   C -->|yes| C1[Build direct proposal]
   C -->|no| D[Ambiguity detection]
   D --> E{Ambiguous?}
-  E -->|yes| E1[Show safer inspection options]
+  E -->|one-shot/non-interactive| E1[Block and audit blocked_ambiguous]
   E1 --> N
+  E -->|REPL| E2[One bounded clarification]
+  E2 -->|cancelled/unresolved| E3[Record source entry and return]
+  E3 --> N
+  E2 -->|specific replacement| F
   E -->|no| F[Capability router]
   F --> LP{Deterministic shortcut enabled and matched?}
   LP -->|yes| LP1[Build shortcut structured proposal]
@@ -114,11 +118,25 @@ destructive, or underspecified wording such as “clean this folder”, “delet
 “repair permissions”. When such a request is ambiguous, OTerminus shows a short explanation and safe
 read-only inspection alternatives.
 
-Ambiguous requests stop before planner setup, planner calls, validation, confirmation prompts, and
+Ambiguous one-shot requests stop before planner setup, planner calls, validation, confirmation prompts, and
 execution. Nothing is executed, including in dry-run or explain mode. Their audit events use
 `confirmation_result: "blocked_ambiguous"` and include the ambiguity reason plus suggested safe
 options. They also record planner skip diagnostics with `planner_invoked: false`,
 `planner_skipped: true`, and `planner_skip_reason: "ambiguity_blocked"`.
+
+In REPL mode only, an ambiguous non-direct request may show one bounded clarification prompt before
+any proposal is created. The prompt is deterministic: it lists safe inspection options from ambiguity
+detection, asks for one complete replacement request, and accepts only one answer. Blank input,
+`cancel`, interruption, EOF, or a still-ambiguous replacement records a completed source history/audit
+entry and returns to the REPL prompt without planner setup, validation, confirmation, or execution. A
+specific replacement records the original ambiguous source entry with `clarification_outcome:
+"clarified"`, then re-enters the same lifecycle through `handle_request()` as a separate linked final
+request. The parsed REPL run mode (`dry-run` or `explain`) is preserved, clarified requests never use
+safe auto-execute, and execute-mode clarified requests still show the normal preview and confirmation.
+Rerunning the final linked entry resubmits the final request; rerunning the original source resubmits
+the original ambiguous text and encounters ambiguity again. Old answers are not silently replayed, and clarification is
+not persistent conversational memory. Audit and persistent history redaction applies to ambiguity
+reasons, safe options, prompts, answers, and clarified request text.
 
 ### 4) Capability router
 

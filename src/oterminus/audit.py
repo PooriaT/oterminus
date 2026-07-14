@@ -17,6 +17,13 @@ class AuditEvent:
     ambiguity_detected: bool = False
     ambiguity_reason: str | None = None
     ambiguity_safe_options: list[str] = field(default_factory=list)
+    clarification_requested: bool = False
+    clarification_prompt: str | None = None
+    clarification_answer: str | None = None
+    clarification_outcome: str | None = None
+    clarified_request_text: str | None = None
+    clarification_source_history_id: int | None = None
+    is_clarified_request: bool = False
     planner_invoked: bool = False
     planner_skipped: bool = False
     planner_skip_reason: str | None = None
@@ -90,6 +97,9 @@ class AuditLogger:
             "user_input",
             "rendered_command",
             "ambiguity_reason",
+            "clarification_prompt",
+            "clarification_answer",
+            "clarified_request_text",
             "failure_explanation_error",
             "failure_suggested_next_action",
             "failure_stderr_summary",

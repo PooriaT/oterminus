@@ -391,6 +391,18 @@ one-shot requests: direct-command detection, natural-language ambiguity handling
 planning for specific natural-language requests, validation, preview, confirmation, execution, and
 audit logging.
 
+If a non-direct REPL request is ambiguous, OTerminus gives you one chance to replace it with a
+complete, specific request before anything is planned. It shows the ambiguity reason, safe inspection
+ideas, one clarifying question, and `cancel` guidance. Press Enter, type `cancel`, interrupt the
+prompt, or provide another ambiguous request to return to the main REPL prompt without planning or
+execution. A specific replacement is submitted through the normal lifecycle; `dry-run` and `explain`
+prefixes from the original REPL line are preserved, and clarified requests never use safe
+auto-execute. The original ambiguous line and the final replacement appear as separate linked history
+entries when clarification succeeds; cancelled or unresolved clarification records only the original
+source entry. For example, `clean this folder` may prompt for a replacement, and answering `list large
+files in ~/Downloads` records the clarification outcome before previewing the `list large files`
+request normally. Rerunning the original entry resubmits the original ambiguous text rather than replaying that old answer.
+
 On a first interactive launch with no config file, onboarding may run before the REPL starts.
 One-shot requests are never blocked by onboarding: direct commands still load built-in or existing
 effective config, detect locally, validate, preview, follow confirmation policy, and execute if

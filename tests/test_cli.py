@@ -332,3 +332,161 @@ def test_recover_last_failure_disabled_without_suggestion() -> None:
 
     assert output is not None
     assert "Failure recovery needs failure explanations" in output
+
+
+def test_repl_ambiguous_cancel_returns_to_prompt(monkeypatch, capsys) -> None:
+    from oterminus.cli import repl
+
+    handle = Mock()
+    monkeypatch.setattr("oterminus.cli.create_prompt_session", lambda: (None, "plain_input"))
+    answers = iter(["clean this folder", "cancel", "exit"])
+    monkeypatch.setattr("builtins.input", lambda _prompt: next(answers))
+    monkeypatch.setattr("oterminus.cli.handle_request", handle)
+
+    assert repl(Mock(), Mock(), Mock()) == 0
+
+    output = capsys.readouterr().out
+    assert "This request is ambiguous and has not been planned." in output
+    handle.assert_not_called()
+
+
+def test_repl_ambiguous_unresolved_returns_to_prompt(monkeypatch, capsys) -> None:
+    from oterminus.cli import repl
+
+    handle = Mock()
+    monkeypatch.setattr("oterminus.cli.create_prompt_session", lambda: (None, "plain_input"))
+    answers = iter(["clean this folder", "fix this", "exit"])
+    monkeypatch.setattr("builtins.input", lambda _prompt: next(answers))
+    monkeypatch.setattr("oterminus.cli.handle_request", handle)
+
+    assert repl(Mock(), Mock(), Mock()) == 0
+
+    assert "still ambiguous" in capsys.readouterr().out
+    handle.assert_not_called()
+
+
+def test_repl_clarified_enters_handle_request_once_preserving_mode_and_disabling_auto_execute(
+    monkeypatch,
+) -> None:
+    from oterminus.cli import RunMode, repl
+
+    captured: dict[str, object] = {}
+    monkeypatch.setattr("oterminus.cli.create_prompt_session", lambda: (None, "plain_input"))
+    answers = iter(["dry-run clean this folder", "list large files in ~/Downloads", "exit"])
+    monkeypatch.setattr("builtins.input", lambda _prompt: next(answers))
+
+    def fake_handle_request(request, *_args, **kwargs) -> int:
+        captured["request"] = request
+        captured.update(kwargs)
+        return 0
+
+    monkeypatch.setattr("oterminus.cli.handle_request", fake_handle_request)
+
+    assert repl(Mock(), Mock(), Mock(), auto_execute_safe=True) == 0
+
+    assert captured["request"] == "list large files in ~/Downloads"
+    assert captured["run_mode"] == RunMode.DRY_RUN
+    assert captured["auto_execute_safe"] is False
+
+
+def test_repl_direct_input_skips_clarification(monkeypatch) -> None:
+    from oterminus.cli import repl
+
+    captured: dict[str, object] = {}
+    monkeypatch.setattr("oterminus.cli.create_prompt_session", lambda: (None, "plain_input"))
+    answers = iter(["pwd", "exit"])
+    monkeypatch.setattr("builtins.input", lambda _prompt: next(answers))
+
+    def fake_handle_request(request, *_args, **kwargs) -> int:
+        captured["request"] = request
+        captured.update(kwargs)
+        return 0
+
+    monkeypatch.setattr("oterminus.cli.handle_request", fake_handle_request)
+
+    assert repl(Mock(), Mock(), Mock(), auto_execute_safe=True) == 0
+
+    assert captured["request"] == "pwd"
+    assert captured["auto_execute_safe"] is True
+
+
+def test_repl_clarification_eof_exits_without_planning(monkeypatch, capsys) -> None:
+    from oterminus.cli import repl
+
+    handle = Mock()
+    monkeypatch.setattr("oterminus.cli.create_prompt_session", lambda: (None, "plain_input"))
+    calls = iter(["clean this folder"])
+
+    def fake_input(_prompt: str) -> str:
+        try:
+            return next(calls)
+        except StopIteration as exc:
+            raise EOFError from exc
+
+    monkeypatch.setattr("builtins.input", fake_input)
+    monkeypatch.setattr("oterminus.cli.handle_request", handle)
+
+    assert repl(Mock(), Mock(), Mock()) == 0
+
+    assert "This request is ambiguous and has not been planned." in capsys.readouterr().out
+    handle.assert_not_called()
+
+
+def test_explain_history_renders_clarification_source_details() -> None:
+    history = SessionHistory()
+    item = history.start("clean this folder")
+    item.ambiguity_detected = True
+    item.ambiguity_reason = "Matched ambiguous phrase"
+    item.clarification_requested = True
+    item.clarification_prompt = "clarify> "
+    item.clarification_answer = "list files in ."
+    item.clarification_outcome = "clarified"
+    item.clarified_request_text = "list files in ."
+    item.execution_status = "clarified"
+
+    output = handle_repl_history_command(
+        "explain 1",
+        session_history=history,
+        planner_factory=Mock(),
+        validator=Mock(),
+        executor=Mock(),
+        audit_logger=None,
+        debug_trace=False,
+    )
+
+    assert output is not None
+    assert "Ambiguity: detected" in output
+    assert "Clarification outcome: clarified" in output
+    assert "Clarified request: list files in ." in output
+
+
+def test_record_repl_clarification_source_has_no_lifecycle_details() -> None:
+    from oterminus.ambiguity import AmbiguityResult, ClarificationResult, ClarificationStatus
+    from oterminus.cli import _record_repl_clarification_source
+
+    history = SessionHistory()
+    result = ClarificationResult(
+        ClarificationStatus.CLARIFIED,
+        original_request="clean this folder",
+        ambiguity=AmbiguityResult(True, "broad", ("list files",)),
+        prompt="prompt text",
+        answer="list files in .",
+        clarified_request="list files in .",
+    )
+
+    source_id = _record_repl_clarification_source(
+        result,
+        session_history=history,
+        persistent_store=None,
+        audit_logger=None,
+        debug_trace=False,
+    )
+
+    item = history.find(source_id or 0)
+    assert item is not None
+    assert item.execution_status == "clarified"
+    assert item.proposal is None
+    assert item.validation is None
+    assert item.rendered_command is None
+    assert item.clarification_outcome == "clarified"
+    assert item.clarified_request_text == "list files in ."

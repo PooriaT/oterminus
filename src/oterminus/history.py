@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -19,6 +19,16 @@ class SessionHistoryItem:
     persisted_id: int | None = None
     timestamp: str | None = None
     direct_command_detected: bool = False
+    ambiguity_detected: bool = False
+    ambiguity_reason: str | None = None
+    ambiguity_safe_options: list[str] = field(default_factory=list)
+    clarification_requested: bool = False
+    clarification_prompt: str | None = None
+    clarification_answer: str | None = None
+    clarification_outcome: str | None = None
+    clarified_request_text: str | None = None
+    clarification_source_history_id: int | None = None
+    is_clarified_request: bool = False
     routed_category: str | None = None
     proposal_origin: str | None = None
     proposal_mode: str | None = None
@@ -163,6 +173,16 @@ class PersistentHistoryStore:
                     timestamp=payload.get("timestamp"),
                     user_input=user_input,
                     direct_command_detected=bool(payload.get("direct_command_detected", False)),
+                    ambiguity_detected=bool(payload.get("ambiguity_detected", False)),
+                    ambiguity_reason=payload.get("ambiguity_reason"),
+                    ambiguity_safe_options=_coerce_str_list(payload.get("ambiguity_safe_options")),
+                    clarification_requested=bool(payload.get("clarification_requested", False)),
+                    clarification_prompt=payload.get("clarification_prompt"),
+                    clarification_answer=payload.get("clarification_answer"),
+                    clarification_outcome=payload.get("clarification_outcome"),
+                    clarified_request_text=payload.get("clarified_request_text"),
+                    clarification_source_history_id=payload.get("clarification_source_history_id"),
+                    is_clarified_request=bool(payload.get("is_clarified_request", False)),
                     routed_category=payload.get("routed_category"),
                     proposal_origin=payload.get("proposal_origin"),
                     proposal_mode=payload.get("proposal_mode"),
@@ -198,6 +218,16 @@ class PersistentHistoryStore:
             "timestamp": datetime.now(tz=timezone.utc).isoformat(),
             "user_input": item.user_input,
             "direct_command_detected": item.direct_command_detected,
+            "ambiguity_detected": item.ambiguity_detected,
+            "ambiguity_reason": item.ambiguity_reason,
+            "ambiguity_safe_options": item.ambiguity_safe_options,
+            "clarification_requested": item.clarification_requested,
+            "clarification_prompt": item.clarification_prompt,
+            "clarification_answer": item.clarification_answer,
+            "clarification_outcome": item.clarification_outcome,
+            "clarified_request_text": item.clarified_request_text,
+            "clarification_source_history_id": item.clarification_source_history_id,
+            "is_clarified_request": item.is_clarified_request,
             "routed_category": item.routed_category,
             "proposal_origin": item.proposal_origin,
             "proposal_mode": item.proposal_mode,
@@ -223,10 +253,20 @@ class PersistentHistoryStore:
         payload = {key: value for key, value in payload.items() if value is not None}
         if not item.recovery_request:
             payload.pop("recovery_request", None)
+        if not item.ambiguity_detected:
+            payload.pop("ambiguity_detected", None)
+        if not item.clarification_requested:
+            payload.pop("clarification_requested", None)
+        if not item.is_clarified_request:
+            payload.pop("is_clarified_request", None)
         if self.redact:
             for key in (
                 "user_input",
                 "rendered_command",
+                "ambiguity_reason",
+                "clarification_prompt",
+                "clarification_answer",
+                "clarified_request_text",
                 "failure_stderr_summary",
                 "failure_likely_cause",
                 "failure_suggested_next_action",
@@ -234,6 +274,11 @@ class PersistentHistoryStore:
             ):
                 if isinstance(payload.get(key), str):
                     payload[key] = redact_text(payload[key])
+        if self.redact and isinstance(payload.get("ambiguity_safe_options"), list):
+            payload["ambiguity_safe_options"] = [
+                redact_text(item) if isinstance(item, str) else item
+                for item in payload["ambiguity_safe_options"]
+            ]
         try:
             self.path.parent.mkdir(parents=True, exist_ok=True)
             with self.path.open("a", encoding="utf-8") as handle:
@@ -247,3 +292,9 @@ def _truncate(value: str, width: int) -> str:
     if len(value) <= width:
         return value
     return value[: width - 1] + "…"
+
+
+def _coerce_str_list(value: object) -> list[str]:
+    if not isinstance(value, list):
+        return []
+    return [item for item in value if isinstance(item, str)]

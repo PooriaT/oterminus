@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from enum import Enum
 import re
 
 
@@ -57,12 +58,29 @@ _VAGUE_OBJECT_HINTS: tuple[str, ...] = (
 )
 
 
+class ClarificationStatus(str, Enum):
+    NOT_NEEDED = "not_needed"
+    CANCELLED = "cancelled"
+    UNRESOLVED = "unresolved"
+    CLARIFIED = "clarified"
+
+
 @dataclass(frozen=True, slots=True)
 class AmbiguityResult:
     is_ambiguous: bool
     reason: str
     suggested_safe_options: tuple[str, ...]
     follow_up_questions: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
+class ClarificationResult:
+    status: ClarificationStatus
+    original_request: str
+    ambiguity: AmbiguityResult | None = None
+    prompt: str | None = None
+    answer: str | None = None
+    clarified_request: str | None = None
 
 
 _NOT_AMBIGUOUS = AmbiguityResult(

@@ -20,12 +20,17 @@ When enabled, each request lifecycle writes one JSON line with fields covering:
 - rerun lineage (`rerun_source_history_id`) when a request is triggered via `rerun <history_id>`
 - recovery lineage (`recovery_source_history_id`, `recovery_request`) when a request is triggered
   from a last-failure recovery suggestion
+- clarification outcomes and linkage (`clarification_outcome`, prompt/answer/final text,
+  `clarification_source_history_id`, `is_clarified_request`) for REPL clarification
 
-For ambiguous natural-language requests, the audit event records `ambiguity_detected`,
+For ambiguous one-shot natural-language requests, the audit event records `ambiguity_detected`,
 `ambiguity_reason`, `ambiguity_safe_options`, `confirmation_result: "blocked_ambiguous"`, and
-`planner_skip_reason: "ambiguity_blocked"`.
-Because the request stops before planning, validation, confirmation, and execution, the downstream
-fields for those stages remain unset.
+`planner_skip_reason: "ambiguity_blocked"`. REPL clarification is distinct: the original ambiguous
+source event uses `planner_skip_reason: "ambiguity_clarification"` plus `clarification_outcome`
+(`cancelled`, `unresolved`, or `clarified`), and a successful final request records
+`is_clarified_request: true` with `clarification_source_history_id`. Because source clarification
+entries stop before planning, validation, confirmation, and execution, the downstream fields for
+those stages remain unset.
 
 Audit configuration:
 
@@ -40,8 +45,8 @@ not store command stdout/stderr.
 
 ## Audit privacy
 
-With redaction enabled (default), likely secret material is masked in command/request/reason fields
-and argv before JSONL writes. Audit events store stdout/stderr truncation metadata (for example original/visible character counts and truncation flags), not full command output. Redaction is best-effort, and logs may still include local paths, command context, and validation decisions, so users should review them before sharing.
+With redaction enabled (default), likely secret material is masked in command/request/reason fields,
+clarification prompt/answer/final request text, ambiguity safe options, and argv before JSONL writes. Audit events store stdout/stderr truncation metadata (for example original/visible character counts and truncation flags), not full command output. Redaction is best-effort, and logs may still include local paths, command context, and validation decisions, so users should review them before sharing.
 
 ## Runtime diagnostics
 
