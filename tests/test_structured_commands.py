@@ -1077,3 +1077,81 @@ def test_parse_raw_command_as_structured_rejects_tree_variants(command: str) -> 
 def test_render_structured_tree_rejects_invalid_arguments(arguments: dict[str, object]) -> None:
     with pytest.raises(StructuredCommandError):
         render_structured_command("tree", arguments)
+
+
+def test_touch_is_supported_structured_family() -> None:
+    assert supports_structured_family("touch") is True
+
+
+@pytest.mark.parametrize(
+    ("arguments", "expected_argv"),
+    [
+        ({"path": "notes.txt"}, ("touch", "notes.txt")),
+        ({"path": "./notes.txt"}, ("touch", "./notes.txt")),
+        ({"path": "~/Documents/notes.txt"}, ("touch", expand_user_path("~/Documents/notes.txt"))),
+    ],
+)
+def test_render_structured_touch(arguments: dict[str, str], expected_argv: tuple[str, ...]) -> None:
+    rendered = render_structured_command("touch", arguments)
+    assert rendered.argv == expected_argv
+    assert shlex.split(rendered.command) == list(expected_argv)
+
+
+@pytest.mark.parametrize(
+    ("command", "expected_arguments"),
+    [
+        ("touch notes.txt", {"path": "notes.txt"}),
+        ("touch ./notes.txt", {"path": "./notes.txt"}),
+        ("touch ~/Documents/notes.txt", {"path": "~/Documents/notes.txt"}),
+    ],
+)
+def test_parse_raw_command_as_structured_accepts_touch(
+    command: str, expected_arguments: dict[str, str]
+) -> None:
+    assert parse_raw_command_as_structured(command) == ("touch", expected_arguments)
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "touch",
+        "touch file1 file2",
+        "touch -c notes.txt",
+        "touch -a notes.txt",
+        "touch -m notes.txt",
+        "touch -t 202601010000 notes.txt",
+        "touch -r source.txt target.txt",
+        "touch -- notes.txt",
+        "touch /",
+        "touch ~",
+        "touch .",
+        "touch ..",
+        "touch /bin",
+        "touch /dev",
+        "touch /etc",
+        "touch /lib",
+        "touch /private",
+        "touch /sbin",
+        "touch /usr",
+        "touch /var",
+        "touch https://example.com/file",
+        "touch file:///tmp/file",
+        "touch '$HOME/file'",
+        "touch '${HOME}/file'",
+        "touch '~otheruser/file'",
+        "touch '*.txt'",
+        "touch '$(pwd)'",
+        "touch '`pwd`'",
+        "touch 'notes.txt && echo done'",
+        "touch 'bad\nname'",
+    ],
+)
+def test_parse_raw_command_as_structured_rejects_touch_variants(command: str) -> None:
+    assert parse_raw_command_as_structured(command) is None
+
+
+def test_touch_structured_rejects_missing_path_and_extra_fields() -> None:
+    with pytest.raises(StructuredCommandError):
+        render_structured_command("touch", {})
+    with pytest.raises(StructuredCommandError):
+        render_structured_command("touch", {"path": "notes.txt", "parents": False})

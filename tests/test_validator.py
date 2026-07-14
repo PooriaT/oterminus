@@ -1635,3 +1635,59 @@ def test_validator_applies_allowed_roots_to_tree(tmp_path: Path) -> None:
     assert accepted.accepted is True
     assert rejected.accepted is False
     assert any("Paths outside allowed roots" in reason for reason in rejected.reasons)
+
+
+def test_validator_accepts_structured_touch_as_write_risk() -> None:
+    validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))
+    result = validator.validate(make_proposal("touch notes.txt"))
+    assert result.accepted is True
+    assert result.risk_level == RiskLevel.WRITE
+    assert result.argv == ["touch", "notes.txt"]
+
+
+def test_validator_safe_policy_blocks_touch() -> None:
+    validator = Validator(PolicyConfig(mode=RiskLevel.SAFE, allow_dangerous=False))
+    result = validator.validate(make_proposal("touch notes.txt"))
+    assert result.accepted is False
+    assert result.risk_level == RiskLevel.WRITE
+    assert any("Risk level 'write' blocked" in reason for reason in result.reasons)
+
+
+@pytest.mark.parametrize(
+    "command", ["touch /", "touch ~", "touch .", "touch file1 file2", "touch -c notes.txt"]
+)
+def test_validator_experimental_touch_cannot_bypass_shape(command: str) -> None:
+    validator = Validator(PolicyConfig(mode=RiskLevel.DANGEROUS, allow_dangerous=True))
+    result = validator.validate(
+        make_proposal(command, mode=ProposalMode.EXPERIMENTAL, command_family="touch")
+    )
+    assert result.accepted is False
+    assert any("Only constrained touch is supported" in reason for reason in result.reasons)
+
+
+def test_validator_applies_allowed_roots_to_touch(tmp_path: Path) -> None:
+    allowed = tmp_path / "allowed"
+    outside = tmp_path / "outside"
+    allowed.mkdir()
+    outside.mkdir()
+    validator = Validator(
+        PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False, allowed_roots=[str(allowed)])
+    )
+    accepted = validator.validate(make_proposal(f"touch {allowed / 'notes.txt'}"))
+    rejected = validator.validate(make_proposal(f"touch {outside / 'notes.txt'}"))
+    traversal = validator.validate(
+        make_proposal(f"touch {allowed / '..' / 'outside' / 'notes.txt'}")
+    )
+    assert accepted.accepted is True
+    assert rejected.accepted is False
+    assert traversal.accepted is False
+    assert any("Paths outside allowed roots" in reason for reason in rejected.reasons)
+    assert any("Paths outside allowed roots" in reason for reason in traversal.reasons)
+
+
+def test_validator_normalizes_touch_home_path() -> None:
+    validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))
+    result = validator.validate(make_proposal("touch ~/Documents/notes.txt"))
+    assert result.accepted is True
+    assert result.argv == ["touch", expand_user_path("~/Documents/notes.txt")]
+    assert result.rendered_command == shlex.join(result.argv)

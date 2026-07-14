@@ -352,3 +352,40 @@ def test_detect_direct_command_rejects_exact_project_health_forms() -> None:
 def test_detect_direct_command_rejects_non_exact_project_health_forms() -> None:
     assert detect_direct_command("poetry run pytest tests/test_validator.py") is None
     assert detect_direct_command("poetry run ruff format .") is None
+
+
+def test_detect_direct_command_for_structured_touch() -> None:
+    proposal = detect_direct_command("touch notes.txt")
+    assert proposal is not None
+    assert proposal.mode == ProposalMode.STRUCTURED
+    assert proposal.command_family == "touch"
+    assert proposal.arguments == {"path": "notes.txt"}
+    assert proposal.needs_confirmation is True
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "touch",
+        "touch file1 file2",
+        "touch -c notes.txt",
+        "touch -a notes.txt",
+        "touch -m notes.txt",
+        "touch -t 202601010000 notes.txt",
+        "touch -r source.txt target.txt",
+        "touch -- notes.txt",
+        "touch /",
+        "touch ~",
+        "touch .",
+        "touch ..",
+        "touch https://example.com/file",
+        "touch file:///tmp/file",
+        "touch $(pwd)",
+        "touch `pwd`",
+        "touch notes.txt && echo done",
+    ],
+)
+def test_detect_direct_command_does_not_structurally_parse_unsupported_touch(command: str) -> None:
+    proposal = detect_direct_command(command)
+    if proposal is not None:
+        assert proposal.mode != ProposalMode.STRUCTURED

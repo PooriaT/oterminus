@@ -51,6 +51,29 @@ def _validate_tree_path(value: str) -> str:
     return value
 
 
+def _validate_touch_target(value: str) -> str:
+    value = _validate_path(value, allow_url_targets=False)
+    blocked_fragments = ("$(", "`", "\n", "\r", "\x00")
+    if any(fragment in value for fragment in blocked_fragments):
+        raise ValueError("path cannot contain command substitution or control characters.")
+    blocked_operator_fragments = ("&&", "||", ";", "|", "<", ">", "&")
+    if any(fragment in value for fragment in blocked_operator_fragments):
+        raise ValueError("path cannot contain shell operators.")
+    if any(fragment in value for fragment in ("*", "?", "[", "]", "{", "}")):
+        raise ValueError("path cannot contain wildcard characters.")
+    if value.startswith(("$HOME", "${HOME}")) or (
+        value.startswith("~") and value not in {"~"} and not value.startswith("~/")
+    ):
+        raise ValueError("path must use '.', '~', '~/...', or another explicit local path.")
+    expanded = expand_user_path(value).rstrip("/") or "/"
+    home = str(Path.home()).rstrip("/") or "/"
+    if value in {".", "..", "/", "~"} or expanded == home:
+        raise ValueError("path cannot be a broad filesystem target.")
+    if expanded in {"/bin", "/dev", "/etc", "/lib", "/private", "/sbin", "/usr", "/var"}:
+        raise ValueError("path cannot be a system root.")
+    return value
+
+
 def _validate_archive_path(value: str) -> str:
     value = _validate_path(value, allow_url_targets=False)
     blocked_fragments = ("$(", "`", "\n", "\r", "\x00")
@@ -356,6 +379,15 @@ class ChmodArguments(_StructuredArgumentsModel):
     @classmethod
     def validate_path(cls, value: str) -> str:
         return _validate_path(value)
+
+
+class TouchArguments(_StructuredArgumentsModel):
+    path: str = Field(min_length=1)
+
+    @field_validator("path")
+    @classmethod
+    def validate_path(cls, value: str) -> str:
+        return _validate_touch_target(value)
 
 
 class FindArguments(_StructuredArgumentsModel):
@@ -804,6 +836,7 @@ STRUCTURED_ARGUMENT_MODELS: dict[str, type[_StructuredArgumentsModel]] = {
     "man": ManArguments,
     "mkdir": MkdirArguments,
     "chmod": ChmodArguments,
+    "touch": TouchArguments,
     "find": FindArguments,
     "cp": CpArguments,
     "mv": MvArguments,
@@ -874,6 +907,7 @@ def parse_argv_as_structured(argv: Sequence[str]) -> tuple[str, dict[str, Any]] 
         "man": _parse_man_argv,
         "mkdir": _parse_mkdir_argv,
         "chmod": _parse_chmod_argv,
+        "touch": _parse_touch_argv,
         "find": _parse_find_argv,
         "cp": _parse_cp_argv,
         "mv": _parse_mv_argv,
@@ -1016,6 +1050,9 @@ def render_structured_command(
 
     if command_family == "chmod":
         return RenderedCommand(("chmod", validated.mode, expand_user_path(validated.path)))
+
+    if command_family == "touch":
+        return RenderedCommand(("touch", expand_user_path(validated.path)))
 
     if command_family == "find":
         return RenderedCommand(("find", expand_user_path(validated.path), "-name", validated.name))
@@ -1476,6 +1513,19 @@ def _parse_chmod_argv(operands: list[str]) -> dict[str, Any] | None:
     if not mode.isdigit():
         return None
     return {"path": path, "mode": mode}
+
+
+def _parse_touch_argv(operands: list[str]) -> dict[str, Any] | None:
+    if len(operands) != 1:
+        return None
+    path = operands[0]
+    if path == "--" or path.startswith("-"):
+        return None
+    try:
+        _validate_touch_target(path)
+    except ValueError:
+        return None
+    return {"path": path}
 
 
 def _parse_find_argv(operands: list[str]) -> dict[str, Any] | None:

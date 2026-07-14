@@ -365,6 +365,15 @@ class Validator:
                 "alternate formats, color controls, or symlink controls."
             ]
 
+        if spec.name == "touch":
+            if _is_supported_touch_shape(arguments):
+                return []
+            return [
+                "Only constrained touch is supported: touch <one-explicit-local-path>. "
+                "Flags, multiple targets, broad roots, URLs, wildcards, shell operators, "
+                "substitutions, and timestamp/reference options are not supported."
+            ]
+
         if spec.name == "tar":
             if (
                 _is_supported_tar_inspection_shape(arguments)
@@ -976,6 +985,13 @@ def _blocked_command_text_reasons(command: str) -> list[str]:
 def _is_supported_tree_shape(arguments: list[str]) -> bool:
     try:
         return parse_argv_as_structured(["tree", *arguments]) is not None
+    except StructuredCommandError:
+        return False
+
+
+def _is_supported_touch_shape(arguments: list[str]) -> bool:
+    try:
+        return parse_argv_as_structured(["touch", *arguments]) is not None
     except StructuredCommandError:
         return False
 

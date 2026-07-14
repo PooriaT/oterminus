@@ -132,5 +132,86 @@
       "report.txt",
       "backup/report.txt"
     ]
+  },
+  {
+    "id": "planner-structured-touch-empty-file",
+    "user_input": "create an empty notes.txt file",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "touch",
+      "arguments": {
+        "path": "notes.txt"
+      },
+      "command": null,
+      "summary": "Touch file",
+      "explanation": "Create the file if missing or update its timestamps if it already exists.",
+      "risk_level": "write",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "structured",
+    "expected_command_family": "touch",
+    "expected_risk_level": "write",
+    "expected_acceptance": true,
+    "expected_rendered_command": "touch notes.txt",
+    "expected_argv": [
+      "touch",
+      "notes.txt"
+    ]
+  },
+  {
+    "id": "planner-structured-touch-documents-todo",
+    "user_input": "create TODO.md in Documents",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "touch",
+      "arguments": {
+        "path": "~/Documents/TODO.md"
+      },
+      "command": null,
+      "summary": "Touch file",
+      "explanation": "Create the file if missing or update its timestamps if it already exists.",
+      "risk_level": "write",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "structured",
+    "expected_command_family": "touch",
+    "expected_risk_level": "write",
+    "expected_acceptance": true,
+    "expected_rendered_command": "touch {home}/Documents/TODO.md",
+    "expected_argv": [
+      "touch",
+      "{home}/Documents/TODO.md"
+    ]
+  },
+  {
+    "id": "planner-structured-touch-existing-status",
+    "user_input": "touch the existing status.txt file",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "touch",
+      "arguments": {
+        "path": "status.txt"
+      },
+      "command": null,
+      "summary": "Touch file",
+      "explanation": "Create the file if missing or update its timestamps if it already exists.",
+      "risk_level": "write",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "structured",
+    "expected_command_family": "touch",
+    "expected_risk_level": "write",
+    "expected_acceptance": true,
+    "expected_rendered_command": "touch status.txt",
+    "expected_argv": [
+      "touch",
+      "status.txt"
+    ]
   }
 ]
