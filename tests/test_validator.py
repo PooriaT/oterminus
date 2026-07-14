@@ -1654,7 +1654,16 @@ def test_validator_safe_policy_blocks_touch() -> None:
 
 
 @pytest.mark.parametrize(
-    "command", ["touch /", "touch ~", "touch .", "touch file1 file2", "touch -c notes.txt"]
+    "command",
+    [
+        "touch /",
+        "touch ~",
+        "touch .",
+        "touch ~/.",
+        "touch src/..",
+        "touch file1 file2",
+        "touch -c notes.txt",
+    ],
 )
 def test_validator_experimental_touch_cannot_bypass_shape(command: str) -> None:
     validator = Validator(PolicyConfig(mode=RiskLevel.DANGEROUS, allow_dangerous=True))

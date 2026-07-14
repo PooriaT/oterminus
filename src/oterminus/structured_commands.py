@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ipaddress
+import posixpath
 import re
 import shlex
 from dataclasses import dataclass
@@ -65,11 +66,20 @@ def _validate_touch_target(value: str) -> str:
         value.startswith("~") and value not in {"~"} and not value.startswith("~/")
     ):
         raise ValueError("path must use '.', '~', '~/...', or another explicit local path.")
-    expanded = expand_user_path(value).rstrip("/") or "/"
-    home = str(Path.home()).rstrip("/") or "/"
-    if value in {".", "..", "/", "~"} or expanded == home:
+    expanded = expand_user_path(value)
+    lexical_normalized = posixpath.normpath(expanded).rstrip("/") or "/"
+    normalized_path = Path(expanded).resolve(strict=False)
+    normalized = str(normalized_path).rstrip("/") or "/"
+    home = str(Path.home().resolve(strict=False)).rstrip("/") or "/"
+    cwd = str(Path.cwd().resolve(strict=False)).rstrip("/") or "/"
+    if (
+        value in {".", "..", "/", "~"}
+        or lexical_normalized in {"/", home, cwd}
+        or normalized in {"/", home, cwd}
+    ):
         raise ValueError("path cannot be a broad filesystem target.")
-    if expanded in {"/bin", "/dev", "/etc", "/lib", "/private", "/sbin", "/usr", "/var"}:
+    system_roots = {"/bin", "/dev", "/etc", "/lib", "/private", "/sbin", "/usr", "/var"}
+    if lexical_normalized in system_roots or normalized in system_roots:
         raise ValueError("path cannot be a system root.")
     return value
 
