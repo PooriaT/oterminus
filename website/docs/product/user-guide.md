@@ -40,10 +40,17 @@ After `doctor` reports a usable setup, start the interactive app or run one-shot
 ```bash
 oterminus
 oterminus "show disk usage for this folder"
+oterminus "find Python files up to three levels deep"
+oterminus "find files larger than 100 MB"
 oterminus "show the man page for grep"
 oterminus --dry-run "copy notes.txt to backup/notes.txt"
 oterminus --explain "find processes matching python"
 ```
+
+
+### Read-only file finding
+
+Filesystem `find` requests use a structured, read-only subset. OTerminus can combine a single starting path with supported predicates for literal name patterns, file-vs-directory type, bounded max depth, files modified within a number of days (`-mtime -N`), and files larger than an exact byte threshold (`-size +Nc`). For example, “find large log files modified in the last two days” renders a deterministic argv shape like `find . -type f -name '*.log' -mtime -2 -size +104857600c` when “large” is planned as 100 MiB. Allowed-root restrictions apply to the starting path only; pattern, type, depth, day count, and byte count are not treated as path operands. OTerminus rejects arbitrary `find` expressions, deletion or exec actions, output files, Boolean operators, permission/owner filters, and symlink-following flags.
 
 ## Upgrade and uninstall
 

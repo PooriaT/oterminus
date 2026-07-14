@@ -21,6 +21,8 @@ Examples:
 
 Representative families: `cd`, `ls`, `pwd`, `find`, `du`, `stat`, `file`.
 
+Structured `find` is read-only and supports one starting path plus a curated predicate subset: `-name <pattern>`, `-type f|d`, `-maxdepth <0-20>`, `-mtime -<days>`, and `-size +<bytes>c`. Planner arguments use `entry_type` (`file` or `directory`), bounded `max_depth`, `modified_within_days`, and `size_greater_than_bytes`; requested sizes are rendered as exact bytes, for example 100 MiB as `104857600`. Rendering is deterministic, checks allowed-root policy only against the starting path, keeps name patterns literal argv values, and never appends `-print`. Mutating actions (`-delete`, `-exec*`, `-ok*`), output-file actions, Boolean expression trees, permission/owner/group predicates, newer-than predicates, pruning/quit, and symlink traversal flags are unsupported.
+
 ## Filesystem mutation
 
 Examples:

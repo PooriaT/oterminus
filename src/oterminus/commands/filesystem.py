@@ -80,11 +80,12 @@ COMMAND_PACK: tuple[CommandSpec, ...] = (
         risk_level=RiskLevel.SAFE,
         direct_detection_mode=DirectDetectionMode.FIND,
         path_operand_mode=PathOperandMode.FIND,
-        leading_flags=("-H", "-L", "-P"),
-        leading_flags_with_values=("-D", "-O"),
-        leading_flags_with_inline_values=("-O",),
-        allowed_flags=("-name", "-path", "-type", "-maxdepth", "-mindepth", "-print"),
-        examples=("find . -name '*.py'",),
+        allowed_flags=("-name", "-type", "-maxdepth", "-mtime", "-size", "-print"),
+        examples=("find . -maxdepth 3 -type f -name '*.py'",),
+        notes=(
+            "Supports read-only predicates: -name <pattern>, -type f|d, -maxdepth <0-20>, "
+            "-mtime -<1-3650>, and -size +<bytes>c.",
+        ),
         natural_language_aliases=("find files", "search directories"),
     ),
     command(

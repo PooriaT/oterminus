@@ -36,7 +36,7 @@
 | `cd` | navigation | all | safe | direct_only | direct-only (direct executable support only) | yes | explicit | no | `cd src` | `change directory`, `go to folder` | Changes the oterminus working directory for the current REPL session. |
 | `du` | inspection | all | safe | structured | structured (normal executable support) | yes | explicit | no | `du -h .` | `disk usage`, `folder size` | — |
 | `file` | inspection | all | safe | structured | structured (normal executable support) | yes | explicit | no | `file README.md` | `identify file type` | — |
-| `find` | search | all | safe | structured | structured (normal executable support) | yes | explicit | no | `find . -name '*.py'` | `find files`, `search directories` | — |
+| `find` | search | all | safe | structured | structured (normal executable support) | yes | explicit | no | `find . -maxdepth 3 -type f -name '*.py'` | `find files`, `search directories` | Supports read-only predicates: -name &lt;pattern&gt;, -type f|d, -maxdepth &lt;0-20&gt;, -mtime -&lt;1-3650&gt;, and -size +&lt;bytes&gt;c. |
 | `ls` | inspection | all | safe | structured | structured (normal executable support) | yes | safe_inspection_passthrough | no | `ls -la` | `list files`, `show directory contents` | — |
 | `pwd` | navigation | all | safe | structured | structured (normal executable support) | yes | explicit | no | `pwd` | `where am i`, `print working directory` | — |
 | `stat` | inspection | all | safe | structured | structured (normal executable support) | yes | explicit | no | `stat README.md` | `file metadata`, `file info` | — |

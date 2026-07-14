@@ -929,21 +929,22 @@ def test_allowed_roots_find_checks_only_search_roots() -> None:
     assert result.accepted is True
 
 
-def test_allowed_roots_find_with_leading_option_still_checks_path_operands() -> None:
+def test_allowed_roots_find_rejects_unsupported_symlink_flag() -> None:
     validator = Validator(
         PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False, allowed_roots=["/allowed"])
     )
     result = validator.validate(make_proposal("find -L /etc -name '*.conf'"))
     assert result.accepted is False
-    assert any("Paths outside allowed roots" in reason for reason in result.reasons)
+    assert any("Only constrained read-only find" in reason for reason in result.reasons)
 
 
-def test_allowed_roots_find_without_explicit_path_does_not_treat_predicate_arg_as_root() -> None:
+def test_allowed_roots_find_rejects_unsupported_path_predicate() -> None:
     validator = Validator(
         PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False, allowed_roots=["/allowed"])
     )
     result = validator.validate(make_proposal("find -path '/etc/*'"))
-    assert result.accepted is True
+    assert result.accepted is False
+    assert any("Only constrained read-only find" in reason for reason in result.reasons)
 
 
 def test_allowed_roots_blocks_disallowed_path_operand() -> None:
@@ -1700,3 +1701,15 @@ def test_validator_normalizes_touch_home_path() -> None:
     assert result.accepted is True
     assert result.argv == ["touch", expand_user_path("~/Documents/notes.txt")]
     assert result.rendered_command == shlex.join(result.argv)
+
+
+def test_find_experimental_fallback_cannot_bypass_curated_shape() -> None:
+    validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))
+    proposal = make_proposal(
+        "find . -delete", mode=ProposalMode.EXPERIMENTAL, command_family="find"
+    )
+
+    result = validator.validate(proposal)
+
+    assert result.accepted is False
+    assert any("Only constrained read-only find" in reason for reason in result.reasons)
