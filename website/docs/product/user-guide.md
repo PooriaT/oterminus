@@ -584,7 +584,7 @@ Eligible proposals must be:
 These requests never qualify:
 
 - network-touching commands such as `ping`, `curl`, `dig`, and `nslookup`
-- write or dangerous commands
+- write or dangerous commands, including `touch`
 - commands with warnings
 - experimental proposals
 - LLM-planned proposals

@@ -31,6 +31,8 @@ Examples:
 
 Representative families: `mkdir`, `cp`, `mv`, `chmod`, `touch`, `chown`.
 
+Structured `touch` supports exactly `touch <one-explicit-local-path>`. It is write-risk, requires normal confirmation, never qualifies for safe auto-execute, and creates the file when missing or updates timestamps when the target already exists. Flags, multiple targets, broad roots such as `/`, `.`, `..`, `~`, URLs, wildcards, shell fragments, and timestamp/reference options are rejected; configured allowed-root restrictions still apply.
+
 ## Text inspection
 
 Examples:

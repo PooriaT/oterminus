@@ -43,6 +43,8 @@ update an existing archive path. Experimental mode still goes through the same c
 These checks constrain command shape and policy boundaries; they do not inspect archive member paths
 for traversal or other malicious content.
 
+`touch` is accepted only for `touch <one-explicit-local-path>`. Validation keeps it as write-risk, requires normal confirmation, rejects flags, multiple targets, broad roots (`/`, `.`, `..`, `~`, the current home directory, and system roots such as `/etc` or `/usr`), URLs, wildcards, command substitution, shell operators, control characters, timestamp/reference options, and paths outside configured allowed roots. Accepted previews reflect actual `touch` semantics: the command creates the file if missing or updates timestamps if it already exists. Because the risk remains write, `touch` never qualifies for safe auto-execute.
+
 Network diagnostics are accepted only for constrained read-only forms:
 
 - `ping -c <count> <host>` with count from 1 to 10

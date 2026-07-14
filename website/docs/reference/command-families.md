@@ -55,7 +55,7 @@
 | `cp` | filesystem_write | all | write | structured | structured (normal executable support) | yes | explicit | no | `cp notes.txt backup/notes.txt` | `copy file`, `duplicate file` | — |
 | `mkdir` | filesystem_write | all | write | structured | structured (normal executable support) | yes | explicit | no | `mkdir -p logs/archive` | `create folder`, `make directory` | — |
 | `mv` | filesystem_write | all | write | structured | structured (normal executable support) | yes | explicit | no | `mv report.md docs/` | `move file`, `rename file` | — |
-| `touch` | filesystem_write | all | write | experimental_only | experimental-only (constrained executable fallback) | yes | explicit | no | `touch notes.txt` | `create empty file` | — |
+| `touch` | filesystem_write | all | write | structured | structured (normal executable support) | yes | explicit | no | `touch notes.txt` | `create empty file` | Creates a missing file or updates timestamps when the target already exists. |
 
 ## `git_inspection`
 

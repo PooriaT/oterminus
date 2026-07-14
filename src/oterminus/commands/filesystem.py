@@ -155,10 +155,11 @@ COMMAND_PACK: tuple[CommandSpec, ...] = (
         category="filesystem_write",
         **FILESYSTEM_MUTATION,
         risk_level=RiskLevel.WRITE,
-        maturity_level=MaturityLevel.EXPERIMENTAL_ONLY,
         min_operands=1,
+        max_operands=1,
         examples=("touch notes.txt",),
         natural_language_aliases=("create empty file",),
+        notes=("Creates a missing file or updates timestamps when the target already exists.",),
     ),
     command(
         name="chown",

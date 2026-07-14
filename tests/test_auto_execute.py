@@ -267,3 +267,15 @@ def test_unsupported_platform_command_is_ineligible() -> None:
 def test_disabled_setting_and_non_execute_modes_are_ineligible() -> None:
     assert _decision(enabled=False).reason == "disabled"
     assert _decision(run_mode="dry-run").reason == "run_mode_not_execute"
+
+
+def test_touch_write_command_is_not_auto_execute_eligible() -> None:
+    proposal = _proposal("touch", arguments={"path": "notes.txt"}, risk=RiskLevel.WRITE)
+    validation = _validation(
+        risk=RiskLevel.WRITE,
+        rendered_command="touch notes.txt",
+        argv=["touch", "notes.txt"],
+    )
+    decision = _decision(proposal=proposal, validation=validation, command_name="touch")
+    assert decision.eligible is False
+    assert decision.reason == "risk_not_safe"

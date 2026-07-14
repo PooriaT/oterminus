@@ -104,6 +104,9 @@ def detect_direct_command(
     if base == "man":
         return None
 
+    if base == "touch" and _looks_like_natural_language_touch_request(args[1:]):
+        return None
+
     return Proposal(
         action_type=ActionType.SHELL_COMMAND,
         mode=ProposalMode.EXPERIMENTAL,
@@ -138,3 +141,10 @@ def _parse_project_health_direct(args: list[str]) -> dict[str, str] | None:
     if operation is None:
         return None
     return {"operation": operation}
+
+
+def _looks_like_natural_language_touch_request(operands: list[str]) -> bool:
+    return any(
+        operand.lower() in {"a", "an", "the", "existing", "empty", "file", "create", "in"}
+        for operand in operands
+    )

@@ -32,6 +32,7 @@ def _format_structured_shapes(structured_families: tuple[str, ...]) -> str:
         "man": '{"topic": "ls", "section": "1"|null}',
         "mkdir": '{"path": "...", "parents": true|false}',
         "chmod": '{"path": "...", "mode": "755"}',
+        "touch": '{"path": "notes.txt"}',
         "find": '{"path": ".", "name": "*.py"}',
         "cp": (
             '{"source": "...", "destination": "...", "recursive": true|false, '
@@ -160,15 +161,17 @@ def build_system_prompt(
         if "tree" in enabled_families
         else ""
     )
+    touch_guidance = (
+        "- `touch`: one explicit file path only; risk `write`; confirmation required; no "
+        "contents, flags, or multiple files; creates missing file or updates timestamps.\n"
+        if "touch" in enabled_families
+        else ""
+    )
     path_guidance = (
-        "- For common current-user folders, prefer explicit home-relative paths: Downloads or "
-        "download directory -> `~/Downloads`; Desktop -> `~/Desktop`; Documents -> "
-        "`~/Documents`; Pictures -> `~/Pictures`; Movies -> `~/Movies`; Music -> `~/Music`.\n"
-        "- For current directory, this folder, or here, prefer `.` when the request is read-only "
-        "and not ambiguous.\n"
-        "- Do not guess arbitrary project, system, application, or hidden directories. Do not infer "
-        "`/Downloads`, `/Desktop`, `/Users/<name>`, `/home/<name>`, or other absolute paths.\n"
-        "- Do not use `$HOME` or `${HOME}`; only `~` and `~/...` shorthand are supported.\n"
+        "- Common folders: Downloads -> `~/Downloads`; Desktop -> `~/Desktop`; "
+        "Documents -> `~/Documents`; Pictures/Movies/Music similarly.\n"
+        "- Use `.` for unambiguous read-only here/current-folder requests. Do not guess arbitrary "
+        "project/system/hidden dirs or absolute homes. Do not use `$HOME` or `${HOME}`.\n"
     )
 
     return f"""
@@ -244,6 +247,7 @@ itself as `command_family`; for example, a manual page for `ls` is `command_fami
 {network_guidance}\
 {project_health_guidance}\
 {tree_guidance}\
+{touch_guidance}\
 {path_guidance}\
 - Use the provided capability route (category + suggested families) to bias family selection before \
 detailed argument planning.
