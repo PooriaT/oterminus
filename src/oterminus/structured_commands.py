@@ -6,7 +6,7 @@ import re
 import shlex
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any, Literal, Sequence
 from urllib.parse import urlsplit
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
@@ -402,12 +402,45 @@ class TouchArguments(_StructuredArgumentsModel):
 
 class FindArguments(_StructuredArgumentsModel):
     path: str = Field(default=".", min_length=1)
-    name: str = Field(min_length=1)
+    name: str | None = Field(default=None, min_length=1)
+    entry_type: Literal["file", "directory"] | None = None
+    max_depth: int | None = Field(default=None, ge=0, le=20)
+    modified_within_days: int | None = Field(default=None, ge=1, le=3650)
+    size_greater_than_bytes: int | None = Field(
+        default=None,
+        ge=1,
+        le=1_000_000_000_000_000,
+    )
 
     @field_validator("path")
     @classmethod
     def validate_path(cls, value: str) -> str:
         return _validate_path(value)
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        blocked_fragments = ("$(", "`", "\n", "\r", "\x00")
+        if any(fragment in value for fragment in blocked_fragments):
+            raise ValueError("name cannot contain command substitution or control characters.")
+        blocked_operator_fragments = ("&&", "||", ";", "|", "<", ">", "&")
+        if any(fragment in value for fragment in blocked_operator_fragments):
+            raise ValueError("name cannot contain shell operators.")
+        return value
+
+    @model_validator(mode="after")
+    def validate_shape(self) -> FindArguments:
+        if (
+            self.name is None
+            and self.entry_type is None
+            and self.max_depth is None
+            and self.modified_within_days is None
+            and self.size_greater_than_bytes is None
+        ):
+            raise ValueError("find requires at least one supported predicate besides path.")
+        return self
 
 
 class CpArguments(_StructuredArgumentsModel):
@@ -952,8 +985,15 @@ def parse_argv_as_structured(argv: Sequence[str]) -> tuple[str, dict[str, Any]] 
     if arguments is None:
         return None
 
-    validated = validate_structured_arguments(command_family, arguments)
+    try:
+        validated = validate_structured_arguments(command_family, arguments)
+    except StructuredCommandError:
+        if command_family == "find":
+            return None
+        raise
     dumped = validated.model_dump()
+    if command_family == "find":
+        dumped = {key: value for key, value in dumped.items() if value is not None}
     if command_family in {"tar", "unzip"} and dumped.get("destination_path") is None:
         dumped.pop("destination_path", None)
     if command_family == "tar" and dumped.get("source_paths") is None:
@@ -1065,7 +1105,18 @@ def render_structured_command(
         return RenderedCommand(("touch", expand_user_path(validated.path)))
 
     if command_family == "find":
-        return RenderedCommand(("find", expand_user_path(validated.path), "-name", validated.name))
+        argv = ["find", expand_user_path(validated.path)]
+        if validated.max_depth is not None:
+            argv.extend(("-maxdepth", str(validated.max_depth)))
+        if validated.entry_type is not None:
+            argv.extend(("-type", "f" if validated.entry_type == "file" else "d"))
+        if validated.name is not None:
+            argv.extend(("-name", validated.name))
+        if validated.modified_within_days is not None:
+            argv.extend(("-mtime", f"-{validated.modified_within_days}"))
+        if validated.size_greater_than_bytes is not None:
+            argv.extend(("-size", f"+{validated.size_greater_than_bytes}c"))
+        return RenderedCommand(tuple(argv))
 
     if command_family == "cp":
         argv = ["cp"]
@@ -1541,16 +1592,57 @@ def _parse_touch_argv(operands: list[str]) -> dict[str, Any] | None:
 def _parse_find_argv(operands: list[str]) -> dict[str, Any] | None:
     if not operands:
         return None
+    if (
+        operands[0] in {"-H", "-L", "-P"}
+        or operands[0].startswith("-D")
+        or operands[0].startswith("-O")
+    ):
+        return None
 
     path = "."
-    remaining = operands
-    if operands[0] != "-name":
+    index = 0
+    if not operands[0].startswith("-"):
         path = operands[0]
-        remaining = operands[1:]
-
-    if len(remaining) != 2 or remaining[0] != "-name":
+        index = 1
+    if _looks_like_url_target(path):
         return None
-    return {"path": path, "name": remaining[1]}
+
+    arguments: dict[str, Any] = {"path": path}
+    seen: set[str] = set()
+    while index < len(operands):
+        predicate = operands[index]
+        if predicate == "-print" and index == len(operands) - 1:
+            index += 1
+            continue
+        if predicate not in {"-name", "-type", "-maxdepth", "-mtime", "-size"}:
+            return None
+        if predicate in seen or index + 1 >= len(operands):
+            return None
+        seen.add(predicate)
+        value = operands[index + 1]
+        if predicate == "-name":
+            arguments["name"] = value
+        elif predicate == "-type":
+            if value == "f":
+                arguments["entry_type"] = "file"
+            elif value == "d":
+                arguments["entry_type"] = "directory"
+            else:
+                return None
+        elif predicate == "-maxdepth":
+            if not value.isdecimal():
+                return None
+            arguments["max_depth"] = int(value)
+        elif predicate == "-mtime":
+            if not value.startswith("-") or not value[1:].isdecimal():
+                return None
+            arguments["modified_within_days"] = int(value[1:])
+        elif predicate == "-size":
+            if not (value.startswith("+") and value.endswith("c") and value[1:-1].isdecimal()):
+                return None
+            arguments["size_greater_than_bytes"] = int(value[1:-1])
+        index += 2
+    return arguments
 
 
 def _parse_cp_argv(operands: list[str]) -> dict[str, Any] | None:

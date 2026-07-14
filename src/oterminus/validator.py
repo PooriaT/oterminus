@@ -355,6 +355,18 @@ class Validator:
                 "branch --show-current, log --oneline -n <count>, diff --stat, diff --name-only."
             ]
 
+        if spec.name == "find":
+            if parse_argv_as_structured(["find", *arguments]) is not None:
+                return []
+            return [
+                "Only constrained read-only find is supported: find <path> "
+                "[-maxdepth <0-20>] [-type f|d] [-name <pattern>] "
+                "[-mtime -<1-3650>] [-size +<1..1000000000000000>c]. "
+                "At least one predicate is required; delete/exec/actions, Boolean expressions, "
+                "permission/owner filters, output files, symlink flags, URLs, duplicates, and "
+                "arbitrary find expressions are not supported."
+            ]
+
         if spec.name == "tree":
             if _is_supported_tree_shape(arguments):
                 return []

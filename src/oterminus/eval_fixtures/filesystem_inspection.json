@@ -115,6 +115,180 @@
     ]
   },
   {
+    "id": "planner-find-python-max-depth",
+    "user_input": "find Python files up to three levels deep",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "find",
+      "arguments": {
+        "path": ".",
+        "name": "*.py",
+        "entry_type": "file",
+        "max_depth": 3
+      },
+      "command": null,
+      "summary": "find Python files up to three levels deep",
+      "explanation": "Use curated read-only find predicates.",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "structured",
+    "expected_command_family": "find",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "find . -maxdepth 3 -type f -name '*.py'",
+    "expected_argv": [
+      "find",
+      ".",
+      "-maxdepth",
+      "3",
+      "-type",
+      "f",
+      "-name",
+      "*.py"
+    ]
+  },
+  {
+    "id": "planner-find-cache-directories",
+    "user_input": "find directories named cache",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "find",
+      "arguments": {
+        "path": ".",
+        "name": "cache",
+        "entry_type": "directory"
+      },
+      "command": null,
+      "summary": "find directories named cache",
+      "explanation": "Use curated read-only find predicates.",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "structured",
+    "expected_command_family": "find",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "find . -type d -name cache",
+    "expected_argv": [
+      "find",
+      ".",
+      "-type",
+      "d",
+      "-name",
+      "cache"
+    ]
+  },
+  {
+    "id": "planner-find-recent-files",
+    "user_input": "find files modified within the last seven days",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "find",
+      "arguments": {
+        "path": ".",
+        "entry_type": "file",
+        "modified_within_days": 7
+      },
+      "command": null,
+      "summary": "find files modified within the last seven days",
+      "explanation": "Use curated read-only find predicates.",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "structured",
+    "expected_command_family": "find",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "find . -type f -mtime -7",
+    "expected_argv": [
+      "find",
+      ".",
+      "-type",
+      "f",
+      "-mtime",
+      "-7"
+    ]
+  },
+  {
+    "id": "planner-find-files-larger-100mb",
+    "user_input": "find files larger than 100 MB",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "find",
+      "arguments": {
+        "path": ".",
+        "entry_type": "file",
+        "size_greater_than_bytes": 100000000
+      },
+      "command": null,
+      "summary": "find files larger than 100 MB",
+      "explanation": "Use curated read-only find predicates; 100 MB is represented as 100000000 bytes.",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "structured",
+    "expected_command_family": "find",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "find . -type f -size +100000000c",
+    "expected_argv": [
+      "find",
+      ".",
+      "-type",
+      "f",
+      "-size",
+      "+100000000c"
+    ]
+  },
+  {
+    "id": "planner-find-large-recent-logs",
+    "user_input": "find large log files modified in the last two days",
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "find",
+      "arguments": {
+        "path": ".",
+        "name": "*.log",
+        "entry_type": "file",
+        "modified_within_days": 2,
+        "size_greater_than_bytes": 104857600
+      },
+      "command": null,
+      "summary": "find large log files modified in the last two days",
+      "explanation": "Use curated read-only find predicates; the large-file threshold is represented as 100 MiB (104857600 bytes).",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": []
+    },
+    "expected_mode": "structured",
+    "expected_command_family": "find",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "find . -type f -name '*.log' -mtime -2 -size +104857600c",
+    "expected_argv": [
+      "find",
+      ".",
+      "-type",
+      "f",
+      "-name",
+      "*.log",
+      "-mtime",
+      "-2",
+      "-size",
+      "+104857600c"
+    ]
+  },
+  {
     "id": "planner-structured-grep",
     "user_input": "search src for TODOs",
     "planner_proposal": {

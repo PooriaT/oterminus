@@ -1158,3 +1158,140 @@ def test_touch_structured_rejects_missing_path_and_extra_fields() -> None:
         render_structured_command("touch", {})
     with pytest.raises(StructuredCommandError):
         render_structured_command("touch", {"path": "notes.txt", "parents": False})
+
+
+def test_find_renders_all_supported_predicates_in_stable_order() -> None:
+    rendered = render_structured_command(
+        "find",
+        {
+            "path": ".",
+            "name": "*.log",
+            "entry_type": "file",
+            "max_depth": 4,
+            "modified_within_days": 2,
+            "size_greater_than_bytes": 104857600,
+        },
+    )
+
+    assert rendered.argv == (
+        "find",
+        ".",
+        "-maxdepth",
+        "4",
+        "-type",
+        "f",
+        "-name",
+        "*.log",
+        "-mtime",
+        "-2",
+        "-size",
+        "+104857600c",
+    )
+    assert (
+        rendered.command == "find . -maxdepth 4 -type f -name '*.log' -mtime -2 -size +104857600c"
+    )
+
+
+@pytest.mark.parametrize(
+    ("arguments", "expected"),
+    [
+        ({"path": ".", "entry_type": "directory"}, ("find", ".", "-type", "d")),
+        ({"path": ".", "max_depth": 3}, ("find", ".", "-maxdepth", "3")),
+        ({"path": ".", "modified_within_days": 7}, ("find", ".", "-mtime", "-7")),
+        ({"path": ".", "size_greater_than_bytes": 100}, ("find", ".", "-size", "+100c")),
+        (
+            {"path": "~/Documents", "name": "*.pdf"},
+            ("find", f"{expand_user_path('~/Documents')}", "-name", "*.pdf"),
+        ),
+    ],
+)
+def test_find_supported_predicates(arguments: dict[str, object], expected: tuple[str, ...]) -> None:
+    assert render_structured_command("find", arguments).argv == expected
+
+
+@pytest.mark.parametrize(
+    "arguments",
+    [
+        {"path": "."},
+        {"path": ".", "entry_type": "symlink"},
+        {"path": ".", "max_depth": 21},
+        {"path": ".", "modified_within_days": 0},
+        {"path": ".", "size_greater_than_bytes": 0},
+        {"path": ".", "name": "$(whoami)"},
+        {"path": ".", "name": "*.py;rm"},
+        {"path": ".", "name": "*.py", "raw": ["-delete"]},
+    ],
+)
+def test_find_rejects_invalid_structured_arguments(arguments: dict[str, object]) -> None:
+    with pytest.raises(StructuredCommandError):
+        render_structured_command("find", arguments)
+
+
+@pytest.mark.parametrize(
+    ("command", "expected_args"),
+    [
+        (
+            "find . -type f -name '*.py'",
+            {
+                "path": ".",
+                "name": "*.py",
+                "entry_type": "file",
+            },
+        ),
+        (
+            "find src -maxdepth 3 -type f",
+            {
+                "path": "src",
+                "entry_type": "file",
+                "max_depth": 3,
+            },
+        ),
+        (
+            "find . -mtime -7 -type f",
+            {
+                "path": ".",
+                "entry_type": "file",
+                "modified_within_days": 7,
+            },
+        ),
+        (
+            "find . -size +104857600c -type f",
+            {
+                "path": ".",
+                "entry_type": "file",
+                "size_greater_than_bytes": 104857600,
+            },
+        ),
+    ],
+)
+def test_parse_find_supported_direct_forms(command: str, expected_args: dict[str, object]) -> None:
+    assert parse_raw_command_as_structured(command) == ("find", expected_args)
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "find",
+        "find .",
+        "find . -name",
+        "find . -name '*.py' -name '*.md'",
+        "find . -type l",
+        "find . -maxdepth -1",
+        "find . -maxdepth 999999",
+        "find . -mtime 7",
+        "find . -mtime +7",
+        "find . -size 10M",
+        "find . -size +100M",
+        "find . -delete",
+        "find . -exec rm {} ;",
+        "find . -o -name '*.md'",
+        "find . ! -name '*.py'",
+        "find . ( -name '*.py' )",
+        "find . -perm 777",
+        "find . -user root",
+        "find -L . -name '*.py'",
+        "find https://example.com -name '*.py'",
+    ],
+)
+def test_parse_find_rejects_unsupported_direct_forms(command: str) -> None:
+    assert parse_raw_command_as_structured(command) is None
