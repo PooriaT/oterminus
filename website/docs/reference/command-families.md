@@ -40,6 +40,7 @@
 | `ls` | inspection | all | safe | structured | structured (normal executable support) | yes | safe_inspection_passthrough | no | `ls -la` | `list files`, `show directory contents` | — |
 | `pwd` | navigation | all | safe | structured | structured (normal executable support) | yes | explicit | no | `pwd` | `where am i`, `print working directory` | — |
 | `stat` | inspection | all | safe | structured | structured (normal executable support) | yes | explicit | no | `stat README.md` | `file metadata`, `file info` | — |
+| `tree` | inspection | all | safe | structured | structured (normal executable support) | yes | explicit | no | `tree -a -L 3 .` | `show directory tree`, `show folder tree`, `directory overview` | Requires the optional external `tree` executable.<br />Supports one local path, hidden entries, directories-only output, and bounded depth. |
 
 ## `filesystem_mutation`
 

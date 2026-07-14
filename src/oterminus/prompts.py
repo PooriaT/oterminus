@@ -16,6 +16,10 @@ def _format_structured_shapes(structured_families: tuple[str, ...]) -> str:
             '{"path": ".", "long": true|false, "human_readable": true|false, '
             '"all": true|false, "recursive": true|false}'
         ),
+        "tree": (
+            '{"path": ".", "max_depth": 3|null, "show_hidden": true|false, '
+            '"directories_only": true|false}'
+        ),
         "pwd": "{}",
         "clear": "{}",
         "whoami": "{}",
@@ -151,6 +155,11 @@ def build_system_prompt(
         if "project_health" in enabled_families
         else ""
     )
+    tree_guidance = (
+        "- Use `tree` for hierarchies, `ls` for listings; do not invent depth/hidden/dirs-only/install.\n"
+        if "tree" in enabled_families
+        else ""
+    )
     path_guidance = (
         "- For common current-user folders, prefer explicit home-relative paths: Downloads or "
         "download directory -> `~/Downloads`; Desktop -> `~/Desktop`; Documents -> "
@@ -234,6 +243,7 @@ itself as `command_family`; for example, a manual page for `ls` is `command_fami
 {archive_guidance}\
 {network_guidance}\
 {project_health_guidance}\
+{tree_guidance}\
 {path_guidance}\
 - Use the provided capability route (category + suggested families) to bias family selection before \
 detailed argument planning.

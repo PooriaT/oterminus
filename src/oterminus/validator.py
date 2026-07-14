@@ -24,6 +24,7 @@ from oterminus.path_utils import expand_user_path
 from oterminus.policies import PolicyConfig, is_risk_allowed
 from oterminus.structured_commands import (
     StructuredCommandError,
+    parse_argv_as_structured,
     is_valid_http_head_url,
     is_valid_network_domain,
     is_valid_network_host,
@@ -70,6 +71,7 @@ PATH_EXPANDING_COMMANDS = frozenset(
         "stat",
         "tail",
         "tar",
+        "tree",
         "touch",
         "uniq",
         "unzip",
@@ -351,6 +353,16 @@ class Validator:
             return [
                 "Only read-only Git inspection operations are supported: status --short, "
                 "branch --show-current, log --oneline -n <count>, diff --stat, diff --name-only."
+            ]
+
+        if spec.name == "tree":
+            if _is_supported_tree_shape(arguments):
+                return []
+            return [
+                "Only simple tree inspection is supported: tree [-a] [-d] [-L <depth>] [path], "
+                "with depth from 1 to 20, one local path, and no URLs, shell operators, "
+                "redirection, substitutions, option terminators, output files, ignore patterns, "
+                "alternate formats, color controls, or symlink controls."
             ]
 
         if spec.name == "tar":
@@ -959,6 +971,13 @@ def _blocked_command_text_reasons(command: str) -> list[str]:
             if fragment in command
         ]
     )
+
+
+def _is_supported_tree_shape(arguments: list[str]) -> bool:
+    try:
+        return parse_argv_as_structured(["tree", *arguments]) is not None
+    except StructuredCommandError:
+        return False
 
 
 def _unsupported_project_tool_reasons(args: list[str]) -> list[str]:

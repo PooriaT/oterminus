@@ -45,6 +45,26 @@ COMMAND_PACK: tuple[CommandSpec, ...] = (
         natural_language_aliases=("list files", "show directory contents"),
     ),
     command(
+        name="tree",
+        category="inspection",
+        **FILESYSTEM_INSPECTION,
+        risk_level=RiskLevel.SAFE,
+        min_operands=0,
+        max_operands=1,
+        allowed_flags=("-a", "-d"),
+        flags_with_values=("-L",),
+        examples=("tree -a -L 3 .",),
+        natural_language_aliases=(
+            "show directory tree",
+            "show folder tree",
+            "directory overview",
+        ),
+        notes=(
+            "Requires the optional external `tree` executable.",
+            "Supports one local path, hidden entries, directories-only output, and bounded depth.",
+        ),
+    ),
+    command(
         name="pwd",
         category="navigation",
         **FILESYSTEM_INSPECTION,
