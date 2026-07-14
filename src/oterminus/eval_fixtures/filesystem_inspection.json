@@ -283,5 +283,99 @@
       "-s",
       "."
     ]
+  },
+  {
+    "id": "planner-tree-project-overview",
+    "user_input": "show the folder tree for this project",
+    "expected_mode": "structured",
+    "expected_command_family": "tree",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "tree .",
+    "expected_argv": [
+      "tree",
+      "."
+    ],
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "tree",
+      "arguments": {
+        "path": ".",
+        "max_depth": null,
+        "show_hidden": false,
+        "directories_only": false
+      },
+      "summary": "Show folder tree",
+      "explanation": "Use tree for a hierarchy overview of the current project.",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": [],
+      "command": null
+    }
+  },
+  {
+    "id": "planner-tree-hidden-depth",
+    "user_input": "show hidden entries up to three levels deep",
+    "expected_mode": "structured",
+    "expected_command_family": "tree",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "tree -a -L 3 .",
+    "expected_argv": [
+      "tree",
+      "-a",
+      "-L",
+      "3",
+      "."
+    ],
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "tree",
+      "arguments": {
+        "path": ".",
+        "max_depth": 3,
+        "show_hidden": true,
+        "directories_only": false
+      },
+      "summary": "Show hidden entries three levels deep",
+      "explanation": "Use tree with hidden entries and the requested bounded depth.",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": [],
+      "command": null
+    }
+  },
+  {
+    "id": "planner-tree-downloads-directories-only",
+    "user_input": "show directories only under ~/Downloads",
+    "expected_mode": "structured",
+    "expected_command_family": "tree",
+    "expected_risk_level": "safe",
+    "expected_acceptance": true,
+    "expected_rendered_command": "tree -d {home}/Downloads",
+    "expected_argv": [
+      "tree",
+      "-d",
+      "{home}/Downloads"
+    ],
+    "planner_proposal": {
+      "action_type": "shell_command",
+      "mode": "structured",
+      "command_family": "tree",
+      "arguments": {
+        "path": "~/Downloads",
+        "max_depth": null,
+        "show_hidden": false,
+        "directories_only": true
+      },
+      "summary": "Show Downloads directories",
+      "explanation": "Use tree directories-only output for the requested home-relative Downloads folder.",
+      "risk_level": "safe",
+      "needs_confirmation": true,
+      "notes": [],
+      "command": null
+    }
   }
 ]

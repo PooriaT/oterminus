@@ -883,6 +883,22 @@ If `OTERMINUS_EXPLAIN_FAILURES=true`, OTerminus may print a concise explanation 
 For exact environment variables, see [Configuration reference](../reference/config.md#failure-explanations-opt-in).
 
 
+## Directory tree inspection
+
+OTerminus supports `tree` as a structured, read-only filesystem inspection command when the optional external `tree` executable is already installed and available on `PATH`. It never installs `tree` automatically; if it is missing, `oterminus doctor` reports non-critical guidance to install it with your normal OS package manager.
+
+Supported structured fields are:
+
+- `path`: one local starting path, defaulting to `.`. OTerminus expands only `~` and `~/...`; it does not expand `$HOME`, `${HOME}`, `~otheruser`, globs, or command substitutions.
+- `max_depth`: an optional integer from 1 through 20, rendered as `-L <depth>`.
+- `show_hidden`: optional hidden-entry output, rendered as `-a`.
+- `directories_only`: optional directories-only output, rendered as `-d`.
+
+Examples include `tree .`, `tree -a .`, `tree -d ~/Downloads`, `tree -a -d -L 3 .`, and `tree -ad -L 2 src`. Natural-language requests such as `show the folder tree for this project`, `show hidden entries up to three levels deep`, and `show directories only under ~/Downloads` should map to the same typed subset.
+
+Excluded `tree` features include multiple starting paths, output files, pipes, redirection, pagers, ignore patterns, HTML/XML/JSON or other alternate output formats, color controls, symlink controls, long options such as `--help` and `--version`, and arbitrary flag passthrough. Use `ls` for ordinary directory listings; use `tree` only for hierarchy overviews.
+
+
 ## Project health capability
 
 The `project_health` capability is a supported curated developer workflow. It uses structured

@@ -15,6 +15,7 @@ from oterminus.structured_commands import (
     "command_family",
     [
         "ls",
+        "tree",
         "pwd",
         "clear",
         "whoami",
@@ -67,6 +68,13 @@ def test_supported_structured_families_are_curated(command_family: str) -> None:
             "ls -l -h .",
         ),
         ("pwd", {}, ("pwd",), "pwd"),
+        ("tree", {}, ("tree", "."), "tree ."),
+        (
+            "tree",
+            {"path": "src", "max_depth": 3, "show_hidden": True, "directories_only": True},
+            ("tree", "-a", "-d", "-L", "3", "src"),
+            "tree -a -d -L 3 src",
+        ),
         ("clear", {}, ("clear",), "clear"),
         ("whoami", {}, ("whoami",), "whoami"),
         (
@@ -976,3 +984,96 @@ def test_project_health_schema_rejects_extra_arguments() -> None:
         render_structured_command(
             "project_health", {"operation": "run_tests", "raw_command": "poetry run pytest"}
         )
+
+
+def test_structured_tree_expands_home_in_rendering() -> None:
+    rendered = render_structured_command(
+        "tree",
+        {"path": "~/Downloads", "max_depth": 3, "show_hidden": True, "directories_only": False},
+    )
+
+    assert rendered.argv == ("tree", "-a", "-L", "3", expand_user_path("~/Downloads"))
+    assert rendered.command == shlex.join(rendered.argv)
+
+
+@pytest.mark.parametrize(
+    ("command", "expected_arguments"),
+    [
+        (
+            "tree",
+            {"path": ".", "max_depth": None, "show_hidden": False, "directories_only": False},
+        ),
+        (
+            "tree .",
+            {"path": ".", "max_depth": None, "show_hidden": False, "directories_only": False},
+        ),
+        (
+            "tree -a .",
+            {"path": ".", "max_depth": None, "show_hidden": True, "directories_only": False},
+        ),
+        (
+            "tree -d ~/Downloads",
+            {
+                "path": "~/Downloads",
+                "max_depth": None,
+                "show_hidden": False,
+                "directories_only": True,
+            },
+        ),
+        (
+            "tree -a -d -L 3 .",
+            {"path": ".", "max_depth": 3, "show_hidden": True, "directories_only": True},
+        ),
+        (
+            "tree -ad -L 2 src",
+            {"path": "src", "max_depth": 2, "show_hidden": True, "directories_only": True},
+        ),
+    ],
+)
+def test_parse_raw_command_as_structured_accepts_tree(
+    command: str, expected_arguments: dict[str, object]
+) -> None:
+    assert parse_raw_command_as_structured(command) == ("tree", expected_arguments)
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "tree path1 path2",
+        "tree -L",
+        "tree -L 0",
+        "tree -L -1",
+        "tree -L 999999",
+        "tree --help",
+        "tree --version",
+        "tree -C",
+        "tree -H .",
+        "tree -I pattern .",
+        "tree -o out.txt .",
+        "tree https://example.com",
+        "tree file:///tmp/x",
+        "tree . | less",
+        "tree . > tree.txt",
+        "tree $(pwd)",
+        "tree `pwd`",
+        "tree -L3 .",
+    ],
+)
+def test_parse_raw_command_as_structured_rejects_tree_variants(command: str) -> None:
+    assert parse_raw_command_as_structured(command) is None
+
+
+@pytest.mark.parametrize(
+    "arguments",
+    [
+        {"path": "https://example.com"},
+        {"path": "$HOME/Downloads"},
+        {"path": "~otheruser"},
+        {"path": "src", "max_depth": 0},
+        {"path": "src", "max_depth": 21},
+        {"path": "src", "ignore_pattern": "*.py"},
+    ],
+)
+def test_render_structured_tree_rejects_invalid_arguments(arguments: dict[str, object]) -> None:
+    with pytest.raises(StructuredCommandError):
+        render_structured_command("tree", arguments)

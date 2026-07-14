@@ -1,10 +1,12 @@
 import shlex
+from pathlib import Path
 
 import pytest
 
 from oterminus.commands import COMMAND_REGISTRY, NETWORK_TOUCHING_WARNING, command as command_spec
 from oterminus.messages import EXPERIMENTAL_USER_WARNING, EXPERIMENTAL_VERBOSE_EXPLANATION
 from oterminus.models import ActionType, Proposal, ProposalMode, RiskLevel
+from oterminus.path_utils import expand_user_path
 from oterminus.policies import PolicyConfig
 from oterminus.structured_commands import StructuredCommandError, parse_raw_command_as_structured
 from oterminus.validator import ProposalOrigin, Validator
@@ -1584,3 +1586,52 @@ def test_validator_power_profile_rejects_dangerous_but_allows_network() -> None:
         "command pack 'dangerous' is disabled" in reason for reason in dangerous_result.reasons
     )
     assert network_result.accepted is True
+
+
+def test_validator_normalizes_tree_home_path() -> None:
+    validator = Validator(PolicyConfig(mode=RiskLevel.SAFE, allow_dangerous=False))
+    result = validator.validate(
+        make_proposal("tree -a -L 3 ~/Downloads"), origin=ProposalOrigin.DIRECT_COMMAND
+    )
+
+    assert result.accepted is True
+    assert result.argv == ["tree", "-a", "-L", "3", expand_user_path("~/Downloads")]
+    assert result.rendered_command == shlex.join(result.argv)
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "tree --help",
+        "tree --",
+        "tree -C",
+        "tree -L 0 .",
+        "tree path1 path2",
+        "tree https://example.com",
+        "tree . | less",
+        "tree . > tree.txt",
+        "tree $(pwd)",
+    ],
+)
+def test_validator_rejects_unsupported_tree_shapes(command: str) -> None:
+    validator = Validator(PolicyConfig(mode=RiskLevel.DANGEROUS, allow_dangerous=True))
+    result = validator.validate(make_proposal(command), origin=ProposalOrigin.DIRECT_COMMAND)
+
+    assert result.accepted is False
+
+
+def test_validator_applies_allowed_roots_to_tree(tmp_path: Path) -> None:
+    allowed = tmp_path / "allowed"
+    disallowed = tmp_path / "disallowed"
+    allowed.mkdir()
+    disallowed.mkdir()
+    validator = Validator(
+        PolicyConfig(mode=RiskLevel.SAFE, allow_dangerous=False, allowed_roots=(allowed,))
+    )
+
+    accepted = validator.validate(make_proposal(f"tree {allowed}"))
+    rejected = validator.validate(make_proposal(f"tree {disallowed}"))
+
+    assert accepted.accepted is True
+    assert rejected.accepted is False
+    assert any("Paths outside allowed roots" in reason for reason in rejected.reasons)

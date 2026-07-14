@@ -63,7 +63,7 @@ _REPORT_GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("Ollama", ("ollama CLI", "ollama service", "local ollama models")),
     ("Model/config", ("app config", "configured model")),
     ("Local files", ("config path", "audit log path", "history path")),
-    ("Optional features", ("prompt_toolkit",)),
+    ("Optional features", ("prompt_toolkit", "tree executable")),
     (
         "Developer checks",
         ("command registry", "duplicate command names", "eval fixtures", "dev tools"),
@@ -138,6 +138,7 @@ def run_doctor() -> DoctorReport:
     results.append(_check_audit_path(app_config))
     results.append(_check_history_path(app_config))
     results.append(_check_prompt_toolkit())
+    results.append(_check_tree_executable())
     results.append(_check_registry_loads())
     results.append(_check_registry_duplicates())
     results.append(_check_eval_fixtures())
@@ -668,6 +669,25 @@ def _check_prompt_toolkit() -> CheckResult:
         )
     return CheckResult(
         name="prompt_toolkit", status=Status.PASS, message="Autocomplete dependency available."
+    )
+
+
+def _check_tree_executable() -> CheckResult:
+    path = shutil.which("tree")
+    if path:
+        return CheckResult(
+            name="tree executable",
+            status=Status.PASS,
+            message=f"Optional tree executable found at {path}.",
+        )
+    return CheckResult(
+        name="tree executable",
+        status=Status.WARN,
+        message="Optional tree executable is not installed or not on PATH.",
+        guidance=(
+            "Install `tree` with your normal OS package manager if you want structured "
+            "directory tree inspection; oterminus will not install it automatically."
+        ),
     )
 
 

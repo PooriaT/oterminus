@@ -34,6 +34,23 @@ def _validate_path(value: str, *, allow_url_targets: bool = False) -> str:
     return value
 
 
+def _validate_tree_path(value: str) -> str:
+    value = _validate_path(value, allow_url_targets=False)
+    blocked_fragments = ("$(", "`", "\n", "\r", "\x00")
+    if any(fragment in value for fragment in blocked_fragments):
+        raise ValueError("path cannot contain command substitution or control characters.")
+    blocked_operator_fragments = ("&&", "||", ";", "|", "<", ">", "&")
+    if any(fragment in value for fragment in blocked_operator_fragments):
+        raise ValueError("path cannot contain shell operators.")
+    if any(fragment in value for fragment in ("*", "?", "[", "]", "{", "}")):
+        raise ValueError("path cannot contain wildcard characters.")
+    if value.startswith(("$HOME", "${HOME}")) or (
+        value.startswith("~") and value not in {"~"} and not value.startswith("~/")
+    ):
+        raise ValueError("path must use '.', '~', '~/...', or another explicit local path.")
+    return value
+
+
 def _validate_archive_path(value: str) -> str:
     value = _validate_path(value, allow_url_targets=False)
     blocked_fragments = ("$(", "`", "\n", "\r", "\x00")
@@ -207,6 +224,18 @@ class LsArguments(_StructuredArgumentsModel):
         if value and not info.data.get("long", False):
             raise ValueError("human_readable requires long=true.")
         return value
+
+
+class TreeArguments(_StructuredArgumentsModel):
+    path: str = Field(default=".", min_length=1)
+    max_depth: int | None = Field(default=None, ge=1, le=20)
+    show_hidden: bool = False
+    directories_only: bool = False
+
+    @field_validator("path")
+    @classmethod
+    def validate_path(cls, value: str) -> str:
+        return _validate_tree_path(value)
 
 
 class PwdArguments(_StructuredArgumentsModel):
@@ -765,6 +794,7 @@ class UniqArguments(_StructuredArgumentsModel):
 
 STRUCTURED_ARGUMENT_MODELS: dict[str, type[_StructuredArgumentsModel]] = {
     "ls": LsArguments,
+    "tree": TreeArguments,
     "pwd": PwdArguments,
     "clear": ClearArguments,
     "whoami": WhoamiArguments,
@@ -834,6 +864,7 @@ def parse_argv_as_structured(argv: Sequence[str]) -> tuple[str, dict[str, Any]] 
 
     parser = {
         "ls": _parse_ls_argv,
+        "tree": _parse_tree_argv,
         "pwd": _parse_pwd_argv,
         "clear": _parse_clear_argv,
         "whoami": _parse_whoami_argv,
@@ -919,6 +950,17 @@ def render_structured_command(
             argv.append("-a")
         if validated.recursive:
             argv.append("-R")
+        argv.append(expand_user_path(validated.path))
+        return RenderedCommand(tuple(argv))
+
+    if command_family == "tree":
+        argv = ["tree"]
+        if validated.show_hidden:
+            argv.append("-a")
+        if validated.directories_only:
+            argv.append("-d")
+        if validated.max_depth is not None:
+            argv.extend(("-L", str(validated.max_depth)))
         argv.append(expand_user_path(validated.path))
         return RenderedCommand(tuple(argv))
 
@@ -1266,6 +1308,57 @@ def _parse_ls_argv(operands: list[str]) -> dict[str, Any] | None:
         path = operand
 
     if path is not None:
+        arguments["path"] = path
+    return arguments
+
+
+def _parse_tree_argv(operands: list[str]) -> dict[str, Any] | None:
+    arguments: dict[str, Any] = {
+        "path": ".",
+        "max_depth": None,
+        "show_hidden": False,
+        "directories_only": False,
+    }
+    path: str | None = None
+    index = 0
+
+    while index < len(operands):
+        operand = operands[index]
+        if operand == "--":
+            return None
+        if operand == "-L":
+            if index + 1 >= len(operands):
+                return None
+            depth_text = operands[index + 1]
+            if not depth_text.isdecimal():
+                return None
+            depth = int(depth_text)
+            if depth < 1 or depth > 20:
+                return None
+            arguments["max_depth"] = depth
+            index += 2
+            continue
+        if operand.startswith("-") and operand != "-":
+            flags = _expand_short_flag_cluster(operand, {"a", "d"})
+            if flags is None:
+                return None
+            for flag in flags:
+                if flag == "-a":
+                    arguments["show_hidden"] = True
+                elif flag == "-d":
+                    arguments["directories_only"] = True
+            index += 1
+            continue
+        if path is not None:
+            return None
+        path = operand
+        index += 1
+
+    if path is not None:
+        try:
+            _validate_tree_path(path)
+        except ValueError:
+            return None
         arguments["path"] = path
     return arguments
 
