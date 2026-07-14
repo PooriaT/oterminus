@@ -82,6 +82,7 @@ from unittest.mock import Mock
 
 from oterminus.ambiguity import ClarificationStatus
 from oterminus.cli import clarify_repl_request
+from oterminus.terminal_style import TerminalStyle
 
 
 def test_clarify_repl_request_direct_command_not_needed() -> None:
@@ -119,6 +120,23 @@ def test_clarify_repl_request_known_ambiguity_prompts_once() -> None:
     input_fn.assert_called_once_with("clarify> ")
     output_fn.assert_called_once()
     assert "Safer inspection ideas:" in output_fn.call_args.args[0]
+
+
+def test_clarify_repl_request_keeps_styled_output_out_of_metadata() -> None:
+    output_fn = Mock()
+
+    result = clarify_repl_request(
+        "clean this folder",
+        input_fn=Mock(return_value="list large files in ~/Downloads"),
+        output_fn=output_fn,
+        style=TerminalStyle(True),
+    )
+
+    rendered_prompt = output_fn.call_args.args[0]
+    assert "\x1b[" in rendered_prompt
+    assert result.prompt is not None
+    assert "\x1b[" not in result.prompt
+    assert "This request is ambiguous and has not been planned." in result.prompt
 
 
 def test_clarify_repl_request_blank_and_cancel_are_cancelled() -> None:

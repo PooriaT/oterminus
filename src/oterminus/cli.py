@@ -92,9 +92,9 @@ def clarify_repl_request(
     if not ambiguity.is_ambiguous:
         return ClarificationResult(ClarificationStatus.NOT_NEEDED, original_request=request)
 
-    prompt = render_repl_clarification_prompt(ambiguity, style=style)
+    prompt = render_repl_clarification_prompt(ambiguity)
     input_prompt = "clarify> "
-    output_fn(prompt)
+    output_fn(render_repl_clarification_prompt(ambiguity, style=style))
     try:
         answer = input_fn(_style(style, StyleToken.COMMAND, input_prompt)).strip()
     except KeyboardInterrupt:
