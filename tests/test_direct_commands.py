@@ -378,6 +378,8 @@ def test_detect_direct_command_for_structured_touch() -> None:
         "touch ~",
         "touch .",
         "touch ..",
+        "touch /home",
+        "touch /Users",
         "touch https://example.com/file",
         "touch file:///tmp/file",
         "touch $(pwd)",

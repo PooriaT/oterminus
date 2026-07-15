@@ -78,7 +78,18 @@ def _validate_touch_target(value: str) -> str:
         or normalized in {"/", home, cwd}
     ):
         raise ValueError("path cannot be a broad filesystem target.")
-    system_roots = {"/bin", "/dev", "/etc", "/lib", "/private", "/sbin", "/usr", "/var"}
+    system_roots = {
+        "/Users",
+        "/bin",
+        "/dev",
+        "/etc",
+        "/home",
+        "/lib",
+        "/private",
+        "/sbin",
+        "/usr",
+        "/var",
+    }
     if lexical_normalized in system_roots or normalized in system_roots:
         raise ValueError("path cannot be a system root.")
     return value

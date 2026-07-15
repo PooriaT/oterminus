@@ -1132,10 +1132,12 @@ def test_parse_raw_command_as_structured_accepts_touch(
         "touch /bin",
         "touch /dev",
         "touch /etc",
+        "touch /home",
         "touch /lib",
         "touch /private",
         "touch /sbin",
         "touch /usr",
+        "touch /Users",
         "touch /var",
         "touch https://example.com/file",
         "touch file:///tmp/file",
@@ -1158,6 +1160,12 @@ def test_touch_structured_rejects_missing_path_and_extra_fields() -> None:
         render_structured_command("touch", {})
     with pytest.raises(StructuredCommandError):
         render_structured_command("touch", {"path": "notes.txt", "parents": False})
+
+
+@pytest.mark.parametrize("path", ["/home", "/Users"])
+def test_render_structured_touch_rejects_platform_home_roots(path: str) -> None:
+    with pytest.raises(StructuredCommandError):
+        render_structured_command("touch", {"path": path})
 
 
 def test_find_renders_all_supported_predicates_in_stable_order() -> None:
