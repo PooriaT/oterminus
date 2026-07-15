@@ -1,10 +1,12 @@
 import shlex
+from pathlib import Path
 
 import pytest
 
 from oterminus.commands import COMMAND_REGISTRY, NETWORK_TOUCHING_WARNING, command as command_spec
 from oterminus.messages import EXPERIMENTAL_USER_WARNING, EXPERIMENTAL_VERBOSE_EXPLANATION
 from oterminus.models import ActionType, Proposal, ProposalMode, RiskLevel
+from oterminus.path_utils import expand_user_path
 from oterminus.policies import PolicyConfig
 from oterminus.structured_commands import StructuredCommandError, parse_raw_command_as_structured
 from oterminus.validator import ProposalOrigin, Validator
@@ -927,21 +929,22 @@ def test_allowed_roots_find_checks_only_search_roots() -> None:
     assert result.accepted is True
 
 
-def test_allowed_roots_find_with_leading_option_still_checks_path_operands() -> None:
+def test_allowed_roots_find_rejects_unsupported_symlink_flag() -> None:
     validator = Validator(
         PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False, allowed_roots=["/allowed"])
     )
     result = validator.validate(make_proposal("find -L /etc -name '*.conf'"))
     assert result.accepted is False
-    assert any("Paths outside allowed roots" in reason for reason in result.reasons)
+    assert any("Only constrained read-only find" in reason for reason in result.reasons)
 
 
-def test_allowed_roots_find_without_explicit_path_does_not_treat_predicate_arg_as_root() -> None:
+def test_allowed_roots_find_rejects_unsupported_path_predicate() -> None:
     validator = Validator(
         PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False, allowed_roots=["/allowed"])
     )
     result = validator.validate(make_proposal("find -path '/etc/*'"))
-    assert result.accepted is True
+    assert result.accepted is False
+    assert any("Only constrained read-only find" in reason for reason in result.reasons)
 
 
 def test_allowed_roots_blocks_disallowed_path_operand() -> None:
@@ -1584,3 +1587,129 @@ def test_validator_power_profile_rejects_dangerous_but_allows_network() -> None:
         "command pack 'dangerous' is disabled" in reason for reason in dangerous_result.reasons
     )
     assert network_result.accepted is True
+
+
+def test_validator_normalizes_tree_home_path() -> None:
+    validator = Validator(PolicyConfig(mode=RiskLevel.SAFE, allow_dangerous=False))
+    result = validator.validate(
+        make_proposal("tree -a -L 3 ~/Downloads"), origin=ProposalOrigin.DIRECT_COMMAND
+    )
+
+    assert result.accepted is True
+    assert result.argv == ["tree", "-a", "-L", "3", expand_user_path("~/Downloads")]
+    assert result.rendered_command == shlex.join(result.argv)
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "tree --help",
+        "tree --",
+        "tree -C",
+        "tree -L 0 .",
+        "tree path1 path2",
+        "tree https://example.com",
+        "tree . | less",
+        "tree . > tree.txt",
+        "tree $(pwd)",
+    ],
+)
+def test_validator_rejects_unsupported_tree_shapes(command: str) -> None:
+    validator = Validator(PolicyConfig(mode=RiskLevel.DANGEROUS, allow_dangerous=True))
+    result = validator.validate(make_proposal(command), origin=ProposalOrigin.DIRECT_COMMAND)
+
+    assert result.accepted is False
+
+
+def test_validator_applies_allowed_roots_to_tree(tmp_path: Path) -> None:
+    allowed = tmp_path / "allowed"
+    disallowed = tmp_path / "disallowed"
+    allowed.mkdir()
+    disallowed.mkdir()
+    validator = Validator(
+        PolicyConfig(mode=RiskLevel.SAFE, allow_dangerous=False, allowed_roots=(allowed,))
+    )
+
+    accepted = validator.validate(make_proposal(f"tree {allowed}"))
+    rejected = validator.validate(make_proposal(f"tree {disallowed}"))
+
+    assert accepted.accepted is True
+    assert rejected.accepted is False
+    assert any("Paths outside allowed roots" in reason for reason in rejected.reasons)
+
+
+def test_validator_accepts_structured_touch_as_write_risk() -> None:
+    validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))
+    result = validator.validate(make_proposal("touch notes.txt"))
+    assert result.accepted is True
+    assert result.risk_level == RiskLevel.WRITE
+    assert result.argv == ["touch", "notes.txt"]
+
+
+def test_validator_safe_policy_blocks_touch() -> None:
+    validator = Validator(PolicyConfig(mode=RiskLevel.SAFE, allow_dangerous=False))
+    result = validator.validate(make_proposal("touch notes.txt"))
+    assert result.accepted is False
+    assert result.risk_level == RiskLevel.WRITE
+    assert any("Risk level 'write' blocked" in reason for reason in result.reasons)
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "touch /",
+        "touch ~",
+        "touch .",
+        "touch ~/.",
+        "touch src/..",
+        "touch file1 file2",
+        "touch -c notes.txt",
+    ],
+)
+def test_validator_experimental_touch_cannot_bypass_shape(command: str) -> None:
+    validator = Validator(PolicyConfig(mode=RiskLevel.DANGEROUS, allow_dangerous=True))
+    result = validator.validate(
+        make_proposal(command, mode=ProposalMode.EXPERIMENTAL, command_family="touch")
+    )
+    assert result.accepted is False
+    assert any("Only constrained touch is supported" in reason for reason in result.reasons)
+
+
+def test_validator_applies_allowed_roots_to_touch(tmp_path: Path) -> None:
+    allowed = tmp_path / "allowed"
+    outside = tmp_path / "outside"
+    allowed.mkdir()
+    outside.mkdir()
+    validator = Validator(
+        PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False, allowed_roots=[str(allowed)])
+    )
+    accepted = validator.validate(make_proposal(f"touch {allowed / 'notes.txt'}"))
+    rejected = validator.validate(make_proposal(f"touch {outside / 'notes.txt'}"))
+    traversal = validator.validate(
+        make_proposal(f"touch {allowed / '..' / 'outside' / 'notes.txt'}")
+    )
+    assert accepted.accepted is True
+    assert rejected.accepted is False
+    assert traversal.accepted is False
+    assert any("Paths outside allowed roots" in reason for reason in rejected.reasons)
+    assert any("Paths outside allowed roots" in reason for reason in traversal.reasons)
+
+
+def test_validator_normalizes_touch_home_path() -> None:
+    validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))
+    result = validator.validate(make_proposal("touch ~/Documents/notes.txt"))
+    assert result.accepted is True
+    assert result.argv == ["touch", expand_user_path("~/Documents/notes.txt")]
+    assert result.rendered_command == shlex.join(result.argv)
+
+
+def test_find_experimental_fallback_cannot_bypass_curated_shape() -> None:
+    validator = Validator(PolicyConfig(mode=RiskLevel.WRITE, allow_dangerous=False))
+    proposal = make_proposal(
+        "find . -delete", mode=ProposalMode.EXPERIMENTAL, command_family="find"
+    )
+
+    result = validator.validate(proposal)
+
+    assert result.accepted is False
+    assert any("Only constrained read-only find" in reason for reason in result.reasons)

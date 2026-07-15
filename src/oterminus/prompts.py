@@ -16,6 +16,10 @@ def _format_structured_shapes(structured_families: tuple[str, ...]) -> str:
             '{"path": ".", "long": true|false, "human_readable": true|false, '
             '"all": true|false, "recursive": true|false}'
         ),
+        "tree": (
+            '{"path": ".", "max_depth": 3|null, "show_hidden": true|false, '
+            '"directories_only": true|false}'
+        ),
         "pwd": "{}",
         "clear": "{}",
         "whoami": "{}",
@@ -28,7 +32,8 @@ def _format_structured_shapes(structured_families: tuple[str, ...]) -> str:
         "man": '{"topic": "ls", "section": "1"|null}',
         "mkdir": '{"path": "...", "parents": true|false}',
         "chmod": '{"path": "...", "mode": "755"}',
-        "find": '{"path": ".", "name": "*.py"}',
+        "touch": '{"path": "notes.txt"}',
+        "find": '{"path":".","name":"*.py"|null,"entry_type":"file|directory"|null,"max_depth":3|null,"modified_within_days":7|null,"size_greater_than_bytes":104857600|null}',
         "cp": (
             '{"source": "...", "destination": "...", "recursive": true|false, '
             '"preserve": true|false, "no_clobber": true|false}'
@@ -141,25 +146,32 @@ def build_system_prompt(
         else ""
     )
     project_health_guidance = (
-        "- `project_health` is a curated developer-workflow capability only. Supported operations are "
-        "`run_tests`, `lint_check`, `format_check`, `build_docs`, and `run_evals`.\n"
-        "- `project_health` operations may execute local project code and tooling; keep "
-        "`risk_level` as `write` and keep confirmation required.\n"
-        "- Do not propose arbitrary `poetry run ...`, install/update/package-management commands "
-        "(`poetry add`, `poetry update`, `poetry install`, `pip install`, `npm install`, `brew install`), "
-        "deploy/publish commands, or write-formatting (for example `ruff format .`).\n"
+        "- `project_health`: only run_tests, lint_check, format_check, build_docs, run_evals; "
+        "may execute local project code; risk `write`; no arbitrary `poetry run ...`, install/update/deploy/publish or write-formatting.\n"
         if "project_health" in enabled_families
         else ""
     )
+    tree_guidance = (
+        "- Use `tree` for hierarchies, `ls` for listings; do not invent depth/hidden/dirs-only/install.\n"
+        if "tree" in enabled_families
+        else ""
+    )
+    find_guidance = (
+        "- `find`: curated read-only predicates only; bytes for sizes; no raw expressions, actions, Boolean, permission/owner, or symlink flags.\n"
+        if "find" in enabled_families
+        else ""
+    )
+    touch_guidance = (
+        "- `touch`: one explicit file path only; risk `write`; confirmation required; no "
+        "contents, flags, or multiple files; creates missing file or updates timestamps.\n"
+        if "touch" in enabled_families
+        else ""
+    )
     path_guidance = (
-        "- For common current-user folders, prefer explicit home-relative paths: Downloads or "
-        "download directory -> `~/Downloads`; Desktop -> `~/Desktop`; Documents -> "
-        "`~/Documents`; Pictures -> `~/Pictures`; Movies -> `~/Movies`; Music -> `~/Music`.\n"
-        "- For current directory, this folder, or here, prefer `.` when the request is read-only "
-        "and not ambiguous.\n"
-        "- Do not guess arbitrary project, system, application, or hidden directories. Do not infer "
-        "`/Downloads`, `/Desktop`, `/Users/<name>`, `/home/<name>`, or other absolute paths.\n"
-        "- Do not use `$HOME` or `${HOME}`; only `~` and `~/...` shorthand are supported.\n"
+        "- Common folders: Downloads -> `~/Downloads`; Desktop -> `~/Desktop`; "
+        "Documents -> `~/Documents`; Pictures/Movies/Music similarly.\n"
+        "- Use `.` for unambiguous read-only here/current-folder requests. Do not guess arbitrary "
+        "project/system/hidden dirs or absolute homes. Do not use `$HOME` or `${HOME}`.\n"
     )
 
     return f"""
@@ -234,6 +246,9 @@ itself as `command_family`; for example, a manual page for `ls` is `command_fami
 {archive_guidance}\
 {network_guidance}\
 {project_health_guidance}\
+{tree_guidance}\
+{find_guidance}\
+{touch_guidance}\
 {path_guidance}\
 - Use the provided capability route (category + suggested families) to bias family selection before \
 detailed argument planning.

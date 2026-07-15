@@ -104,6 +104,10 @@ class Proposal(BaseModel):
             except StructuredCommandError as exc:
                 raise ValueError(str(exc)) from exc
             self.arguments = validated.model_dump()
+            if self.command_family == "find":
+                self.arguments = {
+                    key: value for key, value in self.arguments.items() if value is not None
+                }
             if (
                 self.command_family in {"tar", "unzip"}
                 and self.arguments.get("destination_path") is None

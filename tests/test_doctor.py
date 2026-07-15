@@ -604,3 +604,30 @@ def test_doctor_exit_code_depends_only_on_critical_failures(
     report = DoctorReport(results=(CheckResult("check", status, "message", critical=critical),))
 
     assert report.exit_code == expected
+
+
+def test_doctor_passes_when_tree_executable_present(monkeypatch, tmp_path: Path) -> None:
+    _base_monkeypatches(monkeypatch, tmp_path)
+    monkeypatch.setattr(
+        "oterminus.doctor.shutil.which", lambda name: "/usr/bin/tree" if name == "tree" else None
+    )
+
+    report = run_doctor()
+
+    result = next(item for item in report.results if item.name == "tree executable")
+    assert result.status is Status.PASS
+    assert result.critical is False
+
+
+def test_doctor_warns_when_tree_executable_missing(monkeypatch, tmp_path: Path) -> None:
+    _base_monkeypatches(monkeypatch, tmp_path)
+    monkeypatch.setattr("oterminus.doctor.shutil.which", lambda name: None)
+
+    report = run_doctor()
+
+    result = next(item for item in report.results if item.name == "tree executable")
+    assert result.status is Status.WARN
+    assert result.critical is False
+    assert report.exit_code == 0
+    assert result.guidance is not None
+    assert "will not install it automatically" in result.guidance

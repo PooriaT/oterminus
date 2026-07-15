@@ -45,6 +45,26 @@ COMMAND_PACK: tuple[CommandSpec, ...] = (
         natural_language_aliases=("list files", "show directory contents"),
     ),
     command(
+        name="tree",
+        category="inspection",
+        **FILESYSTEM_INSPECTION,
+        risk_level=RiskLevel.SAFE,
+        min_operands=0,
+        max_operands=1,
+        allowed_flags=("-a", "-d"),
+        flags_with_values=("-L",),
+        examples=("tree -a -L 3 .",),
+        natural_language_aliases=(
+            "show directory tree",
+            "show folder tree",
+            "directory overview",
+        ),
+        notes=(
+            "Requires the optional external `tree` executable.",
+            "Supports one local path, hidden entries, directories-only output, and bounded depth.",
+        ),
+    ),
+    command(
         name="pwd",
         category="navigation",
         **FILESYSTEM_INSPECTION,
@@ -60,11 +80,12 @@ COMMAND_PACK: tuple[CommandSpec, ...] = (
         risk_level=RiskLevel.SAFE,
         direct_detection_mode=DirectDetectionMode.FIND,
         path_operand_mode=PathOperandMode.FIND,
-        leading_flags=("-H", "-L", "-P"),
-        leading_flags_with_values=("-D", "-O"),
-        leading_flags_with_inline_values=("-O",),
-        allowed_flags=("-name", "-path", "-type", "-maxdepth", "-mindepth", "-print"),
-        examples=("find . -name '*.py'",),
+        allowed_flags=("-name", "-type", "-maxdepth", "-mtime", "-size", "-print"),
+        examples=("find . -maxdepth 3 -type f -name '*.py'",),
+        notes=(
+            "Supports read-only predicates: -name <pattern>, -type f|d, -maxdepth <0-20>, "
+            "-mtime -<1-3650>, and -size +<bytes>c.",
+        ),
         natural_language_aliases=("find files", "search directories"),
     ),
     command(
@@ -135,10 +156,11 @@ COMMAND_PACK: tuple[CommandSpec, ...] = (
         category="filesystem_write",
         **FILESYSTEM_MUTATION,
         risk_level=RiskLevel.WRITE,
-        maturity_level=MaturityLevel.EXPERIMENTAL_ONLY,
         min_operands=1,
+        max_operands=1,
         examples=("touch notes.txt",),
         natural_language_aliases=("create empty file",),
+        notes=("Creates a missing file or updates timestamps when the target already exists.",),
     ),
     command(
         name="chown",

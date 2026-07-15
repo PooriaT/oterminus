@@ -15,6 +15,7 @@ from oterminus.structured_commands import (
     "command_family",
     [
         "ls",
+        "tree",
         "pwd",
         "clear",
         "whoami",
@@ -67,6 +68,13 @@ def test_supported_structured_families_are_curated(command_family: str) -> None:
             "ls -l -h .",
         ),
         ("pwd", {}, ("pwd",), "pwd"),
+        ("tree", {}, ("tree", "."), "tree ."),
+        (
+            "tree",
+            {"path": "src", "max_depth": 3, "show_hidden": True, "directories_only": True},
+            ("tree", "-a", "-d", "-L", "3", "src"),
+            "tree -a -d -L 3 src",
+        ),
         ("clear", {}, ("clear",), "clear"),
         ("whoami", {}, ("whoami",), "whoami"),
         (
@@ -976,3 +984,322 @@ def test_project_health_schema_rejects_extra_arguments() -> None:
         render_structured_command(
             "project_health", {"operation": "run_tests", "raw_command": "poetry run pytest"}
         )
+
+
+def test_structured_tree_expands_home_in_rendering() -> None:
+    rendered = render_structured_command(
+        "tree",
+        {"path": "~/Downloads", "max_depth": 3, "show_hidden": True, "directories_only": False},
+    )
+
+    assert rendered.argv == ("tree", "-a", "-L", "3", expand_user_path("~/Downloads"))
+    assert rendered.command == shlex.join(rendered.argv)
+
+
+@pytest.mark.parametrize(
+    ("command", "expected_arguments"),
+    [
+        (
+            "tree",
+            {"path": ".", "max_depth": None, "show_hidden": False, "directories_only": False},
+        ),
+        (
+            "tree .",
+            {"path": ".", "max_depth": None, "show_hidden": False, "directories_only": False},
+        ),
+        (
+            "tree -a .",
+            {"path": ".", "max_depth": None, "show_hidden": True, "directories_only": False},
+        ),
+        (
+            "tree -d ~/Downloads",
+            {
+                "path": "~/Downloads",
+                "max_depth": None,
+                "show_hidden": False,
+                "directories_only": True,
+            },
+        ),
+        (
+            "tree -a -d -L 3 .",
+            {"path": ".", "max_depth": 3, "show_hidden": True, "directories_only": True},
+        ),
+        (
+            "tree -ad -L 2 src",
+            {"path": "src", "max_depth": 2, "show_hidden": True, "directories_only": True},
+        ),
+    ],
+)
+def test_parse_raw_command_as_structured_accepts_tree(
+    command: str, expected_arguments: dict[str, object]
+) -> None:
+    assert parse_raw_command_as_structured(command) == ("tree", expected_arguments)
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "tree path1 path2",
+        "tree -L",
+        "tree -L 0",
+        "tree -L -1",
+        "tree -L 999999",
+        "tree --help",
+        "tree --version",
+        "tree -C",
+        "tree -H .",
+        "tree -I pattern .",
+        "tree -o out.txt .",
+        "tree https://example.com",
+        "tree file:///tmp/x",
+        "tree . | less",
+        "tree . > tree.txt",
+        "tree $(pwd)",
+        "tree `pwd`",
+        "tree -L3 .",
+    ],
+)
+def test_parse_raw_command_as_structured_rejects_tree_variants(command: str) -> None:
+    assert parse_raw_command_as_structured(command) is None
+
+
+@pytest.mark.parametrize(
+    "arguments",
+    [
+        {"path": "https://example.com"},
+        {"path": "$HOME/Downloads"},
+        {"path": "~otheruser"},
+        {"path": "src", "max_depth": 0},
+        {"path": "src", "max_depth": 21},
+        {"path": "src", "ignore_pattern": "*.py"},
+    ],
+)
+def test_render_structured_tree_rejects_invalid_arguments(arguments: dict[str, object]) -> None:
+    with pytest.raises(StructuredCommandError):
+        render_structured_command("tree", arguments)
+
+
+def test_touch_is_supported_structured_family() -> None:
+    assert supports_structured_family("touch") is True
+
+
+@pytest.mark.parametrize(
+    ("arguments", "expected_argv"),
+    [
+        ({"path": "notes.txt"}, ("touch", "notes.txt")),
+        ({"path": "./notes.txt"}, ("touch", "./notes.txt")),
+        ({"path": "~/Documents/notes.txt"}, ("touch", expand_user_path("~/Documents/notes.txt"))),
+    ],
+)
+def test_render_structured_touch(arguments: dict[str, str], expected_argv: tuple[str, ...]) -> None:
+    rendered = render_structured_command("touch", arguments)
+    assert rendered.argv == expected_argv
+    assert shlex.split(rendered.command) == list(expected_argv)
+
+
+@pytest.mark.parametrize(
+    ("command", "expected_arguments"),
+    [
+        ("touch notes.txt", {"path": "notes.txt"}),
+        ("touch ./notes.txt", {"path": "./notes.txt"}),
+        ("touch ~/Documents/notes.txt", {"path": "~/Documents/notes.txt"}),
+    ],
+)
+def test_parse_raw_command_as_structured_accepts_touch(
+    command: str, expected_arguments: dict[str, str]
+) -> None:
+    assert parse_raw_command_as_structured(command) == ("touch", expected_arguments)
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "touch",
+        "touch file1 file2",
+        "touch -c notes.txt",
+        "touch -a notes.txt",
+        "touch -m notes.txt",
+        "touch -t 202601010000 notes.txt",
+        "touch -r source.txt target.txt",
+        "touch -- notes.txt",
+        "touch /",
+        "touch ~",
+        "touch .",
+        "touch ..",
+        "touch ~/.",
+        "touch src/..",
+        "touch /tmp/..",
+        "touch /bin",
+        "touch /dev",
+        "touch /etc",
+        "touch /home",
+        "touch /lib",
+        "touch /private",
+        "touch /sbin",
+        "touch /usr",
+        "touch /Users",
+        "touch /var",
+        "touch https://example.com/file",
+        "touch file:///tmp/file",
+        "touch '$HOME/file'",
+        "touch '${HOME}/file'",
+        "touch '~otheruser/file'",
+        "touch '*.txt'",
+        "touch '$(pwd)'",
+        "touch '`pwd`'",
+        "touch 'notes.txt && echo done'",
+        "touch 'bad\nname'",
+    ],
+)
+def test_parse_raw_command_as_structured_rejects_touch_variants(command: str) -> None:
+    assert parse_raw_command_as_structured(command) is None
+
+
+def test_touch_structured_rejects_missing_path_and_extra_fields() -> None:
+    with pytest.raises(StructuredCommandError):
+        render_structured_command("touch", {})
+    with pytest.raises(StructuredCommandError):
+        render_structured_command("touch", {"path": "notes.txt", "parents": False})
+
+
+@pytest.mark.parametrize("path", ["/home", "/Users"])
+def test_render_structured_touch_rejects_platform_home_roots(path: str) -> None:
+    with pytest.raises(StructuredCommandError):
+        render_structured_command("touch", {"path": path})
+
+
+def test_find_renders_all_supported_predicates_in_stable_order() -> None:
+    rendered = render_structured_command(
+        "find",
+        {
+            "path": ".",
+            "name": "*.log",
+            "entry_type": "file",
+            "max_depth": 4,
+            "modified_within_days": 2,
+            "size_greater_than_bytes": 104857600,
+        },
+    )
+
+    assert rendered.argv == (
+        "find",
+        ".",
+        "-maxdepth",
+        "4",
+        "-type",
+        "f",
+        "-name",
+        "*.log",
+        "-mtime",
+        "-2",
+        "-size",
+        "+104857600c",
+    )
+    assert (
+        rendered.command == "find . -maxdepth 4 -type f -name '*.log' -mtime -2 -size +104857600c"
+    )
+
+
+@pytest.mark.parametrize(
+    ("arguments", "expected"),
+    [
+        ({"path": ".", "entry_type": "directory"}, ("find", ".", "-type", "d")),
+        ({"path": ".", "max_depth": 3}, ("find", ".", "-maxdepth", "3")),
+        ({"path": ".", "modified_within_days": 7}, ("find", ".", "-mtime", "-7")),
+        ({"path": ".", "size_greater_than_bytes": 100}, ("find", ".", "-size", "+100c")),
+        (
+            {"path": "~/Documents", "name": "*.pdf"},
+            ("find", f"{expand_user_path('~/Documents')}", "-name", "*.pdf"),
+        ),
+    ],
+)
+def test_find_supported_predicates(arguments: dict[str, object], expected: tuple[str, ...]) -> None:
+    assert render_structured_command("find", arguments).argv == expected
+
+
+@pytest.mark.parametrize(
+    "arguments",
+    [
+        {"path": "."},
+        {"path": ".", "entry_type": "symlink"},
+        {"path": ".", "max_depth": 21},
+        {"path": ".", "modified_within_days": 0},
+        {"path": ".", "size_greater_than_bytes": 0},
+        {"path": ".", "name": "$(whoami)"},
+        {"path": ".", "name": "*.py;rm"},
+        {"path": ".", "name": "*.py", "raw": ["-delete"]},
+    ],
+)
+def test_find_rejects_invalid_structured_arguments(arguments: dict[str, object]) -> None:
+    with pytest.raises(StructuredCommandError):
+        render_structured_command("find", arguments)
+
+
+@pytest.mark.parametrize(
+    ("command", "expected_args"),
+    [
+        (
+            "find . -type f -name '*.py'",
+            {
+                "path": ".",
+                "name": "*.py",
+                "entry_type": "file",
+            },
+        ),
+        (
+            "find src -maxdepth 3 -type f",
+            {
+                "path": "src",
+                "entry_type": "file",
+                "max_depth": 3,
+            },
+        ),
+        (
+            "find . -mtime -7 -type f",
+            {
+                "path": ".",
+                "entry_type": "file",
+                "modified_within_days": 7,
+            },
+        ),
+        (
+            "find . -size +104857600c -type f",
+            {
+                "path": ".",
+                "entry_type": "file",
+                "size_greater_than_bytes": 104857600,
+            },
+        ),
+    ],
+)
+def test_parse_find_supported_direct_forms(command: str, expected_args: dict[str, object]) -> None:
+    assert parse_raw_command_as_structured(command) == ("find", expected_args)
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "find",
+        "find .",
+        "find . -name",
+        "find . -name '*.py' -name '*.md'",
+        "find . -type l",
+        "find . -maxdepth -1",
+        "find . -maxdepth 999999",
+        "find . -mtime 7",
+        "find . -mtime +7",
+        "find . -size 10M",
+        "find . -size +100M",
+        "find . -delete",
+        "find . -exec rm {} ;",
+        "find . -o -name '*.md'",
+        "find . ! -name '*.py'",
+        "find . ( -name '*.py' )",
+        "find . -perm 777",
+        "find . -user root",
+        "find -L . -name '*.py'",
+        "find https://example.com -name '*.py'",
+    ],
+)
+def test_parse_find_rejects_unsupported_direct_forms(command: str) -> None:
+    assert parse_raw_command_as_structured(command) is None

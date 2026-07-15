@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import ipaddress
+import posixpath
 import re
 import shlex
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any, Literal, Sequence
 from urllib.parse import urlsplit
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
@@ -31,6 +32,66 @@ def _validate_path(value: str, *, allow_url_targets: bool = False) -> str:
         raise ValueError("path cannot start with '-'.")
     if not allow_url_targets and _looks_like_url_target(value):
         raise ValueError("path must refer to a local filesystem target.")
+    return value
+
+
+def _validate_tree_path(value: str) -> str:
+    value = _validate_path(value, allow_url_targets=False)
+    blocked_fragments = ("$(", "`", "\n", "\r", "\x00")
+    if any(fragment in value for fragment in blocked_fragments):
+        raise ValueError("path cannot contain command substitution or control characters.")
+    blocked_operator_fragments = ("&&", "||", ";", "|", "<", ">", "&")
+    if any(fragment in value for fragment in blocked_operator_fragments):
+        raise ValueError("path cannot contain shell operators.")
+    if any(fragment in value for fragment in ("*", "?", "[", "]", "{", "}")):
+        raise ValueError("path cannot contain wildcard characters.")
+    if value.startswith(("$HOME", "${HOME}")) or (
+        value.startswith("~") and value not in {"~"} and not value.startswith("~/")
+    ):
+        raise ValueError("path must use '.', '~', '~/...', or another explicit local path.")
+    return value
+
+
+def _validate_touch_target(value: str) -> str:
+    value = _validate_path(value, allow_url_targets=False)
+    blocked_fragments = ("$(", "`", "\n", "\r", "\x00")
+    if any(fragment in value for fragment in blocked_fragments):
+        raise ValueError("path cannot contain command substitution or control characters.")
+    blocked_operator_fragments = ("&&", "||", ";", "|", "<", ">", "&")
+    if any(fragment in value for fragment in blocked_operator_fragments):
+        raise ValueError("path cannot contain shell operators.")
+    if any(fragment in value for fragment in ("*", "?", "[", "]", "{", "}")):
+        raise ValueError("path cannot contain wildcard characters.")
+    if value.startswith(("$HOME", "${HOME}")) or (
+        value.startswith("~") and value not in {"~"} and not value.startswith("~/")
+    ):
+        raise ValueError("path must use '.', '~', '~/...', or another explicit local path.")
+    expanded = expand_user_path(value)
+    lexical_normalized = posixpath.normpath(expanded).rstrip("/") or "/"
+    normalized_path = Path(expanded).resolve(strict=False)
+    normalized = str(normalized_path).rstrip("/") or "/"
+    home = str(Path.home().resolve(strict=False)).rstrip("/") or "/"
+    cwd = str(Path.cwd().resolve(strict=False)).rstrip("/") or "/"
+    if (
+        value in {".", "..", "/", "~"}
+        or lexical_normalized in {"/", home, cwd}
+        or normalized in {"/", home, cwd}
+    ):
+        raise ValueError("path cannot be a broad filesystem target.")
+    system_roots = {
+        "/Users",
+        "/bin",
+        "/dev",
+        "/etc",
+        "/home",
+        "/lib",
+        "/private",
+        "/sbin",
+        "/usr",
+        "/var",
+    }
+    if lexical_normalized in system_roots or normalized in system_roots:
+        raise ValueError("path cannot be a system root.")
     return value
 
 
@@ -209,6 +270,18 @@ class LsArguments(_StructuredArgumentsModel):
         return value
 
 
+class TreeArguments(_StructuredArgumentsModel):
+    path: str = Field(default=".", min_length=1)
+    max_depth: int | None = Field(default=None, ge=1, le=20)
+    show_hidden: bool = False
+    directories_only: bool = False
+
+    @field_validator("path")
+    @classmethod
+    def validate_path(cls, value: str) -> str:
+        return _validate_tree_path(value)
+
+
 class PwdArguments(_StructuredArgumentsModel):
     pass
 
@@ -329,14 +402,56 @@ class ChmodArguments(_StructuredArgumentsModel):
         return _validate_path(value)
 
 
+class TouchArguments(_StructuredArgumentsModel):
+    path: str = Field(min_length=1)
+
+    @field_validator("path")
+    @classmethod
+    def validate_path(cls, value: str) -> str:
+        return _validate_touch_target(value)
+
+
 class FindArguments(_StructuredArgumentsModel):
     path: str = Field(default=".", min_length=1)
-    name: str = Field(min_length=1)
+    name: str | None = Field(default=None, min_length=1)
+    entry_type: Literal["file", "directory"] | None = None
+    max_depth: int | None = Field(default=None, ge=0, le=20)
+    modified_within_days: int | None = Field(default=None, ge=1, le=3650)
+    size_greater_than_bytes: int | None = Field(
+        default=None,
+        ge=1,
+        le=1_000_000_000_000_000,
+    )
 
     @field_validator("path")
     @classmethod
     def validate_path(cls, value: str) -> str:
         return _validate_path(value)
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        blocked_fragments = ("$(", "`", "\n", "\r", "\x00")
+        if any(fragment in value for fragment in blocked_fragments):
+            raise ValueError("name cannot contain command substitution or control characters.")
+        blocked_operator_fragments = ("&&", "||", ";", "|", "<", ">", "&")
+        if any(fragment in value for fragment in blocked_operator_fragments):
+            raise ValueError("name cannot contain shell operators.")
+        return value
+
+    @model_validator(mode="after")
+    def validate_shape(self) -> FindArguments:
+        if (
+            self.name is None
+            and self.entry_type is None
+            and self.max_depth is None
+            and self.modified_within_days is None
+            and self.size_greater_than_bytes is None
+        ):
+            raise ValueError("find requires at least one supported predicate besides path.")
+        return self
 
 
 class CpArguments(_StructuredArgumentsModel):
@@ -765,6 +880,7 @@ class UniqArguments(_StructuredArgumentsModel):
 
 STRUCTURED_ARGUMENT_MODELS: dict[str, type[_StructuredArgumentsModel]] = {
     "ls": LsArguments,
+    "tree": TreeArguments,
     "pwd": PwdArguments,
     "clear": ClearArguments,
     "whoami": WhoamiArguments,
@@ -774,6 +890,7 @@ STRUCTURED_ARGUMENT_MODELS: dict[str, type[_StructuredArgumentsModel]] = {
     "man": ManArguments,
     "mkdir": MkdirArguments,
     "chmod": ChmodArguments,
+    "touch": TouchArguments,
     "find": FindArguments,
     "cp": CpArguments,
     "mv": MvArguments,
@@ -834,6 +951,7 @@ def parse_argv_as_structured(argv: Sequence[str]) -> tuple[str, dict[str, Any]] 
 
     parser = {
         "ls": _parse_ls_argv,
+        "tree": _parse_tree_argv,
         "pwd": _parse_pwd_argv,
         "clear": _parse_clear_argv,
         "whoami": _parse_whoami_argv,
@@ -843,6 +961,7 @@ def parse_argv_as_structured(argv: Sequence[str]) -> tuple[str, dict[str, Any]] 
         "man": _parse_man_argv,
         "mkdir": _parse_mkdir_argv,
         "chmod": _parse_chmod_argv,
+        "touch": _parse_touch_argv,
         "find": _parse_find_argv,
         "cp": _parse_cp_argv,
         "mv": _parse_mv_argv,
@@ -877,8 +996,15 @@ def parse_argv_as_structured(argv: Sequence[str]) -> tuple[str, dict[str, Any]] 
     if arguments is None:
         return None
 
-    validated = validate_structured_arguments(command_family, arguments)
+    try:
+        validated = validate_structured_arguments(command_family, arguments)
+    except StructuredCommandError:
+        if command_family == "find":
+            return None
+        raise
     dumped = validated.model_dump()
+    if command_family == "find":
+        dumped = {key: value for key, value in dumped.items() if value is not None}
     if command_family in {"tar", "unzip"} and dumped.get("destination_path") is None:
         dumped.pop("destination_path", None)
     if command_family == "tar" and dumped.get("source_paths") is None:
@@ -919,6 +1045,17 @@ def render_structured_command(
             argv.append("-a")
         if validated.recursive:
             argv.append("-R")
+        argv.append(expand_user_path(validated.path))
+        return RenderedCommand(tuple(argv))
+
+    if command_family == "tree":
+        argv = ["tree"]
+        if validated.show_hidden:
+            argv.append("-a")
+        if validated.directories_only:
+            argv.append("-d")
+        if validated.max_depth is not None:
+            argv.extend(("-L", str(validated.max_depth)))
         argv.append(expand_user_path(validated.path))
         return RenderedCommand(tuple(argv))
 
@@ -975,8 +1112,22 @@ def render_structured_command(
     if command_family == "chmod":
         return RenderedCommand(("chmod", validated.mode, expand_user_path(validated.path)))
 
+    if command_family == "touch":
+        return RenderedCommand(("touch", expand_user_path(validated.path)))
+
     if command_family == "find":
-        return RenderedCommand(("find", expand_user_path(validated.path), "-name", validated.name))
+        argv = ["find", expand_user_path(validated.path)]
+        if validated.max_depth is not None:
+            argv.extend(("-maxdepth", str(validated.max_depth)))
+        if validated.entry_type is not None:
+            argv.extend(("-type", "f" if validated.entry_type == "file" else "d"))
+        if validated.name is not None:
+            argv.extend(("-name", validated.name))
+        if validated.modified_within_days is not None:
+            argv.extend(("-mtime", f"-{validated.modified_within_days}"))
+        if validated.size_greater_than_bytes is not None:
+            argv.extend(("-size", f"+{validated.size_greater_than_bytes}c"))
+        return RenderedCommand(tuple(argv))
 
     if command_family == "cp":
         argv = ["cp"]
@@ -1270,6 +1421,57 @@ def _parse_ls_argv(operands: list[str]) -> dict[str, Any] | None:
     return arguments
 
 
+def _parse_tree_argv(operands: list[str]) -> dict[str, Any] | None:
+    arguments: dict[str, Any] = {
+        "path": ".",
+        "max_depth": None,
+        "show_hidden": False,
+        "directories_only": False,
+    }
+    path: str | None = None
+    index = 0
+
+    while index < len(operands):
+        operand = operands[index]
+        if operand == "--":
+            return None
+        if operand == "-L":
+            if index + 1 >= len(operands):
+                return None
+            depth_text = operands[index + 1]
+            if not depth_text.isdecimal():
+                return None
+            depth = int(depth_text)
+            if depth < 1 or depth > 20:
+                return None
+            arguments["max_depth"] = depth
+            index += 2
+            continue
+        if operand.startswith("-") and operand != "-":
+            flags = _expand_short_flag_cluster(operand, {"a", "d"})
+            if flags is None:
+                return None
+            for flag in flags:
+                if flag == "-a":
+                    arguments["show_hidden"] = True
+                elif flag == "-d":
+                    arguments["directories_only"] = True
+            index += 1
+            continue
+        if path is not None:
+            return None
+        path = operand
+        index += 1
+
+    if path is not None:
+        try:
+            _validate_tree_path(path)
+        except ValueError:
+            return None
+        arguments["path"] = path
+    return arguments
+
+
 def _parse_pwd_argv(operands: list[str]) -> dict[str, Any] | None:
     return {} if not operands else None
 
@@ -1385,19 +1587,73 @@ def _parse_chmod_argv(operands: list[str]) -> dict[str, Any] | None:
     return {"path": path, "mode": mode}
 
 
+def _parse_touch_argv(operands: list[str]) -> dict[str, Any] | None:
+    if len(operands) != 1:
+        return None
+    path = operands[0]
+    if path == "--" or path.startswith("-"):
+        return None
+    try:
+        _validate_touch_target(path)
+    except ValueError:
+        return None
+    return {"path": path}
+
+
 def _parse_find_argv(operands: list[str]) -> dict[str, Any] | None:
     if not operands:
         return None
+    if (
+        operands[0] in {"-H", "-L", "-P"}
+        or operands[0].startswith("-D")
+        or operands[0].startswith("-O")
+    ):
+        return None
 
     path = "."
-    remaining = operands
-    if operands[0] != "-name":
+    index = 0
+    if not operands[0].startswith("-"):
         path = operands[0]
-        remaining = operands[1:]
-
-    if len(remaining) != 2 or remaining[0] != "-name":
+        index = 1
+    if _looks_like_url_target(path):
         return None
-    return {"path": path, "name": remaining[1]}
+
+    arguments: dict[str, Any] = {"path": path}
+    seen: set[str] = set()
+    while index < len(operands):
+        predicate = operands[index]
+        if predicate == "-print" and index == len(operands) - 1:
+            index += 1
+            continue
+        if predicate not in {"-name", "-type", "-maxdepth", "-mtime", "-size"}:
+            return None
+        if predicate in seen or index + 1 >= len(operands):
+            return None
+        seen.add(predicate)
+        value = operands[index + 1]
+        if predicate == "-name":
+            arguments["name"] = value
+        elif predicate == "-type":
+            if value == "f":
+                arguments["entry_type"] = "file"
+            elif value == "d":
+                arguments["entry_type"] = "directory"
+            else:
+                return None
+        elif predicate == "-maxdepth":
+            if not value.isdecimal():
+                return None
+            arguments["max_depth"] = int(value)
+        elif predicate == "-mtime":
+            if not value.startswith("-") or not value[1:].isdecimal():
+                return None
+            arguments["modified_within_days"] = int(value[1:])
+        elif predicate == "-size":
+            if not (value.startswith("+") and value.endswith("c") and value[1:-1].isdecimal()):
+                return None
+            arguments["size_greater_than_bytes"] = int(value[1:-1])
+        index += 2
+    return arguments
 
 
 def _parse_cp_argv(operands: list[str]) -> dict[str, Any] | None:

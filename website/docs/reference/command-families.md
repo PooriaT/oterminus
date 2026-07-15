@@ -36,10 +36,11 @@
 | `cd` | navigation | all | safe | direct_only | direct-only (direct executable support only) | yes | explicit | no | `cd src` | `change directory`, `go to folder` | Changes the oterminus working directory for the current REPL session. |
 | `du` | inspection | all | safe | structured | structured (normal executable support) | yes | explicit | no | `du -h .` | `disk usage`, `folder size` | — |
 | `file` | inspection | all | safe | structured | structured (normal executable support) | yes | explicit | no | `file README.md` | `identify file type` | — |
-| `find` | search | all | safe | structured | structured (normal executable support) | yes | explicit | no | `find . -name '*.py'` | `find files`, `search directories` | — |
+| `find` | search | all | safe | structured | structured (normal executable support) | yes | explicit | no | `find . -maxdepth 3 -type f -name '*.py'` | `find files`, `search directories` | Supports read-only predicates: -name &lt;pattern&gt;, -type f|d, -maxdepth &lt;0-20&gt;, -mtime -&lt;1-3650&gt;, and -size +&lt;bytes&gt;c. |
 | `ls` | inspection | all | safe | structured | structured (normal executable support) | yes | safe_inspection_passthrough | no | `ls -la` | `list files`, `show directory contents` | — |
 | `pwd` | navigation | all | safe | structured | structured (normal executable support) | yes | explicit | no | `pwd` | `where am i`, `print working directory` | — |
 | `stat` | inspection | all | safe | structured | structured (normal executable support) | yes | explicit | no | `stat README.md` | `file metadata`, `file info` | — |
+| `tree` | inspection | all | safe | structured | structured (normal executable support) | yes | explicit | no | `tree -a -L 3 .` | `show directory tree`, `show folder tree`, `directory overview` | Requires the optional external `tree` executable.<br />Supports one local path, hidden entries, directories-only output, and bounded depth. |
 
 ## `filesystem_mutation`
 
@@ -54,7 +55,7 @@
 | `cp` | filesystem_write | all | write | structured | structured (normal executable support) | yes | explicit | no | `cp notes.txt backup/notes.txt` | `copy file`, `duplicate file` | — |
 | `mkdir` | filesystem_write | all | write | structured | structured (normal executable support) | yes | explicit | no | `mkdir -p logs/archive` | `create folder`, `make directory` | — |
 | `mv` | filesystem_write | all | write | structured | structured (normal executable support) | yes | explicit | no | `mv report.md docs/` | `move file`, `rename file` | — |
-| `touch` | filesystem_write | all | write | experimental_only | experimental-only (constrained executable fallback) | yes | explicit | no | `touch notes.txt` | `create empty file` | — |
+| `touch` | filesystem_write | all | write | structured | structured (normal executable support) | yes | explicit | no | `touch notes.txt` | `create empty file` | Creates a missing file or updates timestamps when the target already exists. |
 
 ## `git_inspection`
 
