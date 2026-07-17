@@ -16,6 +16,60 @@ Use this section for changes merged after the next planned release section has b
 
 ### Internal
 
+## 0.1.5
+
+Terminal usability, recovery workflows, model diagnostics, documentation-platform, and structured
+filesystem capability release.
+
+### Added
+
+- Added `oterminus models` for inspecting installed Ollama models and the active configured model.
+- Added `oterminus models test [MODEL]` for testing models against OTerminus's strict planner schema
+  without executing proposed commands.
+- Added REPL commands for inspecting, explaining, and recovering from the latest failed command.
+- Added a bounded one-step clarification flow for ambiguous REPL requests.
+- Added structured, read-only directory-tree inspection through `tree`, with bounded depth,
+  hidden-entry, and directories-only options.
+- Promoted constrained one-path `touch` operations to structured write-risk proposals.
+- Expanded structured `find` support with safe name, type, depth, recent-modification, and byte-size
+  filters.
+
+### Changed
+
+- Expanded safe direct-command handling for reviewed read-only `ls` flag clusters while preserving
+  direct-origin-only trust.
+- Improved planner guidance for common user folders such as Downloads, Desktop, and Documents.
+- Improved doctor guidance for configured models, schema diagnostics, and the optional `tree` tool.
+- Expanded audit and history metadata for failure recovery and clarification workflows.
+
+### Fixed
+
+- Expanded current-user home paths before executing direct and structured commands such as
+  `du -h ~` and `ls ~/Downloads`.
+- Kept command previews, validated argv, allowed-root checks, and execution paths consistent after
+  home-directory expansion.
+- Prevented unsupported direct and structured `tree`, `touch`, and `find` variants from bypassing
+  curated validation through experimental fallback.
+
+### Documentation
+
+- Migrated the documentation site from MkDocs to Docusaurus and reorganized contributor, product,
+  architecture, ADR, reference, and release documentation.
+- Added a stronger Docusaurus landing page and documented the decision to defer documentation
+  versioning.
+- Added documentation for path handling, failure recovery, model diagnostics, clarification,
+  safe passthrough, and expanded structured command families.
+
+### Internal
+
+- Expanded deterministic eval fixtures for filesystem operations, common folders, safe passthrough,
+  and release behavior.
+- Added regression coverage for CLI, history, audit, model diagnostics, structured rendering,
+  direct detection, validation, doctor, and installed packages.
+- Updated CI and release validation for the Docusaurus documentation build.
+- Kept planner prompts within the enforced compactness limit and excluded Python caches from built
+  distributions.
+
 ## 0.1.4
 
 Proposal-source simplification, LLM planner schema hardening, and architecture cleanup release.

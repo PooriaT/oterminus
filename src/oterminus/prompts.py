@@ -152,18 +152,19 @@ def build_system_prompt(
         else ""
     )
     tree_guidance = (
-        "- Use `tree` for hierarchies, `ls` for listings; do not invent depth/hidden/dirs-only/install.\n"
+        "- `tree`: hierarchy only; do not invent depth, hidden, dirs-only, or installation.\n"
         if "tree" in enabled_families
         else ""
     )
     find_guidance = (
-        "- `find`: curated read-only predicates only; bytes for sizes; no raw expressions, actions, Boolean, permission/owner, or symlink flags.\n"
+        "- `find`: read-only predicates; byte sizes; no raw expressions, actions, Boolean, "
+        "permission/owner, or symlink flags.\n"
         if "find" in enabled_families
         else ""
     )
     touch_guidance = (
-        "- `touch`: one explicit file path only; risk `write`; confirmation required; no "
-        "contents, flags, or multiple files; creates missing file or updates timestamps.\n"
+        "- `touch`: one explicit path; write risk and confirmation; no contents, flags, or "
+        "multiple files; creates missing file or updates timestamps.\n"
         if "touch" in enabled_families
         else ""
     )
