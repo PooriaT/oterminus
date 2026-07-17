@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "oterminus"
-version = "0.1.4"
+version = "0.1.5"
 description = "Local AI-powered terminal assistant with explicit confirmation and safety controls"
 authors = ["OTerminus contributors"]
 license = "MIT"
@@ -23,15 +23,17 @@ classifiers = [
 ]
 include = [
     "README.md",
-    { path = "src/oterminus/eval_fixtures/*.json", format = ["sdist", "wheel"] },
 ]
 exclude = [
     "site/**",
     ".github/**",
     ".venv/**",
+    "**/__pycache__/**",
+    "**/*.py[co]",
 ]
 packages = [
-    { include = "oterminus", from = "src", format = ["sdist", "wheel"] },
+    { include = "oterminus/**/*.py", from = "src", format = ["sdist", "wheel"] },
+    { include = "oterminus/eval_fixtures/*", from = "src", format = ["sdist", "wheel"] },
 ]
 
 [tool.poetry.dependencies]
